@@ -8,6 +8,8 @@ add_subdirectory(lib)
 
 find_package(Freetype REQUIRED)
 find_package(Vulkan REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_search_module(FFTW3F REQUIRED fftw3f IMPORTED_TARGET)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.c)
 set(IMGUI_DIR lib/imgui)
@@ -46,6 +48,7 @@ include_directories(
     lib/immer
     lib/concurrentqueue
     lib/date/include/date
+    PkgConfig::FFTW3F
 )
 
 option(TRACING_ENABLED "Enable Tracy profiling" OFF)
@@ -59,7 +62,7 @@ if(TRACING_ENABLED)
 endif()
 
 # `dynamiclib` is faust. TODO export it with a 'faust' name
-target_link_libraries(${PROJECT_NAME} PRIVATE ${FREETYPE_LIBRARIES} ${Vulkan_LIBRARIES} SDL3::SDL3 nlohmann_json::nlohmann_json dynamiclib)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${FREETYPE_LIBRARIES} ${Vulkan_LIBRARIES} SDL3::SDL3 nlohmann_json::nlohmann_json dynamiclib PkgConfig::FFTW3F)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)

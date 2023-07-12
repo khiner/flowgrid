@@ -15,10 +15,13 @@ typedef struct
 
 ma_monitor_node_config ma_monitor_node_config_init(ma_uint32 channels, ma_uint32 sampleRate, ma_uint32 bufferSizeInFrames);
 
+typedef struct fft_data fft_data; // Forward-declare to avoid including fftw header. Include `fft_data.h` for complete definition.
+
 typedef struct
 {
     ma_node_base baseNode;
     ma_uint32 bufferSizeInFrames;
+    fft_data *fft;
     float *pBuffer;
 } ma_monitor_node;
 

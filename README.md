@@ -63,7 +63,7 @@ If that doesn't work, try the latest release in the previous LLVM major version.
 
   ```shell
   $ git clone --recursive git@github.com:khiner/flowgrid.git
-  $ brew install cmake pkgconfig llvm freetype
+  $ brew install cmake pkgconfig llvm freetype fftw
   $ brew link llvm --force
   ```
 
@@ -105,10 +105,11 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 - [Faust](https://github.com/grame-cncm/faust) for DSP
 - [miniaudio](https://github.com/mackron/miniaudio) for the audio backend
+- [fftw](https://www.fftw.org/) for computing spectrograms (visualized with ImPlot)
 
 ### UI/UX
 
-- [ImGui](https://github.com/ocornut/imgui): UI & interactions
+- [ImGui](https://github.com/ocornut/imgui) + [FreeType](https://freetype.org): UI & interactions
 - [ImPlot](https://github.com/epezent/implot): plotting
 - [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog): file selection
 - [ImGuiColorTextEdit](https://github.com/santaclose/ImGuiColorTextEdit): code/text editing

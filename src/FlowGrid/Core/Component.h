@@ -34,6 +34,7 @@ protected:
 
 struct ImGuiWindow;
 using ImGuiWindowFlags = int;
+using ImGuiTreeNodeFlags = int;
 
 // Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
 // Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.
@@ -103,7 +104,7 @@ struct Component : Drawable {
 
     // Child renderers.
     void RenderTabs() const;
-    void RenderTreeNodes() const;
+    void RenderTreeNodes(ImGuiTreeNodeFlags flags = 0) const;
 
 protected:
     virtual void Render() const override {} // By default, components don't render anything.

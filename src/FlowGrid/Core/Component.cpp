@@ -113,9 +113,9 @@ void Component::RenderTabs() const {
     }
 }
 
-void Component::RenderTreeNodes() const {
+void Component::RenderTreeNodes(ImGuiTreeNodeFlags flags) const {
     for (const auto *child : Children) {
-        if (TreeNodeEx(child->ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (TreeNodeEx(child->ImGuiLabel.c_str(), flags)) {
             child->Draw();
             TreePop();
         }

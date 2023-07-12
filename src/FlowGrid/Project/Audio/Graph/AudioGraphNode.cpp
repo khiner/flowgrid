@@ -193,46 +193,13 @@ void AudioGraphNode::DisconnectAll() {
 
 using namespace ImGui;
 
-void RenderMagnitudeSpectrum(const ma_monitor_node *monitor) {
-    static const float MIN_DB = -100;
-    const fft_data *fft = monitor->fft;
-    const Count N = monitor->config.buffer_frames;
-    const Count N_2 = N / 2;
-    const float fs = monitor->config.sample_rate;
-    const float fs_n = fs / float(N);
-
-    static std::vector<float> frequency(N_2);
-    static std::vector<float> magnitude(N_2);
-    frequency.resize(N_2);
-    magnitude.resize(N_2);
-
-    const auto *data = fft->data; // Complex values.
-    for (Count i = 0; i < N_2; i++) {
-        frequency[i] = fs_n * float(i);
-        const float mag_linear = sqrtf(data[i][0] * data[i][0] + data[i][1] * data[i][1]) / float(N_2);
-        magnitude[i] = ma_volume_linear_to_db(mag_linear);
-    }
-
-    if (ImPlot::BeginPlot("Spectrogram", {-1, 160})) {
-        ImPlot::SetupAxes("Frequency bin", "Magnitude (dB)");
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0, fs / 2, ImGuiCond_Always);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, MIN_DB, 0, ImGuiCond_Always);
-        ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
-        // ImPlot::PushStyleColor(ImPlotCol_Fill, {1.f, 0.f, 0.f, 1.f});
-        ImPlot::PlotShaded("Spectrogram", frequency.data(), magnitude.data(), N_2, MIN_DB);
-        // ImPlot::PopStyleColor();
-        ImPlot::PopStyleVar();
-        ImPlot::EndPlot();
-    }
-}
-
-void AudioGraphNode::RenderMonitor(IO io) const {
+void AudioGraphNode::RenderMonitorWaveform(IO io) const {
     const auto *monitor = GetMonitorNode(io);
     if (monitor == nullptr) return;
 
-    if (ImPlot::BeginPlot(StringHelper::Capitalize(to_string(io)).c_str(), {-1, 160})) {
+    if (ImPlot::BeginPlot("Waveform", {-1, 160})) {
         const auto N = monitor->config.buffer_frames;
-        ImPlot::SetupAxes("Buffer frame", "Value");
+        ImPlot::SetupAxes("Frame", "Value");
         ImPlot::SetupAxisLimits(ImAxis_X1, 0, N, ImGuiCond_Always);
         ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
         if (IsActive) {
@@ -245,14 +212,68 @@ void AudioGraphNode::RenderMonitor(IO io) const {
         }
         ImPlot::EndPlot();
     }
+}
 
-    RenderMagnitudeSpectrum(monitor);
+void AudioGraphNode::RenderMonitorMagnitudeSpectrum(IO io) const {
+    const auto *monitor = GetMonitorNode(io);
+    if (monitor == nullptr) return;
+
+    if (ImPlot::BeginPlot("Magnitude spectrum", {-1, 160})) {
+        static const float MIN_DB = -100;
+        const fft_data *fft = monitor->fft;
+        const Count N = monitor->config.buffer_frames;
+        const Count N_2 = N / 2;
+        const float fs = monitor->config.sample_rate;
+        const float fs_n = fs / float(N);
+
+        static std::vector<float> frequency(N_2);
+        static std::vector<float> magnitude(N_2);
+        frequency.resize(N_2);
+        magnitude.resize(N_2);
+
+        const auto *data = fft->data; // Complex values.
+        for (Count i = 0; i < N_2; i++) {
+            frequency[i] = fs_n * float(i);
+            const float mag_linear = sqrtf(data[i][0] * data[i][0] + data[i][1] * data[i][1]) / float(N_2);
+            magnitude[i] = ma_volume_linear_to_db(mag_linear);
+        }
+
+        ImPlot::SetupAxes("Frequency bin", "Magnitude (dB)");
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, fs / 2, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, MIN_DB, 0, ImGuiCond_Always);
+        if (IsActive) {
+            ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
+            // ImPlot::PushStyleColor(ImPlotCol_Fill, {1.f, 0.f, 0.f, 1.f});
+            // todo per-channel
+            ImPlot::PlotShaded("1", frequency.data(), magnitude.data(), N_2, MIN_DB);
+            // ImPlot::PopStyleColor();
+            ImPlot::PopStyleVar();
+        }
+        ImPlot::EndPlot();
+    }
+}
+
+std::string NodesToString(const std::unordered_set<const AudioGraphNode *> &nodes, bool is_input) {
+    if (nodes.empty()) return "";
+
+    std::string str;
+    for (const auto *node : nodes) {
+        str += node->Name;
+        str += ", ";
+    }
+
+    if (!nodes.empty()) str.resize(str.size() - 2);
+    if (nodes.size() > 1) str = std::format("({})", str);
+
+    return is_input ? std::format("{} -> ", str) : std::format(" -> {}", str);
 }
 
 void AudioGraphNode::Render() const {
-    if (!IsOutput()) On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
+    if (!IsOutput()) {
+        On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
+        SameLine();
+    }
 
-    SameLine();
     if (IsActive) {
         PushStyleColor(ImGuiCol_Text, {0.0f, 1.0f, 0.0f, 1.0f});
         TextUnformatted("Active");
@@ -262,40 +283,31 @@ void AudioGraphNode::Render() const {
     }
     PopStyleColor();
 
-    TextUnformatted("Inputs:");
-    SameLine();
-    if (InputNodes.empty()) {
-        TextUnformatted("None");
-    } else {
-        std::string inputs;
-        for (const auto *node : InputNodes) {
-            inputs += node->Name;
-            inputs += ", ";
+    if (On) {
+        if (!InputNodes.empty() || !OutputNodes.empty()) {
+            Text("Connections: %s%s%s", NodesToString(InputNodes, true).c_str(), Name.c_str(), NodesToString(OutputNodes, false).c_str());
+        } else {
+            TextUnformatted("No connections");
         }
-        inputs.resize(inputs.size() - 2);
-        TextUnformatted(inputs.c_str());
     }
 
-    TextUnformatted("Outputs:");
-    SameLine();
-    if (OutputNodes.empty()) {
-        TextUnformatted("None");
-    } else {
-        std::string outputs;
-        for (const auto *node : OutputNodes) {
-            outputs += node->Name;
-            outputs += ", ";
-        }
-        outputs.resize(outputs.size() - 2);
-        TextUnformatted(outputs.c_str());
-    }
-
+    Spacing();
     Muted.Draw();
     SameLine();
     Volume.Draw();
     Monitor.Draw();
     if (Monitor) {
+        SameLine();
+        SetNextItemWidth(ImGui::GetFontSize() * 9);
         WindowType.Draw();
-        for (const IO io : IO_All) RenderMonitor(io);
+        for (const IO io : IO_All) {
+            if (GetMonitorNode(io) == nullptr) continue;
+
+            if (TreeNodeEx(to_string(io).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s buffer", StringHelper::Capitalize(to_string(io)).c_str())) {
+                RenderMonitorWaveform(io);
+                RenderMonitorMagnitudeSpectrum(io);
+                TreePop();
+            }
+        }
     }
 }

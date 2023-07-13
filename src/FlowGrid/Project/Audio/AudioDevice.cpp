@@ -35,7 +35,6 @@ static std::vector<U32> NativeSampleRates;
 
 static ma_context AudioContext;
 static ma_device MaDevice;
-static ma_device_config DeviceConfig;
 static ma_device_info DeviceInfo;
 
 AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback) : Component(std::move(args)), Callback(callback) {
@@ -44,6 +43,7 @@ AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callba
     const Field::References listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
+
 AudioDevice::~AudioDevice() {
     Field::UnregisterChangeListener(this);
     Uninit();
@@ -110,31 +110,33 @@ void AudioDevice::Init() {
         DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
     }
 
-    DeviceConfig = ma_device_config_init(ma_device_type_duplex);
-    DeviceConfig.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
-    DeviceConfig.capture.format = ma_format_f32;
-    DeviceConfig.capture.channels = InChannels;
-    DeviceConfig.capture.shareMode = ma_share_mode_shared;
-    DeviceConfig.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
-    DeviceConfig.playback.format = ma_format_f32;
-    DeviceConfig.playback.channels = OutChannels;
-    DeviceConfig.dataCallback = Callback;
-    DeviceConfig.sampleRate = SampleRate;
+    ma_device_config config;
+    config = ma_device_config_init(ma_device_type_duplex);
+    config.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
+    config.capture.format = ma_format_f32;
+    config.capture.channels = InChannels;
+    config.capture.shareMode = ma_share_mode_shared;
+    config.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
+    config.playback.format = ma_format_f32;
+    config.playback.channels = OutChannels;
+    config.dataCallback = Callback;
+    config.sampleRate = SampleRate;
+    config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
 
     // MA graph nodes require f32 format for in/out.
     // We could keep IO formats configurable, and add two decoders to/from f32, but MA already does this
     // conversion from native formats (if needed) since we specify f32 format in the device config, so it
     // would just be needlessly wasting cycles/memory (memory since an extra input buffer would be needed).
     // todo option to change dither mode, only present when used
-    // DeviceConfig.capture.format = ToAudioFormat(InFormat);
-    // DeviceConfig.playback.format = ToAudioFormat(OutFormat);
+    // config.capture.format = ToAudioFormat(InFormat);
+    // config.playback.format = ToAudioFormat(OutFormat);
 
     // ResamplerConfig = ma_resampler_config_init(ma_format_f32, 2, 0, 0, ma_resample_algorithm_custom);
     // auto result = ma_resampler_init(&ResamplerConfig, nullptr, &Resampler);
     // if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing resampler: {}", result));
     // ResamplerConfig.pBackendVTable = &ResamplerVTable;
 
-    result = ma_device_init(nullptr, &DeviceConfig, &MaDevice);
+    result = ma_device_init(nullptr, &config, &MaDevice);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio device: {}", result));
 
     result = ma_context_get_device_info(MaDevice.pContext, MaDevice.type, nullptr, &DeviceInfo);

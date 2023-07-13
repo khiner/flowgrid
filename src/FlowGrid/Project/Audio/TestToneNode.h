@@ -8,9 +8,9 @@ struct TestToneNode : AudioGraphNode {
 
     void OnFieldChanged() override;
 
-    Prop(Float, Amplitude, 1.0);
     Prop(Float, Frequency, 440.0, 20.0, 16000.0);
     Prop(Enum, Type, {"Sine", "Square", "Triangle", "Sawtooth"}, 0);
+    // Amplitude is controlled by node output level.
 
 private:
     void Render() const override;

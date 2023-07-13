@@ -10,6 +10,7 @@
 // Only needed here singe forward-declaring `ma_splitter_node` is not working for unique_ptr and I don't know why.
 #include "miniaudio.h"
 
+#include "ma_gainer_node/ma_gainer_node.h"
 #include "ma_monitor_node/ma_monitor_node.h"
 
 struct AudioGraph;
@@ -17,7 +18,6 @@ using ma_node = void;
 
 // using ma_node = void;
 // struct ma_splitter_node;
-// struct ma_gainer;
 
 enum WindowType_ {
     WindowType_Rectangular,
@@ -67,8 +67,12 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     bool IsOutput() const noexcept { return Name == "Output"; }
 
-    inline ma_node *InputNode() const noexcept { return InputMonitorNode ? InputMonitorNode.get() : Node; }
-    inline ma_node *OutputNode() const noexcept { return OutputMonitorNode ? OutputMonitorNode.get() : Node; }
+    inline ma_node *InputNode() const noexcept {
+        return InputMonitorNode ? InputMonitorNode.get() : Node;
+    }
+    inline ma_node *OutputNode() const noexcept {
+        return OutputMonitorNode ? OutputMonitorNode.get() : GainerNode ? GainerNode.get() : Node;
+    }
 
     void ConnectTo(AudioGraphNode &);
     void DisconnectAll();
@@ -81,9 +85,9 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.\nIt is active when it has a connection path to the graph output node.", true);
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
-    Prop(Float, Volume, 1.0);
-    Prop(Bool, SmoothVolume, true);
-    Prop(Float, SmoothVolumeMs, 7.5); // 360 frames @ 48K
+    Prop(Float, OutputLevel, 1.0);
+    Prop(Bool, SmoothOutputLevel, true);
+    Prop(Float, SmoothOutputLevelMs, 30);
 
     Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
     Prop_(
@@ -93,9 +97,9 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     );
 
     struct GainerDeleter {
-        void operator()(ma_gainer *);
+        void operator()(ma_gainer_node *);
     };
-    std::unique_ptr<ma_gainer, GainerDeleter> Gainer;
+    std::unique_ptr<ma_gainer_node, GainerDeleter> GainerNode;
 
     struct SplitterDeleter {
         void operator()(ma_splitter_node *);
@@ -116,7 +120,7 @@ protected:
     virtual ma_node *DoInit() { return nullptr; };
     virtual void DoUninit() {}
 
-    void UpdateVolume();
+    void UpdateOutputLevel();
     void UpdateGainer();
     void UpdateMonitors();
     void UpdateMonitorSampleRate(IO);

@@ -21,7 +21,9 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     const Field::References listened_fields = {audio_device.On, audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
     for (const auto *node : Nodes) {
+        // Changing these node fields can result in connection changes.
         node->On.RegisterChangeListener(this);
+        node->SmoothOutputLevel.RegisterChangeListener(this);
         node->Monitor.RegisterChangeListener(this);
     }
 }
@@ -39,7 +41,7 @@ void AudioGraph::OnFieldChanged() {
 
     bool any_node_changed = false;
     for (auto *node : Nodes) {
-        if (node->On.IsChanged() || node->Monitor.IsChanged()) {
+        if (node->On.IsChanged() || node->Monitor.IsChanged() || node->SmoothOutputLevel.IsChanged()) {
             node->Update();
             any_node_changed = true;
         }
@@ -108,7 +110,9 @@ void AudioGraph::Uninit() {
     // Graph node is already uninitialized in `Nodes.Uninit`.
 }
 
-AudioGraph::Nodes::Nodes(ComponentArgs &&args) : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {}
+AudioGraph::Nodes::Nodes(ComponentArgs &&args)
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {}
+
 AudioGraph::Nodes::~Nodes() {}
 
 void AudioGraph::Nodes::Init() {

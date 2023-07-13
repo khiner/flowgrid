@@ -13,9 +13,9 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
     audio_device.SampleRate.RegisterChangeListener(this);
     Muted.RegisterChangeListener(this);
-    Volume.RegisterChangeListener(this);
-    SmoothVolume.RegisterChangeListener(this);
-    SmoothVolumeMs.RegisterChangeListener(this);
+    OutputLevel.RegisterChangeListener(this);
+    SmoothOutputLevel.RegisterChangeListener(this);
+    SmoothOutputLevelMs.RegisterChangeListener(this);
     WindowType.RegisterChangeListener(this);
 }
 AudioGraphNode::~AudioGraphNode() {
@@ -56,11 +56,11 @@ WindowFunctionType GetWindowFunction(WindowType type) {
 }
 
 void AudioGraphNode::OnFieldChanged() {
-    if (Muted.IsChanged() || Volume.IsChanged()) {
-        UpdateVolume();
-    }
-    if (SmoothVolume.IsChanged() || SmoothVolumeMs.IsChanged()) {
+    if (SmoothOutputLevel.IsChanged() || SmoothOutputLevelMs.IsChanged()) {
         UpdateGainer();
+    }
+    if (Muted.IsChanged() || OutputLevel.IsChanged()) {
+        UpdateOutputLevel();
     }
     if (audio_device.SampleRate.IsChanged()) {
         for (const IO io : IO_All) UpdateMonitorSampleRate(io);
@@ -84,35 +84,33 @@ Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_o
 
 void AudioGraphNode::Init() {
     Set(DoInit());
+    UpdateGainer();
     UpdateMonitors();
-    UpdateVolume();
+    UpdateOutputLevel();
 }
 
-void AudioGraphNode::UpdateVolume() {
-    if (On) ma_node_set_output_bus_volume(Node, 0, Muted ? 0.f : float(Volume));
+void AudioGraphNode::UpdateOutputLevel() {
+    if (!On || OutputBusCount() != 1) return;
+
+    const float output_level = Muted ? 0.f : float(OutputLevel);
+    if (GainerNode) {
+        ma_gainer_node_set_gain(GainerNode.get(), output_level);
+        ma_node_set_output_bus_volume(Node, 0, 1);
+    } else {
+        ma_node_set_output_bus_volume(Node, 0, output_level);
+    }
 }
 
 void AudioGraphNode::UpdateGainer() {
-    if (SmoothVolume && !Gainer) {
-        Gainer = std::unique_ptr<ma_gainer, GainerDeleter>(new ma_gainer());
-        const Count smooth_time_frames = float(SmoothVolumeMs) * float(audio_device.SampleRate) / 1000.f;
-        ma_gainer_config config = ma_gainer_config_init(OutputChannelCount(0), smooth_time_frames);
-        int result = ma_gainer_init(&config, nullptr, Gainer.get());
-        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer: {}", result)); }
-
-        // MA_API ma_result ma_gainer_get_heap_size(const ma_gainer_config* pConfig, size_t* pHeapSizeInBytes);
-        // MA_API ma_result ma_gainer_init_preallocated(const ma_gainer_config* pConfig, void* pHeap, ma_gainer* pGainer);
-        // MA_API ma_result ma_gainer_init(const ma_gainer_config* pConfig, const ma_allocation_callbacks* pAllocationCallbacks, ma_gainer* pGainer);
-        // MA_API void ma_gainer_uninit(ma_gainer* pGainer, const ma_allocation_callbacks* pAllocationCallbacks);
-        // MA_API ma_result ma_gainer_process_pcm_frames(ma_gainer* pGainer, void* pFramesOut, const void* pFramesIn, ma_uint64 frameCount);
-        // MA_API ma_result ma_gainer_set_gain(ma_gainer* pGainer, float newGain);
-        // MA_API ma_result ma_gainer_set_gains(ma_gainer* pGainer, float* pNewGains);
-        // MA_API ma_result ma_gainer_set_master_volume(ma_gainer* pGainer, float volume);
-        // MA_API ma_result ma_gainer_get_master_volume(const ma_gainer* pGainer, float* pVolume);
-    } else if (!SmoothVolume && Gainer) {
-        Gainer.reset();
+    if (OutputBusCount() == 1 && SmoothOutputLevel && !GainerNode) {
+        GainerNode = std::unique_ptr<ma_gainer_node, GainerDeleter>(new ma_gainer_node());
+        const Count smooth_time_frames = float(SmoothOutputLevelMs) * float(audio_device.SampleRate) / 1000.f;
+        ma_gainer_node_config config = ma_gainer_node_config_init(OutputChannelCount(0), smooth_time_frames);
+        const int result = ma_gainer_node_init(Graph->Get(), &config, nullptr, GainerNode.get());
+        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", result)); }
+    } else if (!SmoothOutputLevel && GainerNode) {
+        GainerNode.reset();
     }
-    if (On) ma_node_set_output_bus_volume(Node, 0, Muted ? 0.f : float(Volume));
 }
 
 void AudioGraphNode::UpdateMonitorSampleRate(IO io) {
@@ -169,13 +167,13 @@ void AudioGraphNode::Update() {
     if (On && !is_initialized) Init();
     else if (!On && is_initialized) Uninit();
 
-    UpdateVolume();
     UpdateGainer();
     UpdateMonitors();
+    UpdateOutputLevel();
 }
 
-void AudioGraphNode::GainerDeleter::operator()(ma_gainer *gainer) {
-    ma_gainer_uninit(gainer, nullptr);
+void AudioGraphNode::GainerDeleter::operator()(ma_gainer_node *gainer) {
+    ma_gainer_node_uninit(gainer, nullptr);
 }
 void AudioGraphNode::SplitterDeleter::operator()(ma_splitter_node *splitter) {
     ma_splitter_node_uninit(splitter, nullptr);
@@ -195,7 +193,11 @@ void AudioGraphNode::Uninit() {
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
     if (to.InputMonitorNode) ma_node_attach_output_bus(to.InputMonitorNode.get(), 0, to.Node, 0);
-    if (OutputMonitorNode) ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+    if (GainerNode) ma_node_attach_output_bus(Node, 0, GainerNode.get(), 0);
+    if (OutputMonitorNode) {
+        if (GainerNode) ma_node_attach_output_bus(GainerNode.get(), 0, OutputMonitorNode.get(), 0); // Monitor after applying gain.
+        else ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+    }
 
     to.InputNodes.insert(this);
     OutputNodes.insert(&to);
@@ -222,6 +224,7 @@ void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
 void AudioGraphNode::DisconnectAll() {
     ma_node_detach_output_bus(OutputNode(), 0);
     SplitterNodes.clear();
+
     // Clear cached pointers to input/output nodes.
     InputNodes.clear();
     OutputNodes.clear();
@@ -329,9 +332,10 @@ void AudioGraphNode::Render() const {
 
     Spacing();
     Muted.Draw();
-    SameLine();
-    Volume.Draw();
+    OutputLevel.Draw();
+    SmoothOutputLevel.Draw();
 
+    Spacing();
     Monitor.Draw();
     if (Monitor) {
         SameLine();

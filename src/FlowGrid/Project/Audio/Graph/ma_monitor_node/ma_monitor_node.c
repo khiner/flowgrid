@@ -21,7 +21,6 @@ static MA_INLINE void ma_zero_memory_default(void *p, size_t sz) {
 
 ma_monitor_node_config ma_monitor_node_config_init(ma_uint32 channels, ma_uint32 sample_rate, ma_uint32 buffer_frames) {
     ma_monitor_node_config config;
-    MA_ZERO_OBJECT(&config);
     config.node_config = ma_node_config_init(); // Input and output channels are set in ma_monitor_node_init().
     config.channels = channels;
     config.sample_rate = sample_rate;
@@ -48,8 +47,6 @@ ma_result ma_monitor_apply_window_function(ma_monitor_node *monitor, void (*wind
 }
 
 static void ma_monitor_node_process_pcm_frames(ma_node *node, const float **frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
-    (void)frame_count_in;
-    (void)frames_in;
     ma_monitor_node *monitor = (ma_monitor_node *)node;
     const ma_uint32 N = monitor->config.buffer_frames;
     assert(*frame_count_out == N);
@@ -60,6 +57,9 @@ static void ma_monitor_node_process_pcm_frames(ma_node *node, const float **fram
     }
 
     fftwf_execute(monitor->fft->plan);
+
+    (void)frame_count_in;
+    (void)frames_in;
 }
 
 static ma_node_vtable g_ma_monitor_node_vtable = {ma_monitor_node_process_pcm_frames, NULL, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
@@ -109,7 +109,7 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
     if (monitor->windowed_buffer == NULL) return MA_OUT_OF_MEMORY;
     ma_silence_pcm_frames(monitor->windowed_buffer, N, ma_format_f32, config->channels);
 
-    int result = create_fft(monitor, allocation_callbacks);
+    ma_result result = create_fft(monitor, allocation_callbacks);
     if (result != MA_SUCCESS) {
         ma_free(monitor->buffer, allocation_callbacks);
         ma_free(monitor->window, allocation_callbacks);
@@ -117,8 +117,7 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
         return result;
     }
 
-    ma_node_config base_config;
-    base_config = config->node_config;
+    ma_node_config base_config = config->node_config;
     base_config.vtable = &g_ma_monitor_node_vtable;
     base_config.pInputChannels = &config->channels;
     base_config.pOutputChannels = &config->channels;
@@ -126,9 +125,10 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
     return ma_node_init(node_graph, &base_config, allocation_callbacks, &monitor->base_node);
 }
 
-void ma_monitor_node_uninit(ma_monitor_node *pMonitorNode, const ma_allocation_callbacks *pAllocationCallbacks) {
-    destroy_fft(pMonitorNode->fft, pAllocationCallbacks);
-    pMonitorNode->fft = NULL;
-    /* The base node is always uninitialized first. */
-    ma_node_uninit(pMonitorNode, pAllocationCallbacks);
+void ma_monitor_node_uninit(ma_monitor_node *monitor, const ma_allocation_callbacks *allocation_callbacks) {
+    if (monitor == NULL) return;
+
+    ma_node_uninit(monitor, allocation_callbacks);
+    destroy_fft(monitor->fft, allocation_callbacks);
+    monitor->fft = NULL;
 }

@@ -17,6 +17,7 @@ using ma_node = void;
 
 // using ma_node = void;
 // struct ma_splitter_node;
+// struct ma_gainer;
 
 enum WindowType_ {
     WindowType_Rectangular,
@@ -81,12 +82,20 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.\nIt is active when it has a connection path to the graph output node.", true);
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, Volume, 1.0);
+    Prop(Bool, SmoothVolume, true);
+    Prop(Float, SmoothVolumeMs, 7.5); // 360 frames @ 48K
+
     Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
     Prop_(
         Enum, WindowType, "?The window type used for the magnitude spectrum FFT.",
         {"Rectangular", "Hann", "Hamming", "Blackman", "Blackman-Harris", "Nuttall", "Flat-Top", "Triangular", "Bartlett", "Bartlett-Hann", "Bohman", "Parzen"},
         WindowType_BlackmanHarris
     );
+
+    struct GainerDeleter {
+        void operator()(ma_gainer *);
+    };
+    std::unique_ptr<ma_gainer, GainerDeleter> Gainer;
 
     struct SplitterDeleter {
         void operator()(ma_splitter_node *);
@@ -108,15 +117,17 @@ protected:
     virtual void DoUninit() {}
 
     void UpdateVolume();
+    void UpdateGainer();
     void UpdateMonitors();
     void UpdateMonitorSampleRate(IO);
     void UpdateMonitorWindowFunction(IO);
 
     const AudioGraph *Graph;
 
+    // The remaining fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
+
     // `IsActive == true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
     bool IsActive{false};
-
     // Cache the current sets of input and output nodes.
     std::unordered_set<const AudioGraphNode *> InputNodes;
     std::unordered_set<const AudioGraphNode *> OutputNodes;

@@ -15,6 +15,7 @@ struct UInt : PrimitiveField<U32>, Actionable<Action::Primitive::UInt::Any> {
 
     operator bool() const { return Value != 0; }
     operator int() const { return Value; };
+    operator float() const { return Value; };
     operator ImColor() const;
 
     void Render(const std::vector<U32> &options) const;

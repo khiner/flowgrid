@@ -12,8 +12,10 @@
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
     audio_device.SampleRate.RegisterChangeListener(this);
-    Volume.RegisterChangeListener(this);
     Muted.RegisterChangeListener(this);
+    Volume.RegisterChangeListener(this);
+    SmoothVolume.RegisterChangeListener(this);
+    SmoothVolumeMs.RegisterChangeListener(this);
     WindowType.RegisterChangeListener(this);
 }
 AudioGraphNode::~AudioGraphNode() {
@@ -57,6 +59,9 @@ void AudioGraphNode::OnFieldChanged() {
     if (Muted.IsChanged() || Volume.IsChanged()) {
         UpdateVolume();
     }
+    if (SmoothVolume.IsChanged() || SmoothVolumeMs.IsChanged()) {
+        UpdateGainer();
+    }
     if (audio_device.SampleRate.IsChanged()) {
         for (const IO io : IO_All) UpdateMonitorSampleRate(io);
     }
@@ -81,6 +86,29 @@ void AudioGraphNode::Init() {
 }
 
 void AudioGraphNode::UpdateVolume() {
+    if (On) ma_node_set_output_bus_volume(Node, 0, Muted ? 0.f : float(Volume));
+}
+
+void AudioGraphNode::UpdateGainer() {
+    if (SmoothVolume && !Gainer) {
+        Gainer = std::unique_ptr<ma_gainer, GainerDeleter>(new ma_gainer());
+        const Count smooth_time_frames = float(SmoothVolumeMs) * float(audio_device.SampleRate) / 1000.f;
+        ma_gainer_config config = ma_gainer_config_init(OutputChannelCount(0), smooth_time_frames);
+        int result = ma_gainer_init(&config, nullptr, Gainer.get());
+        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer: {}", result)); }
+
+        // MA_API ma_result ma_gainer_get_heap_size(const ma_gainer_config* pConfig, size_t* pHeapSizeInBytes);
+        // MA_API ma_result ma_gainer_init_preallocated(const ma_gainer_config* pConfig, void* pHeap, ma_gainer* pGainer);
+        // MA_API ma_result ma_gainer_init(const ma_gainer_config* pConfig, const ma_allocation_callbacks* pAllocationCallbacks, ma_gainer* pGainer);
+        // MA_API void ma_gainer_uninit(ma_gainer* pGainer, const ma_allocation_callbacks* pAllocationCallbacks);
+        // MA_API ma_result ma_gainer_process_pcm_frames(ma_gainer* pGainer, void* pFramesOut, const void* pFramesIn, ma_uint64 frameCount);
+        // MA_API ma_result ma_gainer_set_gain(ma_gainer* pGainer, float newGain);
+        // MA_API ma_result ma_gainer_set_gains(ma_gainer* pGainer, float* pNewGains);
+        // MA_API ma_result ma_gainer_set_master_volume(ma_gainer* pGainer, float volume);
+        // MA_API ma_result ma_gainer_get_master_volume(const ma_gainer* pGainer, float* pVolume);
+    } else if (!SmoothVolume && Gainer) {
+        Gainer.reset();
+    }
     if (On) ma_node_set_output_bus_volume(Node, 0, Muted ? 0.f : float(Volume));
 }
 
@@ -138,10 +166,14 @@ void AudioGraphNode::Update() {
     if (On && !is_initialized) Init();
     else if (!On && is_initialized) Uninit();
 
-    UpdateMonitors();
     UpdateVolume();
+    UpdateGainer();
+    UpdateMonitors();
 }
 
+void AudioGraphNode::GainerDeleter::operator()(ma_gainer *gainer) {
+    ma_gainer_uninit(gainer, nullptr);
+}
 void AudioGraphNode::SplitterDeleter::operator()(ma_splitter_node *splitter) {
     ma_splitter_node_uninit(splitter, nullptr);
 }
@@ -295,10 +327,11 @@ void AudioGraphNode::Render() const {
     Muted.Draw();
     SameLine();
     Volume.Draw();
+
     Monitor.Draw();
     if (Monitor) {
         SameLine();
-        SetNextItemWidth(ImGui::GetFontSize() * 9);
+        SetNextItemWidth(GetFontSize() * 9);
         WindowType.Draw();
         for (const IO io : IO_All) {
             if (GetMonitorNode(io) == nullptr) continue;

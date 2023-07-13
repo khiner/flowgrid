@@ -60,10 +60,16 @@ struct AudioGraph : Component, Field::ChangeListener {
 
         const AudioGraph *Graph;
 
-        Prop(OutputNode, Output);
+        // Order declarations from early to late in the signal path.
+        // This has the benefit of making it faster to disconnect the output buses of all nodes.
+        // From the "Thread Safety and Locking" section of the miniaudio docs:
+        // "The cost of detaching nodes earlier in the pipeline (data sources, for example) will be cheaper than the cost of detaching higher
+        //  level nodes, such as some kind of final post-processing endpoint.
+        //  If you need to do mass detachments, detach starting from the lowest level nodes and work your way towards the final endpoint node."
+        Prop(TestToneNode, TestTone);
         Prop(InputNode, Input); // `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
         Prop(FaustNode, Faust);
-        Prop(TestToneNode, TestTone);
+        Prop(OutputNode, Output);
 
     private:
         void Render() const override;

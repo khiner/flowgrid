@@ -74,7 +74,10 @@ void AudioGraphNode::Set(ma_node *node) { Node = node; }
 
 Count AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
 
-// Output node (graph endpoint) technically has an output bus, but it doesn't work like other nodes and we treat it strictly as a sink.
+// The output node corresponds to the graph endpoint node.
+// Technically, it has an output bus, but it's handled specially by miniaudio.
+// Most importantly, it is not possible to attach the graph endpoint's node into any other node.
+// Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
 Count AudioGraphNode::OutputBusCount() const { return IsOutput() ? 0 : ma_node_get_output_bus_count(Node); }
 Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Node, bus); }
 Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Node, bus); }
@@ -219,6 +222,7 @@ void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
 void AudioGraphNode::DisconnectAll() {
     ma_node_detach_output_bus(OutputNode(), 0);
     SplitterNodes.clear();
+    // Clear cached pointers to input/output nodes.
     InputNodes.clear();
     OutputNodes.clear();
 }

@@ -51,10 +51,4 @@ string PascalToSentenceCase(string_view str, const vector<string> &skip_words, c
     }
     return sentence_case;
 }
-
-string PascalToSentenceCase(string_view str) {
-    static const std::vector<string> SkipWords{"FlowGrid", "ImGui", "ImPlot", "Faust"};
-    static const std::vector<string> AllCapsWords{"Id", "Svg", "Dsp"};
-    return PascalToSentenceCase(str, SkipWords, AllCapsWords);
-}
 } // namespace StringHelper

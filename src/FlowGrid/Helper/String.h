@@ -50,5 +50,11 @@ std::vector<string> Split(const string &text, const char *delims);
 // Uppercases the first occurrences of all words in the provided `all_caps_words`.
 // E.g. if "FlowGrid" is in `skip_words`: 'FooBarFlowGridId' => 'Foo bar FlowGrid ID'
 string PascalToSentenceCase(string_view str, const std::vector<string> &skip_words, const std::vector<string> &all_caps_words);
-string PascalToSentenceCase(string_view str); // Use the default `skip_word`s and `all_caps_words` (see impl).
+
+// Use the default `skip_word`s and `all_caps_words`.
+static inline string PascalToSentenceCase(string_view str) {
+    static const std::vector<string> SkipWords{"FlowGrid", "ImGui", "ImPlot", "Faust"};
+    static const std::vector<string> AllCapsWords{"Id", "Svg", "Dsp"};
+    return PascalToSentenceCase(str, SkipWords, AllCapsWords);
+}
 } // namespace StringHelper

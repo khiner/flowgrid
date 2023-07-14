@@ -83,7 +83,12 @@ struct AudioGraph : Component, Field::ChangeListener {
 
             Prop_(Float, CellSize, "?The size of each matrix cell, as a multiple of line height.", 1, 1, 3);
             Prop_(Float, CellGap, "?The gap between matrix cells.", 1, 0, 10);
-            Prop_(Float, LabelSize, "?The space provided for the label, as a multiple of line height.\n(Use Style->ImGui->InnerItemSpacing->X for spacing between labels and cells.)", 6, 3, 8);
+            Prop_(
+                Float, MaxLabelSpace,
+                "?The matrix is placed to make room for the longest input/output node label, up to this limit (as a multiple of line height), at which point the labels will be ellipsified.\n"
+                "(Use Style->ImGui->InnerItemSpacing->X for spacing between labels and cells.)",
+                8, 4, 16
+            );
 
         protected:
             void Render() const override;

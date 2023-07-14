@@ -72,18 +72,18 @@ void AudioGraph::Init() {
 }
 
 void AudioGraph::UpdateConnections() {
-    for (auto *source_node : Nodes) {
-        source_node->DisconnectAll();
+    for (auto *out_node : Nodes) {
+        out_node->DisconnectAll();
     }
 
-    for (auto *source_node : Nodes) {
-        if (source_node->OutputBusCount() == 0) continue;
+    for (auto *out_node : Nodes) {
+        if (out_node->OutputBusCount() == 0) continue;
 
-        for (auto *dest_node : Nodes) {
-            if (dest_node->InputBusCount() == 0) continue;
+        for (auto *in_node : Nodes) {
+            if (in_node->InputBusCount() == 0) continue;
 
-            if (Connections.IsConnected(source_node->Id, dest_node->Id)) {
-                source_node->ConnectTo(*dest_node);
+            if (Connections.IsConnected(out_node->Id, in_node->Id)) {
+                out_node->ConnectTo(*in_node);
             }
         }
     }
@@ -157,71 +157,85 @@ void AudioGraph::Nodes::Render() const {
 using namespace ImGui;
 
 void AudioGraph::RenderConnections() const {
+    // Calculate the maximum I/O label widths.
+    ImVec2 max_label_w_no_padding{0, 0}; // in (left), out (top)
+    for (const auto *node : Nodes) {
+        const float label_w = CalcTextSize(node->Name.c_str()).x;
+        if (node->InputBusCount() > 0) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
+        if (node->OutputBusCount() > 0) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
+    }
+
     const auto &style = Style.Matrix;
+    const float max_allowed_label_w = style.MaxLabelSpace * GetTextLineHeight();
+    const ImVec2 label_w_no_padding = {std::min(max_allowed_label_w, max_label_w_no_padding.x), std::min(max_allowed_label_w, max_label_w_no_padding.y)};
+    const float label_padding = ImGui::GetStyle().ItemInnerSpacing.x;
+    const ImVec2 label_w = label_w_no_padding + 2 * label_padding;
+    const ImVec2 grid_top_left = GetCursorScreenPos() + label_w;
     const float cell_size = style.CellSize * GetTextLineHeight();
     const float cell_gap = style.CellGap;
-    const float label_size = style.LabelSize * GetTextLineHeight(); // Does not include padding.
-    const float label_padding = ImGui::GetStyle().ItemInnerSpacing.x;
-    const float max_label_w = label_size + 2 * label_padding;
-    const ImVec2 grid_top_left = GetCursorScreenPos() + max_label_w;
 
     BeginGroup();
-    // Draw the source channel labels.
-    Count source_count = 0;
-    for (const auto *source_node : Nodes) {
-        if (source_node->OutputBusCount() == 0) continue;
 
-        const string label = source_node->Name;
-        const string ellipsified_label = Ellipsify(label, label_size);
+    // Output channel labels.
+    Count out_count = 0;
+    for (const auto *out_node : Nodes) {
+        if (out_node->OutputBusCount() == 0) continue;
 
-        SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_count, -max_label_w});
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, source_node->ImGuiLabel.c_str());
-        const bool is_active = source_node->IsActive;
+        SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -label_w.y});
+        const auto label_interaction_flags = fg::InvisibleButton({cell_size, label_w.y}, out_node->ImGuiLabel.c_str());
+    
+        const string label = out_node->Name;
+        const string ellipsified_label = Ellipsify(label, label_w_no_padding.y);
+        const bool is_active = out_node->IsActive;
         if (!is_active) BeginDisabled();
         ImPlot::AddTextVertical(
             GetWindowDrawList(),
-            grid_top_left + ImVec2{(cell_size + cell_gap) * source_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
+            grid_top_left + ImVec2{(cell_size + cell_gap) * out_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
             GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
         );
         if (!is_active) EndDisabled();
 
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
-        source_count++;
+        out_count++;
     }
 
-    // Draw the destination channel labels and mixer cells.
-    Count dest_i = 0;
-    for (const auto *dest_node : Nodes) {
-        if (dest_node->InputBusCount() == 0) continue;
+    // Input channel labels and mixer cells.
+    Count in_i = 0;
+    for (const auto *in_node : Nodes) {
+        if (in_node->InputBusCount() == 0) continue;
 
-        const char *label = dest_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), label_size);
+        SetCursorScreenPos(grid_top_left + ImVec2{-label_w.x, (cell_size + cell_gap) * in_i});
+        const auto label_interaction_flags = fg::InvisibleButton({label_w.x, cell_size}, in_node->ImGuiLabel.c_str());
+    
+        const char *label = in_node->Name.c_str();
+        const string ellipsified_label = Ellipsify(label, label_w_no_padding.x);
+        SetCursorPos(GetCursorPos() + ImVec2{label_w.x - CalcTextSize(ellipsified_label.c_str()).x - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
 
-        SetCursorScreenPos(grid_top_left + ImVec2{-max_label_w, (cell_size + cell_gap) * dest_i});
-        const auto label_interaction_flags = fg::InvisibleButton({max_label_w, cell_size}, dest_node->ImGuiLabel.c_str());
-        const float label_w = CalcTextSize(ellipsified_label.c_str()).x;
-        SetCursorPos(GetCursorPos() + ImVec2{max_label_w - label_w - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
+        const bool is_active = in_node->IsActive;
+        if (!is_active) BeginDisabled();
         TextUnformatted(ellipsified_label.c_str());
+        if (!is_active) EndDisabled();
+
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
 
-        Count source_i = 0;
-        for (const auto *source_node : Nodes) {
-            if (source_node->OutputBusCount() == 0) continue;
+        Count out_i = 0;
+        for (const auto *out_node : Nodes) {
+            if (out_node->OutputBusCount() == 0) continue;
 
-            PushID(dest_i * source_count + source_i);
-            SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_i, (cell_size + cell_gap) * dest_i});
+            PushID(in_i * out_count + out_i);
+            SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_i, (cell_size + cell_gap) * in_i});
 
-            const bool disabled = source_node->Id == dest_node->Id;
+            const bool disabled = out_node->Id == in_node->Id;
             if (disabled) BeginDisabled();
 
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (flags & InteractionFlags_Clicked) {
-                Action::AdjacencyList::ToggleConnection{Connections.Path, source_node->Id, dest_node->Id}.q();
+                Action::AdjacencyList::ToggleConnection{Connections.Path, out_node->Id, in_node->Id}.q();
             }
 
-            const bool is_connected = Connections.IsConnected(source_node->Id, dest_node->Id);
+            const bool is_connected = Connections.IsConnected(out_node->Id, in_node->Id);
             const auto fill_color =
                 flags & InteractionFlags_Held ?
                 ImGuiCol_ButtonActive :
@@ -234,9 +248,9 @@ void AudioGraph::RenderConnections() const {
             if (disabled) EndDisabled();
 
             PopID();
-            source_i++;
+            out_i++;
         }
-        dest_i++;
+        in_i++;
     }
     EndGroup();
 }
@@ -244,5 +258,5 @@ void AudioGraph::RenderConnections() const {
 void AudioGraph::Style::Matrix::Render() const {
     CellSize.Draw();
     CellGap.Draw();
-    LabelSize.Draw();
+    MaxLabelSpace.Draw();
 }

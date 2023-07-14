@@ -170,11 +170,22 @@ void AudioGraph::RenderConnections() const {
     const ImVec2 label_w_no_padding = {std::min(max_allowed_label_w, max_label_w_no_padding.x), std::min(max_allowed_label_w, max_label_w_no_padding.y)};
     const float label_padding = ImGui::GetStyle().ItemInnerSpacing.x;
     const ImVec2 label_w = label_w_no_padding + 2 * label_padding;
-    const ImVec2 grid_top_left = GetCursorScreenPos() + label_w;
+    const auto original_cursor_pos = GetCursorScreenPos();
+    const ImVec2 grid_top_left = original_cursor_pos + label_w + GetTextLineHeight() + label_padding; // Last line-height+padding is for the "Input"/"Output" labels.
     const float cell_size = style.CellSize * GetTextLineHeight();
     const float cell_gap = style.CellGap;
 
     BeginGroup();
+
+    // "Input"/"Output" labels.
+    ImGui::SetCursorScreenPos(ImVec2{grid_top_left.x + label_padding, original_cursor_pos.y});
+    ImGui::TextUnformatted("Input");
+    ImGui::SetCursorScreenPos(original_cursor_pos);
+    ImPlot::AddTextVertical(
+        GetWindowDrawList(),
+        ImVec2{original_cursor_pos.x, grid_top_left.y + CalcTextSize("Output").x + label_padding},
+        GetColorU32(ImGuiCol_Text), "Output"
+    );
 
     // Output channel labels.
     Count out_count = 0;
@@ -183,7 +194,7 @@ void AudioGraph::RenderConnections() const {
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -label_w.y});
         const auto label_interaction_flags = fg::InvisibleButton({cell_size, label_w.y}, out_node->ImGuiLabel.c_str());
-    
+
         const string label = out_node->Name;
         const string ellipsified_label = Ellipsify(label, label_w_no_padding.y);
         const bool is_active = out_node->IsActive;
@@ -207,8 +218,8 @@ void AudioGraph::RenderConnections() const {
 
         SetCursorScreenPos(grid_top_left + ImVec2{-label_w.x, (cell_size + cell_gap) * in_i});
         const auto label_interaction_flags = fg::InvisibleButton({label_w.x, cell_size}, in_node->ImGuiLabel.c_str());
-    
-        const char *label = in_node->Name.c_str();
+
+        const string label = in_node->Name;
         const string ellipsified_label = Ellipsify(label, label_w_no_padding.x);
         SetCursorPos(GetCursorPos() + ImVec2{label_w.x - CalcTextSize(ellipsified_label.c_str()).x - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
 
@@ -218,7 +229,7 @@ void AudioGraph::RenderConnections() const {
         if (!is_active) EndDisabled();
 
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
-        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
+        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
 
         Count out_i = 0;
         for (const auto *out_node : Nodes) {

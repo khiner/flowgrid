@@ -2,9 +2,7 @@
 
 #include "window_functions.h"
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846264338327
-#endif
+static constexpr real sq(real x) noexcept { return x * x; }
 
 void cosine_window(real *w, unsigned n, const real *coeff, unsigned ncoeff, bool sflag) {
     // Generalized cosine window.
@@ -49,7 +47,7 @@ void cosine_window(real *w, unsigned n, const real *coeff, unsigned ncoeff, bool
     const unsigned wlength = sflag ? (n - 1) : n;
     for (unsigned i = 0; i < n; ++i) {
         real wi = 0.0;
-        for (unsigned j = 0; j < ncoeff; ++j) wi += coeff[j] * cos(i * j * 2.0 * M_PI / wlength);
+        for (unsigned j = 0; j < ncoeff; ++j) wi += coeff[j] * __cospi(real(2 * i * j) / real(wlength));
         w[i] = wi;
     }
 }
@@ -168,7 +166,7 @@ void barthannwin(real *w, unsigned n) {
 
     for (unsigned i = 0; i < n; ++i) {
         const real x = fabs(i / (n - 1.0) - 0.5);
-        w[i] = 0.62 - 0.48 * x + 0.38 * cos(2.0 * M_PI * x);
+        w[i] = 0.62 - 0.48 * x + 0.38 * __cospi(2.0 * x);
     }
 }
 
@@ -182,7 +180,7 @@ void bohmanwin(real *w, unsigned n) {
 
     for (unsigned i = 0; i < n; ++i) {
         const real x = fabs(2.0 * i - (n - 1)) / (n - 1);
-        w[i] = (1.0 - x) * cos(M_PI * x) + sin(M_PI * x) / M_PI;
+        w[i] = (1.0 - x) * __cospi(x) + __sinpi(x) * M_1_PI;
     }
 }
 
@@ -226,8 +224,7 @@ void gausswin(real *w, unsigned n, real alpha) {
     for (unsigned i = 0; i < n; ++i) {
         const real x = fabs(2.0 * i - (n - 1)) / (n - 1);
         const real ax = alpha * x;
-        const real ax_squared = ax * ax;
-        w[i] = exp(-0.5 * ax_squared);
+        w[i] = exp(-0.5 * sq(ax));
     }
 }
 
@@ -249,11 +246,9 @@ void tukeywin(real *w, unsigned n, real r) {
 
     r = fmax(0.0, fmin(1.0, r)); // Clip between 0 and 1.
     for (unsigned i = 0; i < n; ++i) {
-        w[i] = (cos(fmax(fabs((real)i - (n - 1) / 2.0) * (2.0 / (n - 1) / r) - (1.0 / r - 1.0), 0.0) * M_PI) + 1.0) / 2.0;
+        w[i] = (__cospi(fmax(fabs((real)i - (n - 1) / 2.0) * (2.0 / (n - 1) / r) - (1.0 / r - 1.0), 0.0)) + 1.0) / 2.0;
     }
 }
-
-static inline real sq(real x) { return x * x; }
 
 void taylorwin(real *w, unsigned n, unsigned nbar, real sll) {
     // Taylor window.
@@ -266,7 +261,7 @@ void taylorwin(real *w, unsigned n, unsigned nbar, real sll) {
     // Calculate the amplification factor, e.g. sll = -60 --> amplification = 1000.0
 
     const real amplification = pow(10.0, -sll / 20.0);
-    const real a = acosh(amplification) / M_PI;
+    const real a = acosh(amplification) * M_1_PI;
     const real a2 = sq(a);
 
     // Taylor pulse widening (dilation) factor.
@@ -286,8 +281,7 @@ void taylorwin(real *w, unsigned n, unsigned nbar, real sll) {
         // Add cosine term to each of the window components.
         const real Fm = -(numerator / denominator);
         for (unsigned i = 0; i < n; ++i) {
-            const real x = 2 * M_PI * (i + 0.5) / n;
-            w[i] += Fm * cos(m * x);
+            w[i] += Fm * __cospi(real(2.0 * m * (i + 0.5)) / real(n));
         }
     }
 }
@@ -365,8 +359,8 @@ void kaiser(real *w, unsigned n, real beta) {
     }
 
     for (unsigned i = 0; i < n; ++i) {
-        const real x = (2.0 * i - (n - 1)) / (n - 1);
-        w[i] = bessel_i0(beta * sqrt(1.0 - x * x)) / bessel_i0(beta);
+        const real x = real(2.0 * i - (n - 1)) / real(n - 1);
+        w[i] = bessel_i0(beta * sqrt(1.0 - sq(x))) / bessel_i0(beta);
     }
 }
 

@@ -1,5 +1,6 @@
 // Copied from https://github.com/sidneycadot/WindowFunctions with only minor modifications,
-// excluding the FFT and Chebyshev implementation, and using configurable `real` type instead of only `real`.
+// excluding the FFT and Chebyshev implementation, using configurable `real` type instead of only `real`,
+// and some minor cleanup & performance improvements.
 
 #pragma once
 

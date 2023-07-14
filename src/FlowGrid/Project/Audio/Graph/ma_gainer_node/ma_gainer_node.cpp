@@ -1,7 +1,6 @@
 #include "ma_gainer_node.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <string.h>
 
 static MA_INLINE void ma_zero_memory_default(void *p, size_t sz) {

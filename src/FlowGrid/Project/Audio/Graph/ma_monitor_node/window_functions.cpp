@@ -1,4 +1,3 @@
-#include <complex.h>
 #include <math.h>
 
 #include "window_functions.h"

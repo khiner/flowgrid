@@ -1,7 +1,6 @@
 #include "ma_monitor_node.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "fft_data.h"
@@ -65,7 +64,7 @@ static void ma_monitor_node_process_pcm_frames(ma_node *node, const float **fram
 static ma_node_vtable g_ma_monitor_node_vtable = {ma_monitor_node_process_pcm_frames, NULL, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
 
 ma_result create_fft(ma_monitor_node *monitor, const ma_allocation_callbacks *allocation_callbacks) {
-    fft_data *fft = ma_malloc(sizeof(fft_data), allocation_callbacks);
+    fft_data *fft = (fft_data *)ma_malloc(sizeof(fft_data), allocation_callbacks);
     if (fft == NULL) return MA_OUT_OF_MEMORY;
 
     ma_uint32 N = monitor->config.buffer_frames;

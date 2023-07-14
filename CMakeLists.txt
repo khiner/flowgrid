@@ -11,7 +11,7 @@ find_package(Vulkan REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(FFTW3F REQUIRED fftw3f IMPORTED_TARGET)
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.c)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 set(IMGUI_DIR lib/imgui)
 set(IMPLOT_DIR lib/implot)
 

@@ -3,12 +3,6 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <stdbool.h>
-
 typedef float real;
 
 // COSINE WINDOWS
@@ -19,17 +13,19 @@ typedef float real;
 // The periodic choice works as if a window with (size + 1) elements is calculated, after which the last element is dropped.
 // A symmetric window is preferred in FIR filter design, while a periodic window is preferred in spectral analysis.
 
+using WindowFunctionType = void (*)(float *, unsigned);
+
 // Generic cosine window
 void cosine_window(real *w, unsigned n, const real *coeff, unsigned ncoeff, bool sflag);
 
 // Specific cosine windows
 void rectwin(real *w, unsigned n); // order == 1
-void hann(real *w, unsigned n, bool sflag); // order == 2
-void hamming(real *w, unsigned n, bool sflag); // order == 2
-void blackman(real *w, unsigned n, bool sflag); // order == 3
-void blackmanharris(real *w, unsigned n, bool sflag); // order == 4
-void nuttallwin(real *w, unsigned n, bool sflag); // order == 4
-void flattopwin(real *w, unsigned n, bool sflag); // order == 5
+void hann(real *w, unsigned n, bool sflag = false); // order == 2
+void hamming(real *w, unsigned n, bool sflag = false); // order == 2
+void blackman(real *w, unsigned n, bool sflag = false); // order == 3
+void blackmanharris(real *w, unsigned n, bool sflag = false); // order == 4
+void nuttallwin(real *w, unsigned n, bool sflag = false); // order == 4
+void flattopwin(real *w, unsigned n, bool sflag = false); // order == 5
 
 // Periodic defaults for cosine windows
 void hann_periodic(real *w, unsigned n);
@@ -51,7 +47,3 @@ void gausswin(real *w, unsigned n, real alpha);
 void tukeywin(real *w, unsigned n, real r);
 void taylorwin(real *w, unsigned n, unsigned nbar, real sll);
 void kaiser(real *w, unsigned n, real beta);
-
-#ifdef __cplusplus
-} // end of extern "C"
-#endif

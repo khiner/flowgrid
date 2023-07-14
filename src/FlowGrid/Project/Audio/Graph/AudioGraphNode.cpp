@@ -21,8 +21,6 @@ AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
 }
 
-using WindowFunctionType = void (*)(float *, unsigned);
-
 WindowFunctionType GetWindowFunction(WindowType type) {
     switch (type) {
         case WindowType_Rectangular:

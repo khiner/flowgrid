@@ -165,43 +165,64 @@ void AudioGraph::RenderConnections() const {
         if (node->OutputBusCount() > 0) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
     }
 
+    const ImVec2 label_padding = ImVec2{ImGui::GetStyle().ItemInnerSpacing.x, 0} + ImGui::GetStyle().FramePadding;
+
     const auto &style = Style.Matrix;
     const float max_allowed_label_w = style.MaxLabelSpace * GetTextLineHeight();
-    const ImVec2 label_w_no_padding = {std::min(max_allowed_label_w, max_label_w_no_padding.x), std::min(max_allowed_label_w, max_label_w_no_padding.y)};
-    const float label_padding = ImGui::GetStyle().ItemInnerSpacing.x;
-    const ImVec2 label_w = label_w_no_padding + 2 * label_padding;
-    const auto original_cursor_pos = GetCursorScreenPos();
-    const ImVec2 grid_top_left = original_cursor_pos + label_w + GetTextLineHeight() + label_padding; // Last line-height+padding is for the "Input"/"Output" labels.
-    const float cell_size = style.CellSize * GetTextLineHeight();
-    const float cell_gap = style.CellGap;
+    const ImVec2 node_label_w_no_padding = {std::min(max_allowed_label_w, max_label_w_no_padding.x), std::min(max_allowed_label_w, max_label_w_no_padding.y)};
+    const ImVec2 node_label_w = node_label_w_no_padding + label_padding.x * 2; // I/O vec
+    const float fhws = GetFrameHeightWithSpacing();
+    const auto og_cursor_pos = GetCursorScreenPos();
+    const ImVec2 grid_top_left = og_cursor_pos + node_label_w + fhws; // Last line-height is for the I/O header labels.
 
     BeginGroup();
 
-    // "Input"/"Output" labels.
-    ImGui::SetCursorScreenPos(ImVec2{grid_top_left.x + label_padding, original_cursor_pos.y});
-    ImGui::TextUnformatted("Input");
-    ImGui::SetCursorScreenPos(original_cursor_pos);
+    static const string InputsLabel = "Inputs";
+    static const string OutputsLabel = "Outputs";
+    // I/O header frames + labels on the left/top, respectively.
+    const ImVec2 io_header_w_no_padding = ImVec2{CalcTextSize(InputsLabel).x, CalcTextSize(OutputsLabel).x}; // I/O vec
+    const ImVec2 io_header_w = io_header_w_no_padding + label_padding.x * 2; // I/O vec
+    ImVec2 io_frame_w = GetContentRegionAvail() - (node_label_w + fhws); // I/O vec
+    io_frame_w = ImVec2{std::max(io_frame_w.x, io_header_w.x), std::max(io_frame_w.y, io_header_w.y)};
+
+    SetCursorScreenPos({grid_top_left.x, og_cursor_pos.y});
+    RenderFrame(
+        GetCursorScreenPos(),
+        GetCursorScreenPos() + ImVec2{io_frame_w.x, fhws},
+        GetColorU32(ImGuiCol_FrameBg)
+    );
+    RenderText(GetCursorScreenPos() + ImVec2{(io_frame_w.x - io_header_w.x) / 2, 0} + label_padding, InputsLabel.c_str());
+
+    SetCursorScreenPos({og_cursor_pos.x, grid_top_left.y});
+    RenderFrame(
+        GetCursorScreenPos(),
+        GetCursorScreenPos() + ImVec2{fhws, io_frame_w.y},
+        GetColorU32(ImGuiCol_FrameBg)
+    );
     ImPlot::AddTextVertical(
         GetWindowDrawList(),
-        ImVec2{original_cursor_pos.x, grid_top_left.y + CalcTextSize("Output").x + label_padding},
-        GetColorU32(ImGuiCol_Text), "Output"
+        GetCursorScreenPos() + ImVec2{0, (io_frame_w.y - io_header_w.y) / 2 + io_header_w_no_padding.y} + ImVec2{label_padding.y, label_padding.x},
+        GetColorU32(ImGuiCol_Text), OutputsLabel.c_str()
     );
+
+    const float cell_size = style.CellSize * GetTextLineHeight();
+    const float cell_gap = style.CellGap;
 
     // Output channel labels.
     Count out_count = 0;
     for (const auto *out_node : Nodes) {
         if (out_node->OutputBusCount() == 0) continue;
 
-        SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -label_w.y});
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, label_w.y}, out_node->ImGuiLabel.c_str());
+        SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
+        const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, out_node->ImGuiLabel.c_str());
 
         const string label = out_node->Name;
-        const string ellipsified_label = Ellipsify(label, label_w_no_padding.y);
+        const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.y);
         const bool is_active = out_node->IsActive;
         if (!is_active) BeginDisabled();
         ImPlot::AddTextVertical(
             GetWindowDrawList(),
-            grid_top_left + ImVec2{(cell_size + cell_gap) * out_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
+            grid_top_left + ImVec2{(cell_size + cell_gap) * out_count + (cell_size - GetTextLineHeight()) / 2, - label_padding.y},
             GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
         );
         if (!is_active) EndDisabled();
@@ -216,12 +237,12 @@ void AudioGraph::RenderConnections() const {
     for (const auto *in_node : Nodes) {
         if (in_node->InputBusCount() == 0) continue;
 
-        SetCursorScreenPos(grid_top_left + ImVec2{-label_w.x, (cell_size + cell_gap) * in_i});
-        const auto label_interaction_flags = fg::InvisibleButton({label_w.x, cell_size}, in_node->ImGuiLabel.c_str());
+        SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
+        const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, in_node->ImGuiLabel.c_str());
 
         const string label = in_node->Name;
-        const string ellipsified_label = Ellipsify(label, label_w_no_padding.x);
-        SetCursorPos(GetCursorPos() + ImVec2{label_w.x - CalcTextSize(ellipsified_label.c_str()).x - label_padding, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
+        const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.x);
+        SetCursorPos(GetCursorPos() + ImVec2{node_label_w.x - CalcTextSize(ellipsified_label.c_str()).x - label_padding.y, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
 
         const bool is_active = in_node->IsActive;
         if (!is_active) BeginDisabled();

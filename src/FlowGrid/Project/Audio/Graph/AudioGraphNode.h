@@ -68,10 +68,13 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     bool IsOutput() const noexcept { return Name == "Output"; }
 
     inline ma_node *InputNode() const noexcept {
-        return InputMonitorNode ? InputMonitorNode.get() : Node;
+        if (InputMonitorNode) return InputMonitorNode.get();
+        return Node;
     }
     inline ma_node *OutputNode() const noexcept {
-        return OutputMonitorNode ? OutputMonitorNode.get() : GainerNode ? GainerNode.get() : Node;
+        if (OutputMonitorNode) return OutputMonitorNode.get();
+        if (GainerNode) return GainerNode.get();
+        return Node;
     }
 
     void ConnectTo(AudioGraphNode &);
@@ -112,6 +115,13 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     std::unique_ptr<ma_monitor_node, MonitorDeleter> OutputMonitorNode;
     std::unique_ptr<ma_monitor_node, MonitorDeleter> InputMonitorNode;
 
+    // The remaining fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
+
+    // `IsActive == true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
+    bool IsActive{false};
+    // Cache the current sets of input and output nodes.
+    std::unordered_set<const AudioGraphNode *> InputNodes, OutputNodes;
+
 protected:
     void Render() const override;
     void RenderMonitorWaveform(IO) const;
@@ -127,12 +137,4 @@ protected:
     void UpdateMonitorWindowFunction(IO);
 
     const AudioGraph *Graph;
-
-    // The remaining fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
-
-    // `IsActive == true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
-    bool IsActive{false};
-    // Cache the current sets of input and output nodes.
-    std::unordered_set<const AudioGraphNode *> InputNodes;
-    std::unordered_set<const AudioGraphNode *> OutputNodes;
 };

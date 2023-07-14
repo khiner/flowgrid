@@ -171,18 +171,22 @@ void AudioGraph::RenderConnections() const {
     for (const auto *source_node : Nodes) {
         if (source_node->OutputBusCount() == 0) continue;
 
-        const char *label = source_node->Name.c_str();
-        const string ellipsified_label = Ellipsify(string(label), label_size);
+        const string label = source_node->Name;
+        const string ellipsified_label = Ellipsify(label, label_size);
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * source_count, -max_label_w});
         const auto label_interaction_flags = fg::InvisibleButton({cell_size, max_label_w}, source_node->ImGuiLabel.c_str());
+        const bool is_active = source_node->IsActive;
+        if (!is_active) BeginDisabled();
         ImPlot::AddTextVertical(
             GetWindowDrawList(),
             grid_top_left + ImVec2{(cell_size + cell_gap) * source_count + (cell_size - GetTextLineHeight()) / 2, -label_padding},
             GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
         );
+        if (!is_active) EndDisabled();
+
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
-        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label);
+        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
         source_count++;
     }
 

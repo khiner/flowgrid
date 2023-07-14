@@ -7,6 +7,7 @@
 #include "UI/Styling.h"
 
 #include "FaustParam.h"
+#include "FaustDspChangeListener.h"
 
 using ImGuiTableFlags = int;
 
@@ -64,10 +65,10 @@ using ParamsWidthSizingPolicy = int;
 
 class dsp;
 
-struct FaustParams : Component {
+struct FaustParams : Component, FaustDspChangeListener {
     using Component::Component;
 
-    void OnDspChanged(dsp *);
+    void OnFaustDspChanged(dsp *) override;
 
     struct Style : Component {
         using Component::Component;

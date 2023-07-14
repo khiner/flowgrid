@@ -8,7 +8,7 @@
 static const Audio *Singleton;
 
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
-    Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
+    Faust.RegisterDspChangeListener(&Graph.Nodes.Faust);
     Graph.Update();
 
     Faust.Code.RegisterChangeListener(this);
@@ -17,6 +17,7 @@ Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
 
 Audio::~Audio() {
     Singleton = nullptr;
+    Faust.UnregisterDspChangeListener(&Graph.Nodes.Faust);
     Field::UnregisterChangeListener(this);
 }
 
@@ -35,12 +36,8 @@ void Audio::AudioCallback(ma_device *device, void *output, const void *input, Co
 }
 
 void Audio::OnFieldChanged() {
-    // xxx this is obviously not great. could maybe move faust node management to `Faust`.
     if (Faust.Code.IsChanged()) {
-        Graph.Nodes.Faust.Uninit();
         Faust.UpdateDsp();
-        Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
-        Graph.Nodes.Faust.Init();
         Graph.Update();
     }
 }

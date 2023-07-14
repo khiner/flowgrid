@@ -12,10 +12,12 @@
 static const std::string FaustDspFileExtension = ".dsp";
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
+    RegisterDspChangeListener(&Params);
     InitDsp();
 }
 Faust::~Faust() {
     UninitDsp();
+    UnregisterDspChangeListener(&Params);
 }
 
 void Faust::Apply(const ActionType &action) const {
@@ -65,14 +67,14 @@ void Faust::InitDsp() {
         error_message = "`DSPToBoxes` returned no error but did not produce a result.";
     }
 
-    Params.OnDspChanged(Dsp);
+    NotifyDspChangeListeners();
 }
 
 void Faust::UninitDsp() {
     if (Dsp) {
-        Params.OnDspChanged(nullptr);
-        delete Dsp;
         Dsp = nullptr;
+        NotifyDspChangeListeners();
+        delete Dsp;
         deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
     }
     if (Box) {

@@ -2,6 +2,7 @@
 
 #include "FaustAction.h"
 #include "FaustBox.h"
+#include "FaustDspChangeListener.h"
 #include "FaustGraph.h"
 #include "FaustParams.h"
 
@@ -29,8 +30,14 @@ struct Faust : Component, Actionable<Action::Faust> {
     Box Box;
     dsp *Dsp;
 
-    void InitDsp();
-    void UninitDsp();
+    inline void RegisterDspChangeListener(FaustDspChangeListener *listener) noexcept {
+        DspChangeListeners.insert(listener);
+        listener->OnFaustDspChanged(Dsp); // Notify the listener of the current DSP.
+    }
+    inline void UnregisterDspChangeListener(FaustDspChangeListener *listener) noexcept {
+        DspChangeListeners.erase(listener);
+    }
+
     void UpdateDsp();
 
     Prop_(FaustGraph, Graph, "Faust graph");
@@ -142,6 +149,16 @@ process = _ : pitchshifter;)#");
 
 protected:
     void Render() const override;
+
+private:
+    void InitDsp();
+    void UninitDsp();
+
+    inline void NotifyDspChangeListeners() const noexcept {
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(Dsp);
+    }
+
+    std::unordered_set<FaustDspChangeListener *> DspChangeListeners;
 };
 
 extern const Faust &faust;

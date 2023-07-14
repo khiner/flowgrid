@@ -6,15 +6,15 @@
 
 #include "Project/Audio/AudioIO.h"
 
-// xxx miniaudio should not be in a header.
-#include "ma_gainer_node/ma_gainer_node.h"
-#include "ma_monitor_node/ma_monitor_node.h"
-
-struct AudioGraph;
-using ma_node = void;
+// xxx miniaudio should not be in a header, but forward-declaring `ma_splitter` is not working...
+#include "miniaudio.h"
 
 // using ma_node = void;
 // struct ma_splitter_node;
+struct ma_gainer_node;
+struct ma_monitor_node;
+
+struct AudioGraph;
 
 enum WindowType_ {
     WindowType_Rectangular,

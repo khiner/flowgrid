@@ -5,7 +5,11 @@
 
 #include "Helper/String.h"
 #include "Project/Audio/AudioDevice.h"
+
+// Custom nodes.
+#include "ma_gainer_node/ma_gainer_node.h"
 #include "ma_monitor_node/fft_data.h"
+#include "ma_monitor_node/ma_monitor_node.h"
 #include "ma_monitor_node/window_functions.h"
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)

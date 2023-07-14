@@ -17,7 +17,7 @@ struct Audio : Component, Actionable<Action::Audio::Any>, Field::ChangeListener 
 
     void OnFieldChanged() override;
 
-    // Just delegates to `AudioGraph::AudioCallback`.
+    // Just delegates to `Graph.AudioCallback`.
     // We use this indirection so we can initialize `AudioDevice` with a callback before initializing `AudioGraph`
     // (which depends on `AudioDevice` being initialized).
     static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);

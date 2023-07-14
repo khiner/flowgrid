@@ -5,14 +5,18 @@
 // todo support loopback mode? (think of use cases)
 // todo explicit re-scan action.
 
+static const Audio *Singleton;
+
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
     Graph.Nodes.Faust.OnDspChanged(Faust.Dsp);
     Graph.Update();
 
     Faust.Code.RegisterChangeListener(this);
+    Singleton = this;
 }
 
 Audio::~Audio() {
+    Singleton = nullptr;
     Field::UnregisterChangeListener(this);
 }
 
@@ -26,7 +30,8 @@ void Audio::Apply(const ActionType &action) const {
 bool Audio::CanApply(const ActionType &) const { return true; }
 
 void Audio::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {
-    AudioGraph::AudioCallback(device, output, input, frame_count);
+    if (!Singleton) return;
+    Singleton->Graph.AudioCallback(device, output, input, frame_count);
 }
 
 void Audio::OnFieldChanged() {

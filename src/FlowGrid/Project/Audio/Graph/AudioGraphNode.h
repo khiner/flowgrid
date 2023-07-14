@@ -7,9 +7,6 @@
 #include "Project/Audio/AudioIO.h"
 
 // xxx miniaudio should not be in a header.
-// Only needed here singe forward-declaring `ma_splitter_node` is not working for unique_ptr and I don't know why.
-#include "miniaudio.h"
-
 #include "ma_gainer_node/ma_gainer_node.h"
 #include "ma_monitor_node/ma_monitor_node.h"
 

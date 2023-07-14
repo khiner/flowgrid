@@ -58,12 +58,12 @@ void AudioDevice::OnFieldChanged() {
         InChannels.IsChanged() ||
         OutChannels.IsChanged() ||
         SampleRate.IsChanged()) {
-        const bool is_initialized = IsStarted();
-        if (On && !is_initialized) {
+        const bool is_started = IsStarted();
+        if (On && !is_started) {
             Init();
-        } else if (!On && is_initialized) {
+        } else if (!On && is_started) {
             Uninit();
-        } else if (is_initialized) {
+        } else if (is_started) {
             // todo no need to completely reset in some cases (like when only format has changed) - just modify as needed in `Device::Update`.
             // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
             Uninit();
@@ -157,11 +157,15 @@ void AudioDevice::Init() {
     if (MaDevice.playback.channels != OutChannels) OutChannels.Set_(MaDevice.playback.channels);
     if (MaDevice.sampleRate != SampleRate) SampleRate.Set_(MaDevice.sampleRate);
 
-    Start();
+    result = ma_device_start(&MaDevice);
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio device: {}", result));
 }
 
 void AudioDevice::Uninit() {
-    if (IsStarted()) Stop();
+    if (IsStarted()) {
+        const int result = ma_device_stop(&MaDevice);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error stopping audio device: {}", result));
+    }
 
     ma_device_uninit(&MaDevice);
     // ma_resampler_uninit(&Resampler, nullptr);
@@ -175,16 +179,6 @@ void AudioDevice::Uninit() {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
 }
 
-void AudioDevice::Start() const {
-    if (IsStarted()) return;
-    const int result = ma_device_start(&MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio device: {}", result));
-}
-void AudioDevice::Stop() const {
-    if (!IsStarted()) return;
-    const int result = ma_device_stop(&MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error stopping audio device: {}", result));
-}
 bool AudioDevice::IsStarted() const { return ma_device_is_started(&MaDevice); }
 
 using namespace ImGui;

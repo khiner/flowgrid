@@ -2,7 +2,6 @@
 
 #include "imgui.h"
 #include "implot.h"
-#include "miniaudio.h"
 
 #include "Helper/String.h"
 #include "Project/Audio/AudioDevice.h"
@@ -10,7 +9,7 @@
 #include "ma_monitor_node/window_functions.h"
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
+    : Component(std::move(args)), Graph(static_cast<const AudioGraphNodes *>(Parent)->Graph) {
     audio_device.SampleRate.RegisterChangeListener(this);
     Muted.RegisterChangeListener(this);
     OutputLevel.RegisterChangeListener(this);

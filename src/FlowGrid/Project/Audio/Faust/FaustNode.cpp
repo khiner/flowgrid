@@ -3,8 +3,6 @@
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
-#include "miniaudio.h"
-
 #include "Faust.h"
 #include "Project/Audio/AudioDevice.h"
 

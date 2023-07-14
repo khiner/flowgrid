@@ -22,11 +22,8 @@ struct AudioDevice : Component, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
-    void Start() const;
-    void Stop() const;
-    bool IsStarted() const;
-
     ma_device *Get() const;
+    bool IsStarted() const;
 
     Prop_(Bool, On, "?When the audio device is turned off, the audio graph is destroyed and no audio processing takes place.", true);
     Prop(String, InDeviceName);

@@ -10,12 +10,6 @@
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
-using std::vector;
-
-static ma_node_graph NodeGraph;
-static ma_node_graph_config NodeGraphConfig;
-static ma_audio_buffer_ref InputBuffer;
-
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Init();
     const Field::References listened_fields = {audio_device.On, audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
@@ -27,6 +21,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
         node->Monitor.RegisterChangeListener(this);
     }
 }
+
 AudioGraph::~AudioGraph() {
     Uninit();
 }
@@ -52,17 +47,16 @@ void AudioGraph::OnFieldChanged() {
     }
 }
 
-void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {
-    ma_audio_buffer_ref_set_data(&InputBuffer, input, frame_count);
-    ma_node_graph_read_pcm_frames(&NodeGraph, output, frame_count, nullptr);
+void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) const {
+    ma_audio_buffer_ref_set_data(Nodes.Input.Buffer.get(), input, frame_count);
+    ma_node_graph_read_pcm_frames(Get(), output, frame_count, nullptr);
     (void)device; // unused
 }
 
-ma_node_graph *AudioGraph::Get() const { return &NodeGraph; }
-
 void AudioGraph::Init() {
-    NodeGraphConfig = ma_node_graph_config_init(audio_device.InChannels);
-    const int result = ma_node_graph_init(&NodeGraphConfig, nullptr, &NodeGraph);
+    ma_node_graph_config config = ma_node_graph_config_init(audio_device.InChannels);
+    Graph = std::make_unique<ma_node_graph>();
+    const int result = ma_node_graph_init(&config, nullptr, Graph.get());
 
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
 
@@ -108,50 +102,7 @@ void AudioGraph::Update() {
 void AudioGraph::Uninit() {
     Nodes.Uninit();
     // Graph node is already uninitialized in `Nodes.Uninit`.
-}
-
-AudioGraph::Nodes::Nodes(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {}
-
-AudioGraph::Nodes::~Nodes() {}
-
-void AudioGraph::Nodes::Init() {
-    for (auto *node : *this) node->Init();
-}
-void AudioGraph::Nodes::Update() {
-    for (auto *node : *this) node->Update();
-}
-void AudioGraph::Nodes::Uninit() {
-    for (auto *node : *this) node->Uninit();
-}
-
-AudioGraph::InputNode::InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-    Muted.Set_(true); // External input is muted by default.
-}
-
-ma_node *AudioGraph::InputNode::DoInit() {
-    int result = ma_audio_buffer_ref_init((ma_format) int(audio_device.InFormat), audio_device.InChannels, nullptr, 0, &InputBuffer);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
-
-    static ma_data_source_node source_node{};
-    ma_data_source_node_config config = ma_data_source_node_config_init(&InputBuffer);
-    result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &source_node);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));
-
-    return &source_node;
-}
-void AudioGraph::InputNode::DoUninit() {
-    ma_data_source_node_uninit((ma_data_source_node *)Node, nullptr);
-    ma_audio_buffer_ref_uninit(&InputBuffer);
-}
-
-// The output node is the graph endpoint. It's allocated and managed by the MA graph.
-ma_node *AudioGraph::OutputNode::DoInit() {
-    return ma_node_graph_get_endpoint(Graph->Get());
-}
-
-void AudioGraph::Nodes::Render() const {
-    RenderTreeNodes();
+    Graph.reset();
 }
 
 using namespace ImGui;
@@ -222,7 +173,7 @@ void AudioGraph::RenderConnections() const {
         if (!is_active) BeginDisabled();
         ImPlot::AddTextVertical(
             GetWindowDrawList(),
-            grid_top_left + ImVec2{(cell_size + cell_gap) * out_count + (cell_size - GetTextLineHeight()) / 2, - label_padding.y},
+            grid_top_left + ImVec2{(cell_size + cell_gap) * out_count + (cell_size - GetTextLineHeight()) / 2, -label_padding.y},
             GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
         );
         if (!is_active) EndDisabled();

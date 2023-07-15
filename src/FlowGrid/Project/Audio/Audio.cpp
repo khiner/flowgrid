@@ -8,16 +8,16 @@
 static const Audio *Singleton;
 
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
-    Faust.RegisterDspChangeListener(&Graph.Nodes.Faust);
     Graph.Update();
 
+    Faust.FaustDsp.RegisterDspChangeListener(&Graph.Nodes.Faust);
     Faust.Code.RegisterChangeListener(this);
     Singleton = this;
 }
 
 Audio::~Audio() {
     Singleton = nullptr;
-    Faust.UnregisterDspChangeListener(&Graph.Nodes.Faust);
+    Faust.FaustDsp.UnregisterDspChangeListener(&Graph.Nodes.Faust);
     Field::UnregisterChangeListener(this);
 }
 
@@ -37,8 +37,7 @@ void Audio::AudioCallback(ma_device *device, void *output, const void *input, Co
 
 void Audio::OnFieldChanged() {
     if (Faust.Code.IsChanged()) {
-        Faust.UpdateDsp();
-        Graph.Update();
+        Faust.FaustDsp.Update(Faust.Code);
     }
 }
 

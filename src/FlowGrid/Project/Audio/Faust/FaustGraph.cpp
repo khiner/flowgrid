@@ -1196,7 +1196,7 @@ string GetBoxInfo(unsigned int id) {
     return GetBoxType(node->FaustTree); // Just type for now.
 }
 
-void FaustGraph::OnBoxChanged(Box box) const {
+void FaustGraph::OnFaustBoxChangedInner(Box box) const {
     IsTreePureRouting.clear();
     FocusedNodeStack = {};
     if (box) {
@@ -1206,6 +1206,9 @@ void FaustGraph::OnBoxChanged(Box box) const {
     } else {
         RootNode = std::nullopt;
     }
+}
+void FaustGraph::OnFaustBoxChanged(Box box) {
+    OnFaustBoxChangedInner(box);
 }
 
 void SaveBoxSvg(const fs::path &dir_path) {
@@ -1271,7 +1274,7 @@ void FaustGraph::Render() const {
 
     if (Style.FoldComplexity != FoldComplexity) {
         FoldComplexity = Style.FoldComplexity;
-        OnBoxChanged(RootNode->FaustTree);
+        OnFaustBoxChangedInner(RootNode->FaustTree);
     }
 
     {

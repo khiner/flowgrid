@@ -5,7 +5,9 @@
 #include "FaustGraphAction.h"
 #include "FaustGraphStyle.h"
 
-struct FaustGraph : Component, Actionable<Action::FaustGraph::Any> {
+#include "FaustBoxChangeListener.h"
+
+struct FaustGraph : Component, Actionable<Action::FaustGraph::Any>, FaustBoxChangeListener {
     FaustGraph(ComponentArgs &&args)
         : Component(
               std::move(args),
@@ -18,7 +20,7 @@ struct FaustGraph : Component, Actionable<Action::FaustGraph::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    void OnBoxChanged(Box) const;
+    void OnFaustBoxChanged(Box) override;
 
     struct GraphSettings : Component {
         using Component::Component;
@@ -31,6 +33,8 @@ struct FaustGraph : Component, Actionable<Action::FaustGraph::Any> {
 
 private:
     void Render() const override;
+
+    void OnFaustBoxChangedInner(Box) const;
 };
 
 extern const FaustGraph &faust_graph;

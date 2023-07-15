@@ -2,16 +2,18 @@
 
 #include "AudioGraphNodes.h"
 #include "Core/Container/AdjacencyList.h"
+#include "Project/Audio/Faust/FaustDspChangeListener.h"
 
 struct ma_device;
 struct ma_node_graph;
 
 // Corresponds to `ma_node_graph`.
-struct AudioGraph : Component, Field::ChangeListener {
+struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
 
     void OnFieldChanged() override;
+    void OnFaustDspChanged(dsp *) override;
 
     void AudioCallback(ma_device *, void *output, const void *input, Count frame_count) const;
 

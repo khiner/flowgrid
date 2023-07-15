@@ -2,13 +2,14 @@
 
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
-
 #include "Faust.h"
 #include "Project/Audio/AudioDevice.h"
 
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
 
-FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {}
+FaustNode::FaustNode(ComponentArgs &&args)
+    : AudioGraphNode(std::move(args)) {
+}
 
 void FaustNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();

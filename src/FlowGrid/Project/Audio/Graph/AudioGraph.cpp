@@ -26,6 +26,10 @@ AudioGraph::~AudioGraph() {
     Uninit();
 }
 
+void AudioGraph::OnFaustDspChanged(dsp *) {
+    Update();
+}
+
 void AudioGraph::OnFieldChanged() {
     if (audio_device.IsChanged()) {
         Uninit();

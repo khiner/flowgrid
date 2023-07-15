@@ -2,14 +2,12 @@
 
 #include "FaustAction.h"
 #include "FaustBox.h"
-#include "FaustDspChangeListener.h"
+#include "FaustDSP.h"
 #include "FaustGraph.h"
 #include "FaustParams.h"
 
 #include "Core/Action/Actionable.h"
 #include "Core/Container/MultilineString.h"
-
-class dsp;
 
 struct Faust : Component, Actionable<Action::Faust> {
     Faust(ComponentArgs &&);
@@ -17,32 +15,6 @@ struct Faust : Component, Actionable<Action::Faust> {
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
-
-    struct FaustLog : Component {
-        using Component::Component;
-
-        mutable std::string ErrorMessage;
-
-    protected:
-        void Render() const override;
-    };
-
-    Box Box;
-    dsp *Dsp;
-
-    inline void RegisterDspChangeListener(FaustDspChangeListener *listener) noexcept {
-        DspChangeListeners.insert(listener);
-        listener->OnFaustDspChanged(Dsp); // Notify the listener of the current DSP.
-    }
-    inline void UnregisterDspChangeListener(FaustDspChangeListener *listener) noexcept {
-        DspChangeListeners.erase(listener);
-    }
-
-    void UpdateDsp();
-
-    Prop_(FaustGraph, Graph, "Faust graph");
-    Prop_(FaustParams, Params, "Faust params");
-    Prop_(FaustLog, Log, "Faust log");
 
     Prop(MultilineString, Code, R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
@@ -147,18 +119,24 @@ process = _ : pitchshifter;)#");
     //     vmisc,
     //     hmisc);)#");
 
+    FaustDSP FaustDsp{Code};
+
+    struct FaustLog : Component {
+        FaustLog(ComponentArgs &&, std::string_view error_message);
+
+        Prop(String, ErrorMessage);
+
+    protected:
+        void Render() const override;
+    };
+
+
+    Prop(FaustGraph, Graph);
+    Prop(FaustParams, Params);
+    Prop_(FaustLog, Log, "Faust log", FaustDsp.ErrorMessage);
+
 protected:
     void Render() const override;
-
-private:
-    void InitDsp();
-    void UninitDsp();
-
-    inline void NotifyDspChangeListeners() const noexcept {
-        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(Dsp);
-    }
-
-    std::unordered_set<FaustDspChangeListener *> DspChangeListeners;
 };
 
 extern const Faust &faust;

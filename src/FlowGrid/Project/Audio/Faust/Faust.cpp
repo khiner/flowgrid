@@ -2,22 +2,23 @@
 
 #include "imgui.h"
 
-#include "Project/Audio/Sample.h" // Must be included before any Faust includes.
-#include "faust/dsp/llvm-dsp.h"
-
+#include "FaustDspChangeListener.h"
 #include "Helper/File.h"
 #include "Project/Audio/AudioIO.h"
 #include "Project/FileDialog/FileDialog.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
 
+Faust::FaustLog::FaustLog(ComponentArgs &&args, std::string_view error_message) : Component(std::move(args)) {
+    ErrorMessage.Set_(string(error_message));
+}
+
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
-    RegisterDspChangeListener(&Params);
-    InitDsp();
+    FaustDsp.RegisterDspChangeListener(&Params);
+    FaustDsp.RegisterBoxChangeListener(&Graph);
 }
 Faust::~Faust() {
-    UninitDsp();
-    UnregisterDspChangeListener(&Params);
+    FaustDsp.UnregisterDspChangeListener(&Params);
 }
 
 void Faust::Apply(const ActionType &action) const {
@@ -37,63 +38,6 @@ void Faust::Apply(const ActionType &action) const {
 }
 
 bool Faust::CanApply(const ActionType &) const { return true; }
-
-void Faust::InitDsp() {
-    if (Dsp || !Code) return;
-
-    createLibContext();
-
-    const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
-    std::vector<const char *> argv = {"-I", libraries_path};
-    if (std::is_same_v<Sample, double>) argv.push_back("-double");
-
-    const int argc = argv.size();
-    static int num_inputs, num_outputs;
-    string &error_message = Log.ErrorMessage;
-    Box = DSPToBoxes("FlowGrid", Code, argc, argv.data(), &num_inputs, &num_outputs, error_message);
-    if (!Box) destroyLibContext();
-
-    Graph.OnBoxChanged(Box);
-
-    if (Box && error_message.empty()) {
-        static llvm_dsp_factory *dsp_factory;
-        static const int optimize_level = -1;
-        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", Box, argc, argv.data(), "", error_message, optimize_level);
-        if (dsp_factory && error_message.empty()) {
-            Dsp = dsp_factory->createDSPInstance();
-            if (!Dsp) error_message = "Successfully created Faust DSP factory, but could not create the Faust DSP instance.";
-        }
-    } else if (!Box && error_message.empty()) {
-        error_message = "`DSPToBoxes` returned no error but did not produce a result.";
-    }
-
-    NotifyDspChangeListeners();
-}
-
-void Faust::UninitDsp() {
-    if (Dsp) {
-        Dsp = nullptr;
-        NotifyDspChangeListeners();
-        delete Dsp;
-        deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
-    }
-    if (Box) {
-        Graph.OnBoxChanged(nullptr);
-        Box = nullptr;
-    }
-    destroyLibContext();
-}
-
-void Faust::UpdateDsp() {
-    if (!Dsp && Code) {
-        InitDsp();
-    } else if (Dsp && !Code) {
-        UninitDsp();
-    } else {
-        UninitDsp();
-        InitDsp();
-    }
-}
 
 using namespace ImGui;
 
@@ -131,6 +75,6 @@ void Faust::Render() const {
 
 void Faust::FaustLog::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    TextUnformatted(ErrorMessage.c_str());
+    ErrorMessage.Draw();
     PopStyleColor();
 }

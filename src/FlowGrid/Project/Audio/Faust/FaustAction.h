@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FaustGraphAction.h"
+#include "FaustGraphStyleAction.h"
 
 DefineActionType(
     FaustFile,
@@ -16,5 +17,5 @@ DefineActionType(
 );
 
 namespace Action {
-using Faust = Combine<FaustFile::Any, FaustGraph::Any>;
+using Faust = Combine<FaustFile::Any, FaustGraph::Any, FaustGraphStyle::Any>;
 } // namespace Action

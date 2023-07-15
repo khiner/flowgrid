@@ -1228,22 +1228,6 @@ bool IsBoxHovered(ID imgui_id) { return Node::ById[imgui_id] != nullptr; }
 void FaustGraph::Apply(const ActionType &action) const {
     Visit(
         action,
-        // [this](const Action::FaustGraphStyle::ApplyColorPreset &a) {
-        [this](const Action::FaustGraph::SetColorStyle &a) {
-            switch (a.id) {
-                case 0: return Style.ColorsDark();
-                case 1: return Style.ColorsLight();
-                case 2: return Style.ColorsClassic();
-                case 3: return Style.ColorsFaust();
-            }
-        },
-        // [this](const Action::FaustGraphStyle::ApplyPreset &a) {
-        [this](const Action::FaustGraph::SetLayoutStyle &a) {
-            switch (a.id) {
-                case 0: return Style.LayoutFlowGrid();
-                case 1: return Style.LayoutFaust();
-            }
-        },
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
         [](const Action::FaustGraph::ShowSaveSvgDialog &) {
             file_dialog.Set({Action::FaustGraph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});

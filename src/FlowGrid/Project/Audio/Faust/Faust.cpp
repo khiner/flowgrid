@@ -34,6 +34,7 @@ void Faust::Apply(const ActionType &action) const {
             );
         },
         [this](const Action::FaustGraph::Any &a) { Graph.Apply(a); },
+        [this](const Action::FaustGraphStyle::Any &a) { Graph.Style.Apply(a); },
     );
 }
 

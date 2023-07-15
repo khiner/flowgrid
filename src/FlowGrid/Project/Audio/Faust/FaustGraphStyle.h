@@ -9,6 +9,8 @@
 #include "Project/Style/Colors.h"
 #include "UI/Styling.h"
 
+#include "FaustGraphStyleAction.h"
+
 enum FaustGraphHoverFlags_ {
     FaustGraphHoverFlags_None = 0,
     FaustGraphHoverFlags_ShowRect = 1 << 0,
@@ -37,8 +39,11 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraphStyle : Component {
+struct FaustGraphStyle : Component, Actionable<Action::FaustGraphStyle::Any> {
     FaustGraphStyle(ComponentArgs &&);
+
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override;
 
     Prop_(
         UInt, FoldComplexity,
@@ -84,11 +89,11 @@ struct FaustGraphStyle : Component {
 
     static const char *GetColorName(FlowGridGraphCol idx);
 
-    void LayoutFlowGrid() const;
-    void LayoutFaust() const; // Layout Faust graphs the same way Faust does when it renders to SVG.
-
 private:
     void Render() const override;
+
+    void LayoutFlowGrid() const;
+    void LayoutFaust() const; // Layout Faust graphs the same way Faust does when it renders to SVG.
 };
 
 struct GraphSettings : Component {

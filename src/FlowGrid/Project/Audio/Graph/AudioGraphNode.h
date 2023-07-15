@@ -48,9 +48,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     virtual ~AudioGraphNode();
 
     void OnFieldChanged() override;
-    void Set(ma_node *);
-
-    ma_node *Node;
 
     Count InputBusCount() const;
     Count OutputBusCount() const;
@@ -112,12 +109,9 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     std::unique_ptr<ma_monitor_node, MonitorDeleter> OutputMonitorNode;
     std::unique_ptr<ma_monitor_node, MonitorDeleter> InputMonitorNode;
 
-    // The remaining fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
-
-    // `IsActive == true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
-    bool IsActive{false};
-    // Cache the current sets of input and output nodes.
-    std::unordered_set<const AudioGraphNode *> InputNodes, OutputNodes;
+    // These fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
+    bool IsActive{false}; // `true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
+    std::unordered_set<const AudioGraphNode *> InputNodes, OutputNodes; // Cache the current sets of input and output nodes.
 
 protected:
     void Render() const override;
@@ -134,4 +128,5 @@ protected:
     void UpdateMonitorWindowFunction(IO);
 
     const AudioGraph *Graph;
+    ma_node *Node;
 };

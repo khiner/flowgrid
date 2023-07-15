@@ -71,13 +71,6 @@ void AudioGraphNode::OnFieldChanged() {
     }
 }
 
-void AudioGraphNode::Set(ma_node *node) { Node = node; }
-
-// TODO:
-// * MiniAudio is a tool, not a source of truth. The App is the source of truth.
-// 	- Hold all state as Fields in the component, and treat MiniAudio as a pure audio renderer.
-// 	- No MA getters returning state - only Fields are returned (with no setter UI immediately).
-//  - Debug config w/ toggle to assert that they are equal to MA getters.
 Count AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
 
 // The output node corresponds to the graph endpoint node.
@@ -89,7 +82,7 @@ Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_in
 Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Node, bus); }
 
 void AudioGraphNode::Init() {
-    Set(DoInit());
+    Node = DoInit();
     UpdateGainer();
     UpdateMonitors();
     UpdateOutputLevel();
@@ -191,10 +184,11 @@ void AudioGraphNode::MonitorDeleter::operator()(ma_monitor_node *monitor) {
 void AudioGraphNode::Uninit() {
     if (Node == nullptr) return;
 
+    GainerNode.reset();
     SplitterNodes.clear();
     DoUninit();
     ma_node_uninit(Node, nullptr);
-    Set(nullptr);
+    Node = nullptr;
 }
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {

@@ -9,16 +9,22 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-Faust::FaustLog::FaustLog(ComponentArgs &&args, std::string_view error_message) : Component(std::move(args)) {
-    ErrorMessage.Set_(string(error_message));
-}
-
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
+    Code.RegisterChangeListener(this);
     FaustDsp.RegisterDspChangeListener(&Params);
     FaustDsp.RegisterBoxChangeListener(&Graph);
 }
 Faust::~Faust() {
     FaustDsp.UnregisterDspChangeListener(&Params);
+    Field::UnregisterChangeListener(this);
+}
+
+Faust::FaustLog::FaustLog(ComponentArgs &&args, std::string_view error_message) : Component(std::move(args)) {
+    ErrorMessage.Set_(string(error_message));
+}
+
+void Faust::OnFieldChanged() {
+    if (Code.IsChanged()) FaustDsp.Update(Code);
 }
 
 void Faust::Apply(const ActionType &action) const {

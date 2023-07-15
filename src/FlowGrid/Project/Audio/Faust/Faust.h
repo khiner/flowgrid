@@ -9,12 +9,14 @@
 #include "Core/Action/Actionable.h"
 #include "Core/Container/MultilineString.h"
 
-struct Faust : Component, Actionable<Action::Faust> {
+struct Faust : Component, Actionable<Action::Faust>, Field::ChangeListener {
     Faust(ComponentArgs &&);
     ~Faust();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
+
+    void OnFieldChanged() override;
 
     Prop(MultilineString, Code, R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(

@@ -8,14 +8,12 @@
 
 struct ma_device;
 
-struct Audio : Component, Actionable<Action::Audio::Any>, Field::ChangeListener {
+struct Audio : Component, Actionable<Action::Audio::Any> {
     Audio(ComponentArgs &&);
     ~Audio();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
-
-    void OnFieldChanged() override;
 
     // Just delegates to `Graph.AudioCallback`.
     // We use this indirection so we can initialize `AudioDevice` with a callback before initializing `AudioGraph`

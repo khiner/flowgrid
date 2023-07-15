@@ -8,17 +8,13 @@
 static const Audio *Singleton;
 
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
-    Graph.Update();
-
-    Faust.FaustDsp.RegisterDspChangeListener(&Graph.Nodes.Faust);
-    Faust.Code.RegisterChangeListener(this);
+    Faust.FaustDsp.RegisterDspChangeListener(&Graph);
     Singleton = this;
 }
 
 Audio::~Audio() {
     Singleton = nullptr;
-    Faust.FaustDsp.UnregisterDspChangeListener(&Graph.Nodes.Faust);
-    Field::UnregisterChangeListener(this);
+    Faust.FaustDsp.UnregisterDspChangeListener(&Graph);
 }
 
 void Audio::Apply(const ActionType &action) const {
@@ -31,18 +27,8 @@ void Audio::Apply(const ActionType &action) const {
 bool Audio::CanApply(const ActionType &) const { return true; }
 
 void Audio::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {
-    if (!Singleton) return;
-    Singleton->Graph.AudioCallback(device, output, input, frame_count);
+    if (Singleton) Singleton->Graph.AudioCallback(device, output, input, frame_count);
 }
-
-void Audio::OnFieldChanged() {
-    if (Faust.Code.IsChanged()) {
-        Faust.FaustDsp.Update(Faust.Code);
-    }
-}
-
-// static ma_resampler_config ResamplerConfig;
-// static ma_resampler Resampler;
 
 using namespace ImGui;
 

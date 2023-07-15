@@ -26,8 +26,9 @@ AudioGraph::~AudioGraph() {
     Uninit();
 }
 
-void AudioGraph::OnFaustDspChanged(dsp *) {
-    Update();
+void AudioGraph::OnFaustDspChanged(dsp *dsp) {
+    Nodes.Faust.OnFaustDspChanged(dsp);
+    UpdateConnections();
 }
 
 void AudioGraph::OnFieldChanged() {

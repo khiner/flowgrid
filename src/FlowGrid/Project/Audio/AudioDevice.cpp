@@ -260,6 +260,8 @@ void AudioDevice::Render() const {
 // todo implement for r8brain resampler
 // todo I want to use this currently to support quality/fast resampling between _natively supported_ device sample rates.
 //   Can I still use duplex mode in this case?
+// static ma_resampler_config ResamplerConfig;
+// static ma_resampler Resampler;
 // #include "CDSPResampler.h"
 // See https://github.com/avaneev/r8brain-free-src/issues/12 for resampling latency calculation
 // static unique_ptr<r8b::CDSPResampler24> Resampler;

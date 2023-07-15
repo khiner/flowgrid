@@ -74,8 +74,6 @@ void AudioGraphNode::OnFieldChanged() {
 void AudioGraphNode::Set(ma_node *node) { Node = node; }
 
 // TODO:
-// * Fix regression from last commit on Jul 14 - unmuting input node has no sound until the next UpdateConnections.
-//  - Regression is from Faust DSP listener refactor.
 // * MiniAudio is a tool, not a source of truth. The App is the source of truth.
 // 	- Hold all state as Fields in the component, and treat MiniAudio as a pure audio renderer.
 // 	- No MA getters returning state - only Fields are returned (with no setter UI immediately).

@@ -27,7 +27,7 @@ ma_node *InputNode::DoInit() {
     int result = ma_audio_buffer_ref_init((ma_format) int(audio_device.InFormat), audio_device.InChannels, nullptr, 0, Buffer.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
 
-    static ma_data_source_node source_node{};
+    static ma_data_source_node source_node{}; // todo instance var
     ma_data_source_node_config config = ma_data_source_node_config_init(Buffer.get());
     result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &source_node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));

@@ -18,7 +18,7 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
     // Just delegates to `Graph.AudioCallback`.
     // We use this indirection so we can initialize `AudioDevice` with a callback before initializing `AudioGraph`
     // (which depends on `AudioDevice` being initialized).
-    static void AudioCallback(ma_device *, void *output, const void *input, Count frame_count);
+    static void AudioCallback(ma_device *, void *output, const void *input, u32 frame_count);
 
     Prop(AudioDevice, Device, AudioCallback);
     Prop(AudioGraph, Graph);

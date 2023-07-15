@@ -6,8 +6,8 @@ using std::string;
 
 namespace nlohmann {
 void to_json(json &j, const Primitive &value) {
-    if (std::holds_alternative<U32>(value)) {
-        j = std::format("{:#08X}", std::get<U32>(value));
+    if (std::holds_alternative<u32>(value)) {
+        j = std::format("{:#08X}", std::get<u32>(value));
     } else if (std::holds_alternative<float>(value) && std::isnan(std::get<float>(value))) {
         j = "NaN";
     } else {
@@ -26,7 +26,7 @@ void from_json(const json &j, Primitive &field) {
     else if (j.is_string()) {
         const auto j_string = j.get<string>();
         if (j_string == "NaN") field = NAN;
-        else if (j_string.starts_with("0X")) field = U32(std::stoul(j_string, nullptr, 0));
+        else if (j_string.starts_with("0X")) field = u32(std::stoul(j_string, nullptr, 0));
         else field = j.get<string>();
     } else throw std::runtime_error(std::format("Could not parse Primitive JSON value: {}", j.dump()));
 }

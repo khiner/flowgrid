@@ -11,14 +11,14 @@ struct ma_device;
 
 // Corresponds to `ma_device`.
 struct AudioDevice : Component, Field::ChangeListener {
-    using AudioCallback = void (*)(ma_device *, void *, const void *, Count);
+    using AudioCallback = void (*)(ma_device *, void *, const void *, u32);
 
     AudioDevice(ComponentArgs &&, AudioCallback);
     ~AudioDevice();
 
-    static const std::vector<U32> PrioritizedSampleRates;
+    static const std::vector<u32> PrioritizedSampleRates;
     static const string GetFormatName(int); // `ma_format` argmument is converted to an `int`.
-    static const string GetSampleRateName(U32);
+    static const string GetSampleRateName(u32);
 
     void OnFieldChanged() override;
 

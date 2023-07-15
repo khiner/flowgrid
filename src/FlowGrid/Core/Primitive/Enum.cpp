@@ -43,7 +43,7 @@ void Enum::MenuItem() const {
     const int value = Value;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
-        for (Count i = 0; i < Names.size(); i++) {
+        for (u32 i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
             if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) Action::Primitive::Enum::Set{Path, int(i)}.q();
             if (is_selected) SetItemDefaultFocus();

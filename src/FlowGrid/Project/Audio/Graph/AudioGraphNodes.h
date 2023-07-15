@@ -12,7 +12,7 @@ struct InputNode : AudioGraphNode {
     ma_node *DoInit() override;
     void DoUninit() override;
 
-    void SetBufferData(const void *input, Count frame_count) const;
+    void SetBufferData(const void *input, u32 frame_count) const;
 
     struct Buffer;
 

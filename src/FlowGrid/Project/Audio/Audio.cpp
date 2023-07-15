@@ -26,7 +26,7 @@ void Audio::Apply(const ActionType &action) const {
 
 bool Audio::CanApply(const ActionType &) const { return true; }
 
-void Audio::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) {
+void Audio::AudioCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
     if (Singleton) Singleton->Graph.AudioCallback(device, output, input, frame_count);
 }
 

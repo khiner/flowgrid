@@ -43,8 +43,8 @@ ma_node *FaustNode::DoInit() {
 
     CurrentDsp->init(audio_device.SampleRate);
 
-    const Count in_channels = CurrentDsp->getNumInputs();
-    const Count out_channels = CurrentDsp->getNumOutputs();
+    const u32 in_channels = CurrentDsp->getNumInputs();
+    const u32 out_channels = CurrentDsp->getNumOutputs();
     if (in_channels == 0 && out_channels == 0) return nullptr;
 
     static ma_node_vtable vtable{};

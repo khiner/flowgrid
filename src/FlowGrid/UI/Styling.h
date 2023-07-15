@@ -54,14 +54,14 @@ struct TextStyle {
         Italic
     };
 
-    const U32 Color;
+    const u32 Color;
     const Justify Justify{HJustify_Middle, VJustify_Middle};
     const Padding Padding;
     const FontStyle FontStyle{Normal};
 };
 
 struct RectStyle {
-    const U32 FillColor, StrokeColor;
+    const u32 FillColor, StrokeColor;
     const float StrokeWidth{0}, CornerRadius{0};
 };
 
@@ -73,4 +73,4 @@ ImVec2 CalcTextSize(const string &text);
 // There's `RenderTextEllipsis` in `imgui_internal`, but it's way too complex and scary.
 string Ellipsify(string copy, float max_width);
 
-void FillRowItemBg(const U32 col);
+void FillRowItemBg(const u32 col);

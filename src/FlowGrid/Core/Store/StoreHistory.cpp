@@ -56,26 +56,26 @@ void StoreHistory::AddGesture(Gesture &&gesture) {
     Index = Size() - 1;
 }
 
-Count StoreHistory::Size() const { return _Records->Value.size(); }
+u32 StoreHistory::Size() const { return _Records->Value.size(); }
 bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
 bool StoreHistory::CanUndo() const { return Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 const StoreImpl &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
 
-std::map<StorePath, Count> StoreHistory::GetChangeCountByPath() const {
+std::map<StorePath, u32> StoreHistory::GetChangeCountByPath() const {
     return _Records->Value[Index].Metrics.CommitTimesByPath |
         std::views::transform([](const auto &entry) { return std::pair(entry.first, entry.second.size()); }) |
-        ranges::to<std::map<StorePath, Count>>;
+        ranges::to<std::map<StorePath, u32>>;
 }
 
-Count StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesByPath.size(); }
+u32 StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesByPath.size(); }
 
-Patch StoreHistory::CreatePatch(Count index) const {
+Patch StoreHistory::CreatePatch(u32 index) const {
     return Store.CreatePatch(_Records->Value[index - 1].Store, _Records->Value[index].Store);
 }
 
-StoreHistory::ReferenceRecord StoreHistory::RecordAt(Count index) const {
+StoreHistory::ReferenceRecord StoreHistory::RecordAt(u32 index) const {
     const auto &record = _Records->Value[index];
     return {record.Store, record.Gesture};
 }
@@ -86,7 +86,7 @@ StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
     return {std::move(gestures), Index};
 }
 
-void StoreHistory::SetIndex(Count new_index) {
+void StoreHistory::SetIndex(u32 new_index) {
     if (new_index == Index || new_index < 0 || new_index >= Size()) return;
 
     Index = new_index;

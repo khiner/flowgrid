@@ -6,7 +6,7 @@ SavableActionMoments MergeActions(const SavableActionMoments &actions) {
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
     std::optional<const SavableActionMoment> active;
-    for (Count i = 0; i < actions.size(); i++) {
+    for(u32 i = 0; i < actions.size(); i++) {
         if (!active) active.emplace(actions[i]);
         const auto &a = *active;
         const auto &b = actions[i + 1];

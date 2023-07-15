@@ -56,7 +56,7 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
         RenderFrame(rect_pos, rect_pos + size, GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
         draw_list->AddRectFilled(
             rect_pos + ImVec2{0, is_h ? 0 : (1 - fraction) * size.y},
-            rect_pos + size * ImVec2{is_h ? fraction : 1, 1},
+            rect_pos + size *ImVec2{is_h ? fraction : 1, 1},
             GetColorU32(ImGuiCol_PlotHistogram),
             style.FrameRounding, is_h ? ImDrawFlags_RoundCornersLeft : ImDrawFlags_RoundCornersBottom
         );

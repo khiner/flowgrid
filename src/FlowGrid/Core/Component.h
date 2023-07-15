@@ -81,8 +81,8 @@ struct Component : Drawable {
     // By default, renders `this` a node with children as child nodes.
     virtual void RenderValueTree(bool annotate, bool auto_select) const;
 
-    const Component *Child(Count i) const noexcept { return Children[i]; }
-    inline Count ChildCount() const noexcept { return Children.size(); }
+    const Component *Child(u32 i) const noexcept { return Children[i]; }
+    inline u32 ChildCount() const noexcept { return Children.size(); }
 
     inline bool IsChanged() const noexcept { return ChangedComponentIds.contains(Id); }
 

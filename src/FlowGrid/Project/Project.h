@@ -163,7 +163,7 @@ protected:
 private:
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
-    void SetHistoryIndex(Count) const;
+    void SetHistoryIndex(u32) const;
 };
 
 void RunQueuedActions(Store &, bool force_commit_gesture = false);

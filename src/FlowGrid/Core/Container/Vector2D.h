@@ -19,16 +19,16 @@ template<IsPrimitive T> struct Vector2D : Field, Actionable<typename Action::Vec
     void RefreshValue() override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
-    T operator()(Count i, Count j) const { return Value[i][j]; }
+    T operator()(u32 i, u32 j) const { return Value[i][j]; }
 
-    StorePath PathAt(const Count i, const Count j) const { return Path / to_string(i) / to_string(j); }
-    Count Size() const { return Value.size(); }; // Number of outer vectors
-    Count Size(Count i) const { return Value[i].size(); }; // Size of inner vector at index `i`
+    StorePath PathAt(const u32 i, const u32 j) const { return Path / to_string(i) / to_string(j); }
+    u32 Size() const { return Value.size(); }; // Number of outer vectors
+    u32 Size(u32 i) const { return Value[i].size(); }; // Size of inner vector at index `i`
 
     void Set(const std::vector<std::vector<T>> &) const;
-    void Set(Count i, Count j, const T &) const;
-    void Resize(Count size) const;
-    void Resize(Count i, Count size) const;
+    void Set(u32 i, u32 j, const T &) const;
+    void Resize(u32 size) const;
+    void Resize(u32 i, u32 size) const;
 
 private:
     std::vector<std::vector<T>> Value;

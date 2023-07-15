@@ -64,7 +64,7 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     }
 
     if (TreeNode(Name)) {
-        Count i = 0;
+        u32 i = 0;
         const auto id_pairs = Get();
         for (const auto &[source_id, destination_id] : id_pairs) {
             const bool can_annotate = annotate && ById.contains(source_id) && ById.contains(destination_id);

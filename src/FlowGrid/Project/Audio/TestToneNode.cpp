@@ -40,7 +40,7 @@ ma_node *TestToneNode::DoInit() {
     static ma_node_config config;
     config = ma_node_config_init();
 
-    static const Count out_channels = audio_device.OutChannels;
+    static u32 out_channels = audio_device.OutChannels;
     config.pOutputChannels = &out_channels;
 
     static ma_node_vtable vtable{};

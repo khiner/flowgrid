@@ -342,7 +342,7 @@ using StringHelper::Capitalize;
 struct Node {
     inline static std::unordered_map<ID, const Node *> ById;
 
-    inline static const U32
+    inline static const u32
         BgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.1f}),
         BorderColor = ColorConvertFloat4ToU32({0.f, 0.f, 1.f, 1.f}),
         ChannelLabelColor = ColorConvertFloat4ToU32({0.f, 0.f, 1.f, 1.f}),
@@ -352,15 +352,15 @@ struct Node {
 
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
-    const Count InCount, OutCount;
-    const Count Descendents = 0; // The number of boxes within this node (recursively).
+    const u32 InCount, OutCount;
+    const u32 Descendents = 0; // The number of boxes within this node (recursively).
     Node *A{}, *B{}; // Nodes have at most two children.
 
     ImVec2 Size; // Set in `PlaceSize`.
     ImVec2 Position; // Relative to parent. Set in `Place`.
     GraphOrientation Orientation = GraphForward; // Set in `Place`.
 
-    Node(Tree tree, Count in_count, Count out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
+    Node(Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
         : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
           BoxTypeLabel(GetBoxType(FaustTree)), InCount(in_count), OutCount(out_count),
           Descendents((is_block ? 1 : 0) + (a ? a->Descendents : 0) + (b ? b->Descendents : 0)), A(a), B(b) {
@@ -376,16 +376,16 @@ struct Node {
         if (B) B->AddId(imgui_id);
     }
 
-    Count IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
+    u32 IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
 
     // IO point relative to self.
-    virtual ImVec2 Point(IO io, Count channel) const {
+    virtual ImVec2 Point(IO io, u32 channel) const {
         return {
             ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
             Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()};
     }
     // IO point relative to parent.
-    ImVec2 ChildPoint(IO io, Count channel) const { return Position + Point(io, channel); }
+    ImVec2 ChildPoint(IO io, u32 channel) const { return Position + Point(io, channel); }
 
     void Place(const DeviceType type, const ImVec2 &position, GraphOrientation orientation) {
         Position = position;
@@ -461,7 +461,7 @@ struct Node {
     }
     void DrawChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
-            for (Count channel = 0; channel < IoCount(io); channel++) {
+            for (u32 channel = 0; channel < IoCount(io); channel++) {
                 device.Text(
                     Point(io, channel),
                     std::format("{}:{}", Capitalize(to_string(io, true)), channel),
@@ -473,9 +473,9 @@ struct Node {
     }
     void DrawChildChannelLabels(Device &device) const {
         for (const IO io : IO_All) {
-            for (Count child_index = 0; child_index < (B ? 2 : (A ? 1 : 0)); child_index++) {
+            for (u32 child_index = 0; child_index < (B ? 2 : (A ? 1 : 0)); child_index++) {
                 auto *child = child_index == 0 ? A : B;
-                for (Count channel = 0; channel < child->IoCount(io); channel++) {
+                for (u32 channel = 0; channel < child->IoCount(io); channel++) {
                     device.Text(
                         child->ChildPoint(io, channel),
                         std::format("C{}->{}:{}", child_index, Capitalize(to_string(io, true)), channel),
@@ -519,7 +519,7 @@ protected:
         if (!Style().OrientationMark) return;
 
         const auto &rect = GetFrameRect();
-        const U32 color = Style().Colors[FlowGridGraphCol_OrientationMark];
+        const u32 color = Style().Colors[FlowGridGraphCol_OrientationMark];
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
@@ -533,7 +533,7 @@ static inline float GetScale() {
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
-    BlockNode(Tree tree, Count in_count, Count out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
+    BlockNode(Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
         : Node(tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
@@ -550,8 +550,8 @@ struct BlockNode : Node {
     }
 
     void Render(Device &device, InteractionFlags flags) const override {
-        U32 fill_color = Style().Colors[Color];
-        const U32 text_color = Style().Colors[FlowGridGraphCol_Text];
+        u32 fill_color = Style().Colors[Color];
+        const u32 text_color = Style().Colors[FlowGridGraphCol_Text];
         const auto &local_rect = GetFrameRect();
         const auto &size = local_rect.GetSize();
         const auto before_cursor = device.CursorPosition;
@@ -578,7 +578,7 @@ struct BlockNode : Node {
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
             const float arrow_width = in ? Style().ArrowSize.X() : 0.f;
-            for (Count channel = 0; channel < IoCount(io); channel++) {
+            for (u32 channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(io, channel);
                 const auto &b = channel_point + ImVec2{(XMargin() - arrow_width) * DirUnit(io), 0};
                 device.Line(channel_point, b);
@@ -593,7 +593,7 @@ struct BlockNode : Node {
 
 // Simple cables (identity box) in parallel.
 struct CableNode : Node {
-    CableNode(Tree tree, Count n = 1) : Node(tree, n, n) {}
+    CableNode(Tree tree, u32 n = 1) : Node(tree, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
     void DoPlaceSize(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
@@ -601,7 +601,7 @@ struct CableNode : Node {
     void Render(Device &, InteractionFlags) const override {}
 
     // Cable points are vertically spaced by `WireGap`.
-    ImVec2 Point(IO, Count i) const override {
+    ImVec2 Point(IO, u32 i) const override {
         const float dx = WireGap() * (float(i) + 0.5f);
         return {0, IsLr() ? dx : H() - dx};
     }
@@ -641,7 +641,7 @@ struct CutNode : Node {
     }
 
     // A Cut has only one input point.
-    ImVec2 Point(IO io, Count) const override {
+    ImVec2 Point(IO io, u32) const override {
         assert(io == IO_In);
         return {0, (Size / 2).y};
     }
@@ -667,7 +667,7 @@ struct BinaryNode : Node {
           ),
           Type(type) {}
 
-    ImVec2 Point(IO io, Count i) const override {
+    ImVec2 Point(IO io, u32 i) const override {
         if (Type == ParallelNode) {
             const float dx = (io == IO_In ? -1.f : 1.f) * DirUnit();
             return i < A->IoCount(io) ?
@@ -709,7 +709,7 @@ struct BinaryNode : Node {
     void Render(Device &device, InteractionFlags) const override {
         if (Type == ParallelNode) {
             for (const IO io : IO_All) {
-                for (Count i = 0; i < IoCount(io); i++) {
+                for (u32 i = 0; i < IoCount(io); i++) {
                     device.Line(Point(io, i), i < A->IoCount(io) ? A->ChildPoint(io, i) : B->ChildPoint(io, i - A->IoCount(io)));
                 }
             }
@@ -718,7 +718,7 @@ struct BinaryNode : Node {
             assert(A->OutCount >= B->InCount);
             const float dw = OrientationUnit() * WireGap();
             // out_a->in_b feedback connections
-            for (Count i = 0; i < B->IoCount(IO_In); i++) {
+            for (u32 i = 0; i < B->IoCount(IO_In); i++) {
                 const auto &in_b = B->ChildPoint(IO_In, i);
                 const auto &out_a = A->ChildPoint(IO_Out, i);
                 const auto &from = ImVec2{IsLr() ? max(in_b.x, out_a.x) : min(in_b.x, out_a.x), out_a.y} + ImVec2{float(i) * dw, 0};
@@ -734,11 +734,11 @@ struct BinaryNode : Node {
                 device.Line(bend, in_b);
             }
             // Non-recursive output lines
-            for (Count i = 0; i < OutCount; i++) device.Line(A->ChildPoint(IO_Out, i), Point(IO_Out, i));
+            for (u32 i = 0; i < OutCount; i++) device.Line(A->ChildPoint(IO_Out, i), Point(IO_Out, i));
             // Input lines
-            for (Count i = 0; i < InCount; i++) device.Line(Point(IO_In, i), A->ChildPoint(IO_In, i + B->OutCount));
+            for (u32 i = 0; i < InCount; i++) device.Line(Point(IO_In, i), A->ChildPoint(IO_In, i + B->OutCount));
             // out_b->in_a feedfront connections
-            for (Count i = 0; i < B->IoCount(IO_Out); i++) {
+            for (u32 i = 0; i < B->IoCount(IO_Out); i++) {
                 const auto &from = B->ChildPoint(IO_Out, i);
                 const auto &from_dx = from - ImVec2{dw * float(i), 0};
                 const auto &to = A->ChildPoint(IO_In, i);
@@ -753,26 +753,26 @@ struct BinaryNode : Node {
             assert(A->OutCount == B->InCount); // Children must be "compatible" (a: n->m and b: m->q).
             if (!Style().SequentialConnectionZigzag) {
                 // Draw a straight, potentially diagonal cable.
-                for (Count i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
+                for (u32 i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
                 return;
             }
             // todo should be able to simplify now and not create this map
-            std::unordered_map<ImGuiDir, std::vector<Count>> ChannelsForDirection;
-            for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+            std::unordered_map<ImGuiDir, std::vector<u32>> ChannelsForDirection;
+            for (u32 i = 0; i < A->IoCount(IO_Out); i++) {
                 const auto dy = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
                 ChannelsForDirection[dy == 0 ? ImGuiDir_None : (dy < 0 ? ImGuiDir_Up : ImGuiDir_Down)].emplace_back(i);
             }
             // Draw upward zigzag cables, with the x turning point determined by the index of the connection in the group.
             for (auto dir : std::views::keys(ChannelsForDirection)) {
                 const auto &channels = ChannelsForDirection.at(dir);
-                for (Count i = 0; i < channels.size(); i++) {
+                for (u32 i = 0; i < channels.size(); i++) {
                     const auto channel = channels[i];
                     const auto from = A->ChildPoint(IO_Out, channel);
                     const auto to = B->ChildPoint(IO_In, channel);
                     if (dir == ImGuiDir_None) {
                         device.Line(from, to); // Draw a  straight cable
                     } else {
-                        const Count x_position = IsForward() ? i : channels.size() - i - 1;
+                        const u32 x_position = IsForward() ? i : channels.size() - i - 1;
                         const float bend_x = from.x + float(x_position) * DirUnit() * WireGap();
                         device.Line(from, {bend_x, from.y});
                         device.Line({bend_x, from.y}, {bend_x, to.y});
@@ -782,12 +782,12 @@ struct BinaryNode : Node {
             }
         } else if (Type == MergeNode) {
             // The outputs of the first node are merged to the inputs of the second.
-            for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+            for (u32 i = 0; i < A->IoCount(IO_Out); i++) {
                 device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i % B->IoCount(IO_In)));
             }
         } else if (Type == SplitNode) {
             // The outputs the first node are distributed to the inputs of the second.
-            for (Count i = 0; i < B->IoCount(IO_In); i++) {
+            for (u32 i = 0; i < B->IoCount(IO_In); i++) {
                 device.Line(A->ChildPoint(IO_Out, i % A->IoCount(IO_Out)), B->ChildPoint(IO_In, i));
             }
         }
@@ -798,11 +798,11 @@ struct BinaryNode : Node {
             // The horizontal gap for the wires depends on the largest group of contiguous connections that go in the same up/down direction.
             if (A->IoCount(IO_Out) == 0) return 0;
 
-            // todo simplify this by only tracking two counts: max same dir count in either direction, and current same dir count ...
+            // todo simplify this by only tracking two counts: max same dir u32 in either direction, and current same dir u32 ...
             ImGuiDir prev_dir = ImGuiDir_None;
-            Count same_dir_count = 0;
-            std::unordered_map<ImGuiDir, Count> max_group_size; // Store the size of the largest group for each direction.
-            for (Count i = 0; i < A->IoCount(IO_Out); i++) {
+            u32 same_dir_count = 0;
+            std::unordered_map<ImGuiDir, u32> max_group_size; // Store the size of the largest group for each direction.
+            for (u32 i = 0; i < A->IoCount(IO_Out); i++) {
                 const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
                 const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
                 same_dir_count = dir == prev_dir ? same_dir_count + 1 : 1;
@@ -819,7 +819,7 @@ struct BinaryNode : Node {
 };
 
 Node *MakeSequential(Tree tree, Node *a, Node *b) {
-    const Count o = a->OutCount, i = b->InCount;
+    const u32 o = a->OutCount, i = b->InCount;
     return new BinaryNode(
         tree,
         o < i ? new BinaryNode(tree, a, new CableNode(tree, i - o), ParallelNode) : a,
@@ -892,7 +892,7 @@ struct GroupNode : Node {
             const bool in = io == IO_In;
             const bool has_arrow = Type == NodeType_Decorate && !in;
             const float arrow_width = has_arrow ? Style().ArrowSize.X() : 0.f;
-            for (Count channel = 0; channel < IoCount(io); channel++) {
+            for (u32 channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
                 const ImVec2 &a = {in ? 0 : (Size - offset).x, channel_point.y};
                 const ImVec2 &b = {in ? offset.x : Size.x - arrow_width, channel_point.y};
@@ -903,7 +903,7 @@ struct GroupNode : Node {
     }
 
     // Y position of point is delegated to the grouped child.
-    ImVec2 Point(IO io, Count channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
+    ImVec2 Point(IO io, u32 channel) const override { return {Node::Point(io, channel).x, A->ChildPoint(io, channel).y}; }
 
     NodeType Type;
 
@@ -915,9 +915,9 @@ private:
 };
 
 struct RouteNode : Node {
-    inline static const U32 RouteFrameBgColor = ColorConvertFloat4ToU32({0.93f, 0.93f, 0.65f, 1.f});
+    inline static const u32 RouteFrameBgColor = ColorConvertFloat4ToU32({0.93f, 0.93f, 0.65f, 1.f});
 
-    RouteNode(Tree tree, Count in_count, Count out_count, std::vector<int> routes)
+    RouteNode(Tree tree, u32 in_count, u32 out_count, std::vector<int> routes)
         : Node(tree, in_count, out_count), Routes(std::move(routes)) {}
 
     void DoPlaceSize(const DeviceType) override {
@@ -932,20 +932,20 @@ struct RouteNode : Node {
             device.Rect(GetFrameRect(), {.FillColor = RouteFrameBgColor});
             DrawOrientationMark(device);
             // Input arrows
-            for (Count i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XMargin(), 0}, Orientation);
+            for (u32 i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XMargin(), 0}, Orientation);
         }
 
         const auto d = ImVec2{DirUnit() * XMargin(), 0};
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            for (Count i = 0; i < IoCount(io); i++) {
+            for (u32 i = 0; i < IoCount(io); i++) {
                 const auto &p = Point(io, i);
                 device.Line(in ? p : p - d, in ? p + d : p);
             }
         }
-        for (Count i = 0; i < Routes.size() - 1; i += 2) {
-            const Count src = Routes[i];
-            const Count dst = Routes[i + 1];
+        for (u32 i = 0; i < Routes.size() - 1; i += 2) {
+            const u32 src = Routes[i];
+            const u32 dst = Routes[i + 1];
             if (src > 0 && src <= InCount && dst > 0 && dst <= OutCount) {
                 device.Line(Point(IO_In, src - 1) + d, Point(IO_Out, dst - 1) - d);
             }
@@ -1037,7 +1037,7 @@ static bool IsPureRouting(Tree t) {
     return false;
 }
 
-static std::optional<pair<Count, string>> GetBoxPrimCountAndName(Box box) {
+static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
     prim0 p0;
     if (isBoxPrim0(box, &p0)) return pair(0, prim0name(p0));
     prim1 p1;
@@ -1119,7 +1119,7 @@ static Node *Tree2NodeInner(Tree t) {
     throw std::runtime_error("Box expression not recognized: " + PrintTree(t));
 }
 
-static Count FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
+static u32 FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
 
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping these bad names to remind me to clean this up, likely into a `Node` ctor.)

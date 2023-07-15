@@ -22,17 +22,15 @@ using ImU32 = unsigned int; // 32-bit unsigned integer (used to store packed col
 using ImS64 = signed long long; // 64-bit signed integer
 using ImU64 = unsigned long long; // 64-bit unsigned integer
 
-// Scalar data types, pointing to ImGui scalar types, with `{TypeName} = Im{TypeName}`.
-using S8 = ImS8;
-using U8 = ImU8;
-using S16 = ImS16;
-using U16 = ImU16;
-using S32 = ImS32;
-using U32 = ImU32;
-using S64 = ImS64;
-using U64 = ImU64;
-
-using Count = U32;
+// Scalar data types, pointing to ImGui scalar types, with `{typename} = Im{Typename}`.
+using s8 = ImS8;
+using u8 = ImU8;
+using s16 = ImS16;
+using u16 = ImU16;
+using s32 = ImS32;
+using u32 = ImU32;
+using s64 = ImS64;
+using u64 = ImU64;
 
 /**
 An ID is used to uniquely identify something.
@@ -48,4 +46,4 @@ using ID = ImGuiID;
 
 #include <string>
 
-static constexpr std::string to_string(U32 value) noexcept { return std::to_string(int(value)); }
+static constexpr std::string to_string(u32 value) noexcept { return std::to_string(int(value)); }

@@ -77,7 +77,7 @@ struct AudioGraphNode::MonitorNode {
             ImPlot::SetupAxisLimits(ImAxis_X1, 0, N, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
             if (is_active) {
-                for (Count channel_index = 0; channel_index < Monitor.config.channels; channel_index++) {
+                for (u32 channel_index = 0; channel_index < Monitor.config.channels; channel_index++) {
                     const std::string channel_name = std::format("Channel {}", channel_index);
                     ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
                     ImPlot::PlotLine(channel_name.c_str(), Monitor.buffer, N);
@@ -92,8 +92,8 @@ struct AudioGraphNode::MonitorNode {
         if (ImPlot::BeginPlot("Magnitude spectrum", {-1, 160})) {
             static const float MIN_DB = -100;
             const fft_data *fft = Monitor.fft;
-            const Count N = Monitor.config.buffer_frames;
-            const Count N_2 = N / 2;
+            const u32 N = Monitor.config.buffer_frames;
+            const u32 N_2 = N / 2;
             const float fs = Monitor.config.sample_rate;
             const float fs_n = fs / float(N);
 
@@ -103,7 +103,7 @@ struct AudioGraphNode::MonitorNode {
             magnitude.resize(N_2);
 
             const auto *data = fft->data; // Complex values.
-            for (Count i = 0; i < N_2; i++) {
+            for (u32 i = 0; i < N_2; i++) {
                 frequency[i] = fs_n * float(i);
                 const float mag_linear = sqrtf(data[i][0] * data[i][0] + data[i][1] * data[i][1]) / float(N_2);
                 magnitude[i] = ma_volume_linear_to_db(mag_linear);
@@ -212,15 +212,15 @@ void AudioGraphNode::OnFieldChanged() {
     }
 }
 
-Count AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
+u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
 
 // The output node corresponds to the graph endpoint node.
 // Technically, it has an output bus, but it's handled specially by miniaudio.
 // Most importantly, it is not possible to attach the graph endpoint's node into any other node.
 // Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
-Count AudioGraphNode::OutputBusCount() const { return IsOutput() ? 0 : ma_node_get_output_bus_count(Node); }
-Count AudioGraphNode::InputChannelCount(Count bus) const { return ma_node_get_input_channels(Node, bus); }
-Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_output_channels(Node, bus); }
+u32 AudioGraphNode::OutputBusCount() const { return IsOutput() ? 0 : ma_node_get_output_bus_count(Node); }
+u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Node, bus); }
+u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
 
 void AudioGraphNode::Init() {
     Node = DoInit();
@@ -241,7 +241,7 @@ void AudioGraphNode::UpdateOutputLevel() {
 
 void AudioGraphNode::UpdateGainer() {
     if (OutputBusCount() == 1 && SmoothOutputLevel && !Gainer) {
-        const Count smooth_time_frames = float(SmoothOutputLevelMs) * float(audio_device.SampleRate) / 1000.f;
+        const u32 smooth_time_frames = float(SmoothOutputLevelMs) * float(audio_device.SampleRate) / 1000.f;
         Gainer = std::make_unique<GainerNode>(Graph->Get(), OutputChannelCount(0), smooth_time_frames);
         UpdateOutputLevel();
     } else if (!SmoothOutputLevel && Gainer) {

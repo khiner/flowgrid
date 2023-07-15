@@ -70,7 +70,7 @@ void AudioGraph::OnFieldChanged() {
     }
 }
 
-void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) const {
+void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, u32 frame_count) const {
     Nodes.Input.SetBufferData(input, frame_count);
     ma_node_graph_read_pcm_frames(Get(), output, frame_count, nullptr);
     (void)device; // unused
@@ -158,7 +158,7 @@ void AudioGraph::RenderConnections() const {
     const float cell_gap = style.CellGap;
 
     // Output channel labels.
-    Count out_count = 0;
+    u32 out_count = 0;
     for (const auto *out_node : Nodes) {
         if (out_node->OutputBusCount() == 0) continue;
 
@@ -182,7 +182,7 @@ void AudioGraph::RenderConnections() const {
     }
 
     // Input channel labels and mixer cells.
-    Count in_i = 0;
+    u32 in_i = 0;
     for (const auto *in_node : Nodes) {
         if (in_node->InputBusCount() == 0) continue;
 
@@ -201,7 +201,7 @@ void AudioGraph::RenderConnections() const {
         const bool text_clipped = ellipsified_label.find("...") != string::npos;
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
 
-        Count out_i = 0;
+        u32 out_i = 0;
         for (const auto *out_node : Nodes) {
             if (out_node->OutputBusCount() == 0) continue;
 

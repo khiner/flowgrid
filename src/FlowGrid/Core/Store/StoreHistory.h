@@ -19,7 +19,7 @@ struct StoreHistory {
     // This is all the information needed to reconstruct a project.
     struct IndexedGestures {
         Gestures Gestures;
-        Count Index;
+        u32 Index;
     };
 
     struct ReferenceRecord {
@@ -32,21 +32,21 @@ struct StoreHistory {
 
     void Clear();
     void AddGesture(Gesture &&); // Add a gesture to the history.
-    void SetIndex(Count);
+    void SetIndex(u32);
 
-    Count Size() const;
+    u32 Size() const;
     bool Empty() const;
     bool CanUndo() const;
     bool CanRedo() const;
 
     const StoreImpl &CurrentStore() const;
-    Patch CreatePatch(Count index) const; // Create a patch between the store at `index` and the store at `index - 1`.
-    ReferenceRecord RecordAt(Count index) const;
+    Patch CreatePatch(u32 index) const; // Create a patch between the store at `index` and the store at `index - 1`.
+    ReferenceRecord RecordAt(u32 index) const;
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
-    std::map<StorePath, Count> GetChangeCountByPath() const; // Ordered by path.
-    Count GetChangedPathsCount() const;
+    std::map<StorePath, u32> GetChangeCountByPath() const; // Ordered by path.
+    u32 GetChangedPathsCount() const;
 
-    Count Index{0};
+    u32 Index{0};
 
 private:
     const Store &Store;

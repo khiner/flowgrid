@@ -10,34 +10,34 @@ template<IsPrimitive T> struct Vector {
 
 DefineTemplatedActionType(
     Vector, Bool, bool,
-    DefineFieldAction(SetAt, "", Count i; bool value;);
+    DefineFieldAction(SetAt, "", u32 i; bool value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     Vector, Int, int,
-    DefineFieldAction(SetAt, "", Count i; int value;);
+    DefineFieldAction(SetAt, "", u32 i; int value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
-    Vector, UInt, U32,
-    DefineFieldAction(SetAt, "", Count i; U32 value;);
+    Vector, UInt, u32,
+    DefineFieldAction(SetAt, "", u32 i; u32 value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     Vector, Float, float,
-    DefineFieldAction(SetAt, "", Count i; float value;);
+    DefineFieldAction(SetAt, "", u32 i; float value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 Json(Vector<bool>::SetAt, path, i, value);
 Json(Vector<int>::SetAt, path, i, value);
-Json(Vector<U32>::SetAt, path, i, value);
+Json(Vector<u32>::SetAt, path, i, value);
 Json(Vector<float>::SetAt, path, i, value);
 } // namespace Action

@@ -27,7 +27,7 @@ struct FileDialog : Component, Actionable<Action::FileDialog::Any> {
 
     inline static bool Visible;
     inline static bool SaveMode; // The same file dialog instance is used for both saving & opening files.
-    inline static U32 MaxNumSelections{1};
+    inline static u32 MaxNumSelections{1};
     inline static ImGuiFileDialogFlags Flags{FileDialogFlags_Modal};
     inline static std::string Title{"Choose file"};
     inline static std::string Filters;

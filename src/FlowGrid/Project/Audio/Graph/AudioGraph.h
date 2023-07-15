@@ -15,7 +15,7 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
     void OnFaustDspChanged(dsp *) override;
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
-    void AudioCallback(ma_device *, void *output, const void *input, Count frame_count) const;
+    void AudioCallback(ma_device *, void *output, const void *input, u32 frame_count) const;
 
     void RenderConnections() const;
 

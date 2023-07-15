@@ -23,8 +23,8 @@ DefineTemplatedActionType(
 );
 
 DefineTemplatedActionType(
-    Vector2D, UInt, U32,
-    DefineFieldAction(Set, "", std::vector<std::vector<U32>> value;);
+    Vector2D, UInt, u32,
+    DefineFieldAction(Set, "", std::vector<std::vector<u32>> value;);
 
     using Any = ActionVariant<Set>;
 );
@@ -38,6 +38,6 @@ DefineTemplatedActionType(
 
 Json(Vector2D<bool>::Set, path, value);
 Json(Vector2D<int>::Set, path, value);
-Json(Vector2D<U32>::Set, path, value);
+Json(Vector2D<u32>::Set, path, value);
 Json(Vector2D<float>::Set, path, value);
 } // namespace Action

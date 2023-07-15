@@ -18,13 +18,13 @@ struct Store : Actionable<Action::Store::Any> {
     bool CanApply(const ActionType &) const override { return true; }
 
     Primitive Get(const StorePath &) const;
-    Count CountAt(const StorePath &) const;
+    u32 CountAt(const StorePath &) const;
 
     void Set(const StorePath &, const Primitive &) const;
     void Erase(const StorePath &) const;
 
     IdPairs IdPairs(const StorePath &) const;
-    Count IdPairCount(const StorePath &) const;
+    u32 IdPairCount(const StorePath &) const;
     void AddIdPair(const StorePath &, const IdPair &) const;
     void EraseIdPair(const StorePath &, const IdPair &) const;
     bool HasIdPair(const StorePath &, const IdPair &) const;

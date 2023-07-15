@@ -5,7 +5,7 @@
 #include "Core/Store/Store.h"
 
 template<IsPrimitive T> void Vector<T>::Set(const std::vector<T> &value) const {
-    Count i = 0;
+    u32 i = 0;
     while (i < value.size()) {
         Set(i, value[i]);
         i++;
@@ -21,8 +21,8 @@ template<IsPrimitive T> void Vector<T>::Set(const std::vector<std::pair<int, T>>
     for (const auto &[i, value] : values) Set(i, value);
 }
 
-template<IsPrimitive T> void Vector<T>::Resize(Count size) const {
-    Count i = size;
+template<IsPrimitive T> void Vector<T>::Resize(u32 size) const {
+    u32 i = size;
     while (RootStore.CountAt(PathAt(i))) {
         RootStore.Erase(PathAt(i));
         i++;
@@ -30,7 +30,7 @@ template<IsPrimitive T> void Vector<T>::Resize(Count size) const {
 }
 
 template<IsPrimitive T> void Vector<T>::RefreshValue() {
-    Count i = 0;
+    u32 i = 0;
     while (RootStore.CountAt(PathAt(i))) {
         const T value = std::get<T>(RootStore.Get(PathAt(i)));
         if (Value.size() == i) Value.push_back(value);
@@ -51,7 +51,7 @@ template<IsPrimitive T> void Vector<T>::RenderValueTree(bool annotate, bool auto
     }
 
     if (TreeNode(Name)) {
-        for (Count i = 0; i < Value.size(); i++) {
+        for (u32 i = 0; i < Value.size(); i++) {
             T value = Value[i];
             TreeNode(to_string(i), false, to_string(value).c_str());
         }
@@ -62,5 +62,5 @@ template<IsPrimitive T> void Vector<T>::RenderValueTree(bool annotate, bool auto
 // Explicit instantiations.
 template struct Vector<bool>;
 template struct Vector<int>;
-template struct Vector<U32>;
+template struct Vector<u32>;
 template struct Vector<float>;

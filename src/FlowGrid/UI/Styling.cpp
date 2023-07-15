@@ -23,7 +23,7 @@ string Ellipsify(string copy, const float max_width) {
     return copy;
 }
 
-void FillRowItemBg(const U32 col) {
+void FillRowItemBg(const u32 col) {
     const ImVec2 row_min = {GetWindowPos().x, GetCursorScreenPos().y};
     const ImRect &rect = {row_min, row_min + ImVec2{GetWindowWidth(), GetFontSize()}};
     GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, col);

@@ -40,10 +40,10 @@ using RadioButtonsFlags = int;
 
 namespace FlowGrid {
 struct ColorSet {
-    ColorSet(const U32 base, const U32 hovered, const U32 active) : base(base), hovered(hovered), active(active) {}
-    ColorSet(const U32 color) : ColorSet(color, color, color) {}
+    ColorSet(const u32 base, const u32 hovered, const u32 active) : base(base), hovered(hovered), active(active) {}
+    ColorSet(const u32 color) : ColorSet(color, color, color) {}
 
-    U32 base, hovered, active;
+    u32 base, hovered, active;
 };
 
 bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed = 0, const char *format = nullptr, HJustify h_justify = HJustify_Middle, KnobVariant variant = KnobVariant_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);

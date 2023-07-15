@@ -40,11 +40,11 @@ IdPairs Store::IdPairs(const StorePath &path) const {
     return id_pairs;
 }
 
-Count Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPairsByPath[path].size(); }
+u32 Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPairsByPath[path].size(); }
 
 void Store::AddIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].insert(value); }
 void Store::EraseIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].erase(value); }
-Count Store::CountAt(const StorePath &path) const { return TransientImpl->PrimitiveByPath.count(path); }
+u32 Store::CountAt(const StorePath &path) const { return TransientImpl->PrimitiveByPath.count(path); }
 bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
     if (!TransientImpl->IdPairsByPath.contains(path)) return false;
     return TransientImpl->IdPairsByPath[path].count(value) > 0;

@@ -49,18 +49,18 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
-    Count InputBusCount() const;
-    Count OutputBusCount() const;
-    inline Count BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
+    u32 InputBusCount() const;
+    u32 OutputBusCount() const;
+    inline u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
 
-    Count InputChannelCount(Count bus) const;
-    Count OutputChannelCount(Count bus) const;
-    inline Count ChannelCount(IO io, Count bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
+    u32 InputChannelCount(u32 bus) const;
+    u32 OutputChannelCount(u32 bus) const;
+    inline u32 ChannelCount(IO io, u32 bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
 
     bool IsOutput() const noexcept { return Name == "Output"; }
 
     // An `AudioGraphNode` may be composed of multiple inner `ma_node`s.
-    // These return the graph-visible I/O nodes. 
+    // These return the graph-visible I/O nodes.
     ma_node *InputNode() const;
     ma_node *OutputNode() const;
 

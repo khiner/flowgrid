@@ -28,9 +28,9 @@ struct DockNodeSettings : Component {
     Prop(Vector<int>, SplitAxis);
     Prop(Vector<int>, Depth);
     Prop(Vector<int>, Flags);
-    Prop(Vector<U32>, Pos); // Packed ImVec2ih
-    Prop(Vector<U32>, Size); // Packed ImVec2ih
-    Prop(Vector<U32>, SizeRef); // Packed ImVec2ih
+    Prop(Vector<u32>, Pos); // Packed ImVec2ih
+    Prop(Vector<u32>, Size); // Packed ImVec2ih
+    Prop(Vector<u32>, SizeRef); // Packed ImVec2ih
 };
 
 struct WindowSettings : Component {
@@ -44,9 +44,9 @@ struct WindowSettings : Component {
     Prop(Vector<ID>, ViewportId);
     Prop(Vector<ID>, DockId);
     Prop(Vector<int>, DockOrder);
-    Prop(Vector<U32>, Pos); // Packed ImVec2ih
-    Prop(Vector<U32>, Size); // Packed ImVec2ih
-    Prop(Vector<U32>, ViewportPos); // Packed ImVec2ih
+    Prop(Vector<u32>, Pos); // Packed ImVec2ih
+    Prop(Vector<u32>, Size); // Packed ImVec2ih
+    Prop(Vector<u32>, ViewportPos); // Packed ImVec2ih
     Prop(Vector<bool>, Collapsed);
 };
 
@@ -73,8 +73,8 @@ struct TableSettings : Component {
     Prop(Vector<ImGuiID>, ID);
     Prop(Vector<int>, SaveFlags);
     Prop(Vector<float>, RefScale);
-    Prop(Vector<Count>, ColumnsCount);
-    Prop(Vector<Count>, ColumnsCountMax);
+    Prop(Vector<u32>, ColumnsCount);
+    Prop(Vector<u32>, ColumnsCountMax);
     Prop(Vector<bool>, WantApply);
     Prop(TableColumnSettings, Columns);
 };

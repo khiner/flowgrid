@@ -13,6 +13,6 @@ template<IsPrimitive T> void PrimitiveField<T>::RenderValueTree(bool annotate, b
 // Explicit instantiations.
 template struct PrimitiveField<bool>;
 template struct PrimitiveField<int>;
-template struct PrimitiveField<U32>;
+template struct PrimitiveField<u32>;
 template struct PrimitiveField<float>;
 template struct PrimitiveField<std::string>;

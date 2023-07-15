@@ -62,7 +62,7 @@ void CommitGesture() {
     History.AddGesture({merged_actions, Clock::now()});
 }
 
-void Project::SetHistoryIndex(Count index) const {
+void Project::SetHistoryIndex(u32 index) const {
     if (index == History.Index) return;
 
     Field::GestureChangedPaths.clear();
@@ -377,7 +377,7 @@ struct Plottable {
 Plottable StorePathChangeFrequencyPlottable() {
     if (History.GetChangedPathsCount() == 0 && Field::GestureChangedPaths.empty()) return {};
 
-    std::map<StorePath, Count> gesture_change_counts;
+    std::map<StorePath, u32> gesture_change_counts;
     for (const auto &[field_id, changed_paths] : Field::GestureChangedPaths) {
         const auto &field = Field::ById[field_id];
         for (const PathsMoment &paths_moment : changed_paths) {
@@ -390,7 +390,7 @@ Plottable StorePathChangeFrequencyPlottable() {
     const auto history_change_counts = History.GetChangeCountByPath();
     const std::set<StorePath> paths = ranges::views::concat(ranges::views::keys(history_change_counts), ranges::views::keys(gesture_change_counts)) | ranges::to<std::set>;
 
-    Count i = 0;
+    u32 i = 0;
     std::vector<ImU64> values(!gesture_change_counts.empty() ? paths.size() * 2 : paths.size());
     for (const auto &path : paths) {
         values[i++] = history_change_counts.contains(path) ? history_change_counts.at(path) : 0;
@@ -479,7 +479,7 @@ void Project::Debug::ProjectPreview::Render() const {
 }
 
 void ShowActions(const SavableActionMoments &actions) {
-    for (Count action_index = 0; action_index < actions.size(); action_index++) {
+    for (u32 action_index = 0; action_index < actions.size(); action_index++) {
         const auto &[action, queue_time] = actions[action_index];
         if (TreeNodeEx(to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
             BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
@@ -534,7 +534,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         const bool no_history = History.Empty();
         if (no_history) BeginDisabled();
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", History.Size() - 1, History.Index)) {
-            for (Count i = 1; i < History.Size(); i++) {
+            for (u32 i = 1; i < History.Size(); i++) {
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[store_record, gesture] = History.RecordAt(i);
                     BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", gesture.CommitTime).c_str());
@@ -721,11 +721,11 @@ DefineQ(Primitive::Flags::Set);
 DefineQ(MultilineString::Set);
 DefineQ(Vector<bool>::SetAt);
 DefineQ(Vector<int>::SetAt);
-DefineQ(Vector<U32>::SetAt);
+DefineQ(Vector<u32>::SetAt);
 DefineQ(Vector<float>::SetAt);
 DefineQ(Vector2D<bool>::Set);
 DefineQ(Vector2D<int>::Set);
-DefineQ(Vector2D<U32>::Set);
+DefineQ(Vector2D<u32>::Set);
 DefineQ(Vector2D<float>::Set);
 DefineQ(Vec2::Set);
 DefineQ(Vec2::SetX);

@@ -25,7 +25,7 @@ InputNode::InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
 }
 
 struct InputNode::Buffer {
-    Buffer(ma_format format, Count channels) {
+    Buffer(ma_format format, u32 channels) {
         int result = ma_audio_buffer_ref_init(format, channels, nullptr, 0, &BufferRef);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize buffer ref: ", result));
     }
@@ -33,7 +33,7 @@ struct InputNode::Buffer {
         ma_audio_buffer_ref_uninit(&BufferRef);
     }
 
-    void SetData(const void *input, Count frame_count) {
+    void SetData(const void *input, u32 frame_count) {
         ma_audio_buffer_ref_set_data(&BufferRef, input, frame_count);
     }
 
@@ -43,12 +43,12 @@ private:
     ma_audio_buffer_ref BufferRef;
 };
 
-void InputNode::SetBufferData(const void *input, Count frame_count) const {
+void InputNode::SetBufferData(const void *input, u32 frame_count) const {
     if (_Buffer) _Buffer->SetData(input, frame_count);
 }
 
 ma_node *InputNode::DoInit() {
-    _Buffer = std::make_unique<Buffer>(ma_format(int(audio_device.InFormat)), Count(audio_device.InChannels));
+    _Buffer = std::make_unique<Buffer>(ma_format(int(audio_device.InFormat)), u32(audio_device.InChannels));
 
     static ma_data_source_node source_node{}; // todo instance var
     ma_data_source_node_config config = ma_data_source_node_config_init(_Buffer->Get());

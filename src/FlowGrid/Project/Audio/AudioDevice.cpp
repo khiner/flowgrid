@@ -28,10 +28,10 @@ static ma_uint32 StandardSampleRatePriorities[] = {
     (ma_uint32)ma_standard_sample_rate_384000,
 };
 
-const std::vector<U32> AudioDevice::PrioritizedSampleRates = {std::begin(StandardSampleRatePriorities), std::end(StandardSampleRatePriorities)};
+const std::vector<u32> AudioDevice::PrioritizedSampleRates = {std::begin(StandardSampleRatePriorities), std::end(StandardSampleRatePriorities)};
 
 static std::vector<ma_format> NativeFormats;
-static std::vector<U32> NativeSampleRates;
+static std::vector<u32> NativeSampleRates;
 
 static ma_context AudioContext;
 static ma_device MaDevice;
@@ -76,7 +76,7 @@ const string AudioDevice::GetFormatName(const int format) {
     const bool is_native = std::find(NativeFormats.begin(), NativeFormats.end(), format) != NativeFormats.end();
     return ::std::format("{}{}", ma_get_format_name((ma_format)format), is_native ? "*" : "");
 }
-const string AudioDevice::GetSampleRateName(const U32 sample_rate) {
+const string AudioDevice::GetSampleRateName(const u32 sample_rate) {
     const bool is_native = std::find(NativeSampleRates.begin(), NativeSampleRates.end(), sample_rate) != NativeSampleRates.end();
     return std::format("{}{}", to_string(sample_rate), is_native ? "*" : "");
 }
@@ -96,16 +96,16 @@ void AudioDevice::Init() {
     int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
 
-    static Count PlaybackDeviceCount, CaptureDeviceCount;
+    static u32 PlaybackDeviceCount, CaptureDeviceCount;
     static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
     result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio devices: {}", result));
 
-    for (Count i = 0; i < CaptureDeviceCount; i++) {
+    for (u32 i = 0; i < CaptureDeviceCount; i++) {
         DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
         DeviceNames[IO_In].push_back(CaptureDeviceInfos[i].name);
     }
-    for (Count i = 0; i < PlaybackDeviceCount; i++) {
+    for (u32 i = 0; i < PlaybackDeviceCount; i++) {
         DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
         DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
     }
@@ -143,7 +143,7 @@ void AudioDevice::Init() {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio device info: {}", result));
 
     // todo need to verify that the cross-product of these formats & sample rates are supported natively, and not just each config jointly
-    for (Count i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
+    for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
         const auto &native_format = DeviceInfo.nativeDataFormats[i];
         NativeFormats.emplace_back(native_format.format);
         NativeSampleRates.emplace_back(native_format.sampleRate);

@@ -57,8 +57,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     Count OutputChannelCount(Count bus) const;
     inline Count ChannelCount(IO io, Count bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
 
-    ma_monitor_node *GetMonitorNode(IO io) const { return io == IO_In ? InputMonitorNode.get() : OutputMonitorNode.get(); }
-
     bool IsOutput() const noexcept { return Name == "Output"; }
 
     inline ma_node *InputNode() const noexcept {
@@ -121,11 +119,17 @@ protected:
     virtual ma_node *DoInit() { return nullptr; };
     virtual void DoUninit() {}
 
+    ma_monitor_node *GetMonitorNode(IO io) const { return io == IO_In ? InputMonitorNode.get() : OutputMonitorNode.get(); }
+    ma_monitor_node *InitMonitorNode(IO io);
+    void UninitMonitorNode(IO io);
+
     void UpdateOutputLevel();
     void UpdateGainer();
-    void UpdateMonitors();
+    void UpdateMonitor(IO);
     void UpdateMonitorSampleRate(IO);
     void UpdateMonitorWindowFunction(IO);
+
+    void UpdateAll();
 
     const AudioGraph *Graph;
     ma_node *Node;

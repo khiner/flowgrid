@@ -42,7 +42,6 @@ struct AudioGraphNodes : Component {
     Iterator end() { return Children.end(); }
 
     void Init();
-    void Update();
     void Uninit();
 
     const AudioGraph *Graph;

@@ -83,9 +83,7 @@ Count AudioGraphNode::OutputChannelCount(Count bus) const { return ma_node_get_o
 
 void AudioGraphNode::Init() {
     Node = DoInit();
-    UpdateGainer();
-    UpdateMonitors();
-    UpdateOutputLevel();
+    UpdateAll();
 }
 
 void AudioGraphNode::UpdateOutputLevel() {
@@ -113,61 +111,62 @@ void AudioGraphNode::UpdateGainer() {
 }
 
 void AudioGraphNode::UpdateMonitorSampleRate(IO io) {
-    auto *monitor = GetMonitorNode(io);
-    if (monitor == nullptr) return;
-
-    ma_monitor_set_sample_rate(monitor, ma_uint32(audio_device.SampleRate));
+    if (auto *monitor = GetMonitorNode(io)) {
+        ma_monitor_set_sample_rate(monitor, ma_uint32(audio_device.SampleRate));
+    }
 }
 
 void AudioGraphNode::UpdateMonitorWindowFunction(IO io) {
-    auto *monitor = GetMonitorNode(io);
-    if (monitor == nullptr) return;
+    if (auto *monitor = GetMonitorNode(io)) {
+        auto window_func = GetWindowFunction(WindowType);
+        if (window_func == nullptr) throw std::runtime_error(std::format("Failed to get window function for window type {}.", int(WindowType)));
 
-    auto window_func = GetWindowFunction(WindowType);
-    if (window_func == nullptr) throw std::runtime_error(std::format("Failed to get window function for window type {}.", int(WindowType)));
-
-    ma_monitor_apply_window_function(monitor, window_func);
+        ma_monitor_apply_window_function(monitor, window_func);
+    }
 }
 
-void AudioGraphNode::UpdateMonitors() {
-    if (InputBusCount() > 0) {
-        if (Monitor && !InputMonitorNode) {
-            InputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
-            const auto *device = audio_device.Get();
-            const ma_uint32 buffer_size = device->playback.internalPeriodSizeInFrames;
-            ma_monitor_node_config config = ma_monitor_node_config_init(InputChannelCount(0), device->playback.internalSampleRate, buffer_size);
-            int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, InputMonitorNode.get());
-            if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize input monitor node: {}", result)); }
+ma_monitor_node *AudioGraphNode::InitMonitorNode(IO io) {
+    if (auto *monitor = GetMonitorNode(io)) return monitor;
 
-            UpdateMonitorWindowFunction(IO_In);
-        } else if (!Monitor && InputMonitorNode) {
-            InputMonitorNode.reset();
-        }
-    }
+    if (io == IO_In) InputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
+    else OutputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
+    return GetMonitorNode(io);
+}
 
-    if (OutputBusCount() > 0) {
-        if (Monitor && !OutputMonitorNode) {
-            OutputMonitorNode = std::unique_ptr<ma_monitor_node, MonitorDeleter>(new ma_monitor_node());
-            const auto *device = audio_device.Get();
-            const ma_uint32 buffer_size = device->playback.internalPeriodSizeInFrames;
-            ma_monitor_node_config config = ma_monitor_node_config_init(OutputChannelCount(0), device->playback.internalSampleRate, buffer_size);
-            int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, OutputMonitorNode.get());
-            if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize output monitor node: {}", result)); }
+void AudioGraphNode::UninitMonitorNode(IO io) {
+    if (io == IO_In) InputMonitorNode.reset();
+    else OutputMonitorNode.reset();
+}
 
-            UpdateMonitorWindowFunction(IO_Out);
-        } else if (!Monitor && OutputMonitorNode) {
-            OutputMonitorNode.reset();
-        }
+void AudioGraphNode::UpdateMonitor(IO io) {
+    auto *monitor = GetMonitorNode(io);
+    if (!monitor && Monitor && BusCount(io) > 0) {
+        monitor = InitMonitorNode(io);
+        const auto *device = audio_device.Get();
+        const ma_uint32 buffer_size = device->playback.internalPeriodSizeInFrames;
+        ma_monitor_node_config config = ma_monitor_node_config_init(ChannelCount(io, 0), device->playback.internalSampleRate, buffer_size);
+        int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, monitor);
+        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize {} monitor node: {}", to_string(io), result)); }
+
+        UpdateMonitorWindowFunction(IO_In);
+    } else if (monitor && (!Monitor || InputBusCount() == 0)) {
+        UninitMonitorNode(io);
     }
 }
 
 void AudioGraphNode::Update() {
-    const bool is_initialized = Node != nullptr;
-    if (On && !is_initialized) Init();
-    else if (!On && is_initialized) Uninit();
+    if (On && Node == nullptr) return Init();
+    if (!On && Node != nullptr) return Uninit();
 
+    UpdateAll();
+}
+
+void AudioGraphNode::UpdateAll() {
+    // Update nodes from earliest to latest in the signal path.
+    UpdateMonitor(IO_In);
     UpdateGainer();
-    UpdateMonitors();
+    UpdateMonitor(IO_Out);
+
     UpdateOutputLevel();
 }
 
@@ -184,7 +183,10 @@ void AudioGraphNode::MonitorDeleter::operator()(ma_monitor_node *monitor) {
 void AudioGraphNode::Uninit() {
     if (Node == nullptr) return;
 
+    // Disconnect from earliest to latest in the signal path.
+    UninitMonitorNode(IO_In);
     GainerNode.reset();
+    UninitMonitorNode(IO_Out);
     SplitterNodes.clear();
     DoUninit();
     ma_node_uninit(Node, nullptr);
@@ -192,18 +194,17 @@ void AudioGraphNode::Uninit() {
 }
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
-    if (to.InputMonitorNode) ma_node_attach_output_bus(to.InputMonitorNode.get(), 0, to.Node, 0);
+    if (auto *to_input_monitor = to.GetMonitorNode(IO_In)) ma_node_attach_output_bus(to_input_monitor, 0, to.Node, 0);
     if (GainerNode) ma_node_attach_output_bus(Node, 0, GainerNode.get(), 0);
-    if (OutputMonitorNode) {
-        if (GainerNode) ma_node_attach_output_bus(GainerNode.get(), 0, OutputMonitorNode.get(), 0); // Monitor after applying gain.
-        else ma_node_attach_output_bus(Node, 0, OutputMonitorNode.get(), 0);
+    if (auto *out_monitor = GetMonitorNode(IO_Out)) {
+        if (GainerNode) ma_node_attach_output_bus(GainerNode.get(), 0, out_monitor, 0); // Monitor after applying gain.
+        else ma_node_attach_output_bus(Node, 0, out_monitor, 0);
     }
 
     to.InputNodes.insert(this);
     OutputNodes.insert(&to);
 
-    auto *currently_connected_to = ((ma_node_base *)OutputNode())->pOutputBuses[0].pInputNode;
-    if (currently_connected_to != nullptr) {
+    if (auto *currently_connected_to = ((ma_node_base *)OutputNode())->pOutputBuses[0].pInputNode) {
         // Connecting a single source to multiple destinations requires a splitter node.
         // We chain splitters together to support any number of destinations.
         // Note: `new` is necessary here because we use a custom deleter.

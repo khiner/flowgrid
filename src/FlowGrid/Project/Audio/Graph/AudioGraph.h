@@ -7,7 +7,6 @@
 struct ma_device;
 struct ma_node_graph;
 
-// Corresponds to `ma_node_graph`.
 struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
@@ -18,9 +17,20 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener {
     void AudioCallback(ma_device *, void *output, const void *input, Count frame_count) const;
 
     void RenderConnections() const;
-    void Update();
 
-    inline ma_node_graph *Get() const noexcept { return Graph.get(); }
+    // Wraps around `ma_node_graph`.
+    struct MaGraph {
+        MaGraph();
+        ~MaGraph();
+
+        void Init();
+        void Uninit();
+
+        inline ma_node_graph *Get() const noexcept { return Graph.get(); }
+        std::unique_ptr<ma_node_graph> Graph;
+    };
+
+    inline ma_node_graph *Get() const noexcept { return Graph.Get(); }
 
     struct Style : Component {
         using Component::Component;
@@ -44,15 +54,13 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener {
         Prop(Matrix, Matrix);
     };
 
+    MaGraph Graph;
+
     Prop(AudioGraphNodes, Nodes);
     Prop(AdjacencyList, Connections);
     Prop(Style, Style);
 
-    std::unique_ptr<ma_node_graph> Graph;
-
 private:
-    void Init();
-    void Uninit();
     void UpdateConnections();
 
     void Render() const override {}

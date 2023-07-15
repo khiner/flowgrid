@@ -31,7 +31,7 @@ void FaustNode::OnFaustDspChanged(dsp *dsp) {
         Init();
     } else {
         CurrentDsp = dsp;
-        Update();
+        UpdateAll();
     }
 }
 

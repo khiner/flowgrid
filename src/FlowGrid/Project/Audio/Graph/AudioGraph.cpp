@@ -10,20 +10,44 @@
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
-AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
+AudioGraph::MaGraph::MaGraph() {
     Init();
+}
+AudioGraph::MaGraph::~MaGraph() {
+    Uninit();
+}
+
+void AudioGraph::MaGraph::Init() {
+    ma_node_graph_config config = ma_node_graph_config_init(audio_device.InChannels);
+    Graph = std::make_unique<ma_node_graph>();
+    const int result = ma_node_graph_init(&config, nullptr, Graph.get());
+
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
+}
+void AudioGraph::MaGraph::Uninit() {
+    // Graph endpoint node is already uninitialized by `Nodes.Output`.
+    Graph.reset();
+}
+
+AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     const Field::References listened_fields = {audio_device.On, audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
     for (const auto *node : Nodes) {
         // Changing these node fields can result in connection changes.
+        // todo make a new `NodeListener` interface to break this dependency, so that nodes listen to their own fields and
+        // the graph listens to the nodes to change connections after the node responds to its own field changes.
         node->On.RegisterChangeListener(this);
         node->SmoothOutputLevel.RegisterChangeListener(this);
         node->Monitor.RegisterChangeListener(this);
     }
+
+    // Set up default connections.
+    Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
+    Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
 }
 
 AudioGraph::~AudioGraph() {
-    Uninit();
+    Field::UnregisterChangeListener(this);
 }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
@@ -33,10 +57,12 @@ void AudioGraph::OnFaustDspChanged(dsp *dsp) {
 
 void AudioGraph::OnFieldChanged() {
     if (audio_device.IsChanged()) {
-        Uninit();
-        Init();
-        Update();
-        return; // Nodes and connections are already updated.
+        Nodes.Uninit();
+        Graph.Uninit();
+        Graph.Init();
+        Nodes.Init();
+        UpdateConnections();
+        return;
     }
 
     bool any_node_changed = false;
@@ -58,22 +84,8 @@ void AudioGraph::AudioCallback(ma_device *device, void *output, const void *inpu
     (void)device; // unused
 }
 
-void AudioGraph::Init() {
-    ma_node_graph_config config = ma_node_graph_config_init(audio_device.InChannels);
-    Graph = std::make_unique<ma_node_graph>();
-    const int result = ma_node_graph_init(&config, nullptr, Graph.get());
-
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
-
-    Nodes.Init();
-    Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
-    Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
-}
-
 void AudioGraph::UpdateConnections() {
-    for (auto *out_node : Nodes) {
-        out_node->DisconnectAll();
-    }
+    for (auto *out_node : Nodes) out_node->DisconnectAll();
 
     for (auto *out_node : Nodes) {
         if (out_node->OutputBusCount() == 0) continue;
@@ -99,22 +111,11 @@ void AudioGraph::UpdateConnections() {
     }
 }
 
-void AudioGraph::Update() {
-    Nodes.Update();
-    UpdateConnections();
-}
-
-void AudioGraph::Uninit() {
-    Nodes.Uninit();
-    // Graph node is already uninitialized in `Nodes.Uninit`.
-    Graph.reset();
-}
-
 using namespace ImGui;
 
 void AudioGraph::RenderConnections() const {
     // Calculate the maximum I/O label widths.
-    ImVec2 max_label_w_no_padding{0, 0}; // in (left), out (top)
+    ImVec2 max_label_w_no_padding{0, 0}; // I/O vec: in (left), out (top)
     for (const auto *node : Nodes) {
         const float label_w = CalcTextSize(node->Name.c_str()).x;
         if (node->InputBusCount() > 0) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);

@@ -1,18 +1,18 @@
 #include "AudioGraphNodes.h"
 
-#include "Project/Audio/AudioDevice.h"
 #include "AudioGraph.h"
+#include "Project/Audio/AudioDevice.h"
 
 AudioGraphNodes::AudioGraphNodes(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {}
-
-AudioGraphNodes::~AudioGraphNodes() {}
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
+    Init();
+}
+AudioGraphNodes::~AudioGraphNodes() {
+    Uninit();
+}
 
 void AudioGraphNodes::Init() {
     for (auto *node : *this) node->Init();
-}
-void AudioGraphNodes::Update() {
-    for (auto *node : *this) node->Update();
 }
 void AudioGraphNodes::Uninit() {
     for (auto *node : *this) node->Uninit();

@@ -7,12 +7,13 @@
 struct ma_device;
 struct ma_node_graph;
 
-struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener {
+struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
 
     void OnFieldChanged() override;
     void OnFaustDspChanged(dsp *) override;
+    void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
     void AudioCallback(ma_device *, void *output, const void *input, Count frame_count) const;
 

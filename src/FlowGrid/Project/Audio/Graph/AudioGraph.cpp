@@ -32,14 +32,7 @@ void AudioGraph::MaGraph::Uninit() {
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     const Field::References listened_fields = {audio_device.On, audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-    for (const auto *node : Nodes) {
-        // Changing these node fields can result in connection changes.
-        // todo make a new `NodeListener` interface to break this dependency, so that nodes listen to their own fields and
-        // the graph listens to the nodes to change connections after the node responds to its own field changes.
-        node->On.RegisterChangeListener(this);
-        node->SmoothOutputLevel.RegisterChangeListener(this);
-        node->Monitor.RegisterChangeListener(this);
-    }
+    for (auto *node : Nodes) node->RegisterListener(this);
 
     // Set up default connections.
     Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
@@ -47,11 +40,16 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
 }
 
 AudioGraph::~AudioGraph() {
+    for (auto *node : Nodes) node->UnregisterListener(this);
     Field::UnregisterChangeListener(this);
 }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
     Nodes.Faust.OnFaustDspChanged(dsp);
+    UpdateConnections();
+}
+
+void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) {
     UpdateConnections();
 }
 
@@ -65,15 +63,7 @@ void AudioGraph::OnFieldChanged() {
         return;
     }
 
-    bool any_node_changed = false;
-    for (auto *node : Nodes) {
-        if (node->On.IsChanged() || node->Monitor.IsChanged() || node->SmoothOutputLevel.IsChanged()) {
-            node->Update();
-            any_node_changed = true;
-        }
-    }
-
-    if (Connections.IsChanged() || any_node_changed) {
+    if (Connections.IsChanged()) {
         UpdateConnections();
     }
 }

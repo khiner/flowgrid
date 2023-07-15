@@ -47,6 +47,13 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     AudioGraphNode(ComponentArgs &&);
     virtual ~AudioGraphNode();
 
+    struct Listener {
+        // This allows for the parent graph to respond to changes in the graph topology _after_ the node has updated its internal state.
+        virtual void OnNodeConnectionsChanged(AudioGraphNode *) = 0;
+    };
+    inline void RegisterListener(Listener *listener) noexcept { Listeners.insert(listener); }
+    inline void UnregisterListener(Listener *listener) noexcept {  Listeners.erase(listener); }
+
     void OnFieldChanged() override;
 
     Count InputBusCount() const;
@@ -75,7 +82,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     inline void SetActive(bool is_active) noexcept { IsActive = is_active; }
 
     void Init();
-    void Update();
     void Uninit();
 
     Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.\nIt is active when it has a connection path to the graph output node.", true);
@@ -133,4 +139,6 @@ protected:
 
     const AudioGraph *Graph;
     ma_node *Node;
+
+    std::unordered_set<Listener *> Listeners;
 };

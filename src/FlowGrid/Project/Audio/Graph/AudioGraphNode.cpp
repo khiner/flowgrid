@@ -15,11 +15,9 @@
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraphNodes *>(Parent)->Graph) {
     audio_device.SampleRate.RegisterChangeListener(this);
-    Muted.RegisterChangeListener(this);
-    OutputLevel.RegisterChangeListener(this);
-    SmoothOutputLevel.RegisterChangeListener(this);
-    SmoothOutputLevelMs.RegisterChangeListener(this);
-    WindowType.RegisterChangeListener(this);
+
+    const Field::References listened_fields = {On, Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
+    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
@@ -57,8 +55,15 @@ WindowFunctionType GetWindowFunction(WindowType type) {
 }
 
 void AudioGraphNode::OnFieldChanged() {
+    if (On.IsChanged()) {
+        if (On && Node == nullptr) Init();
+        else if (!On && Node != nullptr) Uninit();
+    }
     if (SmoothOutputLevel.IsChanged() || SmoothOutputLevelMs.IsChanged()) {
         UpdateGainer();
+    }
+    if (Monitor.IsChanged()) {
+        for (const IO io : IO_All) UpdateMonitor(io);
     }
     if (Muted.IsChanged() || OutputLevel.IsChanged()) {
         UpdateOutputLevel();
@@ -68,6 +73,10 @@ void AudioGraphNode::OnFieldChanged() {
     }
     if (WindowType.IsChanged()) {
         for (const IO io : IO_All) UpdateMonitorWindowFunction(io);
+    }
+    // Notify on field changes that can result in connection changes.
+    if (On.IsChanged() || SmoothOutputLevel.IsChanged() || Monitor.IsChanged()) {
+        for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
     }
 }
 
@@ -148,17 +157,10 @@ void AudioGraphNode::UpdateMonitor(IO io) {
         int result = ma_monitor_node_init(Graph->Get(), &config, nullptr, monitor);
         if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize {} monitor node: {}", to_string(io), result)); }
 
-        UpdateMonitorWindowFunction(IO_In);
+        UpdateMonitorWindowFunction(io);
     } else if (monitor && (!Monitor || InputBusCount() == 0)) {
         UninitMonitorNode(io);
     }
-}
-
-void AudioGraphNode::Update() {
-    if (On && Node == nullptr) return Init();
-    if (!On && Node != nullptr) return Uninit();
-
-    UpdateAll();
 }
 
 void AudioGraphNode::UpdateAll() {

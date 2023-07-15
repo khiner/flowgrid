@@ -3,6 +3,8 @@
 #include "AudioGraph.h"
 #include "Project/Audio/AudioDevice.h"
 
+#include "miniaudio.h"
+
 AudioGraphNodes::AudioGraphNodes(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
     Init();
@@ -22,25 +24,42 @@ InputNode::InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Muted.Set_(true); // External input is muted by default.
 }
 
+struct InputNode::Buffer {
+    Buffer(ma_format format, Count channels) {
+        int result = ma_audio_buffer_ref_init(format, channels, nullptr, 0, &BufferRef);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize buffer ref: ", result));
+    }
+    ~Buffer() {
+        ma_audio_buffer_ref_uninit(&BufferRef);
+    }
+
+    void SetData(const void *input, Count frame_count) {
+        ma_audio_buffer_ref_set_data(&BufferRef, input, frame_count);
+    }
+
+    ma_audio_buffer_ref *Get() noexcept { return &BufferRef; }
+
+private:
+    ma_audio_buffer_ref BufferRef;
+};
+
+void InputNode::SetBufferData(const void *input, Count frame_count) const {
+    if (_Buffer) _Buffer->SetData(input, frame_count);
+}
+
 ma_node *InputNode::DoInit() {
-    Buffer = std::unique_ptr<ma_audio_buffer_ref, BufferDeleter>(new ma_audio_buffer_ref());
-    int result = ma_audio_buffer_ref_init((ma_format) int(audio_device.InFormat), audio_device.InChannels, nullptr, 0, Buffer.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize input audio buffer: ", result));
+    _Buffer = std::make_unique<Buffer>(ma_format(int(audio_device.InFormat)), Count(audio_device.InChannels));
 
     static ma_data_source_node source_node{}; // todo instance var
-    ma_data_source_node_config config = ma_data_source_node_config_init(Buffer.get());
-    result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &source_node);
+    ma_data_source_node_config config = ma_data_source_node_config_init(_Buffer->Get());
+    int result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &source_node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));
 
     return &source_node;
 }
 
-void InputNode::BufferDeleter::operator()(ma_audio_buffer_ref *buffer) {
-    ma_audio_buffer_ref_uninit(buffer);
-}
-
 void InputNode::DoUninit() {
-    Buffer.reset();
+    _Buffer.reset();
     ma_data_source_node_uninit((ma_data_source_node *)Node, nullptr);
 }
 

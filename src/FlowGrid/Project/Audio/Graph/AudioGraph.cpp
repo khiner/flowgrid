@@ -4,6 +4,8 @@
 #include "implot.h"
 #include "implot_internal.h"
 
+#include "miniaudio.h"
+
 #include "Core/Container/AdjacencyListAction.h"
 #include "Project/Audio/AudioDevice.h"
 #include "UI/HelpMarker.h"
@@ -69,7 +71,7 @@ void AudioGraph::OnFieldChanged() {
 }
 
 void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, Count frame_count) const {
-    ma_audio_buffer_ref_set_data(Nodes.Input.Buffer.get(), input, frame_count);
+    Nodes.Input.SetBufferData(input, frame_count);
     ma_node_graph_read_pcm_frames(Get(), output, frame_count, nullptr);
     (void)device; // unused
 }

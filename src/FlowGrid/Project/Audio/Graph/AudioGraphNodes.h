@@ -2,7 +2,7 @@
 
 #include "AudioGraphNode.h"
 
-// xxx should not depend on any specific node types
+// todo dynamic node creation with no dependencies on any specific node types.
 #include "Project/Audio/Faust/FaustNode.h"
 #include "Project/Audio/TestToneNode.h"
 
@@ -12,10 +12,12 @@ struct InputNode : AudioGraphNode {
     ma_node *DoInit() override;
     void DoUninit() override;
 
-    struct BufferDeleter {
-        void operator()(ma_audio_buffer_ref *);
-    };
-    std::unique_ptr<ma_audio_buffer_ref, BufferDeleter> Buffer;
+    void SetBufferData(const void *input, Count frame_count) const;
+
+    struct Buffer;
+
+private:
+    std::unique_ptr<Buffer> _Buffer;
 };
 
 struct OutputNode : AudioGraphNode {

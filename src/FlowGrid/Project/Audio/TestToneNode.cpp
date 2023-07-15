@@ -1,6 +1,8 @@
 #include "Project/Audio/AudioDevice.h"
 #include "Project/Audio/Graph/AudioGraph.h"
 
+#include "miniaudio.h"
+
 #include "imgui.h"
 
 static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?

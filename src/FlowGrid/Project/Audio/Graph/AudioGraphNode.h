@@ -3,16 +3,9 @@
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
-
 #include "Project/Audio/AudioIO.h"
 
-// xxx miniaudio should not be in a header, but forward-declaring `ma_splitter` is not working...
-#include "miniaudio.h"
-
-// using ma_node = void;
-// struct ma_splitter_node;
-struct ma_gainer_node;
-struct ma_monitor_node;
+using ma_node = void;
 
 struct AudioGraph;
 
@@ -52,7 +45,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         virtual void OnNodeConnectionsChanged(AudioGraphNode *) = 0;
     };
     inline void RegisterListener(Listener *listener) noexcept { Listeners.insert(listener); }
-    inline void UnregisterListener(Listener *listener) noexcept {  Listeners.erase(listener); }
+    inline void UnregisterListener(Listener *listener) noexcept { Listeners.erase(listener); }
 
     void OnFieldChanged() override;
 
@@ -66,15 +59,10 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     bool IsOutput() const noexcept { return Name == "Output"; }
 
-    inline ma_node *InputNode() const noexcept {
-        if (InputMonitorNode) return InputMonitorNode.get();
-        return Node;
-    }
-    inline ma_node *OutputNode() const noexcept {
-        if (OutputMonitorNode) return OutputMonitorNode.get();
-        if (GainerNode) return GainerNode.get();
-        return Node;
-    }
+    // An `AudioGraphNode` may be composed of multiple inner `ma_node`s.
+    // These return the graph-visible I/O nodes. 
+    ma_node *InputNode() const;
+    ma_node *OutputNode() const;
 
     void ConnectTo(AudioGraphNode &);
     void DisconnectAll();
@@ -97,21 +85,14 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         WindowType_BlackmanHarris
     );
 
-    struct GainerDeleter {
-        void operator()(ma_gainer_node *);
-    };
-    std::unique_ptr<ma_gainer_node, GainerDeleter> GainerNode;
+    struct GainerNode;
+    std::unique_ptr<GainerNode> Gainer;
 
-    struct SplitterDeleter {
-        void operator()(ma_splitter_node *);
-    };
-    std::vector<std::unique_ptr<ma_splitter_node, SplitterDeleter>> SplitterNodes;
+    struct SplitterNode;
+    std::vector<std::unique_ptr<SplitterNode>> Splitters;
 
-    struct MonitorDeleter {
-        void operator()(ma_monitor_node *);
-    };
-    std::unique_ptr<ma_monitor_node, MonitorDeleter> OutputMonitorNode;
-    std::unique_ptr<ma_monitor_node, MonitorDeleter> InputMonitorNode;
+    struct MonitorNode;
+    std::unique_ptr<MonitorNode> InputMonitor, OutputMonitor;
 
     // These fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
     bool IsActive{false}; // `true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
@@ -119,15 +100,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
 protected:
     void Render() const override;
-    void RenderMonitorWaveform(IO) const;
-    void RenderMonitorMagnitudeSpectrum(IO) const;
 
     virtual ma_node *DoInit() { return nullptr; };
     virtual void DoUninit() {}
 
-    ma_monitor_node *GetMonitorNode(IO io) const { return io == IO_In ? InputMonitorNode.get() : OutputMonitorNode.get(); }
-    ma_monitor_node *InitMonitorNode(IO io);
-    void UninitMonitorNode(IO io);
+    MonitorNode *GetMonitor(IO) const;
 
     void UpdateOutputLevel();
     void UpdateGainer();

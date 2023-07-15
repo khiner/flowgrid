@@ -17,15 +17,20 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     }
     bool CanApply(const ActionType &) const override { return true; }
 
+    void SetJson(const json &) const override;
+    json ToJson() const override;
+
     IdPairs Get() const;
 
     // This value is not cached like other fields, because it uses a backing store (a single `immer::set`) that's performant to query.
     void RefreshValue() override {}
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
+    void Add(IdPair &&) const;
     void Connect(ID source, ID destination) const;
     void Disconnect(ID source, ID destination) const;
     void ToggleConnection(ID source, ID destination) const;
+    void Clear() const;
 
     bool IsConnected(ID source, ID destination) const;
     bool HasPath(ID source, ID destination, const std::unordered_set<ID> &disabled = {}) const;

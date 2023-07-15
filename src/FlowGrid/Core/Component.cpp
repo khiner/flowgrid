@@ -51,6 +51,39 @@ Component::~Component() {
     ById.erase(Id);
 }
 
+// By default, a component is converted to JSON by recursively visiting all of its leaf components (Fields) depth-first,
+// and assigning the leaf's `json_pointer` to the leaf's JSON value.
+json Component::ToJson() const {
+    if (Children.empty()) return nullptr;
+
+    std::stack<const Component *> to_visit;
+    to_visit.push(this);
+
+    json j;
+    while (!to_visit.empty()) {
+        const auto *current = to_visit.top();
+        to_visit.pop();
+
+        if (current->ChildCount() == 0) {
+            auto leaf_json = current->ToJson();
+            if (!leaf_json.is_null()) j[current->JsonPointer()] = std::move(leaf_json);
+        } else {
+            for (const auto *child : current->Children) {
+                to_visit.push(child);
+            }
+        }
+    }
+
+    return j;
+}
+
+void Component::SetJson(const json &j) const {
+    const auto &flattened = j.flatten();
+    for (const auto &[key, value] : flattened.items()) {
+        Field::FindByPath(key)->SetJson(value);
+    }
+}
+
 // Helper to display a (?) mark which shows a tooltip when hovered. From `imgui_demo.cpp`.
 void Component::HelpMarker(const bool after) const {
     if (Help.empty()) return;

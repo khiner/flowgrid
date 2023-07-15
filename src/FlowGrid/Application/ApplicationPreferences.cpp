@@ -4,7 +4,7 @@
 
 #include "Helper/File.h"
 
-using namespace nlohmann;
+using json = nlohmann::json;
 
 ApplicationPreferences::ApplicationPreferences() {
     if (fs::exists(Path)) {

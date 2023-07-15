@@ -9,8 +9,6 @@
 #include "UI/HelpMarker.h"
 #include "UI/Styling.h"
 
-using namespace nlohmann;
-
 void FileDialog::Apply(const ActionType &action) const {
     // `SelectedFilePath` mutations are non-stateful side effects.
     Visit(

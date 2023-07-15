@@ -6,6 +6,8 @@
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 
+// todo use `IsPrimitive` concept instead of holding `Primitive` values.
+// Need to think about how.
 struct PatchOp {
     enum Type {
         Add,

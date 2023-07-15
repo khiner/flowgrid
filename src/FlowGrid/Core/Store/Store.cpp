@@ -1,10 +1,7 @@
 #include "Store.h"
 
-#include <set>
-
 #include "immer/algorithm.hpp"
 
-#include "Core/Primitive/PrimitiveJson.h"
 #include "StoreImpl.h"
 #include "TransientStoreImpl.h"
 
@@ -27,9 +24,8 @@ void Store::Apply(const ActionType &action) const {
     );
 }
 
-static const std::string IdPairsPrefix = "id_pairs::";
-
 Primitive Store::Get(const StorePath &path) const { return TransientImpl->PrimitiveByPath.at(path); }
+u32 Store::CountAt(const StorePath &path) const { return TransientImpl->PrimitiveByPath.count(path); }
 
 void Store::Set(const StorePath &path, const Primitive &value) const { TransientImpl->PrimitiveByPath.set(path, value); }
 void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.erase(path); }
@@ -44,45 +40,17 @@ u32 Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPa
 
 void Store::AddIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].insert(value); }
 void Store::EraseIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].erase(value); }
-u32 Store::CountAt(const StorePath &path) const { return TransientImpl->PrimitiveByPath.count(path); }
+
+void Store::ClearIdPairs(const StorePath &path) const {
+    TransientImpl->IdPairsByPath[path] = {};
+}
+
 bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
     if (!TransientImpl->IdPairsByPath.contains(path)) return false;
     return TransientImpl->IdPairsByPath[path].count(value) > 0;
 }
 
-using namespace nlohmann;
-
-json Store::GetJson(const StoreImpl &impl) const {
-    // TODO serialize using the concrete primitive type and avoid the ambiguous Primitive JSON conversion.
-    //   - This will be easier after separating container storage, since each `PrimitiveByPath` entry will correspond to a single `PrimitiveField`.
-    json j;
-    for (const auto &[path, primitive] : impl.PrimitiveByPath) {
-        j[json::json_pointer(path.string())] = primitive;
-    }
-    for (const auto &[path, id_pairs] : impl.IdPairsByPath) {
-        j[json::json_pointer(path.string())] = std::format("{}{}", IdPairsPrefix, json(id_pairs).dump());
-    }
-    return j;
-}
-
-static StoreImpl JsonToStore(json &&j) {
-    const auto &flattened = j.flatten();
-    TransientStoreImpl transient;
-    for (const auto &[key, value] : flattened.items()) {
-        const StorePath path = key;
-        if (value.is_string() && std::string(value).starts_with(IdPairsPrefix)) {
-            const auto &id_pairs = json::parse(std::string(value).substr(IdPairsPrefix.size()));
-            for (const auto &id_pair : id_pairs) transient.IdPairsByPath[path].insert(id_pair);
-        } else {
-            transient.PrimitiveByPath.set(path, std::move(value));
-        }
-    }
-
-    return transient.Persistent();
-}
-
 StoreImpl Store::Get() const { return TransientImpl ? TransientImpl->Persistent() : *Impl; }
-json Store::GetJson() const { return GetJson(*Impl); }
 
 void Store::Set(const StoreImpl &impl) {
     Impl = std::make_unique<StoreImpl>(impl);
@@ -104,9 +72,6 @@ Patch Store::CheckedSet(StoreImpl &&store) {
     const auto patch = CreatePatch(store);
     Set(store);
     return patch;
-}
-Patch Store::CheckedSetJson(json &&j) {
-    return CheckedSet(JsonToStore(std::move(j)));
 }
 
 Patch Store::CheckedCommit() { return CheckedSet(TransientImpl->Persistent()); }

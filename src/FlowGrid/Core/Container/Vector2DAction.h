@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/DefineAction.h"
-#include "Core/Primitive/PrimitiveJson.h"
+#include "Core/Primitive/Primitive.h"
 
 namespace Action {
 template<IsPrimitive T> struct Vector2D {

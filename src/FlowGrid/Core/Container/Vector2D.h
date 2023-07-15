@@ -16,6 +16,9 @@ template<IsPrimitive T> struct Vector2D : Field, Actionable<typename Action::Vec
     }
     bool CanApply(const ActionType &) const override { return true; }
 
+    void SetJson(const json &) const override;
+    json ToJson() const override;
+
     void RefreshValue() override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 

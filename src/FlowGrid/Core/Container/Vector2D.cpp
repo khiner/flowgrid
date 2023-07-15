@@ -53,6 +53,14 @@ template<IsPrimitive T> void Vector2D<T>::RefreshValue() {
     Value.resize(i);
 }
 
+template<IsPrimitive T> void Vector2D<T>::SetJson(const json &j) const {
+    std::vector<std::vector<T>> new_value = json::parse(std::string(j));
+    Set(std::move(new_value));
+}
+
+// Using a string representation so we can flatten the JSON without worrying about non-object collection values.
+template<IsPrimitive T> json Vector2D<T>::ToJson() const { return json(Value).dump(); }
+
 using namespace ImGui;
 
 template<IsPrimitive T> void Vector2D<T>::RenderValueTree(bool annotate, bool auto_select) const {

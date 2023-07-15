@@ -102,9 +102,9 @@ Project::Project(Store &store) : Component(store) {
     });
 }
 
-nlohmann::json Project::ToJson(const ProjectFormat format) const {
+json Project::GetProjectJson(const ProjectFormat format) const {
     switch (format) {
-        case StateFormat: return RootStore.GetJson();
+        case StateFormat: return ToJson();
         case ActionFormat: return History.GetIndexedGestures();
     }
 }
@@ -282,7 +282,7 @@ bool Project::Save(const fs::path &path) const {
     if (!format) return false; // TODO log
 
     CommitGesture(); // Make sure any pending actions/diffs are committed.
-    if (!FileIO::write(path, ToJson(*format).dump())) {
+    if (!FileIO::write(path, GetProjectJson(*format).dump())) {
         throw std::runtime_error(std::format("Failed to write project file: {}", path.string()));
     }
 
@@ -309,14 +309,12 @@ void Project::OnApplicationLaunch() const {
     Save(EmptyProjectPath);
 }
 
-nlohmann::json ReadFileJson(const fs::path &file_path) {
-    return nlohmann::json::parse(FileIO::read(file_path));
-}
+json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(file_path)); }
 
 // Helper function used in `Project::Open`.
-void OpenStateFormatProject(const fs::path &file_path, Store &store) {
-    const auto &patch = store.CheckedSetJson(ReadFileJson(file_path));
-    Field::RefreshChanged(patch);
+void Project::OpenStateFormatProject(const fs::path &file_path) const {
+    SetJson(ReadFileJson(file_path)); // Modifies the active transient store.
+    Field::RefreshChanged(RootStore.CheckedCommit());
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
@@ -331,9 +329,9 @@ void Project::Open(const fs::path &file_path) const {
     Field::IsGesturing = false;
 
     if (format == StateFormat) {
-        OpenStateFormatProject(file_path, RootStore);
+        OpenStateFormatProject(file_path);
     } else if (format == ActionFormat) {
-        OpenStateFormatProject(EmptyProjectPath, RootStore);
+        OpenStateFormatProject(EmptyProjectPath);
 
         StoreHistory::IndexedGestures indexed_gestures = ReadFileJson(file_path);
         for (auto &gesture : indexed_gestures.Gestures) {
@@ -469,7 +467,7 @@ void Project::Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    nlohmann::json project_json = project.ToJson(ProjectFormat(int(Format)));
+    json project_json = project.GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {
@@ -485,7 +483,7 @@ void ShowActions(const SavableActionMoments &actions) {
             BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
             SameLine();
             fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
-            nlohmann::json data = nlohmann::json(action)[1];
+            json data = json(action)[1];
             if (!data.is_null()) {
                 SetNextItemOpen(true);
                 JsonTree("Data", std::move(data));
@@ -535,6 +533,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         if (no_history) BeginDisabled();
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", History.Size() - 1, History.Index)) {
             for (u32 i = 1; i < History.Size(); i++) {
+                // todo button to navitate to this history index.
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[store_record, gesture] = History.RecordAt(i);
                     BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", gesture.CommitTime).c_str());
@@ -554,10 +553,6 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                                 TreePop();
                             }
                         }
-                        TreePop();
-                    }
-                    if (TreeNode("State snapshot")) {
-                        JsonTree("", RootStore.GetJson(store_record));
                         TreePop();
                     }
                     TreePop();
@@ -657,6 +652,7 @@ void RunQueuedActions(Store &store, bool force_commit_gesture) {
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
         force_commit_gesture |=
             std::holds_alternative<Action::Primitive::Bool::Toggle>(action) ||
+            std::holds_alternative<Action::Vec2::ToggleLinked>(action) ||
             std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
             std::holds_alternative<Action::FileDialog::Select>(action);
 
@@ -731,6 +727,7 @@ DefineQ(Vec2::Set);
 DefineQ(Vec2::SetX);
 DefineQ(Vec2::SetY);
 DefineQ(Vec2::SetAll);
+DefineQ(Vec2::ToggleLinked);
 DefineQ(AdjacencyList::ToggleConnection);
 DefineQ(Store::ApplyPatch);
 DefineQ(Style::SetImGuiColorPreset);

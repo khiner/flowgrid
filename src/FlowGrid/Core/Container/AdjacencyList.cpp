@@ -8,6 +8,12 @@
 
 IdPairs AdjacencyList::Get() const { return RootStore.IdPairs(Path); }
 
+void AdjacencyList::Add(IdPair &&id_pair) const {
+    if (RootStore.HasIdPair(Path, id_pair)) return;
+
+    RootStore.AddIdPair(Path, std::move(id_pair));
+}
+
 void AdjacencyList::Connect(ID source, ID destination) const {
     if (IsConnected(source, destination)) return;
 
@@ -28,7 +34,7 @@ bool AdjacencyList::IsConnected(ID source, ID destination) const {
 }
 
 bool AdjacencyList::HasPath(ID from_id, ID to_id, const std::unordered_set<ID> &disabled) const {
-    // Non-recursive depth-first search.
+    // Non-recursive depth-first search that handles cycles.
     const auto id_pairs = Get();
     std::unordered_set<ID> visited;
     std::stack<ID> to_visit;
@@ -65,8 +71,7 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
 
     if (TreeNode(Name)) {
         u32 i = 0;
-        const auto id_pairs = Get();
-        for (const auto &[source_id, destination_id] : id_pairs) {
+        for (const auto &[source_id, destination_id] : Get()) {
             const bool can_annotate = annotate && ById.contains(source_id) && ById.contains(destination_id);
             const std::string label = can_annotate ?
                 std::format("{} -> {}", ById.at(source_id)->Name, ById.at(destination_id)->Name) :
@@ -76,3 +81,16 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
         TreePop();
     }
 }
+
+void AdjacencyList::Clear() const {
+    RootStore.ClearIdPairs(Path);
+}
+
+void AdjacencyList::SetJson(const json &j) const {
+    IdPairs id_pairs = json::parse(std::string(j));
+    Clear();
+    for (IdPair id_pair : id_pairs) Add(std::move(id_pair));
+}
+
+// Using a string representation so we can flatten the JSON without worrying about non-object collection values.
+json AdjacencyList::ToJson() const { return json(Get()).dump(); }

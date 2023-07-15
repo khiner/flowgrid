@@ -8,6 +8,9 @@ template<IsPrimitive T> struct PrimitiveField : Field {
         Set(value);
     }
 
+    void SetJson(const json &) const override;
+    json ToJson() const override;
+
     // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
     void RefreshValue() override { Value = Get(); }
 

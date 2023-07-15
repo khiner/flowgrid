@@ -11,6 +11,8 @@
 #include "Helper/Path.h"
 #include "Helper/Variant.h"
 
+using json = nlohmann::json;
+
 /**
 An action is an immutable representation of a user interaction event.
 Each action stores all information needed to apply the action to a `Store` instance.
@@ -141,7 +143,7 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
 
     // Construct a variant from its index and JSON representation.
     // Adapted for JSON from the default-ctor approach here: https://stackoverflow.com/a/60567091/780425
-    template<size_t I = 0> static ActionVariant Create(size_t index, const nlohmann::json &j) {
+    template<size_t I = 0> static ActionVariant Create(size_t index, const json &j) {
         if constexpr (I >= std::variant_size_v<variant_t>) throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
         else return index == 0 ? j.get<std::variant_alternative_t<I, variant_t>>() : Create<I + 1>(index - 1, j);
     }
@@ -149,11 +151,11 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     // Serialize actions as two-element arrays, `[Path, Data]`.
     // Value element can possibly be null.
     // Assumes all actions define json converters.
-    inline void to_json(nlohmann::json &j) const {
+    inline void to_json(json &j) const {
         Call([&j](auto &a) { j = {a.GetPath(), a}; });
     }
 
-    inline static void from_json(const nlohmann::json &j, ActionVariant &value) {
+    inline static void from_json(const json &j, ActionVariant &value) {
         static auto PathToIndex = CreatePathToIndex();
         const auto path = j[0].get<fs::path>();
         value = Create(PathToIndex[path], j[1]);

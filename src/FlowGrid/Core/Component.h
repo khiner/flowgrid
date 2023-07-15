@@ -10,7 +10,9 @@
 #include "Helper/Time.h"
 #include "UI/Drawable.h"
 
-#include "Log.h"
+#include "nlohmann/json.hpp"
+
+using json = nlohmann::json;
 
 namespace FlowGrid {}
 namespace fg = FlowGrid;
@@ -47,6 +49,8 @@ enum WindowFlags_ {
     WindowFlags_MenuBar = 1 << 10,
 };
 
+struct Field;
+
 struct Component : Drawable {
     struct Metadata {
         // Split the string on '?'.
@@ -77,11 +81,16 @@ struct Component : Drawable {
     Component(const Component &) = delete; // Copying not allowed.
     Component &operator=(const Component &) = delete; // Assignment not allowed.
 
-    virtual void RenderDebug() const {}
+    virtual void SetJson(const json &) const;
+    virtual json ToJson() const;
+    inline json::json_pointer JsonPointer() const {
+        return json::json_pointer(Path.string()); // Implicit `json_pointer` constructor is disabled.
+    }
 
     // Render a nested tree of components, with Fields as leaf nodes displaying their values as text.
     // By default, renders `this` a node with children as child nodes.
     virtual void RenderValueTree(bool annotate, bool auto_select) const;
+    virtual void RenderDebug() const {}
 
     const Component *Child(u32 i) const noexcept { return Children[i]; }
     inline u32 ChildCount() const noexcept { return Children.size(); }

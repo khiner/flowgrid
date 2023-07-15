@@ -14,11 +14,16 @@ struct Vec2 : Field, Actionable<Action::Vec2::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
+    void SetJson(const json &) const override;
+    json ToJson() const override;
+
     void RefreshValue() override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     operator ImVec2() const;
 
+    void SetX(float) const;
+    void SetY(float) const;
     void Set(const std::pair<float, float> &) const;
 
     inline float X() const noexcept { return Value.first; }
@@ -35,10 +40,22 @@ protected:
 };
 
 struct Vec2Linked : Vec2 {
-    using Vec2::Vec2;
-    Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, bool linked = true, const char *fmt = nullptr);
+    // Defaults to linked.
+    Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
+    Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt = nullptr);
 
-    Prop(Bool, Linked, true);
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; };
+
+    void RefreshValue() override;
+    void RenderValueTree(bool annotate, bool auto_select) const override;
+
+    void SetLinked(bool) const;
+
+    void SetJson(const json &) const override;
+    json ToJson() const override;
+
+    bool Linked;
 
 protected:
     void Render(ImGuiSliderFlags) const override;

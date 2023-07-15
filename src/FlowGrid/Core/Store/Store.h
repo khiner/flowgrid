@@ -24,19 +24,18 @@ struct Store : Actionable<Action::Store::Any> {
     void Erase(const StorePath &) const;
 
     IdPairs IdPairs(const StorePath &) const;
+    bool HasIdPair(const StorePath &, const IdPair &) const;
+
     u32 IdPairCount(const StorePath &) const;
     void AddIdPair(const StorePath &, const IdPair &) const;
     void EraseIdPair(const StorePath &, const IdPair &) const;
-    bool HasIdPair(const StorePath &, const IdPair &) const;
+    void ClearIdPairs(const StorePath &) const;
 
     StoreImpl Get() const; // Get the current (concrete) store.
-    nlohmann::json GetJson() const; // Get the current store as JSON.
-    nlohmann::json GetJson(const StoreImpl &) const; // Get the provided store as JSON.
 
     // Overwrite the store with the provided store and return the resulting patch.
     Patch CheckedSet(const StoreImpl &);
     Patch CheckedSet(StoreImpl &&);
-    Patch CheckedSetJson(nlohmann::json &&);
 
     void Commit(); // Overwrite the persistent store with all changes since the last commit.
     Patch CheckedCommit(); // Same as `Commit`, but returns the resulting patch.

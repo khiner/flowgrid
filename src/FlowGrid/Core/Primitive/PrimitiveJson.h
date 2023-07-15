@@ -6,6 +6,8 @@
 
 #include "Primitive.h"
 
+using json = nlohmann::json;
+
 namespace nlohmann {
 void to_json(json &, const Primitive &);
 void from_json(const json &, Primitive &);

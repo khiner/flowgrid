@@ -30,7 +30,7 @@ struct Project : Component, Actionable<Action::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    nlohmann::json ToJson(const ProjectFormat) const;
+    json GetProjectJson(const ProjectFormat) const;
 
     struct Debug : DebugComponent, Field::ChangeListener {
         Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
@@ -163,6 +163,9 @@ protected:
 private:
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
+
+    void OpenStateFormatProject(const fs::path &file_path) const;
+
     void SetHistoryIndex(u32) const;
 };
 

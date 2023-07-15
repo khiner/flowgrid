@@ -44,11 +44,11 @@ template<typename T> constexpr void extended_from_json(const char *key, const js
 #define ExtendedToJson(v1) extended_to_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
 #define ExtendedFromJson(v1) extended_from_json(#v1, nlohmann_json_j, nlohmann_json_t.v1);
 
-#define DeclareJson(Type)                         \
-    void to_json(nlohmann::json &, const Type &); \
-    void from_json(const nlohmann::json &, Type &);
+#define DeclareJson(Type)               \
+    void to_json(json &, const Type &); \
+    void from_json(const json &, Type &);
 
-#define Json(Type, ...)                                                                                                                                                                                     \
-    inline static void to_json(nlohmann::json &__VA_OPT__(nlohmann_json_j), const Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedToJson, __VA_ARGS__))) } \
-    inline static void from_json(const nlohmann::json &__VA_OPT__(nlohmann_json_j), Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedFromJson, __VA_ARGS__))) }
+#define Json(Type, ...)                                                                                                                                                                           \
+    inline static void to_json(json &__VA_OPT__(nlohmann_json_j), const Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedToJson, __VA_ARGS__))) } \
+    inline static void from_json(const json &__VA_OPT__(nlohmann_json_j), Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedFromJson, __VA_ARGS__))) }
 } // namespace nlohmann

@@ -8,10 +8,11 @@
 #include <vector>
 
 #include "date.h"
-#include <nlohmann/json.hpp>
+#include "nlohmann/json.hpp"
 
 #include "Helper/Time.h"
 
+using json = nlohmann::json;
 using u32 = unsigned int;
 
 enum class LogLevel {
@@ -42,7 +43,7 @@ struct LogContext {
     LogContext(const std::string &file, u32 line)
         : File(file), Line(line) {}
 
-    nlohmann::json ToJson() const {
+    json ToJson() const {
         return {
             {"File", File},
             {"Line", Line},
@@ -58,7 +59,7 @@ struct MessageMoment {
     MessageMoment(const std::string &message, const LogContext &context, TimePoint time)
         : Message(message), Context(context), Time(time) {}
 
-    nlohmann::json ToJson() const {
+    json ToJson() const {
         return {
             {"Message", Message},
             {"Context", Context.ToJson()},
@@ -82,8 +83,8 @@ struct Log {
         }
     }
 
-    nlohmann::json ToJson() const {
-        nlohmann::json json;
+    json ToJson() const {
+        json json;
         for (const auto &[level, messages] : MessagesByLevel) {
             for (const auto &message : messages) {
                 json[LogLevelToString(level)].push_back(message.ToJson());

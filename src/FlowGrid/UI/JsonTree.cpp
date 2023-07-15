@@ -4,8 +4,8 @@
 #include "nlohmann/json.hpp"
 
 using std::string;
-using namespace nlohmann;
 using namespace ImGui;
+using json = nlohmann::json;
 
 namespace FlowGrid {
 bool TreeNode(std::string_view label_view, const char *id, const char *value) {

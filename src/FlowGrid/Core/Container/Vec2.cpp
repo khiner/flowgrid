@@ -13,24 +13,38 @@ Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, flo
 
 Vec2::operator ImVec2() const { return {X(), Y()}; }
 
+void Vec2::SetX(float x) const { RootStore.Set(Path / "X", x); }
+void Vec2::SetY(float y) const { RootStore.Set(Path / "Y", y); }
+
 void Vec2::Set(const std::pair<float, float> &value) const {
-    RootStore.Set(Path / "X", value.first);
-    RootStore.Set(Path / "Y", value.second);
+    SetX(value.first);
+    SetY(value.second);
 }
 
 void Vec2::Apply(const ActionType &action) const {
     Visit(
         action,
         [this](const Action::Vec2::Set &a) { Set(a.value); },
-        [this](const Action::Vec2::SetX &a) { RootStore.Set(Path / "X", a.value); },
-        [this](const Action::Vec2::SetY &a) { RootStore.Set(Path / "Y", a.value); },
+        [this](const Action::Vec2::SetX &a) { SetX(a.value); },
+        [this](const Action::Vec2::SetY &a) { SetY(a.value); },
         [this](const Action::Vec2::SetAll &a) { Set({a.value, a.value}); },
+        [](const Action::Vec2::ToggleLinked &) {
+            throw std::runtime_error("Action::Vec2::ToggleLinked not implemented for non-linked Vec2.");
+        },
     );
 }
 
 void Vec2::RefreshValue() {
     Value = {std::get<float>(RootStore.Get(Path / "X")), std::get<float>(RootStore.Get(Path / "Y"))};
 }
+
+void Vec2::SetJson(const json &j) const {
+    std::pair<float, float> new_value = json::parse(std::string(j));
+    Set(std::move(new_value));
+}
+
+// Using a string representation so we can flatten the JSON without worrying about non-object collection values.
+json Vec2::ToJson() const { return json(Value).dump(); }
 
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
@@ -45,36 +59,82 @@ void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 void Vec2::RenderValueTree(bool annotate, bool auto_select) const {
     Field::RenderValueTree(annotate, auto_select);
 
-    const std::string value_str = std::format("({}, {})", Value.first, Value.second);
+    const std::string value_str = std::format("({}, {})", X(), Y());
     TreeNode(Name, false, value_str.c_str());
 }
 
 Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt)
-    : Vec2(std::move(args), std::move(value), min, max, fmt) {
-    Linked.Set(linked);
+    : Vec2(std::move(args), std::move(value), min, max, fmt), Linked(linked) {
+    SetLinked(Linked);
+}
+
+Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
+    : Vec2Linked(std::move(args), std::move(value), min, max, true, fmt) {}
+
+void Vec2Linked::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [this](const Action::Vec2::Set &a) { Vec2::Apply(a); },
+        [this](const Action::Vec2::SetX &a) { Vec2::Apply(a); },
+        [this](const Action::Vec2::SetY &a) { Vec2::Apply(a); },
+        [this](const Action::Vec2::SetAll &a) { Vec2::Apply(a); },
+        [this](const Action::Vec2::ToggleLinked &) {
+            SetLinked(!Linked);
+            // Linking sets the max value to the min value.
+            if (X() < Y()) SetY(X());
+            else if (Y() < X()) SetX(Y());
+        },
+    );
+}
+
+void Vec2Linked::SetLinked(bool linked) const {
+    RootStore.Set(Path / "Linked", linked);
+}
+
+void Vec2Linked::RefreshValue() {
+    Vec2::RefreshValue();
+    Linked = std::get<bool>(RootStore.Get(Path / "Linked"));
+}
+
+void Vec2Linked::SetJson(const json &j) const {
+    std::tuple<float, float, bool> value = json::parse(std::string(j));
+    Set({std::get<0>(value), std::get<1>(value)});
+    SetLinked(std::get<2>(value));
+}
+
+// Using a string representation so we can flatten the JSON without worrying about non-object collection values.
+json Vec2Linked::ToJson() const {
+    std::tuple<float, float, bool> value = {X(), Y(), Linked};
+    return json(value).dump();
 }
 
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
-    if (Linked.CheckedDraw()) {
-        // Linking sets the max value to the min value.
-        if (X() < Y()) Action::Vec2::SetY{Path, X()}.q();
-        else if (Y() < X()) Action::Vec2::SetX{Path, Y()}.q();
-    }
+    bool linked = Linked;
+    if (Checkbox("Linked", &linked)) Action::Vec2::ToggleLinked{Path}.q();
     PopID();
+
     SameLine();
-    ImVec2 values = *this;
-    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, Min, Max, Format, flags);
+
+    ImVec2 xy = *this;
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, Min, Max, Format, flags);
     Field::UpdateGesturing();
     if (edited) {
         if (Linked) {
-            const float changed_value = values.x != X() ? values.x : values.y;
+            const float changed_value = xy.x != X() ? xy.x : xy.y;
             Action::Vec2::SetAll{Path, changed_value}.q();
         } else {
-            Action::Vec2::Set{Path, {values.x, values.y}}.q();
+            Action::Vec2::Set{Path, {xy.x, xy.y}}.q();
         }
     }
     HelpMarker();
 }
 
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
+
+void Vec2Linked::RenderValueTree(bool annotate, bool auto_select) const {
+    Field::RenderValueTree(annotate, auto_select);
+
+    const std::string value_str = std::format("({}, {}, {})", X(), Y(), Linked ? "Linked" : "Unlinked");
+    TreeNode(Name, false, value_str.c_str());
+}

@@ -32,4 +32,4 @@ void from_json(const json &j, Primitive &field) {
 }
 } // namespace nlohmann
 
-string to_string(const Primitive &primitive) { return nlohmann::json(primitive).dump(); }
+string to_string(const Primitive &primitive) { return json(primitive).dump(); }

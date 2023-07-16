@@ -6,8 +6,8 @@
 #include "Core/Primitive/Float.h"
 #include "UI/Styling.h"
 
-#include "FaustParam.h"
 #include "FaustDspChangeListener.h"
+#include "FaustParam.h"
 
 using ImGuiTableFlags = int;
 

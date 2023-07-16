@@ -132,7 +132,6 @@ process = _ : pitchshifter;)#");
         void Render() const override;
     };
 
-
     Prop(FaustGraph, Graph);
     Prop(FaustParams, Params);
     Prop_(FaustLog, Log, "Faust log", FaustDsp.ErrorMessage);

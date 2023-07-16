@@ -11,7 +11,7 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-FaustDSP::FaustDSP(std::string_view code)  {
+FaustDSP::FaustDSP(std::string_view code) {
     Init(code);
 }
 FaustDSP::~FaustDSP() {

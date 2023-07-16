@@ -10,6 +10,8 @@
 #include "Helper/Time.h"
 #include "UI/Drawable.h"
 
+#include "Log.h"
+
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 

@@ -3,12 +3,16 @@
 // Not used yet - placeholder for future use.
 
 #include <map>
+#include <source_location>
 #include <string>
 #include <vector>
 
+#include "date.h"
 #include <nlohmann/json.hpp>
 
 #include "Helper/Time.h"
+
+using u32 = unsigned int;
 
 enum class LogLevel {
     Trace = 5,
@@ -19,11 +23,23 @@ enum class LogLevel {
     Critical = 50,
 };
 
+static constexpr std::string LogLevelToString(LogLevel level) {
+    using enum LogLevel;
+    switch (level) {
+        case Trace: return "Trace";
+        case Debug: return "Debug";
+        case Info: return "Info";
+        case Warning: return "Warning";
+        case Error: return "Error";
+        case Critical: return "Critical";
+    }
+}
+
 struct LogContext {
     std::string File;
-    int Line;
+    u32 Line;
 
-    LogContext(const std::string &file, int line)
+    LogContext(const std::string &file, u32 line)
         : File(file), Line(line) {}
 
     nlohmann::json ToJson() const {
@@ -36,54 +52,55 @@ struct LogContext {
 
 struct MessageMoment {
     std::string Message;
-    LogContext ContextInfo;
+    LogContext Context;
     TimePoint Time;
 
-    MessageMoment(const std::string &message, const LogContext &contextInfo, TimePoint time)
-        : Message(message), ContextInfo(contextInfo), Time(time) {}
+    MessageMoment(const std::string &message, const LogContext &context, TimePoint time)
+        : Message(message), Context(context), Time(time) {}
 
     nlohmann::json ToJson() const {
-        std::time_t logTime = std::chrono::system_clock::to_time_t(Time);
         return {
             {"Message", Message},
-            {"ContextInfo", ContextInfo.ToJson()},
-            {"Time", std::ctime(&logTime)},
+            {"Context", Context.ToJson()},
+            {"Time", date::format("%Y-%m-%d %T", Time)},
         };
     }
 };
 
-class Log {
-    std::map<LogLevel, std::vector<MessageMoment>> MessagesByLevel;
-    LogLevel CurrentLevel;
+struct Log {
+    Log(LogLevel level) : Level(level) {}
 
-public:
-    Log(LogLevel level) : CurrentLevel(level) {}
-
-    LogLevel GetCurrentLogLevel() const {
-        return CurrentLevel;
+    void LogMessage(LogLevel level, const std::string &message, const std::source_location &location = std::source_location::current()) {
+        if (level >= Level) {
+            MessagesByLevel[level].emplace_back(message, LogContext{location.file_name(), location.line()}, std::chrono::system_clock::now());
+        }
     }
 
-    void LogMessage(LogLevel level, const std::string &message, const LogContext &contextInfo) {
-        if (level >= CurrentLevel) {
-            MessagesByLevel[level].emplace_back(message, contextInfo, std::chrono::system_clock::now());
+    void LogMessage(LogLevel level, std::function<std::string()> callable, const std::source_location &location = std::source_location::current()) {
+        if (level >= Level) {
+            LogMessage(level, callable(), location);
         }
     }
 
     nlohmann::json ToJson() const {
         nlohmann::json json;
         for (const auto &[level, messages] : MessagesByLevel) {
-            for (const auto &messageMoment : messages) {
-                json[std::to_string(static_cast<int>(level))].push_back(messageMoment.ToJson());
+            for (const auto &message : messages) {
+                json[LogLevelToString(level)].push_back(message.ToJson());
             }
         }
         return json;
     }
+
+    LogLevel Level;
+
+private:
+    std::map<LogLevel, std::vector<MessageMoment>> MessagesByLevel;
 };
 
 // The following macro assumes that there is a 'Log' instance named 'Logger' in scope.
-#define Log(level, message) Logger.LogMessage(level, message, LogContext(__FILE__, __LINE__))
-#define LogIf(level, callable) \
-    if (level >= Logger.GetCurrentLogLevel()) { Logger.LogMessage(level, callable(), LogContext(__FILE__, __LINE__)); }
+#define Log(level, message) Logger.LogMessage(level, message)
+#define LogIf(level, callable) Logger.LogMessage(level, callable)
 
 /*
 int main() {

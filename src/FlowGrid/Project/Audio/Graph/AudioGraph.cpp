@@ -60,8 +60,7 @@ void AudioGraph::OnFieldChanged() {
         Device.InChannels.IsChanged() ||
         Device.OutChannels.IsChanged() ||
         Device.InFormat.IsChanged() ||
-        Device.OutFormat.IsChanged() ||
-        Device.SampleRate.IsChanged()) {
+        Device.OutFormat.IsChanged()) {
         Nodes.Uninit();
         Graph.Uninit();
         Graph.Init(Device.InChannels);
@@ -69,9 +68,9 @@ void AudioGraph::OnFieldChanged() {
         UpdateConnections();
         return;
     }
-    // if (Device.SampleRate.IsChanged()) {
-    //     Nodes.OnDeviceSampleRateChanged();
-    // }
+    if (Device.SampleRate.IsChanged()) {
+        Nodes.OnDeviceSampleRateChanged();
+    }
 
     if (Connections.IsChanged()) {
         UpdateConnections();

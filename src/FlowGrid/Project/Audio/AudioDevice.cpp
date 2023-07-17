@@ -56,19 +56,31 @@ void AudioDevice::OnFieldChanged() {
         InFormat.IsChanged() ||
         OutFormat.IsChanged() ||
         InChannels.IsChanged() ||
-        OutChannels.IsChanged() ||
-        SampleRate.IsChanged()) {
+        OutChannels.IsChanged()) {
         const bool is_started = IsStarted();
         if (On && !is_started) {
             Init();
         } else if (!On && is_started) {
             Uninit();
         } else if (is_started) {
-            // todo no need to completely reset in some cases (like when only format has changed).
-            // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
             Uninit();
             Init();
         }
+    }
+
+    // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
+    if (SampleRate.IsChanged()) {
+        // todo this doesn't work as is. It's possible that either the input or output / both don't support dynamic sample rate changes.
+        // I think the only way to always support sample rate changes is to use a default SR, and then create a custom SR converter on either/both ends
+        // that need to be converted.
+        // Waiting for a response here: https://github.com/mackron/miniaudio/issues/705
+        // From the docs:
+        // "The sample rate is the only configuration property that can be
+        // changed after initialization, but only if the `resampling.allowDynamicSampleRate` member of
+        // `ma_data_converter_config` is set to `MA_TRUE`. To change the sample rate, use
+        // `ma_data_converter_set_rate()` or `ma_data_converter_set_rate_ratio()`. The ratio must be in/out.""
+        ma_data_converter_set_rate(&MaDevice.capture.converter, MaDevice.sampleRate, SampleRate);
+        ma_data_converter_set_rate(&MaDevice.playback.converter, SampleRate, MaDevice.sampleRate);
     }
 }
 
@@ -121,6 +133,7 @@ void AudioDevice::Init() {
     config.playback.channels = OutChannels;
     config.dataCallback = Callback;
     config.sampleRate = SampleRate;
+    // config.converter.allowDynamicSampleRate = true ?
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
 
     // MA graph nodes require f32 format for in/out.

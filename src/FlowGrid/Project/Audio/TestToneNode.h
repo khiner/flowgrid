@@ -7,6 +7,7 @@ struct TestToneNode : AudioGraphNode {
     TestToneNode(ComponentArgs &&);
 
     void OnFieldChanged() override;
+    void OnDeviceSampleRateChanged() override;
 
     Prop(Float, Frequency, 440.0, 20.0, 16000.0);
     Prop(Enum, Type, {"Sine", "Square", "Triangle", "Sawtooth"}, 0);

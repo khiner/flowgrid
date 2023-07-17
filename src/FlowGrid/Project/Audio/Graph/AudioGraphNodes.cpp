@@ -20,6 +20,10 @@ void AudioGraphNodes::Uninit() {
     for (auto *node : *this) node->Uninit();
 }
 
+void AudioGraphNodes::OnDeviceSampleRateChanged() {
+    for (auto *node : *this) node->OnDeviceSampleRateChanged();
+}
+
 InputNode::InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Muted.Set_(true); // External input is muted by default.
 }
@@ -48,7 +52,8 @@ void InputNode::SetBufferData(const void *input, u32 frame_count) const {
 }
 
 ma_node *InputNode::DoInit() {
-    _Buffer = std::make_unique<Buffer>(ma_format(int(audio_device.InFormat)), u32(audio_device.InChannels));
+    const AudioDevice &device = Graph->Device;
+    _Buffer = std::make_unique<Buffer>(ma_format(int(device.InFormat)), device.InChannels);
 
     static ma_data_source_node source_node{}; // todo instance var
     ma_data_source_node_config config = ma_data_source_node_config_init(_Buffer->Get());

@@ -43,5 +43,3 @@ private:
 
     AudioCallback Callback;
 };
-
-extern const AudioDevice &audio_device;

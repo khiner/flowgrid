@@ -21,7 +21,7 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
     static void AudioCallback(ma_device *, void *output, const void *input, u32 frame_count);
 
     Prop(AudioDevice, Device, AudioCallback);
-    Prop(AudioGraph, Graph);
+    Prop(AudioGraph, Graph, Device);
     Prop(Faust, Faust);
 
 protected:

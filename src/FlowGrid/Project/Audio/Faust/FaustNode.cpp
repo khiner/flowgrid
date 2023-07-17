@@ -3,19 +3,22 @@
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
-#include "miniaudio.h"
-
 #include "Faust.h"
-#include "Project/Audio/AudioDevice.h"
+
+#include "miniaudio.h"
 
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
 
 void FaustNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
-    if (audio_device.SampleRate.IsChanged() && CurrentDsp) CurrentDsp->init(audio_device.SampleRate);
 }
 
-void FaustProcess(ma_node *node, const float **const_bus_frames_in, ma_uint32 *frame_count_in, float **bus_frames_out, ma_uint32 *frame_count_out) {
+void FaustNode::OnDeviceSampleRateChanged() {
+    AudioGraphNode::OnDeviceSampleRateChanged();
+    if (CurrentDsp) CurrentDsp->init(GetDeviceSampleRate());
+}
+
+void FaustProcess(ma_node *node, const float **const_bus_frames_in, u32 *frame_count_in, float **bus_frames_out, u32 *frame_count_out) {
     // ma_pcm_rb_init_ex()
     // ma_deinterleave_pcm_frames()
     float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
@@ -41,7 +44,7 @@ void FaustNode::OnFaustDspChanged(dsp *dsp) {
 ma_node *FaustNode::DoInit() {
     if (!CurrentDsp) return nullptr;
 
-    CurrentDsp->init(audio_device.SampleRate);
+    CurrentDsp->init(GetDeviceSampleRate());
 
     const u32 in_channels = CurrentDsp->getNumInputs();
     const u32 out_channels = CurrentDsp->getNumOutputs();

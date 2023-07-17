@@ -7,25 +7,25 @@
 #include "Helper/String.h"
 
 // Copied from `miniaudio.c::g_maStandardSampleRatePriorities`.
-static ma_uint32 StandardSampleRatePriorities[] = {
-    (ma_uint32)ma_standard_sample_rate_48000,
-    (ma_uint32)ma_standard_sample_rate_44100,
+static u32 StandardSampleRatePriorities[] = {
+    ma_standard_sample_rate_48000,
+    ma_standard_sample_rate_44100,
 
-    (ma_uint32)ma_standard_sample_rate_32000,
-    (ma_uint32)ma_standard_sample_rate_24000,
-    (ma_uint32)ma_standard_sample_rate_22050,
+    ma_standard_sample_rate_32000,
+    ma_standard_sample_rate_24000,
+    ma_standard_sample_rate_22050,
 
-    (ma_uint32)ma_standard_sample_rate_88200,
-    (ma_uint32)ma_standard_sample_rate_96000,
-    (ma_uint32)ma_standard_sample_rate_176400,
-    (ma_uint32)ma_standard_sample_rate_192000,
+    ma_standard_sample_rate_88200,
+    ma_standard_sample_rate_96000,
+    ma_standard_sample_rate_176400,
+    ma_standard_sample_rate_192000,
 
-    (ma_uint32)ma_standard_sample_rate_16000,
-    (ma_uint32)ma_standard_sample_rate_11025,
-    (ma_uint32)ma_standard_sample_rate_8000,
+    ma_standard_sample_rate_16000,
+    ma_standard_sample_rate_11025,
+    ma_standard_sample_rate_8000,
 
-    (ma_uint32)ma_standard_sample_rate_352800,
-    (ma_uint32)ma_standard_sample_rate_384000,
+    ma_standard_sample_rate_352800,
+    ma_standard_sample_rate_384000,
 };
 
 const std::vector<u32> AudioDevice::PrioritizedSampleRates = {std::begin(StandardSampleRatePriorities), std::end(StandardSampleRatePriorities)};
@@ -64,7 +64,7 @@ void AudioDevice::OnFieldChanged() {
         } else if (!On && is_started) {
             Uninit();
         } else if (is_started) {
-            // todo no need to completely reset in some cases (like when only format has changed) - just modify as needed in `Device::Update`.
+            // todo no need to completely reset in some cases (like when only format has changed).
             // todo sample rate conversion is happening even when choosing a SR that is native to both input & output, if it's not the highest-priority SR.
             Uninit();
             Init();
@@ -149,6 +149,8 @@ void AudioDevice::Init() {
         NativeSampleRates.emplace_back(native_format.sampleRate);
     }
 
+    // The device may have a different configuration than what we requested.
+    // Update the fields to reflect the actual device configuration.
     if (MaDevice.capture.name != InDeviceName) InDeviceName.Set_(MaDevice.capture.name);
     if (MaDevice.playback.name != OutDeviceName) OutDeviceName.Set_(MaDevice.playback.name);
     if (MaDevice.capture.format != InFormat) InFormat.Set_(MaDevice.capture.format);

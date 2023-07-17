@@ -15,7 +15,9 @@
 using namespace ImGui;
 
 struct AudioGraphNode::GainerNode {
-    GainerNode(ma_node_graph *ma_graph, ma_uint32 channels, ma_uint32 smooth_time_frames) {
+    GainerNode(ma_node_graph *ma_graph, u32 channels, u32 sample_rate, float smooth_time_ms)
+        : SmoothTimeMs(smooth_time_ms) {
+        const u32 smooth_time_frames = SmoothTimeMs * float(sample_rate) / 1000.f;
         ma_gainer_node_config config = ma_gainer_node_config_init(channels, smooth_time_frames);
         const int result = ma_gainer_node_init(ma_graph, &config, nullptr, &Gainer);
         if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", result)); }
@@ -30,12 +32,18 @@ struct AudioGraphNode::GainerNode {
         ma_gainer_node_set_gain(&Gainer, gain);
     }
 
+    void SetSampleRate(u32 sample_rate) {
+        const u32 smooth_time_frames = SmoothTimeMs * float(sample_rate) / 1000.f;
+        ma_gainer_node_set_smooth_time_frames(&Gainer, smooth_time_frames);
+    }
+
 private:
     ma_gainer_node Gainer;
+    float SmoothTimeMs;
 };
 
 struct AudioGraphNode::SplitterNode {
-    SplitterNode(ma_node_graph *ma_graph, ma_uint32 channels) {
+    SplitterNode(ma_node_graph *ma_graph, u32 channels) {
         ma_splitter_node_config config = ma_splitter_node_config_init(channels);
         int result = ma_splitter_node_init(ma_graph, &config, nullptr, &Splitter);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", result));
@@ -51,7 +59,7 @@ private:
 };
 
 struct AudioGraphNode::MonitorNode {
-    MonitorNode(ma_node_graph *ma_graph, ma_uint32 channels, ma_uint32 sample_rate, ma_uint32 buffer_frames) {
+    MonitorNode(ma_node_graph *ma_graph, u32 channels, u32 sample_rate, u32 buffer_frames) {
         ma_monitor_node_config config = ma_monitor_node_config_init(channels, sample_rate, buffer_frames);
         int result = ma_monitor_node_init(ma_graph, &config, nullptr, &Monitor);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize monitor node: {}", result));
@@ -62,7 +70,7 @@ struct AudioGraphNode::MonitorNode {
 
     inline ma_monitor_node *Get() noexcept { return &Monitor; }
 
-    void SetSampleRate(ma_uint32 sample_rate) {
+    void SetSampleRate(u32 sample_rate) {
         ma_monitor_set_sample_rate(&Monitor, sample_rate);
     }
 
@@ -130,14 +138,15 @@ private:
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraphNodes *>(Parent)->Graph) {
-    audio_device.SampleRate.RegisterChangeListener(this);
-
     const Field::References listened_fields = {On, Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
 }
+
+u32 AudioGraphNode::GetDeviceSampleRate() const { return Graph->GetDeviceSampleRate(); }
+u32 AudioGraphNode::GetDeviceBufferSize() const { return Graph->GetDeviceBufferSize(); }
 
 ma_node *AudioGraphNode::InputNode() const {
     if (InputMonitor) return InputMonitor->Get();
@@ -186,6 +195,16 @@ WindowFunctionType GetWindowFunction(WindowType type) {
     }
 }
 
+void AudioGraphNode::OnDeviceSampleRateChanged() {
+    const u32 sample_rate = GetDeviceSampleRate();
+    for (const IO io : IO_All) {
+        if (auto *monitor = GetMonitor(io)) {
+            monitor->SetSampleRate(sample_rate);
+        }
+    }
+    if (Gainer) Gainer->SetSampleRate(sample_rate);
+}
+
 void AudioGraphNode::OnFieldChanged() {
     if (On.IsChanged()) {
         if (On && Node == nullptr) Init();
@@ -199,9 +218,6 @@ void AudioGraphNode::OnFieldChanged() {
     }
     if (Muted.IsChanged() || OutputLevel.IsChanged()) {
         UpdateOutputLevel();
-    }
-    if (audio_device.SampleRate.IsChanged()) {
-        for (const IO io : IO_All) UpdateMonitorSampleRate(io);
     }
     if (WindowType.IsChanged()) {
         for (const IO io : IO_All) UpdateMonitorWindowFunction(io);
@@ -241,18 +257,11 @@ void AudioGraphNode::UpdateOutputLevel() {
 
 void AudioGraphNode::UpdateGainer() {
     if (OutputBusCount() == 1 && SmoothOutputLevel && !Gainer) {
-        const u32 smooth_time_frames = float(SmoothOutputLevelMs) * float(audio_device.SampleRate) / 1000.f;
-        Gainer = std::make_unique<GainerNode>(Graph->Get(), OutputChannelCount(0), smooth_time_frames);
+        Gainer = std::make_unique<GainerNode>(Graph->Get(), OutputChannelCount(0), GetDeviceSampleRate(), SmoothOutputLevelMs);
         UpdateOutputLevel();
     } else if (!SmoothOutputLevel && Gainer) {
         Gainer.reset();
         UpdateOutputLevel();
-    }
-}
-
-void AudioGraphNode::UpdateMonitorSampleRate(IO io) {
-    if (auto *monitor = GetMonitor(io)) {
-        monitor->SetSampleRate(audio_device.SampleRate);
     }
 }
 
@@ -268,8 +277,7 @@ void AudioGraphNode::UpdateMonitorWindowFunction(IO io) {
 void AudioGraphNode::UpdateMonitor(IO io) {
     auto *monitor = GetMonitor(io);
     if (!monitor && Monitor && BusCount(io) > 0) {
-        const auto *device = audio_device.Get();
-        auto monitor = std::make_unique<MonitorNode>(Graph->Get(), ChannelCount(io, 0), device->capture.internalSampleRate, device->playback.internalPeriodSizeInFrames);
+        auto monitor = std::make_unique<MonitorNode>(Graph->Get(), ChannelCount(io, 0), GetDeviceSampleRate(), GetDeviceBufferSize());
         if (io == IO_In) InputMonitor = std::move(monitor);
         else OutputMonitor = std::move(monitor);
 

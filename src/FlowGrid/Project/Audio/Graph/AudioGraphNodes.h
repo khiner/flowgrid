@@ -2,7 +2,7 @@
 
 #include "AudioGraphNode.h"
 
-// todo dynamic node creation with no dependencies on any specific node types.
+// todo dynamic node creation with no dependencies on specific node types.
 #include "Project/Audio/Faust/FaustNode.h"
 #include "Project/Audio/TestToneNode.h"
 
@@ -45,6 +45,8 @@ struct AudioGraphNodes : Component {
 
     void Init();
     void Uninit();
+
+    void OnDeviceSampleRateChanged();
 
     const AudioGraph *Graph;
 

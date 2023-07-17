@@ -12,6 +12,7 @@ struct FaustNode : AudioGraphNode, FaustDspChangeListener {
 
     void OnFieldChanged() override;
     void OnFaustDspChanged(dsp *) override;
+    void OnDeviceSampleRateChanged() override;
 
 private:
     ma_node *DoInit() override;

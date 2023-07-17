@@ -61,3 +61,17 @@ ma_result ma_gainer_node_set_gain(ma_gainer_node *gainer_node, float volume) {
 
     return ma_gainer_set_gain(&gainer_node->gainer, volume);
 }
+
+// Not exposed by miniaudio header.
+static void ma_gainer_reset_smoothing_time(ma_gainer *gainer) {
+    // No smoothing required for initial gains setting.
+    gainer->t = gainer->t == ma_uint32(-1) ? gainer->config.smoothTimeInFrames : 0;
+}
+
+ma_result ma_gainer_node_set_smooth_time_frames(ma_gainer_node *gainer_node, ma_uint32 smooth_time_frames) {
+    if (gainer_node == NULL) return MA_INVALID_ARGS;
+
+    gainer_node->config.gainer_config.smoothTimeInFrames = smooth_time_frames;
+    ma_gainer_reset_smoothing_time(&gainer_node->gainer);
+    return MA_SUCCESS;
+}

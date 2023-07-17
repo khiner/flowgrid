@@ -12,15 +12,15 @@
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
-AudioGraph::MaGraph::MaGraph() {
-    Init();
+AudioGraph::MaGraph::MaGraph(u32 in_channels) {
+    Init(in_channels);
 }
 AudioGraph::MaGraph::~MaGraph() {
     Uninit();
 }
 
-void AudioGraph::MaGraph::Init() {
-    ma_node_graph_config config = ma_node_graph_config_init(audio_device.InChannels);
+void AudioGraph::MaGraph::Init(u32 in_channels) {
+    ma_node_graph_config config = ma_node_graph_config_init(in_channels);
     Graph = std::make_unique<ma_node_graph>();
     const int result = ma_node_graph_init(&config, nullptr, Graph.get());
 
@@ -31,8 +31,8 @@ void AudioGraph::MaGraph::Uninit() {
     Graph.reset();
 }
 
-AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
-    const Field::References listened_fields = {audio_device.On, audio_device.InChannels, audio_device.OutChannels, audio_device.InFormat, audio_device.OutFormat, Connections};
+AudioGraph::AudioGraph(ComponentArgs &&args, const AudioDevice &device) : Component(std::move(args)), Device(device), Graph(Device.InChannels) {
+    const Field::References listened_fields = {device.On, device.InChannels, device.OutChannels, device.SampleRate, device.InFormat, device.OutFormat, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
     for (auto *node : Nodes) node->RegisterListener(this);
 
@@ -56,19 +56,30 @@ void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) {
 }
 
 void AudioGraph::OnFieldChanged() {
-    if (audio_device.IsChanged()) {
+    if (Device.On.IsChanged() ||
+        Device.InChannels.IsChanged() ||
+        Device.OutChannels.IsChanged() ||
+        Device.InFormat.IsChanged() ||
+        Device.OutFormat.IsChanged() ||
+        Device.SampleRate.IsChanged()) {
         Nodes.Uninit();
         Graph.Uninit();
-        Graph.Init();
+        Graph.Init(Device.InChannels);
         Nodes.Init();
         UpdateConnections();
         return;
     }
+    // if (Device.SampleRate.IsChanged()) {
+    //     Nodes.OnDeviceSampleRateChanged();
+    // }
 
     if (Connections.IsChanged()) {
         UpdateConnections();
     }
 }
+
+u32 AudioGraph::GetDeviceSampleRate() const { return Device.SampleRate; }
+u32 AudioGraph::GetDeviceBufferSize() const { return Device.Get()->playback.internalPeriodSizeInFrames; }
 
 void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, u32 frame_count) const {
     Nodes.Input.SetBufferData(input, frame_count);
@@ -99,7 +110,7 @@ void AudioGraph::UpdateConnections() {
         if (!node->On) disabled_node_ids.insert(node->Id);
     }
     for (auto *node : Nodes) {
-        node->SetActive(audio_device.On && Connections.HasPath(node->Id, Nodes.Output.Id, disabled_node_ids));
+        node->SetActive(Device.On && Connections.HasPath(node->Id, Nodes.Output.Id, disabled_node_ids));
     }
 }
 

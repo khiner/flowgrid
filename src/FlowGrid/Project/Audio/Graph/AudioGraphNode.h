@@ -67,7 +67,17 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     void ConnectTo(AudioGraphNode &);
     void DisconnectAll();
 
+    // The graph is responsible for calling this method whenever the topology of the graph changes.
+    // When this node is no longer connected to the output node (directly or indirectly), it is considered inactive.
     inline void SetActive(bool is_active) noexcept { IsActive = is_active; }
+
+    // Should be called whenever the device sample rate changes.
+    // At the very least, each node updates any active IO monitors based on the new sample rate.
+    virtual void OnDeviceSampleRateChanged();
+
+    // These getters delegate to Graph->Device.
+    u32 GetDeviceSampleRate() const;
+    u32 GetDeviceBufferSize() const;
 
     void Init();
     void Uninit();
@@ -109,13 +119,11 @@ protected:
     void UpdateOutputLevel();
     void UpdateGainer();
     void UpdateMonitor(IO);
-    void UpdateMonitorSampleRate(IO);
     void UpdateMonitorWindowFunction(IO);
 
     void UpdateAll();
 
     const AudioGraph *Graph;
     ma_node *Node;
-
-    std::unordered_set<Listener *> Listeners;
+    std::unordered_set<Listener *> Listeners{};
 };

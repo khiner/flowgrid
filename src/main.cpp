@@ -12,7 +12,6 @@ Project MainProject{store};
 // Set all global extern variables.
 const Project &project = MainProject;
 const fg::Style &fg::style = project.Style;
-const AudioDevice &audio_device = project.Audio.Device;
 const Faust &faust = project.Audio.Faust;
 const FaustGraph &faust_graph = faust.Graph;
 const ImGuiSettings &imgui_settings = project.ImGuiSettings;

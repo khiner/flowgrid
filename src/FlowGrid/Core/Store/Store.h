@@ -35,7 +35,6 @@ struct Store : Actionable<Action::Store::Any> {
 
     // Overwrite the store with the provided store and return the resulting patch.
     Patch CheckedSet(const StoreImpl &);
-    Patch CheckedSet(StoreImpl &&);
 
     void Commit(); // Overwrite the persistent store with all changes since the last commit.
     Patch CheckedCommit(); // Same as `Commit`, but returns the resulting patch.

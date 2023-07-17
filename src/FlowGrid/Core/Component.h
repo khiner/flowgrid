@@ -81,7 +81,7 @@ struct Component : Drawable {
     Component(const Component &) = delete; // Copying not allowed.
     Component &operator=(const Component &) = delete; // Assignment not allowed.
 
-    virtual void SetJson(const json &) const;
+    virtual void SetJson(json &&) const;
     virtual json ToJson() const;
     inline json::json_pointer JsonPointer() const {
         return json::json_pointer(Path.string()); // Implicit `json_pointer` constructor is disabled.

@@ -36,11 +36,15 @@ struct Field : Component {
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
 
+    // Use when you expect a field with exactly this path to exist.
+    inline static Field *ByPath(const StorePath &path) noexcept { return FieldById[FieldIdByPath[path]]; }
+    inline static Field *ByPath(StorePath &&path) noexcept { return FieldById[FieldIdByPath[std::move(path)]]; }
+
     inline static Field *FindByPath(const StorePath &search_path) noexcept {
-        if (FieldIdByPath.contains(search_path)) return FieldById[FieldIdByPath[search_path]];
+        if (FieldIdByPath.contains(search_path)) return ByPath(search_path);
         // Search for container fields.
-        if (FieldIdByPath.contains(search_path.parent_path())) return FieldById[FieldIdByPath[search_path.parent_path()]];
-        if (FieldIdByPath.contains(search_path.parent_path().parent_path())) return FieldById[FieldIdByPath[search_path.parent_path().parent_path()]];
+        if (FieldIdByPath.contains(search_path.parent_path())) return ByPath(search_path.parent_path());
+        if (FieldIdByPath.contains(search_path.parent_path().parent_path())) return ByPath(search_path.parent_path().parent_path());
         return nullptr;
     }
 

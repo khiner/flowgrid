@@ -22,7 +22,7 @@ template<IsPrimitive T> struct Vector : Field, Actionable<typename Action::Vecto
     void RefreshValue() override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
-    void SetJson(const json &) const override;
+    void SetJson(json &&) const override;
     json ToJson() const override;
 
     T operator[](u32 i) const { return Value[i]; }

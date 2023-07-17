@@ -53,22 +53,17 @@ bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
 StoreImpl Store::Get() const { return TransientImpl ? TransientImpl->Persistent() : *Impl; }
 
 void Store::Set(const StoreImpl &impl) {
-    Impl = std::make_unique<StoreImpl>(impl);
+    Impl = std::make_unique<StoreImpl>(std::move(impl));
     TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
 }
 void Store::Set(StoreImpl &&impl) {
-    Impl = std::make_unique<StoreImpl>(impl);
+    Impl = std::make_unique<StoreImpl>(std::move(impl));
     TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
 }
 
 void Store::Commit() { Set(TransientImpl->Persistent()); }
 
 Patch Store::CheckedSet(const StoreImpl &store) {
-    const auto patch = CreatePatch(store);
-    Set(store);
-    return patch;
-}
-Patch Store::CheckedSet(StoreImpl &&store) {
     const auto patch = CreatePatch(store);
     Set(store);
     return patch;

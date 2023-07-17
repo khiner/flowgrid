@@ -38,8 +38,8 @@ void Vec2::RefreshValue() {
     Value = {std::get<float>(RootStore.Get(Path / "X")), std::get<float>(RootStore.Get(Path / "Y"))};
 }
 
-void Vec2::SetJson(const json &j) const {
-    std::pair<float, float> new_value = json::parse(std::string(j));
+void Vec2::SetJson(json &&j) const {
+    std::pair<float, float> new_value = json::parse(std::string(std::move(j)));
     Set(std::move(new_value));
 }
 
@@ -96,8 +96,8 @@ void Vec2Linked::RefreshValue() {
     Linked = std::get<bool>(RootStore.Get(Path / "Linked"));
 }
 
-void Vec2Linked::SetJson(const json &j) const {
-    std::tuple<float, float, bool> value = json::parse(std::string(j));
+void Vec2Linked::SetJson(json &&j) const {
+    std::tuple<float, float, bool> value = json::parse(std::string(std::move(j)));
     Set({std::get<0>(value), std::get<1>(value)});
     SetLinked(std::get<2>(value));
 }

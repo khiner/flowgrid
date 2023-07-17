@@ -8,7 +8,7 @@ template<IsPrimitive T> struct PrimitiveField : Field {
         Set(value);
     }
 
-    void SetJson(const json &) const override;
+    void SetJson(json &&) const override;
     json ToJson() const override;
 
     // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
@@ -21,6 +21,7 @@ template<IsPrimitive T> struct PrimitiveField : Field {
 
     // Non-mutating set. Only updates store. Used during action application.
     void Set(const T &) const;
+    void Set(T &&) const;
 
     // Mutating set. Updates both store and cached value.
     // Should only be used during initialization and side effect handling pass.

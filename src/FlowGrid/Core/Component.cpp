@@ -77,10 +77,10 @@ json Component::ToJson() const {
     return j;
 }
 
-void Component::SetJson(const json &j) const {
-    const auto &flattened = j.flatten();
-    for (const auto &[key, value] : flattened.items()) {
-        Field::FindByPath(key)->SetJson(value);
+void Component::SetJson(json &&j) const {
+    auto &&flattened = std::move(j).flatten(); // Don't inline this - it breaks `SetJson`.
+    for (auto &&[key, value] : flattened.items()) {
+        Field::ByPath(std::move(key))->SetJson(std::move(value));
     }
 }
 

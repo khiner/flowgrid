@@ -14,7 +14,7 @@ struct Vec2 : Field, Actionable<Action::Vec2::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
-    void SetJson(const json &) const override;
+    void SetJson(json &&) const override;
     json ToJson() const override;
 
     void RefreshValue() override;
@@ -52,7 +52,7 @@ struct Vec2Linked : Vec2 {
 
     void SetLinked(bool) const;
 
-    void SetJson(const json &) const override;
+    void SetJson(json &&) const override;
     json ToJson() const override;
 
     bool Linked;

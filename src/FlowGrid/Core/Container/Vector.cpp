@@ -40,8 +40,8 @@ template<IsPrimitive T> void Vector<T>::RefreshValue() {
     Value.resize(i);
 }
 
-template<IsPrimitive T> void Vector<T>::SetJson(const json &j) const {
-    std::vector<T> new_value = json::parse(std::string(j));
+template<IsPrimitive T> void Vector<T>::SetJson(json &&j) const {
+    std::vector<T> new_value = json::parse(std::string(std::move(j)));
     Set(std::move(new_value));
 }
 

@@ -86,8 +86,8 @@ void AdjacencyList::Clear() const {
     RootStore.ClearIdPairs(Path);
 }
 
-void AdjacencyList::SetJson(const json &j) const {
-    IdPairs id_pairs = json::parse(std::string(j));
+void AdjacencyList::SetJson(json &&j) const {
+    IdPairs id_pairs = json::parse(std::string(std::move(j)));
     Clear();
     for (IdPair id_pair : id_pairs) Add(std::move(id_pair));
 }

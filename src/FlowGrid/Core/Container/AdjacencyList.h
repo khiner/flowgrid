@@ -17,7 +17,7 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     }
     bool CanApply(const ActionType &) const override { return true; }
 
-    void SetJson(const json &) const override;
+    void SetJson(json &&) const override;
     json ToJson() const override;
 
     IdPairs Get() const;

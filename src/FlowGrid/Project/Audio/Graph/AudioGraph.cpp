@@ -13,28 +13,105 @@
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
-AudioGraph::MaGraph::MaGraph(u32 in_channels) {
-    Init(in_channels);
-}
-AudioGraph::MaGraph::~MaGraph() {
-    Uninit();
-}
+#include "Project/Audio/Faust/FaustNode.h"
+#include "Project/Audio/TestToneNode.h"
 
-void AudioGraph::MaGraph::Init(u32 in_channels) {
-    ma_node_graph_config config = ma_node_graph_config_init(in_channels);
-    Graph = std::make_unique<ma_node_graph>();
-    const int result = ma_node_graph_init(&config, nullptr, Graph.get());
+// Wraps around `ma_node_graph`.
+struct MaGraph {
+    MaGraph(u32 in_channels) {
+        Init(in_channels);
+    }
+    ~MaGraph() {
+        Uninit();
+    }
 
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
-}
-void AudioGraph::MaGraph::Uninit() {
-    // Graph endpoint node is already uninitialized by `Nodes.Output`.
-    Graph.reset();
-}
+    void Init(u32 in_channels) {
+        ma_node_graph_config config = ma_node_graph_config_init(in_channels);
+        _Graph = std::make_unique<ma_node_graph>();
+        const int result = ma_node_graph_init(&config, nullptr, _Graph.get());
+
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
+    }
+    void Uninit() {
+        // Graph endpoint node is already uninitialized by `Nodes.Output`.
+        _Graph.reset();
+    }
+
+    inline ma_node_graph *Get() const noexcept { return _Graph.get(); }
+
+private:
+    std::unique_ptr<ma_node_graph> _Graph;
+};
+
+// An `InputNode` is a `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref` pointing directly to the input buffer.
+struct InputNode : AudioGraphNode {
+    InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+        Muted.Set_(true); // External input is muted by default.
+    }
+
+    ma_node *DoInit(ma_node_graph *graph) override {
+        const AudioInputDevice &device = Graph->InputDevice;
+        _Buffer = std::make_unique<Buffer>(ma_format(int(device.Format)), device.Channels);
+
+        static ma_data_source_node source_node{}; // todo instance var
+        ma_data_source_node_config config = ma_data_source_node_config_init(_Buffer->Get());
+        int result = ma_data_source_node_init(graph, &config, nullptr, &source_node);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the input node: ", result));
+
+        return &source_node;
+    }
+
+    void DoUninit() override {
+        _Buffer.reset();
+        ma_data_source_node_uninit((ma_data_source_node *)Node, nullptr);
+    }
+
+    void SetBufferData(const void *input, u32 frame_count) const {
+        if (_Buffer) _Buffer->SetData(input, frame_count);
+    }
+
+    struct Buffer {
+        Buffer(ma_format format, u32 channels) {
+            int result = ma_audio_buffer_ref_init(format, channels, nullptr, 0, &BufferRef);
+            if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize buffer ref: ", result));
+        }
+        ~Buffer() {
+            ma_audio_buffer_ref_uninit(&BufferRef);
+        }
+
+        void SetData(const void *input, u32 frame_count) {
+            ma_audio_buffer_ref_set_data(&BufferRef, input, frame_count);
+        }
+
+        ma_audio_buffer_ref *Get() noexcept { return &BufferRef; }
+
+    private:
+        ma_audio_buffer_ref BufferRef;
+    };
+
+private:
+    std::unique_ptr<Buffer> _Buffer;
+};
+
+// The output node is the graph endpoint. It's allocated and managed by the MA graph.
+struct OutputNode : AudioGraphNode {
+    using AudioGraphNode::AudioGraphNode;
+
+    ma_node *DoInit(ma_node_graph *graph) override {
+        return ma_node_graph_get_endpoint(graph);
+    }
+};
 
 static const AudioGraph *Singleton;
 
-AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)), Graph(InputDevice.Channels) {
+AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
+    Graph = std::make_unique<MaGraph>(InputDevice.Channels);
+    Nodes.push_back(std::make_unique<OutputNode>(ComponentArgs{this, "Output"}));
+    Nodes.push_back(std::make_unique<InputNode>(ComponentArgs{this, "Input"}));
+    Nodes.push_back(std::make_unique<FaustNode>(ComponentArgs{this, "Faust"}));
+    Nodes.push_back(std::make_unique<TestToneNode>(ComponentArgs{this, "TestTone"}));
+    for (const auto &node : Nodes) node->Init();
+
     const Field::References listened_fields = {
         InputDevice.On,
         OutputDevice.On,
@@ -52,18 +129,27 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)), Graph
     // Set up default connections.
     // Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
     // Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
-    Connections.Connect(Nodes.GetInput()->Id, Nodes.GetOutput()->Id);
+    Connections.Connect(GetInput()->Id, GetOutput()->Id);
     Singleton = this;
 }
 
 AudioGraph::~AudioGraph() {
     Singleton = nullptr;
-    for (const auto &node : Nodes) node->UnregisterListener(this);
+    for (const auto &node : Nodes) {
+        node->UnregisterListener(this);
+        node->Uninit();
+    }
     Field::UnregisterChangeListener(this);
 }
+ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
+
+// xxx depending on dynamic node positions is temporary.
+InputNode *AudioGraph::GetInput() const { return static_cast<InputNode *>(Nodes[1].get()); }
+OutputNode *AudioGraph::GetOutput() const { return static_cast<OutputNode *>(Nodes[0].get()); }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
-    Nodes.OnFaustDspChanged(dsp);
+    // xxx depending on dynamic node positions is temporary.
+    static_cast<FaustNode *>(Nodes[2].get())->OnFaustDspChanged(dsp);
     UpdateConnections();
 }
 
@@ -80,15 +166,15 @@ void AudioGraph::OnFieldChanged() {
         OutputDevice.Format.IsChanged() ||
         InputDevice.SampleRate.IsChanged() ||
         OutputDevice.SampleRate.IsChanged()) {
-        Nodes.Uninit();
-        Graph.Uninit();
-        Graph.Init(InputDevice.Channels);
-        Nodes.Init();
+        for (const auto &node : Nodes) node->Uninit();
+        Graph->Uninit();
+        Graph->Init(InputDevice.Channels);
+        for (const auto &node : Nodes) node->Init();
         UpdateConnections();
         return;
     }
     // if (InputDevice.SampleRate.IsChanged() || OutputDevice.SampleRate.IsChanged()) {
-    //     Nodes.OnDeviceSampleRateChanged();
+    //     for (const auto &node : Nodes) node->OnDeviceSampleRateChanged();
     // }
 
     if (Connections.IsChanged()) {
@@ -100,7 +186,7 @@ u32 AudioGraph::GetDeviceSampleRate() const { return OutputDevice.SampleRate; }
 u32 AudioGraph::GetDeviceBufferSize() const { return OutputDevice.Get()->playback.internalPeriodSizeInFrames; }
 
 void AudioGraph::AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-    if (Singleton && Singleton->Nodes.GetInput()) Singleton->Nodes.GetInput()->SetBufferData(input, frame_count);
+    if (Singleton && Singleton->GetInput()) Singleton->GetInput()->SetBufferData(input, frame_count);
     (void)device;
     (void)output;
 }
@@ -133,7 +219,7 @@ void AudioGraph::UpdateConnections() {
         if (!node->On) disabled_node_ids.insert(node->Id);
     }
     for (const auto &node : Nodes) {
-        node->SetActive(OutputDevice.On && Connections.HasPath(node->Id, Nodes.GetOutput()->Id, disabled_node_ids));
+        node->SetActive(OutputDevice.On && Connections.HasPath(node->Id, GetOutput()->Id, disabled_node_ids));
     }
 }
 
@@ -274,4 +360,13 @@ void AudioGraph::Style::Matrix::Render() const {
     CellSize.Draw();
     CellGap.Draw();
     MaxLabelSpace.Draw();
+}
+
+void AudioGraph::RenderNodes() const {
+    for (const auto &node : Nodes) {
+        if (TreeNodeEx(node->ImGuiLabel.c_str())) {
+            node->Draw();
+            TreePop();
+        }
+    }
 }

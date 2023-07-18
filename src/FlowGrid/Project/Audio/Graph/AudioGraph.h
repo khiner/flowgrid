@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AudioGraphNodes.h"
+#include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
 
@@ -9,6 +9,10 @@
 
 struct ma_device;
 struct ma_node_graph;
+
+struct MaGraph;
+struct InputNode;
+struct OutputNode;
 
 struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
@@ -25,20 +29,12 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
     u32 GetDeviceBufferSize() const;
 
     void RenderConnections() const;
+    void RenderNodes() const;
 
-    // Wraps around `ma_node_graph`.
-    struct MaGraph {
-        MaGraph(u32 in_channels);
-        ~MaGraph();
+    InputNode *GetInput() const;
+    OutputNode *GetOutput() const;
 
-        void Init(u32 in_channels);
-        void Uninit();
-
-        inline ma_node_graph *Get() const noexcept { return Graph.get(); }
-        std::unique_ptr<ma_node_graph> Graph;
-    };
-
-    inline ma_node_graph *Get() const noexcept { return Graph.Get(); }
+    ma_node_graph *Get() const;
 
     struct Style : Component {
         using Component::Component;
@@ -65,9 +61,9 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
     Prop(AudioInputDevice, InputDevice, AudioInputCallback);
     Prop(AudioOutputDevice, OutputDevice, AudioOutputCallback);
 
-    MaGraph Graph;
+    std::unique_ptr<MaGraph> Graph;
+    std::vector<std::unique_ptr<AudioGraphNode>> Nodes;
 
-    Prop(AudioGraphNodes, Nodes);
     Prop(AdjacencyList, Connections);
     Prop(Style, Style);
 

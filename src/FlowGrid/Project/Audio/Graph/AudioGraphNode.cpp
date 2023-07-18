@@ -137,7 +137,7 @@ private:
 };
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraphNodes *>(Parent)->Graph) {
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
     const Field::References listened_fields = {On, Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }

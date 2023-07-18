@@ -36,8 +36,8 @@ void Audio::Render() const {
             Graph.OutputDevice.Draw();
             EndTabItem();
         }
-        if (BeginTabItem(Graph.Nodes.ImGuiLabel.c_str())) {
-            Graph.Nodes.Draw();
+        if (BeginTabItem("Nodes")) {
+            Graph.RenderNodes();
             EndTabItem();
         }
         if (BeginTabItem(Graph.Connections.ImGuiLabel.c_str())) {

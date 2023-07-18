@@ -31,18 +31,8 @@ struct AudioGraphNodes : Component, FaustDspChangeListener {
 
     void OnFaustDspChanged(dsp *) override;
 
-    // Iterate over all children, converting each element from a `Component *` to a `Node *`.
-    // Usage: `for (const Node *node : Nodes) ...`
-    struct Iterator : std::vector<Component *>::const_iterator {
-        Iterator(auto it) : std::vector<Component *>::const_iterator(it) {}
-        const AudioGraphNode *operator*() const { return static_cast<const AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
-        AudioGraphNode *operator*() { return static_cast<AudioGraphNode *>(std::vector<Component *>::const_iterator::operator*()); }
-    };
-    Iterator begin() const { return Children.cbegin(); }
-    Iterator end() const { return Children.cend(); }
-
-    Iterator begin() { return Children.begin(); }
-    Iterator end() { return Children.end(); }
+    auto begin() const { return Nodes.cbegin(); }
+    auto end() const { return Nodes.cend(); }
 
     void Init();
     void Uninit();

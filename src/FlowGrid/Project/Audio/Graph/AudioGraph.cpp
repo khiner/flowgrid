@@ -47,7 +47,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)), Graph
         Connections,
     };
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-    for (auto *node : Nodes) node->RegisterListener(this);
+    for (const auto &node : Nodes) node->RegisterListener(this);
 
     // Set up default connections.
     // Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
@@ -58,7 +58,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)), Graph
 
 AudioGraph::~AudioGraph() {
     Singleton = nullptr;
-    for (auto *node : Nodes) node->UnregisterListener(this);
+    for (const auto &node : Nodes) node->UnregisterListener(this);
     Field::UnregisterChangeListener(this);
 }
 
@@ -111,12 +111,12 @@ void AudioGraph::AudioOutputCallback(ma_device *device, void *output, const void
 }
 
 void AudioGraph::UpdateConnections() {
-    for (auto *out_node : Nodes) out_node->DisconnectAll();
+    for (const auto &out_node : Nodes) out_node->DisconnectAll();
 
-    for (auto *out_node : Nodes) {
+    for (const auto &out_node : Nodes) {
         if (out_node->OutputBusCount() == 0) continue;
 
-        for (auto *in_node : Nodes) {
+        for (const auto &in_node : Nodes) {
             if (in_node->InputBusCount() == 0) continue;
 
             if (Connections.IsConnected(out_node->Id, in_node->Id)) {
@@ -129,10 +129,10 @@ void AudioGraph::UpdateConnections() {
     // Nodes that are turned off (here - disabled) are not removed from the `Connections` object in order to preserve their connections.
     // So we need to check if there is a path to the output node that doesn't go through any disabled nodes.
     std::unordered_set<ID> disabled_node_ids;
-    for (const auto *node : Nodes) {
+    for (const auto &node : Nodes) {
         if (!node->On) disabled_node_ids.insert(node->Id);
     }
-    for (auto *node : Nodes) {
+    for (const auto &node : Nodes) {
         node->SetActive(OutputDevice.On && Connections.HasPath(node->Id, Nodes.GetOutput()->Id, disabled_node_ids));
     }
 }
@@ -142,7 +142,7 @@ using namespace ImGui;
 void AudioGraph::RenderConnections() const {
     // Calculate the maximum I/O label widths.
     ImVec2 max_label_w_no_padding{0, 0}; // I/O vec: in (left), out (top)
-    for (const auto *node : Nodes) {
+    for (const auto &node : Nodes) {
         const float label_w = CalcTextSize(node->Name.c_str()).x;
         if (node->InputBusCount() > 0) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
         if (node->OutputBusCount() > 0) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
@@ -193,7 +193,7 @@ void AudioGraph::RenderConnections() const {
 
     // Output channel labels.
     u32 out_count = 0;
-    for (const auto *out_node : Nodes) {
+    for (const auto &out_node : Nodes) {
         if (out_node->OutputBusCount() == 0) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
@@ -217,7 +217,7 @@ void AudioGraph::RenderConnections() const {
 
     // Input channel labels and mixer cells.
     u32 in_i = 0;
-    for (const auto *in_node : Nodes) {
+    for (const auto &in_node : Nodes) {
         if (in_node->InputBusCount() == 0) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
@@ -236,7 +236,7 @@ void AudioGraph::RenderConnections() const {
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
 
         u32 out_i = 0;
-        for (const auto *out_node : Nodes) {
+        for (const auto &out_node : Nodes) {
             if (out_node->OutputBusCount() == 0) continue;
 
             PushID(in_i * out_count + out_i);

@@ -25,14 +25,14 @@ InputNode *AudioGraphNodes::GetInput() const { return static_cast<InputNode *>(N
 OutputNode *AudioGraphNodes::GetOutput() const { return static_cast<OutputNode *>(Nodes[0].get()); }
 
 void AudioGraphNodes::Init() {
-    for (auto *node : *this) node->Init();
+    for (const auto &node : *this) node->Init();
 }
 void AudioGraphNodes::Uninit() {
-    for (auto *node : *this) node->Uninit();
+    for (const auto &node : *this) node->Uninit();
 }
 
 void AudioGraphNodes::OnDeviceSampleRateChanged() {
-    for (auto *node : *this) node->OnDeviceSampleRateChanged();
+    for (const auto &node : *this) node->OnDeviceSampleRateChanged();
 }
 
 InputNode::InputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {

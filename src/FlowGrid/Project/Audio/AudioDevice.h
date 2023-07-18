@@ -47,8 +47,6 @@ protected:
     void InitContext();
     void UninitContext();
 
-    static ma_device_type GetMaDeviceType(IO io);
-    ma_device_type GetMaDeviceType() const;
 
     const ma_device_id *GetDeviceId(string_view device_name) const;
 

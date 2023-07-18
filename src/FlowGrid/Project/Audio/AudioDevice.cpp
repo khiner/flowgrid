@@ -86,11 +86,6 @@ string AudioDevice::GetSampleRateName(u32 sample_rate) const {
     return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
 }
 
-ma_device_type AudioDevice::GetMaDeviceType(IO io) {
-    return io == IO_In ? ma_device_type_capture : ma_device_type_playback;
-}
-ma_device_type AudioDevice::GetMaDeviceType() const { return GetMaDeviceType(GetIoType()); }
-
 const ma_device_id *AudioDevice::GetDeviceId(string_view device_name) const {
     for (const ma_device_info *info : DeviceInfos[GetIoType()]) {
         if (info->name == device_name) return &(info->id);
@@ -146,7 +141,8 @@ void AudioDevice::InitContext() {
 
     for (const IO io : IO_All) {
         ma_device_info DeviceInfo;
-        result = ma_context_get_device_info(&AudioContext, GetMaDeviceType(io), nullptr, &DeviceInfo);
+        
+        result = ma_context_get_device_info(&AudioContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &DeviceInfo);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), result));
 
         // todo need to verify that the cross-product of these formats & sample rates are supported natively.

@@ -28,22 +28,7 @@ void Audio::Render() const {
     Faust.Draw();
 
     if (BeginTabBar("")) {
-        if (BeginTabItem(Graph.InputDevice.ImGuiLabel.c_str())) {
-            Graph.InputDevice.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem(Graph.OutputDevice.ImGuiLabel.c_str())) {
-            Graph.OutputDevice.Draw();
-            EndTabItem();
-        }
-        if (BeginTabItem("Nodes")) {
-            Graph.RenderNodes();
-            EndTabItem();
-        }
-        if (BeginTabItem(Graph.Connections.ImGuiLabel.c_str())) {
-            Graph.RenderConnections();
-            EndTabItem();
-        }
+        Graph.Draw();
         if (BeginTabItem("Style")) {
             if (BeginTabBar("")) {
                 if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {

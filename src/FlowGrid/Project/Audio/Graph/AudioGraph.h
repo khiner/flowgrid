@@ -4,12 +4,10 @@
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
 
-#include "Project/Audio/AudioInputDevice.h"
-#include "Project/Audio/AudioOutputDevice.h"
-
-struct ma_device;
 struct ma_node_graph;
 
+struct AudioInputDevice;
+struct AudioOutputDevice;
 struct MaGraph;
 struct InputNode;
 struct OutputNode;
@@ -22,19 +20,19 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
     void OnFaustDspChanged(dsp *) override;
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
-    static void AudioInputCallback(ma_device *, void *output, const void *input, u32 frame_count);
-    static void AudioOutputCallback(ma_device *, void *output, const void *input, u32 frame_count);
-
     u32 GetDeviceSampleRate() const;
     u32 GetDeviceBufferSize() const;
 
-    void RenderConnections() const;
-    void RenderNodes() const;
-
+    ma_node_graph *Get() const;
     InputNode *GetInput() const;
     OutputNode *GetOutput() const;
 
-    ma_node_graph *Get() const;
+    std::unique_ptr<AudioInputDevice> InputDevice;
+    std::unique_ptr<AudioOutputDevice> OutputDevice;
+    std::unique_ptr<MaGraph> Graph;
+    std::vector<std::unique_ptr<AudioGraphNode>> Nodes;
+
+    Prop(AdjacencyList, Connections);
 
     struct Style : Component {
         using Component::Component;
@@ -58,17 +56,12 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
         Prop(Matrix, Matrix);
     };
 
-    Prop(AudioInputDevice, InputDevice, AudioInputCallback);
-    Prop(AudioOutputDevice, OutputDevice, AudioOutputCallback);
-
-    std::unique_ptr<MaGraph> Graph;
-    std::vector<std::unique_ptr<AudioGraphNode>> Nodes;
-
-    Prop(AdjacencyList, Connections);
     Prop(Style, Style);
 
 private:
-    void UpdateConnections();
+    void Render() const override;
+    void RenderConnections() const;
+    void RenderNodes() const;
 
-    void Render() const override {}
+    void UpdateConnections();
 };

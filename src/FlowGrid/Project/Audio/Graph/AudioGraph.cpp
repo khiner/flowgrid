@@ -52,7 +52,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)), Graph
     // Set up default connections.
     // Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
     // Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
-    Connections.Connect(Nodes.Input.Id, Nodes.Output.Id);
+    Connections.Connect(Nodes.GetInput()->Id, Nodes.GetOutput()->Id);
     Singleton = this;
 }
 
@@ -63,7 +63,7 @@ AudioGraph::~AudioGraph() {
 }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
-    Nodes.Faust.OnFaustDspChanged(dsp);
+    Nodes.OnFaustDspChanged(dsp);
     UpdateConnections();
 }
 
@@ -100,7 +100,7 @@ u32 AudioGraph::GetDeviceSampleRate() const { return OutputDevice.SampleRate; }
 u32 AudioGraph::GetDeviceBufferSize() const { return OutputDevice.Get()->playback.internalPeriodSizeInFrames; }
 
 void AudioGraph::AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-    if (Singleton) Singleton->Nodes.Input.SetBufferData(input, frame_count);
+    if (Singleton && Singleton->Nodes.GetInput()) Singleton->Nodes.GetInput()->SetBufferData(input, frame_count);
     (void)device;
     (void)output;
 }
@@ -133,7 +133,7 @@ void AudioGraph::UpdateConnections() {
         if (!node->On) disabled_node_ids.insert(node->Id);
     }
     for (auto *node : Nodes) {
-        node->SetActive(OutputDevice.On && Connections.HasPath(node->Id, Nodes.Output.Id, disabled_node_ids));
+        node->SetActive(OutputDevice.On && Connections.HasPath(node->Id, Nodes.GetOutput()->Id, disabled_node_ids));
     }
 }
 

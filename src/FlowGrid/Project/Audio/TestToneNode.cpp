@@ -1,4 +1,4 @@
-#include "Project/Audio/Graph/AudioGraph.h"
+#include "TestToneNode.h"
 
 #include "miniaudio.h"
 
@@ -32,7 +32,7 @@ void Process(ma_node *node, const float **const_bus_frames_in, u32 *frame_count_
     (void)frame_count_in; /* Unused. */
 }
 
-ma_node *TestToneNode::DoInit() {
+ma_node *TestToneNode::DoInit(ma_node_graph *graph) {
     ma_waveform_config waveform_config = ma_waveform_config_init(ma_format_f32, 1, GetDeviceSampleRate(), ma_waveform_type(int(Type)), 1, Frequency);
     static ma_waveform waveform;
     int result = ma_waveform_init(&waveform_config, &waveform);
@@ -51,7 +51,7 @@ ma_node *TestToneNode::DoInit() {
     config.vtable = &vtable;
 
     static ma_node_base node{};
-    result = ma_node_init(Graph->Get(), &config, nullptr, &node);
+    result = ma_node_init(graph, &config, nullptr, &node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the TestTone node: {}", result));
 
     return &node;

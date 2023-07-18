@@ -3,6 +3,7 @@
 #include "Core/Primitive/Enum.h"
 #include "Project/Audio/Graph/AudioGraphNode.h"
 
+
 struct TestToneNode : AudioGraphNode {
     TestToneNode(ComponentArgs &&);
 
@@ -16,6 +17,6 @@ struct TestToneNode : AudioGraphNode {
 private:
     void Render() const override;
 
-    ma_node *DoInit() override;
+    ma_node *DoInit(ma_node_graph *) override;
     void DoUninit() override;
 };

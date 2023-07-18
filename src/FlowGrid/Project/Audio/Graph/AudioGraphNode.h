@@ -9,6 +9,8 @@ using ma_node = void;
 
 struct AudioGraph;
 
+struct ma_node_graph;
+
 enum WindowType_ {
     WindowType_Rectangular,
     // Cosine windows.
@@ -111,7 +113,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 protected:
     void Render() const override;
 
-    virtual ma_node *DoInit() { return nullptr; };
+    virtual ma_node *DoInit(ma_node_graph *) { return nullptr; };
     virtual void DoUninit() {}
 
     MonitorNode *GetMonitor(IO) const;

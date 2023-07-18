@@ -239,7 +239,7 @@ u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_
 u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
 
 void AudioGraphNode::Init() {
-    Node = DoInit();
+    Node = DoInit(Graph->Get());
     UpdateAll();
 }
 

@@ -1,4 +1,4 @@
-#include "Project/Audio/Graph/AudioGraph.h"
+#include "FaustNode.h"
 
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
@@ -24,8 +24,8 @@ void FaustProcess(ma_node *node, const float **const_bus_frames_in, u32 *frame_c
     float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
     if (CurrentDsp) CurrentDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
 
-    (void)node; // unused
-    (void)frame_count_in; // unused
+    (void)node;
+    (void)frame_count_in;
 }
 
 void FaustNode::OnFaustDspChanged(dsp *dsp) {
@@ -41,7 +41,7 @@ void FaustNode::OnFaustDspChanged(dsp *dsp) {
     }
 }
 
-ma_node *FaustNode::DoInit() {
+ma_node *FaustNode::DoInit(ma_node_graph *graph) {
     if (!CurrentDsp) return nullptr;
 
     CurrentDsp->init(GetDeviceSampleRate());
@@ -59,7 +59,7 @@ ma_node *FaustNode::DoInit() {
     config.vtable = &vtable;
 
     static ma_node_base node{};
-    const int result = ma_node_init(Graph->Get(), &config, nullptr, &node);
+    const int result = ma_node_init(graph, &config, nullptr, &node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust node: {}", result));
 
     return &node;

@@ -4,22 +4,22 @@
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
 
+#include "Project/Audio/AudioInputDevice.h"
+#include "Project/Audio/AudioOutputDevice.h"
+
 struct ma_device;
 struct ma_node_graph;
 
-struct AudioInputDevice;
-struct AudioOutputDevice;
-
 struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
-    AudioGraph(ComponentArgs &&, const AudioInputDevice &, const AudioOutputDevice &);
+    AudioGraph(ComponentArgs &&);
     ~AudioGraph();
 
     void OnFieldChanged() override;
     void OnFaustDspChanged(dsp *) override;
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
-    void AudioInputCallback(ma_device *, void *output, const void *input, u32 frame_count) const;
-    void AudioOutputCallback(ma_device *, void *output, const void *input, u32 frame_count) const;
+    static void AudioInputCallback(ma_device *, void *output, const void *input, u32 frame_count);
+    static void AudioOutputCallback(ma_device *, void *output, const void *input, u32 frame_count);
 
     u32 GetDeviceSampleRate() const;
     u32 GetDeviceBufferSize() const;
@@ -62,8 +62,9 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
         Prop(Matrix, Matrix);
     };
 
-    const AudioInputDevice &InputDevice;
-    const AudioOutputDevice &OutputDevice;
+    Prop(AudioInputDevice, InputDevice, AudioInputCallback);
+    Prop(AudioOutputDevice, OutputDevice, AudioOutputCallback);
+
     MaGraph Graph;
 
     Prop(AudioGraphNodes, Nodes);

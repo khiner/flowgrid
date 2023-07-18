@@ -7,7 +7,8 @@
 #include "miniaudio.h"
 
 #include "Core/Container/AdjacencyListAction.h"
-#include "Project/Audio/AudioDevice.h"
+#include "Project/Audio/AudioInputDevice.h"
+#include "Project/Audio/AudioOutputDevice.h"
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
@@ -31,8 +32,19 @@ void AudioGraph::MaGraph::Uninit() {
     Graph.reset();
 }
 
-AudioGraph::AudioGraph(ComponentArgs &&args, const AudioDevice &device) : Component(std::move(args)), Device(device), Graph(Device.InChannels) {
-    const Field::References listened_fields = {device.On, device.InChannels, device.OutChannels, device.SampleRate, device.InFormat, device.OutFormat, Connections};
+AudioGraph::AudioGraph(ComponentArgs &&args, const AudioInputDevice &input_device, const AudioOutputDevice &output_device)
+    : Component(std::move(args)), InputDevice(input_device), OutputDevice(output_device), Graph(InputDevice.Channels) {
+    const Field::References listened_fields = {
+        InputDevice.On,
+        OutputDevice.On,
+        InputDevice.Channels,
+        OutputDevice.Channels,
+        InputDevice.SampleRate,
+        OutputDevice.SampleRate,
+        InputDevice.Format,
+        OutputDevice.Format,
+        Connections,
+    };
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
     for (auto *node : Nodes) node->RegisterListener(this);
 
@@ -56,20 +68,22 @@ void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) {
 }
 
 void AudioGraph::OnFieldChanged() {
-    if (Device.On.IsChanged() ||
-        Device.InChannels.IsChanged() ||
-        Device.OutChannels.IsChanged() ||
-        Device.InFormat.IsChanged() ||
-        Device.OutFormat.IsChanged() ||
-        Device.SampleRate.IsChanged()) {
+    if (InputDevice.On.IsChanged() ||
+        OutputDevice.On.IsChanged() ||
+        InputDevice.Channels.IsChanged() ||
+        OutputDevice.Channels.IsChanged() ||
+        InputDevice.Format.IsChanged() ||
+        OutputDevice.Format.IsChanged() ||
+        InputDevice.SampleRate.IsChanged() ||
+        OutputDevice.SampleRate.IsChanged()) {
         Nodes.Uninit();
         Graph.Uninit();
-        Graph.Init(Device.InChannels);
+        Graph.Init(InputDevice.Channels);
         Nodes.Init();
         UpdateConnections();
         return;
     }
-    // if (Device.SampleRate.IsChanged()) {
+    // if (InputDevice.SampleRate.IsChanged() || OutputDevice.SampleRate.IsChanged()) {
     //     Nodes.OnDeviceSampleRateChanged();
     // }
 
@@ -78,11 +92,14 @@ void AudioGraph::OnFieldChanged() {
     }
 }
 
-u32 AudioGraph::GetDeviceSampleRate() const { return Device.SampleRate; }
-u32 AudioGraph::GetDeviceBufferSize() const { return Device.Get()->playback.internalPeriodSizeInFrames; }
+u32 AudioGraph::GetDeviceSampleRate() const { return OutputDevice.SampleRate; }
+u32 AudioGraph::GetDeviceBufferSize() const { return OutputDevice.Get()->playback.internalPeriodSizeInFrames; }
 
-void AudioGraph::AudioCallback(ma_device *device, void *output, const void *input, u32 frame_count) const {
+void AudioGraph::AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) const {
     Nodes.Input.SetBufferData(input, frame_count);
+    (void)device; // unused
+}
+void AudioGraph::AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) const {
     ma_node_graph_read_pcm_frames(Get(), output, frame_count, nullptr);
     (void)device; // unused
 }
@@ -110,7 +127,7 @@ void AudioGraph::UpdateConnections() {
         if (!node->On) disabled_node_ids.insert(node->Id);
     }
     for (auto *node : Nodes) {
-        node->SetActive(Device.On && Connections.HasPath(node->Id, Nodes.Output.Id, disabled_node_ids));
+        node->SetActive(OutputDevice.On && Connections.HasPath(node->Id, Nodes.Output.Id, disabled_node_ids));
     }
 }
 

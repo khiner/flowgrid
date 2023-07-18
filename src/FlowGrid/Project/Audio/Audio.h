@@ -1,7 +1,8 @@
 #pragma once
 
 #include "AudioAction.h"
-#include "AudioDevice.h"
+#include "AudioInputDevice.h"
+#include "AudioOutputDevice.h"
 #include "Core/Action/Actionable.h"
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
@@ -15,13 +16,15 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    // Just delegates to `Graph.AudioCallback`.
-    // We use this indirection so we can initialize `AudioDevice` with a callback before initializing `AudioGraph`
-    // (which depends on `AudioDevice` being initialized).
-    static void AudioCallback(ma_device *, void *output, const void *input, u32 frame_count);
+    // These callbacks delegate to `Graph.Audio(Input|Output)Callback`.
+    // We use this indirection so we can initialize `AudioDevice`s with a callback before initializing `AudioGraph`
+    // (which depends on the `AudioDevice`s being initialized).
+    static void AudioInputCallback(ma_device *, void *output, const void *input, u32 frame_count);
+    static void AudioOutputCallback(ma_device *, void *output, const void *input, u32 frame_count);
 
-    Prop(AudioDevice, Device, AudioCallback);
-    Prop(AudioGraph, Graph, Device);
+    Prop(AudioInputDevice, InputDevice, AudioInputCallback);
+    Prop(AudioOutputDevice, OutputDevice, AudioOutputCallback);
+    Prop(AudioGraph, Graph, InputDevice, OutputDevice);
     Prop(Faust, Faust);
 
 protected:

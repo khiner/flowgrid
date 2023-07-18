@@ -5,7 +5,7 @@
 
 struct Enum : PrimitiveField<int>, Actionable<Action::Primitive::Enum::Any>, MenuItemDrawable {
     Enum(ComponentArgs &&, std::vector<string> names, int value = 0);
-    Enum(ComponentArgs &&, std::function<const string(int)> get_name, int value = 0);
+    Enum(ComponentArgs &&, std::function<string(int)> get_name, int value = 0);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };

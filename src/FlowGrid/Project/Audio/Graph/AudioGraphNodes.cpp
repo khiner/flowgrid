@@ -1,7 +1,7 @@
 #include "AudioGraphNodes.h"
 
 #include "AudioGraph.h"
-#include "Project/Audio/AudioDevice.h"
+#include "Project/Audio/AudioInputDevice.h"
 
 #include "miniaudio.h"
 
@@ -52,8 +52,8 @@ void InputNode::SetBufferData(const void *input, u32 frame_count) const {
 }
 
 ma_node *InputNode::DoInit() {
-    const AudioDevice &device = Graph->Device;
-    _Buffer = std::make_unique<Buffer>(ma_format(int(device.InFormat)), device.InChannels);
+    const AudioInputDevice &device = Graph->InputDevice;
+    _Buffer = std::make_unique<Buffer>(ma_format(int(device.Format)), device.Channels);
 
     static ma_data_source_node source_node{}; // todo instance var
     ma_data_source_node_config config = ma_data_source_node_config_init(_Buffer->Get());

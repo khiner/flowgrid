@@ -1,13 +1,12 @@
 #include "AudioDevice.h"
 
-#include "miniaudio.h"
-
 #include "imgui.h"
+#include "miniaudio.h"
 
 #include "Helper/String.h"
 
 // Copied from `miniaudio.c::g_maStandardSampleRatePriorities`.
-static u32 StandardSampleRatePriorities[] = {
+const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
     ma_standard_sample_rate_48000,
     ma_standard_sample_rate_44100,
 
@@ -28,35 +27,26 @@ static u32 StandardSampleRatePriorities[] = {
     ma_standard_sample_rate_384000,
 };
 
-const std::vector<u32> AudioDevice::PrioritizedSampleRates = {std::begin(StandardSampleRatePriorities), std::end(StandardSampleRatePriorities)};
-
-static std::vector<ma_format> NativeFormats;
-static std::vector<u32> NativeSampleRates;
-
 static ma_context AudioContext;
-static ma_device MaDevice;
+static u16 AudioContextInitializedCount = 0;
+
 static ma_device_info DeviceInfo;
 
-AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback) : Component(std::move(args)), Callback(callback) {
-    Init();
-
-    const Field::References listened_fields{On, InDeviceName, OutDeviceName, InFormat, OutFormat, InChannels, OutChannels, SampleRate};
+AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback)
+    : Component(std::move(args)), Callback(callback) {
+    const Field::References listened_fields{On, Name, Format, Channels, SampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 
 AudioDevice::~AudioDevice() {
     Field::UnregisterChangeListener(this);
-    Uninit();
 }
 
 void AudioDevice::OnFieldChanged() {
     if (On.IsChanged() ||
-        InDeviceName.IsChanged() ||
-        OutDeviceName.IsChanged() ||
-        InFormat.IsChanged() ||
-        OutFormat.IsChanged() ||
-        InChannels.IsChanged() ||
-        OutChannels.IsChanged() ||
+        Name.IsChanged() ||
+        Format.IsChanged() ||
+        Channels.IsChanged() ||
         SampleRate.IsChanged()) {
         const bool is_started = IsStarted();
         if (On && !is_started) {
@@ -72,27 +62,33 @@ void AudioDevice::OnFieldChanged() {
     }
 }
 
-const string AudioDevice::GetFormatName(const int format) {
+ma_device_type AudioDevice::GetMaDeviceType() const {
+    return GetIoType() == IO_In ? ma_device_type_capture : ma_device_type_playback;
+}
+
+string AudioDevice::GetFormatName(int format) const {
     const bool is_native = std::find(NativeFormats.begin(), NativeFormats.end(), format) != NativeFormats.end();
     return ::std::format("{}{}", ma_get_format_name((ma_format)format), is_native ? "*" : "");
 }
-const string AudioDevice::GetSampleRateName(const u32 sample_rate) {
+string AudioDevice::GetSampleRateName(u32 sample_rate) const {
     const bool is_native = std::find(NativeSampleRates.begin(), NativeSampleRates.end(), sample_rate) != NativeSampleRates.end();
     return std::format("{}{}", to_string(sample_rate), is_native ? "*" : "");
 }
 
 static std::vector<ma_device_info *> DeviceInfos[IO_Count];
 static std::vector<string> DeviceNames[IO_Count];
-static const ma_device_id *GetDeviceId(IO io, string_view device_name) {
-    for (const ma_device_info *info : DeviceInfos[io]) {
+
+const ma_device_id *AudioDevice::GetDeviceId(string_view device_name) const {
+    for (const ma_device_info *info : DeviceInfos[GetIoType()]) {
         if (info->name == device_name) return &(info->id);
     }
     return nullptr;
 }
 
-ma_device *AudioDevice::Get() const { return &MaDevice; }
+void AudioDevice::InitContext() {
+    AudioContextInitializedCount++;
+    if (AudioContextInitializedCount > 1) return;
 
-void AudioDevice::Init() {
     int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
 
@@ -110,18 +106,16 @@ void AudioDevice::Init() {
         DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
     }
 
-    ma_device_config config;
-    config = ma_device_config_init(ma_device_type_duplex);
-    config.capture.pDeviceID = GetDeviceId(IO_In, InDeviceName);
-    config.capture.format = ma_format_f32;
-    config.capture.channels = InChannels;
-    config.capture.shareMode = ma_share_mode_shared;
-    config.playback.pDeviceID = GetDeviceId(IO_Out, OutDeviceName);
-    config.playback.format = ma_format_f32;
-    config.playback.channels = OutChannels;
-    config.dataCallback = Callback;
-    config.sampleRate = SampleRate;
-    config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
+    result = ma_context_get_device_info(&AudioContext, GetMaDeviceType(), nullptr, &DeviceInfo);
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(GetIoType()), result));
+
+    // todo need to verify that the cross-product of these formats & sample rates are supported natively.
+    // Create a new format type that mirrors MA's (with sample format and sample rate).
+    for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
+        const auto &native_format = DeviceInfo.nativeDataFormats[i];
+        NativeFormats.emplace_back(native_format.format);
+        NativeSampleRates.emplace_back(native_format.sampleRate);
+    }
 
     // MA graph nodes require f32 format for in/out.
     // We could keep IO formats configurable, and add two decoders to/from f32, but MA already does this
@@ -135,42 +129,11 @@ void AudioDevice::Init() {
     // auto result = ma_resampler_init(&ResamplerConfig, nullptr, &Resampler);
     // if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing resampler: {}", result));
     // ResamplerConfig.pBackendVTable = &ResamplerVTable;
-
-    result = ma_device_init(nullptr, &config, &MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio device: {}", result));
-
-    result = ma_context_get_device_info(MaDevice.pContext, MaDevice.type, nullptr, &DeviceInfo);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio device info: {}", result));
-
-    // todo need to verify that the cross-product of these formats & sample rates are supported natively, and not just each config jointly
-    for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
-        const auto &native_format = DeviceInfo.nativeDataFormats[i];
-        NativeFormats.emplace_back(native_format.format);
-        NativeSampleRates.emplace_back(native_format.sampleRate);
-    }
-
-    // The device may have a different configuration than what we requested.
-    // Update the fields to reflect the actual device configuration.
-    if (MaDevice.capture.name != InDeviceName) InDeviceName.Set_(MaDevice.capture.name);
-    if (MaDevice.playback.name != OutDeviceName) OutDeviceName.Set_(MaDevice.playback.name);
-    if (MaDevice.capture.format != InFormat) InFormat.Set_(MaDevice.capture.format);
-    if (MaDevice.playback.format != OutFormat) OutFormat.Set_(MaDevice.playback.format);
-    if (MaDevice.capture.channels != InChannels) InChannels.Set_(MaDevice.capture.channels);
-    if (MaDevice.playback.channels != OutChannels) OutChannels.Set_(MaDevice.playback.channels);
-    if (MaDevice.sampleRate != SampleRate) SampleRate.Set_(MaDevice.sampleRate);
-
-    result = ma_device_start(&MaDevice);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio device: {}", result));
 }
 
-void AudioDevice::Uninit() {
-    if (IsStarted()) {
-        const int result = ma_device_stop(&MaDevice);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error stopping audio device: {}", result));
-    }
-
-    ma_device_uninit(&MaDevice);
-    // ma_resampler_uninit(&Resampler, nullptr);
+void AudioDevice::UninitContext() {
+    AudioContextInitializedCount--;
+    if (AudioContextInitializedCount > 0) return;
 
     for (const IO io : IO_All) {
         DeviceInfos[io].clear();
@@ -181,26 +144,25 @@ void AudioDevice::Uninit() {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error shutting down audio context: {}", result));
 }
 
-bool AudioDevice::IsStarted() const { return ma_device_is_started(&MaDevice); }
+bool AudioDevice::IsStarted() const { return ma_device_is_started(Get()); }
 
 using namespace ImGui;
 
 void AudioDevice::Render() const {
+    const IO io = GetIoType();
+
     On.Draw();
     if (!IsStarted()) {
         TextUnformatted("Audio device is not started.");
         return;
     }
     SampleRate.Render(PrioritizedSampleRates);
-    for (const IO io : IO_All) {
-        TextUnformatted(StringHelper::Capitalize(to_string(io)).c_str());
-        (io == IO_In ? InDeviceName : OutDeviceName).Render(DeviceNames[io]);
-        // (io == IO_In ? InFormat : OutFormat).Render(PrioritizedFormats); // See above - always using f32 format.
-    }
-    if (TreeNode("Info")) {
-        auto *device = &MaDevice;
-        assert(device->type == ma_device_type_duplex || device->type == ma_device_type_loopback);
+    TextUnformatted(StringHelper::Capitalize(to_string(io)).c_str());
+    Name.Render(DeviceNames[io]);
+    // Format.Render(PrioritizedFormats); // See above - always using f32 format.
 
+    if (TreeNode("Info")) {
+        auto *device = Get();
         Text("[%s]", ma_get_backend_name(device->pContext->backend));
 
         static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];

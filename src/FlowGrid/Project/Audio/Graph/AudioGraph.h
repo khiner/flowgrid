@@ -7,17 +7,19 @@
 struct ma_device;
 struct ma_node_graph;
 
-struct AudioDevice;
+struct AudioInputDevice;
+struct AudioOutputDevice;
 
 struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
-    AudioGraph(ComponentArgs &&, const AudioDevice &);
+    AudioGraph(ComponentArgs &&, const AudioInputDevice &, const AudioOutputDevice &);
     ~AudioGraph();
 
     void OnFieldChanged() override;
     void OnFaustDspChanged(dsp *) override;
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
-    void AudioCallback(ma_device *, void *output, const void *input, u32 frame_count) const;
+    void AudioInputCallback(ma_device *, void *output, const void *input, u32 frame_count) const;
+    void AudioOutputCallback(ma_device *, void *output, const void *input, u32 frame_count) const;
 
     u32 GetDeviceSampleRate() const;
     u32 GetDeviceBufferSize() const;
@@ -60,7 +62,8 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
         Prop(Matrix, Matrix);
     };
 
-    const AudioDevice &Device;
+    const AudioInputDevice &InputDevice;
+    const AudioOutputDevice &OutputDevice;
     MaGraph Graph;
 
     Prop(AudioGraphNodes, Nodes);

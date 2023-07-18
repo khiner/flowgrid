@@ -49,8 +49,9 @@ AudioGraph::AudioGraph(ComponentArgs &&args, const AudioInputDevice &input_devic
     for (auto *node : Nodes) node->RegisterListener(this);
 
     // Set up default connections.
-    Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
-    Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
+    // Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
+    // Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
+    Connections.Connect(Nodes.Input.Id, Nodes.Output.Id);
 }
 
 AudioGraph::~AudioGraph() {

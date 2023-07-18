@@ -25,11 +25,11 @@ void AudioInputDevice::Init() {
     config.capture.pDeviceID = GetDeviceId(Name);
     config.capture.format = ma_format_f32;
     config.capture.channels = Channels;
-    config.capture.shareMode = ma_share_mode_shared;
     config.dataCallback = Callback;
     config.sampleRate = GetConfigSampleRate();
     // config.pUserData = pMyCustomData; // Can be accessed from the device object (device.pUserData).
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
+    config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.
 
     int result = ma_device_init(nullptr, &config, &MaDevice);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(GetIoType()), result));

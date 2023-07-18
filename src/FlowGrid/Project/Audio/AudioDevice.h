@@ -20,14 +20,13 @@ struct AudioDevice : Component, Field::ChangeListener {
     AudioDevice(ComponentArgs &&, AudioCallback);
     virtual ~AudioDevice();
 
-    std::string GetFormatName(int) const; // `ma_format` argmument is converted to an `int`.
+    std::string GetFormatName(int) const;
     std::string GetSampleRateName(u32) const;
 
     void OnFieldChanged() override;
 
     virtual ma_device *Get() const = 0;
     virtual IO GetIoType() const = 0;
-    ma_device_type GetMaDeviceType() const;
 
     bool IsStarted() const;
 
@@ -41,17 +40,29 @@ struct AudioDevice : Component, Field::ChangeListener {
 protected:
     void Render() const override;
 
-    void InitContext();
-    void UninitContext();
-
-    const ma_device_id *GetDeviceId(string_view device_name) const;
-
     virtual void Init() = 0;
     virtual void Uninit() = 0;
 
+    // Implementing classes must call these in their `Init`/`Uninit`.
+    void InitContext();
+    void UninitContext();
+
+    static ma_device_type GetMaDeviceType(IO io);
+    ma_device_type GetMaDeviceType() const;
+
+    const ma_device_id *GetDeviceId(string_view device_name) const;
+
+    // Uses the current `SampleRate`, the `PrioritizedSampleRates` list, and the device's native sample rates
+    // to determine the best sample rate with which to initialize the `ma_device`.
+    u32 GetConfigSampleRate() const;
+
+    bool IsNativeSampleRate(u32 sample_rate) const;
+    bool IsNativeFormat(ma_format format) const;
+
     AudioCallback Callback;
 
+private:
     static const std::vector<u32> PrioritizedSampleRates;
-    std::vector<ma_format> NativeFormats;
-    std::vector<u32> NativeSampleRates;
+    inline static std::unordered_map<IO, std::vector<ma_format>> NativeFormats;
+    inline static std::unordered_map<IO, std::vector<u32>> NativeSampleRates;
 };

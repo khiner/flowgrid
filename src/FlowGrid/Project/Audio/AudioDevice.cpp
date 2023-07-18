@@ -30,8 +30,6 @@ const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
 static ma_context AudioContext;
 static u16 AudioContextInitializedCount = 0;
 
-static ma_device_info DeviceInfo;
-
 AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback)
     : Component(std::move(args)), Callback(callback) {
     const Field::References listened_fields{On, Name, Format, Channels, SampleRate};
@@ -62,27 +60,67 @@ void AudioDevice::OnFieldChanged() {
     }
 }
 
-ma_device_type AudioDevice::GetMaDeviceType() const {
-    return GetIoType() == IO_In ? ma_device_type_capture : ma_device_type_playback;
+static std::vector<ma_device_info *> DeviceInfos[IO_Count];
+static std::vector<string> DeviceNames[IO_Count];
+
+bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const {
+    const IO io = GetIoType();
+    if (!NativeSampleRates.contains(io)) return false;
+
+    const auto &native_sample_rates = NativeSampleRates.at(io);
+    return std::find(native_sample_rates.begin(), native_sample_rates.end(), sample_rate) != native_sample_rates.end();
+}
+
+bool AudioDevice::IsNativeFormat(ma_format format) const {
+    const IO io = GetIoType();
+    if (!NativeFormats.contains(io)) return false;
+
+    const auto &native_formats = NativeFormats.at(io);
+    return std::find(native_formats.begin(), native_formats.end(), format) != native_formats.end();
 }
 
 string AudioDevice::GetFormatName(int format) const {
-    const bool is_native = std::find(NativeFormats.begin(), NativeFormats.end(), format) != NativeFormats.end();
-    return ::std::format("{}{}", ma_get_format_name((ma_format)format), is_native ? "*" : "");
+    return ::std::format("{}{}", ma_get_format_name(ma_format(format)), IsNativeFormat(ma_format(format)) ? "*" : "");
 }
 string AudioDevice::GetSampleRateName(u32 sample_rate) const {
-    const bool is_native = std::find(NativeSampleRates.begin(), NativeSampleRates.end(), sample_rate) != NativeSampleRates.end();
-    return std::format("{}{}", to_string(sample_rate), is_native ? "*" : "");
+    return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
 }
 
-static std::vector<ma_device_info *> DeviceInfos[IO_Count];
-static std::vector<string> DeviceNames[IO_Count];
+ma_device_type AudioDevice::GetMaDeviceType(IO io) {
+    return io == IO_In ? ma_device_type_capture : ma_device_type_playback;
+}
+ma_device_type AudioDevice::GetMaDeviceType() const { return GetMaDeviceType(GetIoType()); }
 
 const ma_device_id *AudioDevice::GetDeviceId(string_view device_name) const {
     for (const ma_device_info *info : DeviceInfos[GetIoType()]) {
         if (info->name == device_name) return &(info->id);
     }
     return nullptr;
+}
+u32 AudioDevice::GetConfigSampleRate() const {
+    // The native sample rate list may have a different prioritized order than our priority list.
+    // We want to choose the highest-priority sample rate that is also native to the device, or
+    // the current `SampleRate` if it is natively supported.
+    // Assumes `InitContext` has already been called.
+
+    const IO io = GetIoType();
+    if (!NativeSampleRates.contains(io) || NativeSampleRates.at(io).empty()) {
+        throw std::runtime_error("No native sample rates found. Perhaps `InitContext` was not called before calling `GetConfigSampleRate`?");
+    }
+
+    const auto &native_sample_rates = NativeSampleRates.at(io);
+    if (u32(SampleRate) == 0) { // Default.
+        // If `SampleRate` is 0, we want to choose the highest-priority sample rate that is native to the device.
+        for (u32 sample_rate : PrioritizedSampleRates) {
+            if (std::find(native_sample_rates.begin(), native_sample_rates.end(), sample_rate) != native_sample_rates.end()) return sample_rate;
+        }
+    } else {
+        if (std::find(native_sample_rates.begin(), native_sample_rates.end(), SampleRate) != native_sample_rates.end()) return SampleRate;
+    }
+
+    // Either an explicit (non-default) sample rate that's not natively supported, or the device doesn't support any of the prioritized sample rates.
+    // This will cause MA to perform automatic resampling.
+    return SampleRate;
 }
 
 void AudioDevice::InitContext() {
@@ -106,15 +144,18 @@ void AudioDevice::InitContext() {
         DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
     }
 
-    result = ma_context_get_device_info(&AudioContext, GetMaDeviceType(), nullptr, &DeviceInfo);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(GetIoType()), result));
+    for (const IO io : IO_All) {
+        ma_device_info DeviceInfo;
+        result = ma_context_get_device_info(&AudioContext, GetMaDeviceType(io), nullptr, &DeviceInfo);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), result));
 
-    // todo need to verify that the cross-product of these formats & sample rates are supported natively.
-    // Create a new format type that mirrors MA's (with sample format and sample rate).
-    for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
-        const auto &native_format = DeviceInfo.nativeDataFormats[i];
-        NativeFormats.emplace_back(native_format.format);
-        NativeSampleRates.emplace_back(native_format.sampleRate);
+        // todo need to verify that the cross-product of these formats & sample rates are supported natively.
+        // Create a new format type that mirrors MA's (with sample format and sample rate).
+        for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
+            const auto &native_format = DeviceInfo.nativeDataFormats[i];
+            NativeFormats[io].emplace_back(native_format.format);
+            NativeSampleRates[io].emplace_back(native_format.sampleRate);
+        }
     }
 
     // MA graph nodes require f32 format for in/out.

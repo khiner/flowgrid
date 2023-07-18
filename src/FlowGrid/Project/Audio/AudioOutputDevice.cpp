@@ -26,7 +26,7 @@ void AudioOutputDevice::Init() {
     config.playback.format = ma_format_f32;
     config.playback.channels = Channels;
     config.dataCallback = Callback;
-    config.sampleRate = SampleRate;
+    config.sampleRate = GetConfigSampleRate();
     // config.pUserData = pMyCustomData; // Can be accessed from the device object (device.pUserData).
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
 

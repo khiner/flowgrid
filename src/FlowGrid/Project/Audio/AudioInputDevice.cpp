@@ -27,7 +27,7 @@ void AudioInputDevice::Init() {
     config.capture.channels = Channels;
     config.capture.shareMode = ma_share_mode_shared;
     config.dataCallback = Callback;
-    config.sampleRate = SampleRate;
+    config.sampleRate = GetConfigSampleRate();
     // config.pUserData = pMyCustomData; // Can be accessed from the device object (device.pUserData).
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
 

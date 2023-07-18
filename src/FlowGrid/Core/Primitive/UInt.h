@@ -13,6 +13,7 @@ struct UInt : PrimitiveField<u32>, Actionable<Action::Primitive::UInt::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
+    // `u32` conversion is already provided by `PrimitiveField`.
     operator bool() const { return Value != 0; }
     operator int() const { return Value; };
     operator float() const { return Value; };

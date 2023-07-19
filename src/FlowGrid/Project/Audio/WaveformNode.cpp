@@ -1,4 +1,4 @@
-#include "TestToneNode.h"
+#include "WaveformNode.h"
 
 #include "miniaudio.h"
 
@@ -6,12 +6,12 @@
 
 static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?
 
-TestToneNode::TestToneNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+WaveformNode::WaveformNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Frequency.RegisterChangeListener(this);
     Type.RegisterChangeListener(this);
 }
 
-void TestToneNode::OnFieldChanged() {
+void WaveformNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
     if (!CurrentWaveform) return;
 
@@ -19,7 +19,7 @@ void TestToneNode::OnFieldChanged() {
     if (Type.IsChanged()) ma_waveform_set_type(CurrentWaveform, ma_waveform_type(int(Type)));
 }
 
-void TestToneNode::OnDeviceSampleRateChanged() {
+void WaveformNode::OnDeviceSampleRateChanged() {
     AudioGraphNode::OnDeviceSampleRateChanged();
     if (CurrentWaveform) ma_waveform_set_sample_rate(CurrentWaveform, GetDeviceSampleRate());
 }
@@ -32,11 +32,11 @@ void Process(ma_node *node, const float **const_bus_frames_in, u32 *frame_count_
     (void)frame_count_in; /* Unused. */
 }
 
-ma_node *TestToneNode::DoInit(ma_node_graph *graph) {
+ma_node *WaveformNode::DoInit(ma_node_graph *graph) {
     ma_waveform_config waveform_config = ma_waveform_config_init(ma_format_f32, 1, GetDeviceSampleRate(), ma_waveform_type(int(Type)), 1, Frequency);
     static ma_waveform waveform;
     int result = ma_waveform_init(&waveform_config, &waveform);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the TestTone waveform: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Waveform waveform: {}", result));
 
     CurrentWaveform = &waveform;
 
@@ -48,19 +48,19 @@ ma_node *TestToneNode::DoInit(ma_node_graph *graph) {
 
     static ma_node_base node{};
     result = ma_node_init(graph, &config, nullptr, &node);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the TestTone node: {}", result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Waveform node: {}", result));
 
     return &node;
 }
 
-void TestToneNode::DoUninit() {
+void WaveformNode::DoUninit() {
     if (!CurrentWaveform) return;
 
     ma_waveform_uninit(CurrentWaveform);
     CurrentWaveform = nullptr;
 }
 
-void TestToneNode::Render() const {
+void WaveformNode::Render() const {
     AudioGraphNode::Render();
 
     ImGui::Spacing();

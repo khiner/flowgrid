@@ -3,9 +3,8 @@
 #include "Core/Primitive/Enum.h"
 #include "Project/Audio/Graph/AudioGraphNode.h"
 
-
-struct TestToneNode : AudioGraphNode {
-    TestToneNode(ComponentArgs &&);
+struct WaveformNode : AudioGraphNode {
+    WaveformNode(ComponentArgs &&);
 
     void OnFieldChanged() override;
     void OnDeviceSampleRateChanged() override;

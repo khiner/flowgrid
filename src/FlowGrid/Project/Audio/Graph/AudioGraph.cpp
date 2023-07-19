@@ -14,7 +14,7 @@
 #include "UI/Styling.h"
 
 #include "Project/Audio/Faust/FaustNode.h"
-#include "Project/Audio/TestToneNode.h"
+#include "Project/Audio/WaveformNode.h"
 
 #include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
@@ -203,7 +203,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Nodes.push_back(std::make_unique<GraphEndpointNode>(ComponentArgs{this, GraphEndpointPathSegment}));
 
     Nodes.push_back(std::make_unique<FaustNode>(ComponentArgs{this, "Faust"}));
-    Nodes.push_back(std::make_unique<TestToneNode>(ComponentArgs{this, "TestTone"}));
+    Nodes.push_back(std::make_unique<WaveformNode>(ComponentArgs{this, "Waveform"}));
     for (const auto &node : Nodes) node->Init();
 
     const Field::References listened_fields = {

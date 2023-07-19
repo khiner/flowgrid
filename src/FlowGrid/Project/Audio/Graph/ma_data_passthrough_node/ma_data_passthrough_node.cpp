@@ -2,52 +2,46 @@
 
 #include "../ma_helper.h"
 
-ma_data_passthrough_node_config ma_data_passthrough_node_config_init(ma_audio_buffer_ref *pDataSource) {
+ma_data_passthrough_node_config ma_data_passthrough_node_config_init(ma_audio_buffer_ref *buffer_ref) {
     ma_data_passthrough_node_config config;
 
     MA_ZERO_OBJECT(&config);
-    config.nodeConfig = ma_node_config_init();
-    config.pDataSource = pDataSource;
+    config.node_config = ma_node_config_init();
+    config.buffer_ref = buffer_ref;
 
     return config;
 }
 
-static void ma_data_passthrough_node_process_pcm_frames(ma_node *pNode, const float **ppFramesIn, ma_uint32 *pFrameCountIn, float **ppFramesOut, ma_uint32 *pFrameCountOut) {
-    ma_data_passthrough_node *pDataPassthroughNode = (ma_data_passthrough_node *)pNode;
-    ma_uint32 frameCount = *pFrameCountOut;
-    ma_audio_buffer_ref_set_data(pDataPassthroughNode->pDataSource, ppFramesIn[0], frameCount);
+static void ma_data_passthrough_node_process_pcm_frames(ma_node *node, const float **frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
+    ma_data_passthrough_node *passthrough = (ma_data_passthrough_node *)node;
+    ma_audio_buffer_ref_set_data(passthrough->buffer_ref, frames_in[0], *frame_count_out);
 
-    (void)ppFramesIn;
-    (void)pFrameCountIn;
+    (void)frames_out;
+    (void)frame_count_in;
 }
 
-static ma_node_vtable g_ma_data_passthrough_node_vtable =
-    {
-        ma_data_passthrough_node_process_pcm_frames,
-        NULL, /* onGetRequiredInputFrameCount */
-        1, /* 1 input bus. */
-        1, /* 1 output bus. */
-        MA_NODE_FLAG_PASSTHROUGH};
+ma_result ma_data_passthrough_node_init(ma_node_graph *pNodeGraph, const ma_data_passthrough_node_config *config, const ma_allocation_callbacks *allocation_callbacks, ma_data_passthrough_node *passthrough) {
+    if (passthrough == NULL || config == NULL) return MA_INVALID_ARGS;
 
-ma_result ma_data_passthrough_node_init(ma_node_graph *pNodeGraph, const ma_data_passthrough_node_config *pConfig, const ma_allocation_callbacks *pAllocationCallbacks, ma_data_passthrough_node *pDataPassthroughNode) {
-    if (pDataPassthroughNode == NULL || pConfig == NULL) return MA_INVALID_ARGS;
+    MA_ZERO_OBJECT(passthrough);
 
-    MA_ZERO_OBJECT(pDataPassthroughNode);
+    ma_uint32 channels = config->buffer_ref->channels;
+    ma_node_config base_config = config->node_config;
 
-    ma_uint32 channels = pConfig->pDataSource->channels;
-    ma_node_config baseConfig = pConfig->nodeConfig;
-    baseConfig.vtable = &g_ma_data_passthrough_node_vtable; /* Explicitly set the vtable here to prevent callers from setting it incorrectly. */
-    baseConfig.pInputChannels = &channels;
-    baseConfig.pOutputChannels = &channels;
+    static ma_node_vtable vtable = {ma_data_passthrough_node_process_pcm_frames, NULL, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
+    base_config.vtable = &vtable;
 
-    ma_result result = ma_node_init(pNodeGraph, &baseConfig, pAllocationCallbacks, &pDataPassthroughNode->base);
+    base_config.pInputChannels = &channels;
+    base_config.pOutputChannels = &channels;
+
+    ma_result result = ma_node_init(pNodeGraph, &base_config, allocation_callbacks, &passthrough->base);
     if (result != MA_SUCCESS) return result;
 
-    pDataPassthroughNode->pDataSource = pConfig->pDataSource;
+    passthrough->buffer_ref = config->buffer_ref;
 
     return MA_SUCCESS;
 }
 
-void ma_data_passthrough_node_uninit(ma_data_passthrough_node *pDataPassthroughNode, const ma_allocation_callbacks *pAllocationCallbacks) {
-    ma_node_uninit(&pDataPassthroughNode->base, pAllocationCallbacks);
+void ma_data_passthrough_node_uninit(ma_data_passthrough_node *passthrough, const ma_allocation_callbacks *allocation_callbacks) {
+    ma_node_uninit(&passthrough->base, allocation_callbacks);
 }

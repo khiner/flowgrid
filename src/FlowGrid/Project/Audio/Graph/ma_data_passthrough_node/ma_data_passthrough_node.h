@@ -2,18 +2,18 @@
 
 #include "miniaudio.h"
 
-/* Based on `ma_data_source_node`. 1 input bus, 1 output bus. Holds its most recently read output buffer. */
+/* Based on `ma_data_source_node`. 1 input bus, 1 output bus. Captures most recently read input buffer in a buffer ref. */
 struct ma_data_passthrough_node_config {
-    ma_node_config nodeConfig;
-    ma_audio_buffer_ref *pDataSource;
+    ma_node_config node_config;
+    ma_audio_buffer_ref *buffer_ref;
 };
 
-MA_API ma_data_passthrough_node_config ma_data_passthrough_node_config_init(ma_audio_buffer_ref *pDataSource);
+ma_data_passthrough_node_config ma_data_passthrough_node_config_init(ma_audio_buffer_ref *buffer_ref);
 
 struct ma_data_passthrough_node {
     ma_node_base base;
-    ma_audio_buffer_ref *pDataSource;
+    ma_audio_buffer_ref *buffer_ref;
 };
 
-ma_result ma_data_passthrough_node_init(ma_node_graph *pNodeGraph, const ma_data_passthrough_node_config *pConfig, const ma_allocation_callbacks *pAllocationCallbacks, ma_data_passthrough_node *pDataPassthroughNode);
-void ma_data_passthrough_node_uninit(ma_data_passthrough_node *pDataPassthroughNode, const ma_allocation_callbacks *pAllocationCallbacks);
+ma_result ma_data_passthrough_node_init(ma_node_graph *, const ma_data_passthrough_node_config *, const ma_allocation_callbacks *, ma_data_passthrough_node *);
+void ma_data_passthrough_node_uninit(ma_data_passthrough_node *, const ma_allocation_callbacks *);

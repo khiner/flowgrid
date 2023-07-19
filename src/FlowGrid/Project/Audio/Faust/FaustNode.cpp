@@ -50,9 +50,8 @@ ma_node *FaustNode::DoInit(ma_node_graph *graph) {
     const u32 out_channels = CurrentDsp->getNumOutputs();
     if (in_channels == 0 && out_channels == 0) return nullptr;
 
-    static ma_node_vtable vtable{};
-    vtable = {FaustProcess, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
 
+    static ma_node_vtable vtable = {FaustProcess, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
     ma_node_config config = ma_node_config_init();
     config.pInputChannels = &in_channels; // One input bus with N channels.
     config.pOutputChannels = &out_channels; // One output bus with M channels.

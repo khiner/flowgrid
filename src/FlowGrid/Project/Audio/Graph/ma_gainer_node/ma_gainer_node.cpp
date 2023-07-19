@@ -16,8 +16,6 @@ static void ma_gainer_node_process_pcm_frames(ma_node *node, const float **frame
     ma_gainer_process_pcm_frames(&gainer_node->gainer, frames_out[0], frames_in[0], *frame_count_out);
 }
 
-static ma_node_vtable g_ma_gainer_node_vtable = {ma_gainer_node_process_pcm_frames, NULL, 1, 1, 0};
-
 ma_result ma_gainer_node_init(ma_node_graph *node_graph, const ma_gainer_node_config *config, const ma_allocation_callbacks *allocation_callbacks, ma_gainer_node *gainer_node) {
     if (gainer_node == NULL || config == NULL) return MA_INVALID_ARGS;
 
@@ -27,8 +25,9 @@ ma_result ma_gainer_node_init(ma_node_graph *node_graph, const ma_gainer_node_co
     ma_result result = ma_gainer_init(&config->gainer_config, allocation_callbacks, &gainer_node->gainer);
     if (result != MA_SUCCESS) return result;
 
+    static ma_node_vtable vtable = {ma_gainer_node_process_pcm_frames, NULL, 1, 1, 0};
     ma_node_config base_config = config->node_config;
-    base_config.vtable = &g_ma_gainer_node_vtable;
+    base_config.vtable = &vtable;
     base_config.pInputChannels = &config->gainer_config.channels;
     base_config.pOutputChannels = &config->gainer_config.channels;
 

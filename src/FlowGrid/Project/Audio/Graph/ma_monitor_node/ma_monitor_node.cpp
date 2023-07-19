@@ -47,8 +47,6 @@ static void ma_monitor_node_process_pcm_frames(ma_node *node, const float **fram
     (void)frames_in;
 }
 
-static ma_node_vtable g_ma_monitor_node_vtable = {ma_monitor_node_process_pcm_frames, NULL, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
-
 ma_result create_fft(ma_monitor_node *monitor, const ma_allocation_callbacks *allocation_callbacks) {
     fft_data *fft = (fft_data *)ma_malloc(sizeof(fft_data), allocation_callbacks);
     if (fft == NULL) return MA_OUT_OF_MEMORY;
@@ -102,8 +100,9 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
         return result;
     }
 
+    static ma_node_vtable vtable = {ma_monitor_node_process_pcm_frames, NULL, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
     ma_node_config base_config = config->node_config;
-    base_config.vtable = &g_ma_monitor_node_vtable;
+    base_config.vtable = &vtable;
     base_config.pInputChannels = &config->channels;
     base_config.pOutputChannels = &config->channels;
 

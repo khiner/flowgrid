@@ -40,14 +40,10 @@ ma_node *TestToneNode::DoInit(ma_node_graph *graph) {
 
     CurrentWaveform = &waveform;
 
-    static ma_node_config config;
-    config = ma_node_config_init();
-
-    static u32 out_channels = 1;
+    static ma_node_vtable vtable = {Process, nullptr, 0, 1, 0};
+    u32 out_channels = 1;
+    ma_node_config config = ma_node_config_init();
     config.pOutputChannels = &out_channels;
-
-    static ma_node_vtable vtable{};
-    vtable = {Process, nullptr, 0, 1, 0};
     config.vtable = &vtable;
 
     static ma_node_base node{};

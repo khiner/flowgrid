@@ -143,6 +143,7 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
 }
 AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
+    Uninit();
 }
 
 u32 AudioGraphNode::GetDeviceSampleRate() const { return Graph->GetDeviceSampleRate(); }
@@ -230,11 +231,10 @@ void AudioGraphNode::OnFieldChanged() {
 
 u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
 
-// The output node corresponds to the graph endpoint node.
-// Technically, it has an output bus, but it's handled specially by miniaudio.
+// Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
 // Most importantly, it is not possible to attach the graph endpoint's node into any other node.
 // Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
-u32 AudioGraphNode::OutputBusCount() const { return IsOutput() ? 0 : ma_node_get_output_bus_count(Node); }
+u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_node_get_output_bus_count(Node); }
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Node, bus); }
 u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
 
@@ -359,7 +359,7 @@ std::string NodesToString(const std::unordered_set<const AudioGraphNode *> &node
 }
 
 void AudioGraphNode::Render() const {
-    if (!IsOutput()) {
+    if (!IsGraphEndpoint()) {
         On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
         SameLine();
     }

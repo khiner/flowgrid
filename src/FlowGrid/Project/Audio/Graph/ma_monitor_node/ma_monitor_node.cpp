@@ -1,22 +1,8 @@
 #include "ma_monitor_node.h"
 
-#include <assert.h>
-#include <string.h>
+#include "../ma_helper.h"
 
 #include "fft_data.h"
-
-static MA_INLINE void ma_zero_memory_default(void *p, size_t sz) {
-    if (p == NULL) {
-        assert(sz == 0);
-        return;
-    }
-
-    if (sz > 0) {
-        memset(p, 0, sz);
-    }
-}
-
-#define MA_ZERO_OBJECT(p) ma_zero_memory_default((p), sizeof(*(p)))
 
 ma_monitor_node_config ma_monitor_node_config_init(ma_uint32 channels, ma_uint32 sample_rate, ma_uint32 buffer_frames) {
     ma_monitor_node_config config;
@@ -130,4 +116,8 @@ void ma_monitor_node_uninit(ma_monitor_node *monitor, const ma_allocation_callba
     ma_node_uninit(monitor, allocation_callbacks);
     destroy_fft(monitor->fft, allocation_callbacks);
     monitor->fft = NULL;
+    ma_free(monitor->buffer, allocation_callbacks);
+    monitor->buffer = NULL;
+    ma_free(monitor->windowed_buffer, allocation_callbacks);
+    monitor->windowed_buffer = NULL;
 }

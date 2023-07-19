@@ -36,6 +36,8 @@ enum WindowType_ {
 
 using WindowType = int;
 
+static inline std::string GraphEndpointPathSegment = "GraphEndpoint";
+
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
 struct AudioGraphNode : Component, Field::ChangeListener {
@@ -59,7 +61,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     u32 OutputChannelCount(u32 bus) const;
     inline u32 ChannelCount(IO io, u32 bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
 
-    bool IsOutput() const noexcept { return Name == "Output"; }
+    bool IsGraphEndpoint() const noexcept { return PathSegment == GraphEndpointPathSegment; }
 
     // An `AudioGraphNode` may be composed of multiple inner `ma_node`s.
     // These return the graph-visible I/O nodes.

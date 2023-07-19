@@ -6,7 +6,6 @@
 
 struct ma_node_graph;
 
-struct AudioOutputDevice;
 struct MaGraph;
 struct DeviceInputNode;
 struct DeviceOutputNode;
@@ -21,11 +20,10 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
     u32 GetDeviceSampleRate() const;
-    u32 GetDeviceBufferSize() const;
+    u64 GetDeviceBufferSize() const;
 
     ma_node_graph *Get() const;
 
-    std::unique_ptr<AudioOutputDevice> OutputDevice;
     std::unique_ptr<MaGraph> Graph;
     std::vector<std::unique_ptr<AudioGraphNode>> Nodes;
 
@@ -63,5 +61,6 @@ private:
     void UpdateConnections();
 
     DeviceInputNode *GetDeviceInputNode() const;
-    OutputNode *GetGraphOutputNode() const;
+    DeviceOutputNode *GetDeviceOutputNode() const;
+    OutputNode *GetGraphEndpointNode() const;
 };

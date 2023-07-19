@@ -28,8 +28,6 @@ void AudioInputDevice::Init() {
     config.sampleRate = GetConfigSampleRate();
     config.dataCallback = Callback;
     config.pUserData = _UserData;
-
-    // config.pUserData = pMyCustomData; // Can be accessed from the device object (device.pUserData).
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
     config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.
 

@@ -1,20 +1,6 @@
 #include "ma_gainer_node.h"
 
-#include <assert.h>
-#include <string.h>
-
-static MA_INLINE void ma_zero_memory_default(void *p, size_t sz) {
-    if (p == NULL) {
-        assert(sz == 0);
-        return;
-    }
-
-    if (sz > 0) {
-        memset(p, 0, sz);
-    }
-}
-
-#define MA_ZERO_OBJECT(p) ma_zero_memory_default((p), sizeof(*(p)))
+#include "../ma_helper.h"
 
 ma_gainer_node_config ma_gainer_node_config_init(ma_uint32 channels, ma_uint32 smooth_time_frames) {
     ma_gainer_node_config config;

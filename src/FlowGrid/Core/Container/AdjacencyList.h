@@ -33,5 +33,5 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     void Clear() const;
 
     bool IsConnected(ID source, ID destination) const;
-    bool HasPath(ID source, ID destination, const std::unordered_set<ID> &disabled = {}) const;
+    bool HasPath(ID source, ID destination) const;
 };

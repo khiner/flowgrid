@@ -1190,7 +1190,7 @@ string GetBoxType(Box t) {
 static std::optional<GroupNode> RootNode{}; // This node is drawn every frame if present.
 static GroupNode CreateRootNode(Tree t) { return {NodeType_Decorate, t, Tree2NodeInner(t)}; }
 
-string GetBoxInfo(unsigned int id) {
+string GetBoxInfo(u32 id) {
     const auto *node = Node::ById[id];
     if (!node) return "";
     return GetBoxType(node->FaustTree); // Just type for now.

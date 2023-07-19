@@ -16,6 +16,7 @@ Audio::~Audio() {
 void Audio::Apply(const ActionType &action) const {
     Visit(
         action,
+        [this](const Action::AudioGraph::Any &a) { Graph.Apply(a); },
         [this](const Action::Faust &a) { Faust.Apply(a); },
     );
 }

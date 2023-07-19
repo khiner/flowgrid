@@ -33,7 +33,7 @@ bool AdjacencyList::IsConnected(ID source, ID destination) const {
     return RootStore.HasIdPair(Path, {source, destination});
 }
 
-bool AdjacencyList::HasPath(ID from_id, ID to_id, const std::unordered_set<ID> &disabled) const {
+bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     // Non-recursive depth-first search that handles cycles.
     const auto id_pairs = Get();
     std::unordered_set<ID> visited;
@@ -44,7 +44,6 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id, const std::unordered_set<ID> &
         ID current = to_visit.top();
         to_visit.pop();
 
-        if (disabled.contains(current)) continue;
         if (current == to_id) return true;
 
         if (!visited.contains(current)) {

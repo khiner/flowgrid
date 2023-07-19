@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AudioGraphNode.h"
+#include "AudioGraphAction.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
 
@@ -11,18 +12,21 @@ struct DeviceInputNode;
 struct DeviceOutputNode;
 struct GraphEndpointNode;
 
-struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
+struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
 
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true;}
+
     void OnFieldChanged() override;
     void OnFaustDspChanged(dsp *) override;
+
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
+    ma_node_graph *Get() const;
     u32 GetDeviceSampleRate() const;
     u64 GetDeviceBufferSize() const;
-
-    ma_node_graph *Get() const;
 
     std::unique_ptr<MaGraph> Graph;
     std::vector<std::unique_ptr<AudioGraphNode>> Nodes;

@@ -53,7 +53,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
-    virtual bool AllowDisable() const { return true; }
+    virtual bool AllowDelete() const { return true; }
     // If `Allow...ConnectionChange` returns `true`, users can dynamically change the input/output connections.
     // Nodes whose connections are managed and enforced by the `AudioGraph` return `false` (the graph endpoint node and device IO nodes).
     virtual bool AllowInputConnectionChange() const { return true; }
@@ -92,7 +92,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     void Init();
     void Uninit();
 
-    Prop_(Bool, On, "?When a node is off, it is completely removed from the audio graph.\nIt is active when it has a connection path to the graph output node.", true);
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, OutputLevel, 1.0);
     Prop(Bool, SmoothOutputLevel, true);

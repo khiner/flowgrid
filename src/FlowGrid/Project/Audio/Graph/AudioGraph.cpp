@@ -143,7 +143,7 @@ struct DeviceInputNode : SourceBufferNode {
         (void)output;
     }
 
-    bool AllowDisable() const override { return false; } // For now...
+    bool AllowDelete() const override { return false; } // For now...
 
     std::unique_ptr<AudioInputDevice> InputDevice;
 };
@@ -167,7 +167,7 @@ struct DeviceOutputNode : PassthroughBufferNode {
         (void)input;
     }
 
-    bool AllowDisable() const override { return false; } // For now...
+    bool AllowDelete() const override { return false; } // For now...
 
     // Always connects directly/only to the graph endpoint node.
     bool AllowOutputConnectionChange() const override { return false; }
@@ -185,7 +185,7 @@ struct GraphEndpointNode : AudioGraphNode {
 
     ma_node *DoInit(ma_node_graph *graph) override { return ma_node_graph_get_endpoint(graph); }
 
-    bool AllowDisable() const override { return false; }
+    bool AllowDelete() const override { return false; }
 
     // The graph endpoint node is completely hidden in the connection matrix.
     bool AllowInputConnectionChange() const override { return false; }
@@ -233,6 +233,13 @@ AudioGraph::~AudioGraph() {
     for (const auto &node : Nodes) node->UnregisterListener(this);
     Field::UnregisterChangeListener(this);
 }
+void AudioGraph::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [](const Action::AudioGraph::DeleteNode &a) {},
+    );
+}
+
 ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
 
 // xxx depending on dynamic node positions is temporary.
@@ -246,9 +253,7 @@ void AudioGraph::OnFaustDspChanged(dsp *dsp) {
     UpdateConnections();
 }
 
-void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) {
-    UpdateConnections();
-}
+void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(); }
 
 void AudioGraph::OnFieldChanged() {
     const auto *input_device = GetDeviceInputNode()->InputDevice.get();
@@ -299,12 +304,8 @@ void AudioGraph::UpdateConnections() {
     // Update node active states.
     // Nodes that are turned off (here - disabled) are not removed from the `Connections` object in order to preserve their connections.
     // So we need to check if there is a path to the output node that doesn't go through any disabled nodes.
-    std::unordered_set<ID> disabled_node_ids;
     for (const auto &node : Nodes) {
-        if (!node->On) disabled_node_ids.insert(node->Id);
-    }
-    for (const auto &node : Nodes) {
-        node->SetActive(GetGraphEndpointNode() != nullptr && Connections.HasPath(node->Id, GetGraphEndpointNode()->Id, disabled_node_ids));
+        node->SetActive(GetGraphEndpointNode() != nullptr && Connections.HasPath(node->Id, GetGraphEndpointNode()->Id));
     }
 }
 

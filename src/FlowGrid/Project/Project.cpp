@@ -733,6 +733,7 @@ DefineQ(Store::ApplyPatch);
 DefineQ(Style::SetImGuiColorPreset);
 DefineQ(Style::SetImPlotColorPreset);
 DefineQ(Style::SetFlowGridColorPreset);
+DefineQ(AudioGraph::DeleteNode);
 DefineQ(FaustFile::ShowOpenDialog);
 DefineQ(FaustFile::ShowSaveDialog);
 DefineQ(FaustFile::Save);

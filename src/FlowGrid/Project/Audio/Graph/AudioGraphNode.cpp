@@ -5,6 +5,7 @@
 
 #include "Helper/String.h"
 #include "Project/Audio/AudioDevice.h"
+#include "AudioGraphAction.h"
 
 // Custom nodes.
 #include "ma_gainer_node/ma_gainer_node.h"
@@ -138,9 +139,10 @@ private:
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent)) {
-    const Field::References listened_fields = {On, Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
+    const Field::References listened_fields = {Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
+
 AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
     Uninit();
@@ -207,10 +209,6 @@ void AudioGraphNode::OnDeviceSampleRateChanged() {
 }
 
 void AudioGraphNode::OnFieldChanged() {
-    if (On.IsChanged()) {
-        if (On && Node == nullptr) Init();
-        else if (!On && Node != nullptr) Uninit();
-    }
     if (SmoothOutputLevel.IsChanged() || SmoothOutputLevelMs.IsChanged()) {
         UpdateGainer();
     }
@@ -224,7 +222,7 @@ void AudioGraphNode::OnFieldChanged() {
         for (const IO io : IO_All) UpdateMonitorWindowFunction(io);
     }
     // Notify on field changes that can result in connection changes.
-    if (On.IsChanged() || SmoothOutputLevel.IsChanged() || Monitor.IsChanged()) {
+    if (SmoothOutputLevel.IsChanged() || Monitor.IsChanged()) {
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
     }
 }
@@ -240,7 +238,7 @@ void AudioGraphNode::Init() {
 }
 
 void AudioGraphNode::UpdateOutputLevel() {
-    if (!On || OutputBusCount() == 0) return;
+    if (OutputBusCount() == 0) return;
 
     const float output_level = Muted ? 0.f : float(OutputLevel);
     if (Gainer) {
@@ -307,8 +305,6 @@ void AudioGraphNode::Uninit() {
 }
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
-    if (!On) return;
-
     if (auto *to_input_monitor = to.GetMonitor(IO_In)) ma_node_attach_output_bus(to_input_monitor->Get(), 0, to.Node, 0);
     if (Gainer) ma_node_attach_output_bus(Node, 0, Gainer->Get(), 0);
     if (OutputMonitor) {
@@ -357,8 +353,10 @@ std::string NodesToString(const std::unordered_set<const AudioGraphNode *> &node
 }
 
 void AudioGraphNode::Render() const {
-    if (AllowDisable()) {
-        On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
+    if (AllowDelete()) {
+        if (Button("X")) {
+            Action::AudioGraph::DeleteNode{Id}.q();
+        }
         SameLine();
     }
 
@@ -371,12 +369,10 @@ void AudioGraphNode::Render() const {
     }
     PopStyleColor();
 
-    if (On) {
-        if (!InputNodes.empty() || !OutputNodes.empty()) {
-            Text("Connections: %s%s%s", NodesToString(InputNodes, true).c_str(), Name.c_str(), NodesToString(OutputNodes, false).c_str());
-        } else {
-            TextUnformatted("No connections");
-        }
+    if (!InputNodes.empty() || !OutputNodes.empty()) {
+        Text("Connections: %s%s%s", NodesToString(InputNodes, true).c_str(), Name.c_str(), NodesToString(OutputNodes, false).c_str());
+    } else {
+        TextUnformatted("No connections");
     }
 
     Spacing();

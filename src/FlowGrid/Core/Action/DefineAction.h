@@ -2,6 +2,7 @@
 
 #include "Action.h"
 #include "Core/Json.h"
+#include "Core/Primitive/Scalar.h" // Not actually used in this file, but added as a convenience for action implementations.
 
 template<class...> constexpr bool always_false_v = false;
 

@@ -6,10 +6,10 @@
 
 struct ma_node_graph;
 
-struct AudioInputDevice;
 struct AudioOutputDevice;
 struct MaGraph;
-struct InputNode;
+struct DeviceInputNode;
+struct DeviceOutputNode;
 struct OutputNode;
 
 struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
@@ -24,10 +24,7 @@ struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, Au
     u32 GetDeviceBufferSize() const;
 
     ma_node_graph *Get() const;
-    InputNode *GetInput() const;
-    OutputNode *GetOutput() const;
 
-    std::unique_ptr<AudioInputDevice> InputDevice;
     std::unique_ptr<AudioOutputDevice> OutputDevice;
     std::unique_ptr<MaGraph> Graph;
     std::vector<std::unique_ptr<AudioGraphNode>> Nodes;
@@ -64,4 +61,7 @@ private:
     void RenderNodes() const;
 
     void UpdateConnections();
+
+    DeviceInputNode *GetDeviceInputNode() const;
+    OutputNode *GetGraphOutputNode() const;
 };

@@ -6,8 +6,8 @@
 
 static ma_device MaDevice;
 
-AudioInputDevice::AudioInputDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback)
-    : AudioDevice(std::move(args), std::move(callback)) {
+AudioInputDevice::AudioInputDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback, UserData user_data)
+    : AudioDevice(std::move(args), std::move(callback), user_data) {
     Init();
 }
 
@@ -25,8 +25,10 @@ void AudioInputDevice::Init() {
     config.capture.pDeviceID = GetDeviceId(Name);
     config.capture.format = ma_format_f32;
     config.capture.channels = Channels;
-    config.dataCallback = Callback;
     config.sampleRate = GetConfigSampleRate();
+    config.dataCallback = Callback;
+    config.pUserData = _UserData;
+
     // config.pUserData = pMyCustomData; // Can be accessed from the device object (device.pUserData).
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
     config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.

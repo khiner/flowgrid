@@ -16,8 +16,9 @@ struct ma_device;
 // Abstract class. Sett `AudioInputDevice`/`AudioOutputDevice` for concrete implementations.
 struct AudioDevice : Component, Field::ChangeListener {
     using AudioCallback = void (*)(ma_device *, void *, const void *, u32);
+    using UserData = void *;
 
-    AudioDevice(ComponentArgs &&, AudioCallback);
+    AudioDevice(ComponentArgs &&, AudioCallback, UserData user_data = nullptr);
     virtual ~AudioDevice();
 
     std::string GetFormatName(int) const;
@@ -58,6 +59,7 @@ protected:
     bool IsNativeFormat(ma_format format) const;
 
     AudioCallback Callback;
+    UserData _UserData;
 
 private:
     static const std::vector<u32> PrioritizedSampleRates;

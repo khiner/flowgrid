@@ -3,7 +3,7 @@
 #include "AudioDevice.h"
 
 struct AudioInputDevice : AudioDevice {
-    AudioInputDevice(ComponentArgs &&, AudioCallback);
+    AudioInputDevice(ComponentArgs &&, AudioCallback, UserData user_data = nullptr);
     ~AudioInputDevice();
 
     ma_device *Get() const override;

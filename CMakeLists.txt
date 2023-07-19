@@ -69,3 +69,4 @@ target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 add_definitions(-DIMGUI_DEFINE_MATH_OPERATORS) # ImVec2 & ImVec4 math operators
 add_definitions(-DIMGUI_ENABLE_FREETYPE)
 add_definitions(-DCUSTOM_IMGUIFILEDIALOG_CONFIG="Project/FileDialog/Config.h")
+add_definitions(-DMA_NO_ENGINE -DMA_NO_ENCODING -DMA_NO_DECODING)

@@ -53,6 +53,14 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
+    virtual bool AllowDisable() const { return true; }
+    // If `Allow...ConnectionChange` returns `true`, users can dynamically change the input/output connections.
+    // Nodes whose connections are managed and enforced by the `AudioGraph` return `false` (the graph endpoint node and device IO nodes).
+    virtual bool AllowInputConnectionChange() const { return true; }
+    virtual bool AllowOutputConnectionChange() const { return true; }
+    inline bool CanConnectInput() const { return AllowInputConnectionChange() && InputBusCount() > 0; }
+    inline bool CanConnectOutput() const { return AllowOutputConnectionChange() && OutputBusCount() > 0; }
+
     u32 InputBusCount() const;
     u32 OutputBusCount() const;
     inline u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
@@ -60,8 +68,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     u32 InputChannelCount(u32 bus) const;
     u32 OutputChannelCount(u32 bus) const;
     inline u32 ChannelCount(IO io, u32 bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
-
-    bool IsGraphEndpoint() const noexcept { return PathSegment == GraphEndpointPathSegment; }
 
     // An `AudioGraphNode` may be composed of multiple inner `ma_node`s.
     // These return the graph-visible I/O nodes.

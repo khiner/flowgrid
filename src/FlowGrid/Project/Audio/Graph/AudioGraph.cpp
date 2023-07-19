@@ -105,9 +105,7 @@ private:
 // Wraps around (custom) `ma_data_passthrough_node`.
 // Copies the input buffer in each callback to its internal `Buffer`.
 struct PassthroughBufferNode : BufferRefNode {
-    PassthroughBufferNode(ComponentArgs &&args, u32 channels) : BufferRefNode(std::move(args)) {
-        InitBuffer(channels);
-    }
+    using BufferRefNode::BufferRefNode;
 
     ma_node *DoInit(ma_node_graph *graph) override {
         auto config = ma_data_passthrough_node_config_init(_BufferRef->Get());
@@ -145,17 +143,19 @@ struct DeviceInputNode : SourceBufferNode {
         (void)output;
     }
 
+    bool AllowDisable() const override { return false; } // For now...
+
     std::unique_ptr<AudioInputDevice> InputDevice;
 };
 
 // A passthrough node that owns an output device.
-// Must always be connected directly to the graph output node.
+// Must always be connected directly to the graph endpoint node.
 // todo There must be a single "Master" `DeviceOutputNode`, which calls `ma_node_graph_read_pcm_frames`.
 // Each remaining `DeviceOutputNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
 struct DeviceOutputNode : PassthroughBufferNode {
-    DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args), 1) {
+    DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
         OutputDevice = std::make_unique<AudioOutputDevice>(ComponentArgs{this, "OutputDevice"}, AudioOutputCallback, this);
-        // InitBuffer(OutputDevice->Channels);
+        InitBuffer(OutputDevice->Channels);
     }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
@@ -163,19 +163,33 @@ struct DeviceOutputNode : PassthroughBufferNode {
         // auto *self = reinterpret_cast<DeviceOutputNode *>(device->pUserData);
         // self->ReadBufferData(output, frame_count);
 
+        (void)device;
         (void)input;
     }
+
+    bool AllowDisable() const override { return false; } // For now...
+
+    // Always connects directly/only to the graph endpoint node.
+    bool AllowOutputConnectionChange() const override { return false; }
 
     std::unique_ptr<AudioOutputDevice> OutputDevice;
 };
 
-// The output node is the graph endpoint. It's allocated and managed by the MA graph.
-struct OutputNode : AudioGraphNode {
+// Wrapper around the graph endpoint node, which is allocated and managed by the MA graph.
+// Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
+// Most importantly, it is not possible to attach the graph endpoint's node into any other node.
+// Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
+// The graph enforces that the only input is the "Master" `DeviceOutputNode` (hence not allowing dynamic input changes).
+struct GraphEndpointNode : AudioGraphNode {
     using AudioGraphNode::AudioGraphNode;
 
-    ma_node *DoInit(ma_node_graph *graph) override {
-        return ma_node_graph_get_endpoint(graph);
-    }
+    ma_node *DoInit(ma_node_graph *graph) override { return ma_node_graph_get_endpoint(graph); }
+
+    bool AllowDisable() const override { return false; }
+
+    // The graph endpoint node is completely hidden in the connection matrix.
+    bool AllowInputConnectionChange() const override { return false; }
+    bool AllowOutputConnectionChange() const override { return false; }
 };
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
@@ -186,7 +200,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
 
     Graph = std::make_unique<MaGraph>(input_device->Channels);
-    Nodes.push_back(std::make_unique<OutputNode>(ComponentArgs{this, GraphEndpointPathSegment}));
+    Nodes.push_back(std::make_unique<GraphEndpointNode>(ComponentArgs{this, GraphEndpointPathSegment}));
 
     Nodes.push_back(std::make_unique<FaustNode>(ComponentArgs{this, "Faust"}));
     Nodes.push_back(std::make_unique<TestToneNode>(ComponentArgs{this, "TestTone"}));
@@ -224,7 +238,7 @@ ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
 // xxx depending on dynamic node positions is temporary.
 DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(Nodes[0].get()); }
 DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(Nodes[1].get()); }
-OutputNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<OutputNode *>(Nodes[2].get()); }
+GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(Nodes[2].get()); }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
     // xxx depending on dynamic node positions is temporary.
@@ -253,6 +267,7 @@ void AudioGraph::OnFieldChanged() {
         UpdateConnections();
         return;
     }
+
     // if (input_device->SampleRate.IsChanged() || output_device->SampleRate.IsChanged()) {
     //     for (const auto &node : Nodes) node->OnDeviceSampleRateChanged();
     // }
@@ -267,14 +282,14 @@ u32 AudioGraph::GetDeviceSampleRate() const { return GetDeviceOutputNode()->Outp
 u64 AudioGraph::GetDeviceBufferSize() const { return GetDeviceOutputNode()->OutputDevice->Get()->playback.internalPeriodSizeInFrames; }
 
 void AudioGraph::UpdateConnections() {
-    for (const auto &out_node : Nodes) out_node->DisconnectAll();
+    for (const auto &node : Nodes) {
+        if (node->AllowInputConnectionChange() && node->AllowOutputConnectionChange()) {
+            node->DisconnectAll();
+        }
+    }
 
     for (const auto &out_node : Nodes) {
-        if (out_node->OutputBusCount() == 0) continue;
-
         for (const auto &in_node : Nodes) {
-            if (in_node->InputBusCount() == 0) continue;
-
             if (Connections.IsConnected(out_node->Id, in_node->Id)) {
                 out_node->ConnectTo(*in_node);
             }
@@ -289,7 +304,7 @@ void AudioGraph::UpdateConnections() {
         if (!node->On) disabled_node_ids.insert(node->Id);
     }
     for (const auto &node : Nodes) {
-        node->SetActive(GetDeviceOutputNode() != nullptr && Connections.HasPath(node->Id, GetGraphEndpointNode()->Id, disabled_node_ids));
+        node->SetActive(GetGraphEndpointNode() != nullptr && Connections.HasPath(node->Id, GetGraphEndpointNode()->Id, disabled_node_ids));
     }
 }
 
@@ -300,8 +315,8 @@ void AudioGraph::RenderConnections() const {
     ImVec2 max_label_w_no_padding{0, 0}; // I/O vec: in (left), out (top)
     for (const auto &node : Nodes) {
         const float label_w = CalcTextSize(node->Name.c_str()).x;
-        if (node->InputBusCount() > 0) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
-        if (node->OutputBusCount() > 0) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
+        if (node->CanConnectInput()) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
+        if (node->CanConnectOutput()) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
     }
 
     const ImVec2 label_padding = ImVec2{ImGui::GetStyle().ItemInnerSpacing.x, 0} + ImGui::GetStyle().FramePadding;
@@ -350,7 +365,7 @@ void AudioGraph::RenderConnections() const {
     // Output channel labels.
     u32 out_count = 0;
     for (const auto &out_node : Nodes) {
-        if (out_node->OutputBusCount() == 0) continue;
+        if (!out_node->CanConnectOutput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
         const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, out_node->ImGuiLabel.c_str());
@@ -374,7 +389,7 @@ void AudioGraph::RenderConnections() const {
     // Input channel labels and mixer cells.
     u32 in_i = 0;
     for (const auto &in_node : Nodes) {
-        if (in_node->InputBusCount() == 0) continue;
+        if (!in_node->CanConnectInput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
         const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, in_node->ImGuiLabel.c_str());
@@ -393,7 +408,7 @@ void AudioGraph::RenderConnections() const {
 
         u32 out_i = 0;
         for (const auto &out_node : Nodes) {
-            if (out_node->OutputBusCount() == 0) continue;
+            if (!out_node->CanConnectOutput()) continue;
 
             PushID(in_i * out_count + out_i);
             SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_i, (cell_size + cell_gap) * in_i});

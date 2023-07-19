@@ -9,7 +9,7 @@ struct ma_node_graph;
 struct MaGraph;
 struct DeviceInputNode;
 struct DeviceOutputNode;
-struct OutputNode;
+struct GraphEndpointNode;
 
 struct AudioGraph : Component, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
@@ -62,5 +62,5 @@ private:
 
     DeviceInputNode *GetDeviceInputNode() const;
     DeviceOutputNode *GetDeviceOutputNode() const;
-    OutputNode *GetGraphEndpointNode() const;
+    GraphEndpointNode *GetGraphEndpointNode() const;
 };

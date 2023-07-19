@@ -230,11 +230,7 @@ void AudioGraphNode::OnFieldChanged() {
 }
 
 u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
-
-// Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
-// Most importantly, it is not possible to attach the graph endpoint's node into any other node.
-// Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
-u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_node_get_output_bus_count(Node); }
+u32 AudioGraphNode::OutputBusCount() const { return ma_node_get_output_bus_count(Node); }
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Node, bus); }
 u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
 
@@ -244,7 +240,7 @@ void AudioGraphNode::Init() {
 }
 
 void AudioGraphNode::UpdateOutputLevel() {
-    if (!On || OutputBusCount() != 1) return;
+    if (!On || OutputBusCount() == 0) return;
 
     const float output_level = Muted ? 0.f : float(OutputLevel);
     if (Gainer) {
@@ -256,7 +252,7 @@ void AudioGraphNode::UpdateOutputLevel() {
 }
 
 void AudioGraphNode::UpdateGainer() {
-    if (OutputBusCount() == 1 && SmoothOutputLevel && !Gainer) {
+    if (OutputBusCount() > 0 && SmoothOutputLevel && !Gainer) {
         Gainer = std::make_unique<GainerNode>(Graph->Get(), OutputChannelCount(0), GetDeviceSampleRate(), SmoothOutputLevelMs);
         UpdateOutputLevel();
     } else if (!SmoothOutputLevel && Gainer) {
@@ -311,6 +307,8 @@ void AudioGraphNode::Uninit() {
 }
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
+    if (!On) return;
+
     if (auto *to_input_monitor = to.GetMonitor(IO_In)) ma_node_attach_output_bus(to_input_monitor->Get(), 0, to.Node, 0);
     if (Gainer) ma_node_attach_output_bus(Node, 0, Gainer->Get(), 0);
     if (OutputMonitor) {
@@ -359,7 +357,7 @@ std::string NodesToString(const std::unordered_set<const AudioGraphNode *> &node
 }
 
 void AudioGraphNode::Render() const {
-    if (!IsGraphEndpoint()) {
+    if (AllowDisable()) {
         On.Draw(); // Output node cannot be turned off, since it's the graph endpoint.
         SameLine();
     }

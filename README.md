@@ -5,7 +5,7 @@ It is backed by a persistent (as in persistent data structures), fully-undoable 
 
 My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
 
-_Still actively building this. Expect main to be occasionally broken._
+_Still in its early stages. Expect things to be broken!_
 
 ## Application architecture
 

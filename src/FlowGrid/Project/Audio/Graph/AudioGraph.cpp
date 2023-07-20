@@ -193,17 +193,17 @@ struct GraphEndpointNode : AudioGraphNode {
 };
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
-    Nodes.push_back(std::make_unique<DeviceInputNode>(this, "Input"));
-    Nodes.push_back(std::make_unique<DeviceOutputNode>(this, "Output"));
+    Nodes.EmplaceBack<DeviceInputNode>("Input");
+    Nodes.EmplaceBack<DeviceOutputNode>("Output");
 
     const auto *input_device = GetDeviceInputNode()->InputDevice.get();
     const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
 
-    Graph = std::make_unique<MaGraph>(input_device->Channels);
-    Nodes.push_back(std::make_unique<GraphEndpointNode>(this, GraphEndpointPathSegment));
+    Graph = std::make_unique<MaGraph>(u32(input_device->Channels));
+    Nodes.EmplaceBack<GraphEndpointNode>(GraphEndpointPathSegment);
 
-    Nodes.push_back(std::make_unique<FaustNode>(this, "Faust"));
-    Nodes.push_back(std::make_unique<WaveformNode>(this, "Waveform"));
+    Nodes.EmplaceBack<FaustNode>("Faust");
+    Nodes.EmplaceBack<WaveformNode>("Waveform");
     for (const auto &node : Nodes) node->Init();
 
     const Field::References listened_fields = {

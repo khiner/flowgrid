@@ -5,6 +5,8 @@
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
 
+#include "Core/Container/Vector.h"
+
 struct ma_node_graph;
 
 struct MaGraph;
@@ -29,8 +31,8 @@ struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::Chang
     u64 GetDeviceBufferSize() const;
 
     std::unique_ptr<MaGraph> Graph;
-    std::vector<std::unique_ptr<AudioGraphNode>> Nodes;
 
+    Prop(Vector<AudioGraphNode>, Nodes);
     Prop(AdjacencyList, Connections);
 
     struct Style : Component {

@@ -1,10 +1,10 @@
-#include "Vector2D.h"
+#include "PrimitiveVector2D.h"
 
 #include "imgui.h"
 
 #include "Core/Store/Store.h"
 
-template<IsPrimitive T> void Vector2D<T>::Set(const std::vector<std::vector<T>> &value) const {
+template<IsPrimitive T> void PrimitiveVector2D<T>::Set(const std::vector<std::vector<T>> &value) const {
     u32 i = 0;
     while (i < value.size()) {
         u32 j = 0;
@@ -19,7 +19,7 @@ template<IsPrimitive T> void Vector2D<T>::Set(const std::vector<std::vector<T>> 
     Resize(i);
 }
 
-template<IsPrimitive T> void Vector2D<T>::Resize(u32 size) const {
+template<IsPrimitive T> void PrimitiveVector2D<T>::Resize(u32 size) const {
     u32 i = size;
     while (RootStore.CountAt(PathAt(i, 0))) {
         Resize(i, 0);
@@ -27,16 +27,16 @@ template<IsPrimitive T> void Vector2D<T>::Resize(u32 size) const {
     }
 }
 
-template<IsPrimitive T> void Vector2D<T>::Resize(u32 i, u32 size) const {
+template<IsPrimitive T> void PrimitiveVector2D<T>::Resize(u32 i, u32 size) const {
     u32 j = size;
     while (RootStore.CountAt(PathAt(i, j))) RootStore.Erase(PathAt(i, j++));
 }
 
-template<IsPrimitive T> void Vector2D<T>::Set(u32 i, u32 j, const T &value) const {
+template<IsPrimitive T> void PrimitiveVector2D<T>::Set(u32 i, u32 j, const T &value) const {
     RootStore.Set(PathAt(i, j), value);
 }
 
-template<IsPrimitive T> void Vector2D<T>::RefreshValue() {
+template<IsPrimitive T> void PrimitiveVector2D<T>::RefreshValue() {
     u32 i = 0;
     while (RootStore.CountAt(PathAt(i, 0))) {
         if (Value.size() == i) Value.push_back({});
@@ -53,17 +53,17 @@ template<IsPrimitive T> void Vector2D<T>::RefreshValue() {
     Value.resize(i);
 }
 
-template<IsPrimitive T> void Vector2D<T>::SetJson(json &&j) const {
+template<IsPrimitive T> void PrimitiveVector2D<T>::SetJson(json &&j) const {
     std::vector<std::vector<T>> new_value = json::parse(std::string(std::move(j)));
     Set(std::move(new_value));
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
-template<IsPrimitive T> json Vector2D<T>::ToJson() const { return json(Value).dump(); }
+template<IsPrimitive T> json PrimitiveVector2D<T>::ToJson() const { return json(Value).dump(); }
 
 using namespace ImGui;
 
-template<IsPrimitive T> void Vector2D<T>::RenderValueTree(bool annotate, bool auto_select) const {
+template<IsPrimitive T> void PrimitiveVector2D<T>::RenderValueTree(bool annotate, bool auto_select) const {
     Field::RenderValueTree(annotate, auto_select);
 
     if (Value.empty()) {
@@ -86,7 +86,7 @@ template<IsPrimitive T> void Vector2D<T>::RenderValueTree(bool annotate, bool au
 }
 
 // Explicit instantiations.
-template struct Vector2D<bool>;
-template struct Vector2D<int>;
-template struct Vector2D<u32>;
-template struct Vector2D<float>;
+template struct PrimitiveVector2D<bool>;
+template struct PrimitiveVector2D<int>;
+template struct PrimitiveVector2D<u32>;
+template struct PrimitiveVector2D<float>;

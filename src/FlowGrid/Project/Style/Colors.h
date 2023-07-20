@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Core/Container/Vector.h"
+#include "Core/Container/PrimitiveVector.h"
 #include "Core/Primitive/UInt.h"
 
 struct ImVec4;
 
-struct Colors : Vector<u32> {
+struct Colors : PrimitiveVector<u32> {
     Colors(ComponentArgs &&, u32 size, std::function<const char *(int)> get_name, const bool allow_auto = false);
 
     static u32 Float4ToU32(const ImVec4 &value);

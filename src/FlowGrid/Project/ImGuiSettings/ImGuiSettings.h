@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/Container/Vector.h"
-#include "Core/Container/Vector2D.h"
+#include "Core/Container/PrimitiveVector.h"
+#include "Core/Container/PrimitiveVector2D.h"
 #include "Core/Store/Patch/Patch.h"
 
 template<typename T> struct ImChunkStream;
@@ -21,16 +21,16 @@ struct DockNodeSettings : Component {
     void Set(const ImVector<ImGuiDockNodeSettings> &) const;
     void Update(ImGuiContext *) const;
 
-    Prop(Vector<ID>, NodeId);
-    Prop(Vector<ID>, ParentNodeId);
-    Prop(Vector<ID>, ParentWindowId);
-    Prop(Vector<ID>, SelectedTabId);
-    Prop(Vector<int>, SplitAxis);
-    Prop(Vector<int>, Depth);
-    Prop(Vector<int>, Flags);
-    Prop(Vector<u32>, Pos); // Packed ImVec2ih
-    Prop(Vector<u32>, Size); // Packed ImVec2ih
-    Prop(Vector<u32>, SizeRef); // Packed ImVec2ih
+    Prop(PrimitiveVector<ID>, NodeId);
+    Prop(PrimitiveVector<ID>, ParentNodeId);
+    Prop(PrimitiveVector<ID>, ParentWindowId);
+    Prop(PrimitiveVector<ID>, SelectedTabId);
+    Prop(PrimitiveVector<int>, SplitAxis);
+    Prop(PrimitiveVector<int>, Depth);
+    Prop(PrimitiveVector<int>, Flags);
+    Prop(PrimitiveVector<u32>, Pos); // Packed ImVec2ih
+    Prop(PrimitiveVector<u32>, Size); // Packed ImVec2ih
+    Prop(PrimitiveVector<u32>, SizeRef); // Packed ImVec2ih
 };
 
 struct WindowSettings : Component {
@@ -39,29 +39,29 @@ struct WindowSettings : Component {
     void Set(ImChunkStream<ImGuiWindowSettings> &) const;
     void Update(ImGuiContext *) const;
 
-    Prop(Vector<ID>, Id);
-    Prop(Vector<ID>, ClassId);
-    Prop(Vector<ID>, ViewportId);
-    Prop(Vector<ID>, DockId);
-    Prop(Vector<int>, DockOrder);
-    Prop(Vector<u32>, Pos); // Packed ImVec2ih
-    Prop(Vector<u32>, Size); // Packed ImVec2ih
-    Prop(Vector<u32>, ViewportPos); // Packed ImVec2ih
-    Prop(Vector<bool>, Collapsed);
+    Prop(PrimitiveVector<ID>, Id);
+    Prop(PrimitiveVector<ID>, ClassId);
+    Prop(PrimitiveVector<ID>, ViewportId);
+    Prop(PrimitiveVector<ID>, DockId);
+    Prop(PrimitiveVector<int>, DockOrder);
+    Prop(PrimitiveVector<u32>, Pos); // Packed ImVec2ih
+    Prop(PrimitiveVector<u32>, Size); // Packed ImVec2ih
+    Prop(PrimitiveVector<u32>, ViewportPos); // Packed ImVec2ih
+    Prop(PrimitiveVector<bool>, Collapsed);
 };
 
 struct TableColumnSettings : Component {
     using Component::Component;
 
     // [table_index][column_index]
-    Prop(Vector2D<float>, WidthOrWeight);
-    Prop(Vector2D<ID>, UserID);
-    Prop(Vector2D<int>, Index);
-    Prop(Vector2D<int>, DisplayOrder);
-    Prop(Vector2D<int>, SortOrder);
-    Prop(Vector2D<int>, SortDirection);
-    Prop(Vector2D<bool>, IsEnabled); // "Visible" in ini file
-    Prop(Vector2D<bool>, IsStretch);
+    Prop(PrimitiveVector2D<float>, WidthOrWeight);
+    Prop(PrimitiveVector2D<ID>, UserID);
+    Prop(PrimitiveVector2D<int>, Index);
+    Prop(PrimitiveVector2D<int>, DisplayOrder);
+    Prop(PrimitiveVector2D<int>, SortOrder);
+    Prop(PrimitiveVector2D<int>, SortDirection);
+    Prop(PrimitiveVector2D<bool>, IsEnabled); // "Visible" in ini file
+    Prop(PrimitiveVector2D<bool>, IsStretch);
 };
 
 struct TableSettings : Component {
@@ -70,12 +70,12 @@ struct TableSettings : Component {
     void Set(ImChunkStream<ImGuiTableSettings> &) const;
     void Update(ImGuiContext *) const;
 
-    Prop(Vector<ImGuiID>, ID);
-    Prop(Vector<int>, SaveFlags);
-    Prop(Vector<float>, RefScale);
-    Prop(Vector<u32>, ColumnsCount);
-    Prop(Vector<u32>, ColumnsCountMax);
-    Prop(Vector<bool>, WantApply);
+    Prop(PrimitiveVector<ImGuiID>, ID);
+    Prop(PrimitiveVector<int>, SaveFlags);
+    Prop(PrimitiveVector<float>, RefScale);
+    Prop(PrimitiveVector<u32>, ColumnsCount);
+    Prop(PrimitiveVector<u32>, ColumnsCountMax);
+    Prop(PrimitiveVector<bool>, WantApply);
     Prop(TableColumnSettings, Columns);
 };
 

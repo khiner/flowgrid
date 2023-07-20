@@ -1,17 +1,17 @@
 #pragma once
 
 #include "Core/Field/Field.h"
-#include "Vector2DAction.h"
+#include "PrimitiveVector2DAction.h"
 
-// Vector of vectors. Inner vectors may have different sizes.
-template<IsPrimitive T> struct Vector2D : Field, Actionable<typename Action::Vector2D<T>::Any> {
+// PrimitiveVector of vectors. Inner vectors may have different sizes.
+template<IsPrimitive T> struct PrimitiveVector2D : Field, Actionable<typename Action::PrimitiveVector2D<T>::Any> {
     using Field::Field;
-    using typename Actionable<typename Action::Vector2D<T>::Any>::ActionType; // See note in `Vector.h`.
+    using typename Actionable<typename Action::PrimitiveVector2D<T>::Any>::ActionType; // See note in `PrimitiveVector.h`.
 
     void Apply(const ActionType &action) const override {
         Visit(
             action,
-            [this](const Action::Vector2D<T>::Set &a) { Set(a.value); },
+            [this](const Action::PrimitiveVector2D<T>::Set &a) { Set(a.value); },
         );
     }
     bool CanApply(const ActionType &) const override { return true; }

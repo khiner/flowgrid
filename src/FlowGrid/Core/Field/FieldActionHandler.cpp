@@ -2,9 +2,9 @@
 
 #include "Core/Container/AdjacencyList.h"
 #include "Core/Container/MultilineString.h"
+#include "Core/Container/PrimitiveVector.h"
+#include "Core/Container/PrimitiveVector2D.h"
 #include "Core/Container/Vec2.h"
-#include "Core/Container/Vector.h"
-#include "Core/Container/Vector2D.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Flags.h"
 #include "Core/Primitive/Float.h"
@@ -32,13 +32,13 @@ void FieldActionHandler::Apply(const ActionType &action) const {
         [&field](const MultilineString::ActionType &a) { static_cast<const MultilineString *>(field)->Apply(a); },
         [&field](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(field)->Apply(a); },
         [&field](const Vec2::ActionType &a) { static_cast<const Vec2 *>(field)->Apply(a); },
-        [&field](const Vector<bool>::ActionType &a) { static_cast<const Vector<bool> *>(field)->Apply(a); },
-        [&field](const Vector<int>::ActionType &a) { static_cast<const Vector<int> *>(field)->Apply(a); },
-        [&field](const Vector<u32>::ActionType &a) { static_cast<const Vector<u32> *>(field)->Apply(a); },
-        [&field](const Vector<float>::ActionType &a) { static_cast<const Vector<float> *>(field)->Apply(a); },
-        [&field](const Vector2D<bool>::ActionType &a) { static_cast<const Vector2D<bool> *>(field)->Apply(a); },
-        [&field](const Vector2D<int>::ActionType &a) { static_cast<const Vector2D<int> *>(field)->Apply(a); },
-        [&field](const Vector2D<u32>::ActionType &a) { static_cast<const Vector2D<u32> *>(field)->Apply(a); },
-        [&field](const Vector2D<float>::ActionType &a) { static_cast<const Vector2D<float> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector2D<bool>::ActionType &a) { static_cast<const PrimitiveVector2D<bool> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector2D<int>::ActionType &a) { static_cast<const PrimitiveVector2D<int> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector2D<u32>::ActionType &a) { static_cast<const PrimitiveVector2D<u32> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector2D<float>::ActionType &a) { static_cast<const PrimitiveVector2D<float> *>(field)->Apply(a); },
     );
 }

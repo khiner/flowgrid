@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Container/Vector.h"
+#include "Core/Container/PrimitiveVector.h"
 #include "WindowsAction.h"
 
 struct Windows : Component, Actionable<Action::Windows::Any>, MenuItemDrawable {
@@ -14,7 +14,7 @@ struct Windows : Component, Actionable<Action::Windows::Any>, MenuItemDrawable {
     bool IsWindow(ID id) const;
     void MenuItem() const override;
 
-    Prop(Vector<bool>, VisibleComponents);
+    Prop(PrimitiveVector<bool>, VisibleComponents);
 
     std::vector<ID> WindowComponentIds;
 

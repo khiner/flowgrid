@@ -4,7 +4,7 @@
 #include "Core/Json.h"
 
 DefineActionType(
-    MultilineString,
+    TextBuffer,
     DefineFieldAction(Set, "", std::string value;);
     Json(Set, path, value);
 

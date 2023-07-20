@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Core/Primitive/PrimitiveField.h"
-#include "MultilineStringAction.h"
+#include "TextBufferAction.h"
 
-struct MultilineString : PrimitiveField<string>, Actionable<Action::MultilineString::Any> {
-    MultilineString(ComponentArgs &&, string_view value = "");
+struct TextBuffer : PrimitiveField<string>, Actionable<Action::TextBuffer::Any> {
+    TextBuffer(ComponentArgs &&, string_view value = "");
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };

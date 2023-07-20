@@ -1,4 +1,4 @@
-#include "MultilineString.h"
+#include "TextBuffer.h"
 
 #include "imgui.h"
 
@@ -8,12 +8,12 @@
 
 static const Menu FileMenu = {"File", {Action::FaustFile::ShowOpenDialog::MenuItem, Action::FaustFile::ShowSaveDialog::MenuItem}};
 
-MultilineString::MultilineString(ComponentArgs &&args, string_view value) : PrimitiveField(std::move(args), string(value)) {}
+TextBuffer::TextBuffer(ComponentArgs &&args, string_view value) : PrimitiveField(std::move(args), string(value)) {}
 
-void MultilineString::Apply(const ActionType &action) const {
+void TextBuffer::Apply(const ActionType &action) const {
     Visit(
         action,
-        [this](const Action::MultilineString::Set &a) { Set(a.value); },
+        [this](const Action::TextBuffer::Set &a) { Set(a.value); },
     );
 }
 
@@ -21,7 +21,7 @@ using namespace ImGui;
 
 static TextEditor editor;
 
-void MultilineString::Render() const {
+void TextBuffer::Render() const {
     if (ImGui::BeginMenuBar()) {
         FileMenu.Draw();
         if (ImGui::BeginMenu("Edit")) {
@@ -75,7 +75,7 @@ void MultilineString::Render() const {
 
     const string text = editor.GetText();
     if (editor.TextChanged) {
-        Action::MultilineString::Set{Path, text}.q();
+        Action::TextBuffer::Set{Path, text}.q();
     } else if (Value != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.
         //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.
@@ -83,6 +83,6 @@ void MultilineString::Render() const {
     }
 }
 
-void MultilineString::RenderDebug() const {
+void TextBuffer::RenderDebug() const {
     editor.DebugPanel();
 }

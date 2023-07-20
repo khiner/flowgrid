@@ -714,7 +714,7 @@ DefineQ(Primitive::Float::Set);
 DefineQ(Primitive::String::Set);
 DefineQ(Primitive::Enum::Set);
 DefineQ(Primitive::Flags::Set);
-DefineQ(MultilineString::Set);
+DefineQ(TextBuffer::Set);
 DefineQ(PrimitiveVector<bool>::SetAt);
 DefineQ(PrimitiveVector<int>::SetAt);
 DefineQ(PrimitiveVector<u32>::SetAt);

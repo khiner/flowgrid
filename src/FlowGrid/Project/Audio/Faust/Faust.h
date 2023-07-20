@@ -7,7 +7,7 @@
 #include "FaustParams.h"
 
 #include "Core/Action/Actionable.h"
-#include "Core/Container/MultilineString.h"
+#include "Core/Container/TextBuffer.h"
 
 struct Faust : Component, Actionable<Action::Faust>, Field::ChangeListener {
     Faust(ComponentArgs &&);
@@ -18,7 +18,7 @@ struct Faust : Component, Actionable<Action::Faust>, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
-    Prop(MultilineString, Code, R"#(import("stdfaust.lib");
+    Prop(TextBuffer, Code, R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
    vslider("window (samples)", 1000, 50, 10000, 1),
    vslider("xfade (samples)", 10, 1, 10000, 1),

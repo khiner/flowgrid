@@ -30,8 +30,8 @@ const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
 static ma_context AudioContext;
 static u16 AudioContextInitializedCount = 0;
 
-AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback, UserData user_data)
-    : Component(std::move(args)), Callback(callback), _UserData(user_data) {
+AudioDevice::AudioDevice(Component *parent, string_view path_segment, AudioDevice::AudioCallback callback, UserData user_data)
+    : Component({parent, path_segment}), Callback(callback), _UserData(user_data) {
     const Field::References listened_fields{On, Name, Format, Channels, SampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }

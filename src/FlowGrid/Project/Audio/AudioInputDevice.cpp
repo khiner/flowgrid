@@ -6,8 +6,8 @@
 
 static ma_device MaDevice;
 
-AudioInputDevice::AudioInputDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback, UserData user_data)
-    : AudioDevice(std::move(args), std::move(callback), user_data) {
+AudioInputDevice::AudioInputDevice(Component *parent, string_view path_segment, AudioDevice::AudioCallback callback, UserData user_data)
+    : AudioDevice(parent, path_segment, std::move(callback), user_data) {
     Init();
 }
 

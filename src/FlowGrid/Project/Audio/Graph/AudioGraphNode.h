@@ -41,7 +41,7 @@ static inline std::string GraphEndpointPathSegment = "GraphEndpoint";
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
 struct AudioGraphNode : Component, Field::ChangeListener {
-    AudioGraphNode(ComponentArgs &&);
+    AudioGraphNode(Component *parent, string_view path_segment);
     virtual ~AudioGraphNode();
 
     struct Listener {

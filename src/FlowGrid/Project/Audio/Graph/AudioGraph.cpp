@@ -130,9 +130,9 @@ private:
 
 // A source node that owns an input device and copies the device callback input buffer to its own buffer.
 struct DeviceInputNode : SourceBufferNode {
-    DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
+    DeviceInputNode(Component *parent, string_view path_segment) : SourceBufferNode(parent, path_segment) {
         Muted.Set_(true); // External input is muted by default.
-        InputDevice = std::make_unique<AudioInputDevice>(ComponentArgs{this, "InputDevice"}, AudioInputCallback, this);
+        InputDevice = std::make_unique<AudioInputDevice>(this, "InputDevice", AudioInputCallback, this);
         InitBuffer(InputDevice->Channels);
     }
 
@@ -153,8 +153,8 @@ struct DeviceInputNode : SourceBufferNode {
 // todo There must be a single "Master" `DeviceOutputNode`, which calls `ma_node_graph_read_pcm_frames`.
 // Each remaining `DeviceOutputNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
 struct DeviceOutputNode : PassthroughBufferNode {
-    DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
-        OutputDevice = std::make_unique<AudioOutputDevice>(ComponentArgs{this, "OutputDevice"}, AudioOutputCallback, this);
+    DeviceOutputNode(Component *parent, string_view path_segment) : PassthroughBufferNode(parent, path_segment) {
+        OutputDevice = std::make_unique<AudioOutputDevice>(this, "OutputDevice", AudioOutputCallback, this);
         InitBuffer(OutputDevice->Channels);
     }
 
@@ -193,17 +193,17 @@ struct GraphEndpointNode : AudioGraphNode {
 };
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
-    Nodes.push_back(std::make_unique<DeviceInputNode>(ComponentArgs{this, "Input"}));
-    Nodes.push_back(std::make_unique<DeviceOutputNode>(ComponentArgs{this, "Output"}));
+    Nodes.push_back(std::make_unique<DeviceInputNode>(this, "Input"));
+    Nodes.push_back(std::make_unique<DeviceOutputNode>(this, "Output"));
 
     const auto *input_device = GetDeviceInputNode()->InputDevice.get();
     const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
 
     Graph = std::make_unique<MaGraph>(input_device->Channels);
-    Nodes.push_back(std::make_unique<GraphEndpointNode>(ComponentArgs{this, GraphEndpointPathSegment}));
+    Nodes.push_back(std::make_unique<GraphEndpointNode>(this, GraphEndpointPathSegment));
 
-    Nodes.push_back(std::make_unique<FaustNode>(ComponentArgs{this, "Faust"}));
-    Nodes.push_back(std::make_unique<WaveformNode>(ComponentArgs{this, "Waveform"}));
+    Nodes.push_back(std::make_unique<FaustNode>(this, "Faust"));
+    Nodes.push_back(std::make_unique<WaveformNode>(this, "Waveform"));
     for (const auto &node : Nodes) node->Init();
 
     const Field::References listened_fields = {
@@ -236,7 +236,7 @@ AudioGraph::~AudioGraph() {
 void AudioGraph::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const Action::AudioGraph::DeleteNode &a) {},
+        [](const Action::AudioGraph::DeleteNode &) {},
     );
 }
 

@@ -4,7 +4,7 @@
 #include "Project/Audio/Graph/AudioGraphNode.h"
 
 struct WaveformNode : AudioGraphNode {
-    WaveformNode(ComponentArgs &&);
+    WaveformNode(Component *parent, string_view path_segment);
 
     void OnFieldChanged() override;
     void OnDeviceSampleRateChanged() override;

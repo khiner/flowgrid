@@ -24,7 +24,7 @@ struct Field : Component {
     };
 
     Field(ComponentArgs &&);
-    ~Field();
+    virtual ~Field();
 
     Field &operator=(const Field &) = delete;
 

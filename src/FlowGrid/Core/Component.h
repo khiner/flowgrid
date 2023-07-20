@@ -87,6 +87,19 @@ struct Component : Drawable {
         return json::json_pointer(Path.string()); // Implicit `json_pointer` constructor is disabled.
     }
 
+    // Refresh the component's cached value(s) based on the main store.
+    // Should be called for each affected field after a state change to avoid stale values.
+    // This is overriden by `Field`s to update their `Value` members after a state change.
+    virtual void Refresh() {
+        for (auto *child : Children) child->Refresh();
+    }
+
+    // Erase the component's cached value(s) from the main store.
+    // This is overriden by Container `Field`s to update their `Value` members after a state change.
+    virtual void Erase() const {
+        for (const auto *child : Children) child->Erase();
+    }
+
     // Render a nested tree of components, with Fields as leaf nodes displaying their values as text.
     // By default, renders `this` a node with children as child nodes.
     virtual void RenderValueTree(bool annotate, bool auto_select) const;
@@ -98,7 +111,7 @@ struct Component : Drawable {
     inline bool IsChanged() const noexcept { return ChangedComponentIds.contains(Id); }
 
     Store &RootStore; // Reference to the store at the root of this component's tree.
-    const Component *Parent; // Only null for the root component.
+    Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
     const string PathSegment;
     const StorePath Path;

@@ -19,7 +19,7 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     }
     bool CanApply(const ActionType &) const override { return true; }
 
-    void RefreshValue() override;
+    void Refresh() override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void SetJson(json &&) const override;
@@ -36,6 +36,7 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     void Set(size_t i, const T &value) const;
     void Set(const std::vector<std::pair<int, T>> &) const;
     void Resize(u32) const;
+    void Erase() const override;
 
 protected:
     std::vector<T> Value;

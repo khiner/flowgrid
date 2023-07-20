@@ -11,6 +11,11 @@ Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, flo
     Set(Value);
 }
 
+Vec2::~Vec2() {
+    RootStore.Erase(Path / "X");
+    RootStore.Erase(Path / "Y");
+}
+
 Vec2::operator ImVec2() const { return {X(), Y()}; }
 
 void Vec2::SetX(float x) const { RootStore.Set(Path / "X", x); }
@@ -34,7 +39,7 @@ void Vec2::Apply(const ActionType &action) const {
     );
 }
 
-void Vec2::RefreshValue() {
+void Vec2::Refresh() {
     Value = {std::get<float>(RootStore.Get(Path / "X")), std::get<float>(RootStore.Get(Path / "Y"))};
 }
 
@@ -71,6 +76,10 @@ Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, fl
 Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
     : Vec2Linked(std::move(args), std::move(value), min, max, true, fmt) {}
 
+Vec2Linked::~Vec2Linked() {
+    RootStore.Erase(Path / "Linked");
+}
+
 void Vec2Linked::Apply(const ActionType &action) const {
     Visit(
         action,
@@ -91,8 +100,8 @@ void Vec2Linked::SetLinked(bool linked) const {
     RootStore.Set(Path / "Linked", linked);
 }
 
-void Vec2Linked::RefreshValue() {
-    Vec2::RefreshValue();
+void Vec2Linked::Refresh() {
+    Vec2::Refresh();
     Linked = std::get<bool>(RootStore.Get(Path / "Linked"));
 }
 

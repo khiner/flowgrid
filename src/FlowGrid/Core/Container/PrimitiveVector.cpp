@@ -29,7 +29,9 @@ template<IsPrimitive T> void PrimitiveVector<T>::Resize(u32 size) const {
     }
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::RefreshValue() {
+template<IsPrimitive T> void PrimitiveVector<T>::Erase() const { Resize(0); }
+
+template<IsPrimitive T> void PrimitiveVector<T>::Refresh() {
     u32 i = 0;
     while (RootStore.CountAt(PathAt(i))) {
         const T value = std::get<T>(RootStore.Get(PathAt(i)));

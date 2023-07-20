@@ -13,7 +13,7 @@ void Float::Apply(const ActionType &action) const {
 }
 
 // todo instead of overriding `Update` to handle ints, try ensuring floats are written to the store.
-void Float::RefreshValue() {
+void Float::Refresh() {
     const Primitive PrimitiveValue = Get();
     if (std::holds_alternative<int>(PrimitiveValue)) Value = float(std::get<int>(PrimitiveValue));
     else Value = std::get<float>(PrimitiveValue);

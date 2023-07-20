@@ -130,9 +130,9 @@ private:
 
 // A source node that owns an input device and copies the device callback input buffer to its own buffer.
 struct DeviceInputNode : SourceBufferNode {
-    DeviceInputNode(Component *parent, string_view path_segment) : SourceBufferNode(parent, path_segment) {
+    DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
         Muted.Set_(true); // External input is muted by default.
-        InputDevice = std::make_unique<AudioInputDevice>(this, "InputDevice", AudioInputCallback, this);
+        InputDevice = std::make_unique<AudioInputDevice>(ComponentArgs{this, "InputDevice"}, AudioInputCallback, this);
         InitBuffer(InputDevice->Channels);
     }
 
@@ -153,8 +153,8 @@ struct DeviceInputNode : SourceBufferNode {
 // todo There must be a single "Master" `DeviceOutputNode`, which calls `ma_node_graph_read_pcm_frames`.
 // Each remaining `DeviceOutputNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
 struct DeviceOutputNode : PassthroughBufferNode {
-    DeviceOutputNode(Component *parent, string_view path_segment) : PassthroughBufferNode(parent, path_segment) {
-        OutputDevice = std::make_unique<AudioOutputDevice>(this, "OutputDevice", AudioOutputCallback, this);
+    DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
+        OutputDevice = std::make_unique<AudioOutputDevice>(ComponentArgs{this, "OutputDevice"}, AudioOutputCallback, this);
         InitBuffer(OutputDevice->Channels);
     }
 
@@ -236,7 +236,9 @@ AudioGraph::~AudioGraph() {
 void AudioGraph::Apply(const ActionType &action) const {
     Visit(
         action,
-        [](const Action::AudioGraph::DeleteNode &) {},
+        [this](const Action::AudioGraph::DeleteNode &) {
+            // Nodes.EraseAt(a.id);
+        },
     );
 }
 

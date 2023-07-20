@@ -48,11 +48,12 @@ Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu)
     : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), flags, std::move(menu)) {}
 
 Component::~Component() {
+    if (Parent) std::erase_if(Parent->Children, [this](const auto *child) { return child == this; });
     ById.erase(Id);
 }
 
-// By default, a component is converted to JSON by recursively visiting all of its leaf components (Fields) depth-first,
-// and assigning the leaf's `json_pointer` to the leaf's JSON value.
+// By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,
+// and assigning the leaf's `json_pointer` to its JSON value.
 json Component::ToJson() const {
     if (Children.empty()) return nullptr;
 

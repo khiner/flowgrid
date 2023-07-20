@@ -10,6 +10,7 @@ struct ImVec2;
 struct Vec2 : Field, Actionable<Action::Vec2::Any> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
+    ~Vec2();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
@@ -17,7 +18,7 @@ struct Vec2 : Field, Actionable<Action::Vec2::Any> {
     void SetJson(json &&) const override;
     json ToJson() const override;
 
-    void RefreshValue() override;
+    void Refresh() override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     operator ImVec2() const;
@@ -43,11 +44,12 @@ struct Vec2Linked : Vec2 {
     // Defaults to linked.
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt = nullptr);
+    ~Vec2Linked();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
-    void RefreshValue() override;
+    void Refresh() override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void SetLinked(bool) const;

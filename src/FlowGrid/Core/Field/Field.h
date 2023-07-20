@@ -11,8 +11,7 @@
 struct Patch;
 
 // A `Field` is a component that wraps around a value backed by the owning project's `Store`.
-// Fields are always leafs in the `Project` component tree, and leafs are always fields, making Fields 1:1 with `Project` component leafs.
-// todo Enforce Fields have no children (best done with types).
+// Fields are always leafs in a component tree, and leafs are always fields.
 struct Field : Component {
     using References = std::vector<std::reference_wrapper<const Field>>;
 
@@ -88,10 +87,6 @@ struct Field : Component {
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
     static void RefreshAll();
-
-    // Refresh the cached value based on the main store.
-    // Should be called for each affected field after a state change to avoid stale values.
-    virtual void RefreshValue() = 0;
 
     virtual void RenderValueTree(bool annotate, bool auto_select) const override;
 

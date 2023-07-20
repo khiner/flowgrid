@@ -6,7 +6,7 @@
 
 static ma_waveform *CurrentWaveform; // todo pass in `ma_node` userdata instead?
 
-WaveformNode::WaveformNode(Component *parent, string_view path_segment) : AudioGraphNode(parent, path_segment) {
+WaveformNode::WaveformNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Frequency.RegisterChangeListener(this);
     Type.RegisterChangeListener(this);
 }

@@ -3,9 +3,9 @@
 #include "imgui.h"
 #include "implot.h"
 
+#include "AudioGraphAction.h"
 #include "Helper/String.h"
 #include "Project/Audio/AudioDevice.h"
-#include "AudioGraphAction.h"
 
 // Custom nodes.
 #include "ma_gainer_node/ma_gainer_node.h"
@@ -137,8 +137,8 @@ private:
     ma_monitor_node Monitor;
 };
 
-AudioGraphNode::AudioGraphNode(Component *parent, string_view path_segment)
-    : Component(ComponentArgs{parent, path_segment}), Graph(static_cast<const AudioGraph *>(Parent->Parent)) {
+AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent->Parent)) {
     const Field::References listened_fields = {Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }

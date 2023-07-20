@@ -81,13 +81,13 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     }
 }
 
-void AdjacencyList::Clear() const {
+void AdjacencyList::Erase() const {
     RootStore.ClearIdPairs(Path);
 }
 
 void AdjacencyList::SetJson(json &&j) const {
     IdPairs id_pairs = json::parse(std::string(std::move(j)));
-    Clear();
+    Erase();
     for (IdPair id_pair : id_pairs) Add(std::move(id_pair));
 }
 

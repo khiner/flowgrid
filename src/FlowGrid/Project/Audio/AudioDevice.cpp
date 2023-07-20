@@ -30,8 +30,8 @@ const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
 static ma_context AudioContext;
 static u16 AudioContextInitializedCount = 0;
 
-AudioDevice::AudioDevice(Component *parent, string_view path_segment, AudioDevice::AudioCallback callback, UserData user_data)
-    : Component({parent, path_segment}), Callback(callback), _UserData(user_data) {
+AudioDevice::AudioDevice(ComponentArgs &&args, AudioDevice::AudioCallback callback, UserData user_data)
+    : Component(std::move(args)), Callback(callback), _UserData(user_data) {
     const Field::References listened_fields{On, Name, Format, Channels, SampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
@@ -141,7 +141,7 @@ void AudioDevice::InitContext() {
 
     for (const IO io : IO_All) {
         ma_device_info DeviceInfo;
-        
+
         result = ma_context_get_device_info(&AudioContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &DeviceInfo);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), result));
 

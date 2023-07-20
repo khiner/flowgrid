@@ -8,8 +8,11 @@
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     FieldById.emplace(Id, this);
     FieldIdByPath.emplace(Path, Id);
+    Refresh();
 }
+
 Field::~Field() {
+    Erase();
     FieldIdByPath.erase(Path);
     FieldById.erase(Id);
 }
@@ -44,7 +47,7 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     static std::unordered_set<ChangeListener *> affected_listeners;
     for (const auto &[field_id, _] : ChangedPaths) {
         auto *changed_field = FieldById[field_id];
-        changed_field->RefreshValue();
+        changed_field->Refresh();
         const auto &listeners = ChangeListenersByFieldId[field_id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
@@ -58,7 +61,7 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     }
 }
 void Field::RefreshAll() {
-    for (auto &[id, field] : FieldById) field->RefreshValue();
+    for (auto &[id, field] : FieldById) field->Refresh();
     std::unordered_set<ChangeListener *> all_listeners;
     for (auto &[id, listeners] : ChangeListenersByFieldId) {
         all_listeners.insert(listeners.begin(), listeners.end());

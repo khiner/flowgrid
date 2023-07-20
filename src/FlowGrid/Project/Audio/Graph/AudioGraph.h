@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AudioGraphNode.h"
 #include "AudioGraphAction.h"
+#include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
 
@@ -19,7 +19,7 @@ struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::Chang
     ~AudioGraph();
 
     void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true;}
+    bool CanApply(const ActionType &) const override { return true; }
 
     void OnFieldChanged() override;
     void OnFaustDspChanged(dsp *) override;

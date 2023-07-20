@@ -65,11 +65,6 @@ template<IsAction T> struct IsNotSavable {
     static constexpr bool value = !T::IsSavable;
 };
 
-template<typename T>
-concept HasStorePath = requires(T t) {
-    { t.path } -> std::same_as<fs::path>;
-};
-
 template<IsAction... T> struct ActionVariant : std::variant<T...> {
     using variant_t = std::variant<T...>; // Alias to the base variant type.
     using variant_t::variant; // Inherit the base variant's constructors.

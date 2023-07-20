@@ -23,14 +23,14 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     IdPairs Get() const;
 
     // This value is not cached like other fields, because it uses a backing store (a single `immer::set`) that's performant to query.
-    void RefreshValue() override {}
+    void Refresh() override {}
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void Add(IdPair &&) const;
     void Connect(ID source, ID destination) const;
     void Disconnect(ID source, ID destination) const;
     void ToggleConnection(ID source, ID destination) const;
-    void Clear() const;
+    void Erase() const override;
 
     bool IsConnected(ID source, ID destination) const;
     bool HasPath(ID source, ID destination) const;

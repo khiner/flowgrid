@@ -18,7 +18,7 @@ struct AudioDevice : Component, Field::ChangeListener {
     using AudioCallback = void (*)(ma_device *, void *, const void *, u32);
     using UserData = void *;
 
-    AudioDevice(Component *parent, string_view path_segment, AudioCallback, UserData user_data = nullptr);
+    AudioDevice(ComponentArgs &&, AudioCallback, UserData user_data = nullptr);
     virtual ~AudioDevice();
 
     std::string GetFormatName(int) const;
@@ -47,7 +47,6 @@ protected:
     // Implementing classes must call these in their `Init`/`Uninit`.
     void InitContext();
     void UninitContext();
-
 
     const ma_device_id *GetDeviceId(string_view device_name) const;
 

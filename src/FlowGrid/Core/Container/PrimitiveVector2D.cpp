@@ -19,6 +19,10 @@ template<IsPrimitive T> void PrimitiveVector2D<T>::Set(const std::vector<std::ve
     Resize(i);
 }
 
+template<IsPrimitive T> void PrimitiveVector2D<T>::Set(u32 i, u32 j, const T &value) const {
+    RootStore.Set(PathAt(i, j), value);
+}
+
 template<IsPrimitive T> void PrimitiveVector2D<T>::Resize(u32 size) const {
     u32 i = size;
     while (RootStore.CountAt(PathAt(i, 0))) {
@@ -32,11 +36,9 @@ template<IsPrimitive T> void PrimitiveVector2D<T>::Resize(u32 i, u32 size) const
     while (RootStore.CountAt(PathAt(i, j))) RootStore.Erase(PathAt(i, j++));
 }
 
-template<IsPrimitive T> void PrimitiveVector2D<T>::Set(u32 i, u32 j, const T &value) const {
-    RootStore.Set(PathAt(i, j), value);
-}
+template<IsPrimitive T> void PrimitiveVector2D<T>::Erase() const { Resize(0); }
 
-template<IsPrimitive T> void PrimitiveVector2D<T>::RefreshValue() {
+template<IsPrimitive T> void PrimitiveVector2D<T>::Refresh() {
     u32 i = 0;
     while (RootStore.CountAt(PathAt(i, 0))) {
         if (Value.size() == i) Value.push_back({});

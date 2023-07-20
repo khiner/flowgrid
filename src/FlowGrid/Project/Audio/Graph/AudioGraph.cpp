@@ -204,7 +204,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
 
     Nodes.EmplaceBack<FaustNode>("Faust");
     Nodes.EmplaceBack<WaveformNode>("Waveform");
-    for (const auto &node : Nodes) node->Init();
+    for (auto *node : Nodes) node->Init();
 
     const Field::References listened_fields = {
         input_device->On,
@@ -218,7 +218,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
         Connections,
     };
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-    for (const auto &node : Nodes) node->RegisterListener(this);
+    for (auto *node : Nodes) node->RegisterListener(this);
 
     // Set up default connections.
     // Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
@@ -230,7 +230,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
 
 AudioGraph::~AudioGraph() {
     Singleton = nullptr;
-    for (const auto &node : Nodes) node->UnregisterListener(this);
+    for (auto *node : Nodes) node->UnregisterListener(this);
     Field::UnregisterChangeListener(this);
 }
 void AudioGraph::Apply(const ActionType &action) const {
@@ -243,13 +243,13 @@ void AudioGraph::Apply(const ActionType &action) const {
 ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
 
 // xxx depending on dynamic node positions is temporary.
-DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(Nodes[0].get()); }
-DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(Nodes[1].get()); }
-GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(Nodes[2].get()); }
+DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(Nodes[0]); }
+DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(Nodes[1]); }
+GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(Nodes[2]); }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
     // xxx depending on dynamic node positions is temporary.
-    static_cast<FaustNode *>(Nodes[3].get())->OnFaustDspChanged(dsp);
+    static_cast<FaustNode *>(Nodes[3])->OnFaustDspChanged(dsp);
     UpdateConnections();
 }
 
@@ -266,15 +266,15 @@ void AudioGraph::OnFieldChanged() {
         output_device->Channels.IsChanged() ||
         output_device->Format.IsChanged() ||
         output_device->SampleRate.IsChanged()) {
-        for (const auto &node : Nodes) node->Uninit();
+        for (auto *node : Nodes) node->Uninit();
         Graph = std::make_unique<MaGraph>(input_device->Channels);
-        for (const auto &node : Nodes) node->Init();
+        for (auto *node : Nodes) node->Init();
         UpdateConnections();
         return;
     }
 
     // if (input_device->SampleRate.IsChanged() || output_device->SampleRate.IsChanged()) {
-    //     for (const auto &node : Nodes) node->OnDeviceSampleRateChanged();
+    //     for (auto *node : Nodes) node->OnDeviceSampleRateChanged();
     // }
 
     if (Connections.IsChanged()) {
@@ -287,14 +287,14 @@ u32 AudioGraph::GetDeviceSampleRate() const { return GetDeviceOutputNode()->Outp
 u64 AudioGraph::GetDeviceBufferSize() const { return GetDeviceOutputNode()->OutputDevice->Get()->playback.internalPeriodSizeInFrames; }
 
 void AudioGraph::UpdateConnections() {
-    for (const auto &node : Nodes) {
+    for (auto *node : Nodes) {
         if (node->AllowInputConnectionChange() && node->AllowOutputConnectionChange()) {
             node->DisconnectAll();
         }
     }
 
-    for (const auto &out_node : Nodes) {
-        for (const auto &in_node : Nodes) {
+    for (auto *out_node : Nodes) {
+        for (auto *in_node : Nodes) {
             if (Connections.IsConnected(out_node->Id, in_node->Id)) {
                 out_node->ConnectTo(*in_node);
             }
@@ -304,7 +304,7 @@ void AudioGraph::UpdateConnections() {
     // Update node active states.
     // Nodes that are turned off (here - disabled) are not removed from the `Connections` object in order to preserve their connections.
     // So we need to check if there is a path to the output node that doesn't go through any disabled nodes.
-    for (const auto &node : Nodes) {
+    for (auto *node : Nodes) {
         node->SetActive(GetGraphEndpointNode() != nullptr && Connections.HasPath(node->Id, GetGraphEndpointNode()->Id));
     }
 }
@@ -314,7 +314,7 @@ using namespace ImGui;
 void AudioGraph::RenderConnections() const {
     // Calculate the maximum I/O label widths.
     ImVec2 max_label_w_no_padding{0, 0}; // I/O vec: in (left), out (top)
-    for (const auto &node : Nodes) {
+    for (const auto *node : Nodes) {
         const float label_w = CalcTextSize(node->Name.c_str()).x;
         if (node->CanConnectInput()) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
         if (node->CanConnectOutput()) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
@@ -365,7 +365,7 @@ void AudioGraph::RenderConnections() const {
 
     // Output channel labels.
     u32 out_count = 0;
-    for (const auto &out_node : Nodes) {
+    for (const auto *out_node : Nodes) {
         if (!out_node->CanConnectOutput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
@@ -389,7 +389,7 @@ void AudioGraph::RenderConnections() const {
 
     // Input channel labels and mixer cells.
     u32 in_i = 0;
-    for (const auto &in_node : Nodes) {
+    for (const auto *in_node : Nodes) {
         if (!in_node->CanConnectInput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
@@ -408,7 +408,7 @@ void AudioGraph::RenderConnections() const {
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
 
         u32 out_i = 0;
-        for (const auto &out_node : Nodes) {
+        for (const auto *out_node : Nodes) {
             if (!out_node->CanConnectOutput()) continue;
 
             PushID(in_i * out_count + out_i);
@@ -449,7 +449,7 @@ void AudioGraph::Style::Matrix::Render() const {
 }
 
 void AudioGraph::RenderNodes() const {
-    for (const auto &node : Nodes) {
+    for (const auto *node : Nodes) {
         if (TreeNodeEx(node->ImGuiLabel.c_str())) {
             node->Draw();
             TreePop();

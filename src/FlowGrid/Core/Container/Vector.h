@@ -26,8 +26,8 @@ template<HasId ChildType> struct Vector : Field {
     // Type must be constructable from `ComponentArgs`.
     template<typename ChildSubType, typename... Args>
         requires std::derived_from<ChildSubType, ChildType>
-    void EmplaceBack(string_view path_segment = "", string_view meta_str = "") {
-        Value.emplace_back(std::make_unique<ChildSubType>(ComponentArgs{this, path_segment, meta_str}));
+    void EmplaceBack(string_view path_segment = "", string_view meta_str = "", Args &&...other_args) {
+        Value.emplace_back(std::make_unique<ChildSubType>(ComponentArgs{this, path_segment, meta_str}, std::forward<Args>(other_args)...));
     }
 
     // Idea for more general args.
@@ -68,5 +68,5 @@ template<HasId ChildType> struct Vector : Field {
 
 private:
     std::vector<std::unique_ptr<ChildType>> Value;
-    std::vector<std::function<std::unique_ptr<ChildType>()>> creators; // Stores the object creators
+    // std::vector<std::function<std::unique_ptr<ChildType>()>> creators; // Stores the object creators
 };

@@ -1,71 +1,28 @@
 #include "FaustNode.h"
 
 #include "Project/Audio/Graph/AudioGraph.h"
-#include "Project/Audio/Sample.h" // Must be included before any Faust includes.
-#include "faust/dsp/dsp.h"
 
 #include "Faust.h"
 
-#include "miniaudio.h"
-
-static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
+#include "Project/Audio/Graph/ma_faust_node/ma_faust_node.h"
 
 // todo destroy node when dsp is null
-FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-    Init();
+FaustNode::FaustNode(ComponentArgs &&args, dsp *dsp) : AudioGraphNode(std::move(args)) {
+    auto config = ma_faust_node_config_init(dsp, GetSampleRate());
+    _Node = std::make_unique<ma_faust_node>();
+    int result = ma_faust_node_init(Graph->Get(), &config, nullptr, _Node.get());
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", result));
+    Node = _Node.get();
+
+    UpdateAll();
 }
 
-void FaustNode::OnFieldChanged() {
-    AudioGraphNode::OnFieldChanged();
+FaustNode::~FaustNode() {
+    ma_faust_node_uninit(_Node.get(), nullptr);
+    Node = nullptr;
 }
 
 void FaustNode::OnSampleRateChanged() {
     AudioGraphNode::OnSampleRateChanged();
-    if (CurrentDsp) CurrentDsp->init(GetSampleRate());
-}
-
-void FaustProcess(ma_node *node, const float **const_bus_frames_in, u32 *frame_count_in, float **bus_frames_out, u32 *frame_count_out) {
-    // ma_pcm_rb_init_ex()
-    // ma_deinterleave_pcm_frames()
-    float **bus_frames_in = const_cast<float **>(const_bus_frames_in); // Faust `compute` expects a non-const buffer: https://github.com/grame-cncm/faust/pull/850
-    if (CurrentDsp) CurrentDsp->compute(*frame_count_out, bus_frames_in, bus_frames_out);
-
-    (void)node;
-    (void)frame_count_in;
-}
-
-void FaustNode::OnFaustDspChanged(dsp *dsp) {
-    if (CurrentDsp && !dsp) {
-        Uninit();
-        CurrentDsp = nullptr;
-    } else if (!CurrentDsp && dsp) {
-        CurrentDsp = dsp;
-        Init();
-    } else {
-        CurrentDsp = dsp;
-        UpdateAll();
-    }
-}
-
-void FaustNode::Init() {
-    if (!CurrentDsp) return;
-
-    CurrentDsp->init(GetSampleRate());
-
-    const u32 in_channels = CurrentDsp->getNumInputs();
-    const u32 out_channels = CurrentDsp->getNumOutputs();
-    if (in_channels == 0 && out_channels == 0) return;
-
-    static ma_node_vtable vtable = {FaustProcess, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
-    ma_node_config config = ma_node_config_init();
-    config.pInputChannels = &in_channels; // One input bus with N channels.
-    config.pOutputChannels = &out_channels; // One output bus with M channels.
-    config.vtable = &vtable;
-
-    static ma_node_base node{};
-    const int result = ma_node_init(Graph->Get(), &config, nullptr, &node);
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust node: {}", result));
-
-    Node = &node;
-    UpdateAll();
+    ma_faust_node_set_sample_rate(_Node.get(), GetSampleRate());
 }

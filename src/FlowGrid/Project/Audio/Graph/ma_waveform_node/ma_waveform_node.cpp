@@ -4,8 +4,6 @@
 
 ma_waveform_node_config ma_waveform_node_config_init(ma_uint32 sample_rate, ma_waveform_type type, double frequency) {
     ma_waveform_node_config config;
-
-    MA_ZERO_OBJECT(&config);
     config.node_config = ma_node_config_init();
     config.waveform_config = ma_waveform_config_init(ma_format_f32, 1, sample_rate, type, 1, frequency);
 

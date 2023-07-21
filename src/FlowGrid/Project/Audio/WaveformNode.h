@@ -16,8 +16,8 @@ struct WaveformNode : AudioGraphNode {
     Prop(Enum, Type, {"Sine", "Square", "Triangle", "Sawtooth"}, 0);
     // Amplitude is controlled by node output level.
 
+private:
     std::unique_ptr<ma_waveform_node> _Node;
 
-private:
     void Render() const override;
 };

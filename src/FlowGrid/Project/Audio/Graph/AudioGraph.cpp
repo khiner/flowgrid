@@ -190,15 +190,11 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
     Nodes.EmplaceBack<DeviceInputNode>("Input");
     Nodes.EmplaceBack<DeviceOutputNode>("Output");
+    Nodes.EmplaceBack<GraphEndpointNode>(GraphEndpointPathSegment);
+    Nodes.EmplaceBack<WaveformNode>("Waveform");
 
     const auto *input_device = GetDeviceInputNode()->InputDevice.get();
     const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
-
-    Nodes.EmplaceBack<GraphEndpointNode>(GraphEndpointPathSegment);
-
-    Nodes.EmplaceBack<FaustNode>("Faust");
-    Nodes.EmplaceBack<WaveformNode>("Waveform");
-
     const Field::References listened_fields = {
         input_device->On,
         input_device->Channels,
@@ -214,8 +210,6 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     for (auto *node : Nodes) node->RegisterListener(this);
 
     // Set up default connections.
-    // Connections.Connect(Nodes.Input.Id, Nodes.Faust.Id);
-    // Connections.Connect(Nodes.Faust.Id, Nodes.Output.Id);
     Connections.Connect(GetDeviceInputNode()->Id, GetDeviceOutputNode()->Id);
     Connections.Connect(GetDeviceOutputNode()->Id, GetGraphEndpointNode()->Id);
     Singleton = this;
@@ -243,9 +237,15 @@ DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<D
 GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(Nodes[2]); }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
-    // xxx depending on dynamic node positions is temporary.
-    static_cast<FaustNode *>(Nodes[3])->OnFaustDspChanged(dsp);
-    UpdateConnections();
+    if (!dsp && Nodes.Size() == 5) {
+        Nodes.EraseAt(4);
+    } else if (dsp && Nodes.Size() == 4) {
+        Nodes.EmplaceBack<FaustNode>("Faust", "", dsp);
+    } else if (dsp) {
+        Nodes.EraseAt(4);
+        Nodes.EmplaceBack<FaustNode>("Faust", "", dsp);
+    }
+    UpdateConnections(); // todo only update connections if the dsp change caused a change in the number of channels.
 }
 
 void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(); }

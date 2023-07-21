@@ -19,7 +19,7 @@ struct AudioGraphNode::GainerNode {
     GainerNode(ma_node_graph *ma_graph, u32 channels, u32 sample_rate, float smooth_time_ms)
         : SmoothTimeMs(smooth_time_ms) {
         const u32 smooth_time_frames = SmoothTimeMs * float(sample_rate) / 1000.f;
-        ma_gainer_node_config config = ma_gainer_node_config_init(channels, smooth_time_frames);
+        auto config = ma_gainer_node_config_init(channels, smooth_time_frames);
         const int result = ma_gainer_node_init(ma_graph, &config, nullptr, &Gainer);
         if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", result)); }
     }

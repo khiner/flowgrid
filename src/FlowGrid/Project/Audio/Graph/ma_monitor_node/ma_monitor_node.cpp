@@ -106,7 +106,7 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
     base_config.pInputChannels = &config->channels;
     base_config.pOutputChannels = &config->channels;
 
-    return ma_node_init(node_graph, &base_config, allocation_callbacks, &monitor->base_node);
+    return ma_node_init(node_graph, &base_config, allocation_callbacks, &monitor->base);
 }
 
 void ma_monitor_node_uninit(ma_monitor_node *monitor, const ma_allocation_callbacks *allocation_callbacks) {

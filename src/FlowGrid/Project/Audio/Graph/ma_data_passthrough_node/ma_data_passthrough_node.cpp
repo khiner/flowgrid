@@ -30,7 +30,6 @@ ma_result ma_data_passthrough_node_init(ma_node_graph *pNodeGraph, const ma_data
 
     static ma_node_vtable vtable = {ma_data_passthrough_node_process_pcm_frames, NULL, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
     base_config.vtable = &vtable;
-
     base_config.pInputChannels = &channels;
     base_config.pOutputChannels = &channels;
 

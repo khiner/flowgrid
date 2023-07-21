@@ -14,7 +14,7 @@ ma_monitor_node_config ma_monitor_node_config_init(ma_uint32 channels, ma_uint32
 struct fft_data; // Forward-declare to avoid including fftw header. Include `fft_data.h` for complete definition.
 
 struct ma_monitor_node {
-    ma_node_base base_node;
+    ma_node_base base;
     ma_monitor_node_config config;
     fft_data *fft;
     // Buffers are guaranteed to be of size `config.buffer_frames * config.channels` if initialized successfully.

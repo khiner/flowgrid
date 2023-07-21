@@ -10,7 +10,7 @@ struct ma_gainer_node_config {
 ma_gainer_node_config ma_gainer_node_config_init(ma_uint32 channels, ma_uint32 smooth_time_frames);
 
 struct ma_gainer_node {
-    ma_node_base base_node;
+    ma_node_base base;
     ma_gainer_node_config config;
     ma_gainer gainer;
 };

@@ -144,12 +144,24 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
 }
 
 AudioGraphNode::~AudioGraphNode() {
-    Field::UnregisterChangeListener(this);
     Uninit();
+    Field::UnregisterChangeListener(this);
 }
 
-u32 AudioGraphNode::GetDeviceSampleRate() const { return Graph->GetDeviceSampleRate(); }
-u32 AudioGraphNode::GetDeviceBufferSize() const { return Graph->GetDeviceBufferSize(); }
+void AudioGraphNode::Uninit() {
+    // Disconnect from earliest to latest in the signal path.
+    InputMonitor.reset();
+    Gainer.reset();
+    OutputMonitor.reset();
+    Splitters.clear();
+    if (Node != nullptr) {
+        ma_node_uninit(Node, nullptr);
+        Node = nullptr;
+    }
+}
+
+u32 AudioGraphNode::GetSampleRate() const { return Graph->GetSampleRate(); }
+u32 AudioGraphNode::GetBufferSize() const { return Graph->GetBufferSize(); }
 
 ma_node *AudioGraphNode::InputNode() const {
     if (InputMonitor) return InputMonitor->Get();
@@ -198,8 +210,8 @@ WindowFunctionType GetWindowFunction(WindowType type) {
     }
 }
 
-void AudioGraphNode::OnDeviceSampleRateChanged() {
-    const u32 sample_rate = GetDeviceSampleRate();
+void AudioGraphNode::OnSampleRateChanged() {
+    const u32 sample_rate = GetSampleRate();
     for (const IO io : IO_All) {
         if (auto *monitor = GetMonitor(io)) {
             monitor->SetSampleRate(sample_rate);
@@ -232,11 +244,6 @@ u32 AudioGraphNode::OutputBusCount() const { return ma_node_get_output_bus_count
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Node, bus); }
 u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
 
-void AudioGraphNode::Init() {
-    Node = DoInit(Graph->Get());
-    UpdateAll();
-}
-
 void AudioGraphNode::UpdateOutputLevel() {
     if (OutputBusCount() == 0) return;
 
@@ -251,7 +258,7 @@ void AudioGraphNode::UpdateOutputLevel() {
 
 void AudioGraphNode::UpdateGainer() {
     if (OutputBusCount() > 0 && SmoothOutputLevel && !Gainer) {
-        Gainer = std::make_unique<GainerNode>(Graph->Get(), OutputChannelCount(0), GetDeviceSampleRate(), SmoothOutputLevelMs);
+        Gainer = std::make_unique<GainerNode>(Graph->Get(), OutputChannelCount(0), GetSampleRate(), SmoothOutputLevelMs);
         UpdateOutputLevel();
     } else if (!SmoothOutputLevel && Gainer) {
         Gainer.reset();
@@ -270,13 +277,14 @@ void AudioGraphNode::UpdateMonitorWindowFunction(IO io) {
 
 void AudioGraphNode::UpdateMonitor(IO io) {
     auto *monitor = GetMonitor(io);
-    if (!monitor && Monitor && BusCount(io) > 0) {
-        auto monitor = std::make_unique<MonitorNode>(Graph->Get(), ChannelCount(io, 0), GetDeviceSampleRate(), GetDeviceBufferSize());
+    auto bus_count = BusCount(io);
+    if (!monitor && Monitor && bus_count > 0) {
+        auto monitor = std::make_unique<MonitorNode>(Graph->Get(), ChannelCount(io, 0), GetSampleRate(), GetBufferSize());
         if (io == IO_In) InputMonitor = std::move(monitor);
         else OutputMonitor = std::move(monitor);
 
         UpdateMonitorWindowFunction(io);
-    } else if (monitor && (!Monitor || InputBusCount() == 0)) {
+    } else if (monitor && (!Monitor || bus_count == 0)) {
         if (io == IO_In) InputMonitor.reset();
         else OutputMonitor.reset();
     }
@@ -291,19 +299,6 @@ void AudioGraphNode::UpdateAll() {
     UpdateOutputLevel();
 }
 
-void AudioGraphNode::Uninit() {
-    if (Node == nullptr) return;
-
-    // Disconnect from earliest to latest in the signal path.
-    InputMonitor.reset();
-    Gainer.reset();
-    OutputMonitor.reset();
-    Splitters.clear();
-    DoUninit();
-    ma_node_uninit(Node, nullptr);
-    Node = nullptr;
-}
-
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
     if (auto *to_input_monitor = to.GetMonitor(IO_In)) ma_node_attach_output_bus(to_input_monitor->Get(), 0, to.Node, 0);
     if (Gainer) ma_node_attach_output_bus(Node, 0, Gainer->Get(), 0);
@@ -315,7 +310,8 @@ void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
     to.InputNodes.insert(this);
     OutputNodes.insert(&to);
 
-    if (auto *currently_connected_to = ((ma_node_base *)OutputNode())->pOutputBuses[0].pInputNode) {
+    auto *output_node = OutputNode();
+    if (auto *currently_connected_to = ((ma_node_base *)output_node)->pOutputBuses[0].pInputNode) {
         // Connecting a single source to multiple destinations requires a splitter node.
         // We chain splitters together to support any number of destinations.
         Splitters.emplace_back(std::make_unique<SplitterNode>(Graph->Get(), OutputChannelCount(0)));

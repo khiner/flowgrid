@@ -5,9 +5,10 @@
 
 struct WaveformNode : AudioGraphNode {
     WaveformNode(ComponentArgs &&);
+    ~WaveformNode();
 
     void OnFieldChanged() override;
-    void OnDeviceSampleRateChanged() override;
+    void OnSampleRateChanged() override;
 
     Prop(Float, Frequency, 440.0, 20.0, 16000.0);
     Prop(Enum, Type, {"Sine", "Square", "Triangle", "Sawtooth"}, 0);
@@ -15,7 +16,4 @@ struct WaveformNode : AudioGraphNode {
 
 private:
     void Render() const override;
-
-    ma_node *DoInit(ma_node_graph *) override;
-    void DoUninit() override;
 };

@@ -1,5 +1,6 @@
 #include "FaustNode.h"
 
+#include "Project/Audio/Graph/AudioGraph.h"
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
@@ -9,13 +10,18 @@
 
 static dsp *CurrentDsp; // Only used in `FaustProcess`. todo pass in `ma_node` userdata instead?
 
+// todo destroy node when dsp is null
+FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+    Init();
+}
+
 void FaustNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
 }
 
-void FaustNode::OnDeviceSampleRateChanged() {
-    AudioGraphNode::OnDeviceSampleRateChanged();
-    if (CurrentDsp) CurrentDsp->init(GetDeviceSampleRate());
+void FaustNode::OnSampleRateChanged() {
+    AudioGraphNode::OnSampleRateChanged();
+    if (CurrentDsp) CurrentDsp->init(GetSampleRate());
 }
 
 void FaustProcess(ma_node *node, const float **const_bus_frames_in, u32 *frame_count_in, float **bus_frames_out, u32 *frame_count_out) {
@@ -41,14 +47,14 @@ void FaustNode::OnFaustDspChanged(dsp *dsp) {
     }
 }
 
-ma_node *FaustNode::DoInit(ma_node_graph *graph) {
-    if (!CurrentDsp) return nullptr;
+void FaustNode::Init() {
+    if (!CurrentDsp) return;
 
-    CurrentDsp->init(GetDeviceSampleRate());
+    CurrentDsp->init(GetSampleRate());
 
     const u32 in_channels = CurrentDsp->getNumInputs();
     const u32 out_channels = CurrentDsp->getNumOutputs();
-    if (in_channels == 0 && out_channels == 0) return nullptr;
+    if (in_channels == 0 && out_channels == 0) return;
 
     static ma_node_vtable vtable = {FaustProcess, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
     ma_node_config config = ma_node_config_init();
@@ -57,8 +63,9 @@ ma_node *FaustNode::DoInit(ma_node_graph *graph) {
     config.vtable = &vtable;
 
     static ma_node_base node{};
-    const int result = ma_node_init(graph, &config, nullptr, &node);
+    const int result = ma_node_init(Graph->Get(), &config, nullptr, &node);
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust node: {}", result));
 
-    return &node;
+    Node = &node;
+    UpdateAll();
 }

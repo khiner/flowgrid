@@ -81,16 +81,13 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     // When this node is no longer connected to the output node (directly or indirectly), it is considered inactive.
     inline void SetActive(bool is_active) noexcept { IsActive = is_active; }
 
-    // Should be called whenever the device sample rate changes.
+    // Should be called whenever the graph's sample rate changes.
     // At the very least, each node updates any active IO monitors based on the new sample rate.
-    virtual void OnDeviceSampleRateChanged();
+    virtual void OnSampleRateChanged();
 
     // These getters delegate to Graph->Device.
-    u32 GetDeviceSampleRate() const;
-    u32 GetDeviceBufferSize() const;
-
-    void Init();
-    void Uninit();
+    u32 GetSampleRate() const;
+    u32 GetBufferSize() const;
 
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, OutputLevel, 1.0);
@@ -120,9 +117,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 protected:
     void Render() const override;
 
-    virtual ma_node *DoInit(ma_node_graph *) { return nullptr; };
-    virtual void DoUninit() {}
-
     MonitorNode *GetMonitor(IO) const;
 
     void UpdateOutputLevel();
@@ -131,6 +125,7 @@ protected:
     void UpdateMonitorWindowFunction(IO);
 
     void UpdateAll();
+    void Uninit();
 
     const AudioGraph *Graph;
     ma_node *Node;

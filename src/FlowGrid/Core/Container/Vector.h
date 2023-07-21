@@ -55,6 +55,8 @@ template<HasId ChildType> struct Vector : Field {
     ChildType *back() const { return Value.back().get(); }
     ChildType *operator[](u32 i) const { return Value[i].get(); }
 
+    u32 Size() const { return Value.size(); }
+
     void EraseAt(ID id) {
         auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
         if (it != Value.end()) {

@@ -22,8 +22,8 @@ static const AudioGraph *Singleton;
 
 // Wraps around `ma_node_graph`.
 struct MaGraph {
-    MaGraph(u32 in_channels) {
-        auto config = ma_node_graph_config_init(in_channels);
+    MaGraph(u32 channels) {
+        auto config = ma_node_graph_config_init(channels);
         _Graph = std::make_unique<ma_node_graph>();
         const int result = ma_node_graph_init(&config, nullptr, _Graph.get());
 
@@ -71,8 +71,6 @@ struct BufferRefNode : AudioGraphNode {
     inline u64 GetBufferSize() const { return _BufferRef ? _BufferRef->GetSize() : 0; }
     inline void InitBuffer(u32 channels) { _BufferRef = std::make_unique<BufferRef>(ma_format_f32, channels); }
 
-    void DoUninit() override { _BufferRef.reset(); }
-
 protected:
     inline void SetBufferData(const void *input, u32 frame_count) const {
         if (_BufferRef) _BufferRef->SetData(input, frame_count);
@@ -83,19 +81,17 @@ protected:
 
 // A `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref`.
 struct SourceBufferNode : BufferRefNode {
-    using BufferRefNode::BufferRefNode;
-
-    ma_node *DoInit(ma_node_graph *graph) override {
+    SourceBufferNode(ComponentArgs &&args) : BufferRefNode(std::move(args)) {
+        InitBuffer(1);
         auto config = ma_data_source_node_config_init(_BufferRef->Get());
-        int result = ma_data_source_node_init(graph, &config, nullptr, &SourceNode);
+        int result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &SourceNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data source node: ", result));
 
-        return &SourceNode;
+        Node = &SourceNode;
     }
-
-    void DoUninit() override {
-        BufferRefNode::DoUninit();
+    ~SourceBufferNode() {
         ma_data_source_node_uninit((ma_data_source_node *)Node, nullptr);
+        Node = nullptr;
     }
 
 private:
@@ -105,19 +101,16 @@ private:
 // Wraps around (custom) `ma_data_passthrough_node`.
 // Copies the input buffer in each callback to its internal `Buffer`.
 struct PassthroughBufferNode : BufferRefNode {
-    using BufferRefNode::BufferRefNode;
-
-    ma_node *DoInit(ma_node_graph *graph) override {
+    PassthroughBufferNode(ComponentArgs &&args) : BufferRefNode(std::move(args)) {
+        InitBuffer(1);
         auto config = ma_data_passthrough_node_config_init(_BufferRef->Get());
-        int result = ma_data_passthrough_node_init(graph, &config, nullptr, &PassthroughNode);
+        int result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", result));
-
-        return &PassthroughNode;
+        Node = &PassthroughNode;
     }
-
-    void DoUninit() override {
-        BufferRefNode::DoUninit();
+    ~PassthroughBufferNode() {
         ma_data_passthrough_node_uninit((ma_data_passthrough_node *)Node, nullptr);
+        Node = nullptr;
     }
 
     void ReadBufferData(void *output, u32 frame_count) const noexcept {
@@ -133,7 +126,7 @@ struct DeviceInputNode : SourceBufferNode {
     DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
         Muted.Set_(true); // External input is muted by default.
         InputDevice = std::make_unique<AudioInputDevice>(ComponentArgs{this, "InputDevice"}, AudioInputCallback, this);
-        InitBuffer(InputDevice->Channels);
+        UpdateAll();
     }
 
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
@@ -155,7 +148,7 @@ struct DeviceInputNode : SourceBufferNode {
 struct DeviceOutputNode : PassthroughBufferNode {
     DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
         OutputDevice = std::make_unique<AudioOutputDevice>(ComponentArgs{this, "OutputDevice"}, AudioOutputCallback, this);
-        InitBuffer(OutputDevice->Channels);
+        UpdateAll();
     }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
@@ -181,9 +174,10 @@ struct DeviceOutputNode : PassthroughBufferNode {
 // Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
 // The graph enforces that the only input is the "Master" `DeviceOutputNode` (hence not allowing dynamic input changes).
 struct GraphEndpointNode : AudioGraphNode {
-    using AudioGraphNode::AudioGraphNode;
-
-    ma_node *DoInit(ma_node_graph *graph) override { return ma_node_graph_get_endpoint(graph); }
+    GraphEndpointNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+        Node = ma_node_graph_get_endpoint(Graph->Get());
+        UpdateAll();
+    }
 
     bool AllowDelete() const override { return false; }
 
@@ -193,18 +187,17 @@ struct GraphEndpointNode : AudioGraphNode {
 };
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
+    Graph = std::make_unique<MaGraph>(1);
     Nodes.EmplaceBack<DeviceInputNode>("Input");
     Nodes.EmplaceBack<DeviceOutputNode>("Output");
 
     const auto *input_device = GetDeviceInputNode()->InputDevice.get();
     const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
 
-    Graph = std::make_unique<MaGraph>(u32(input_device->Channels));
     Nodes.EmplaceBack<GraphEndpointNode>(GraphEndpointPathSegment);
 
     Nodes.EmplaceBack<FaustNode>("Faust");
     Nodes.EmplaceBack<WaveformNode>("Waveform");
-    for (auto *node : Nodes) node->Init();
 
     const Field::References listened_fields = {
         input_device->On,
@@ -263,36 +256,33 @@ void AudioGraph::OnFieldChanged() {
     if (input_device->On.IsChanged() ||
         input_device->Channels.IsChanged() ||
         input_device->Format.IsChanged() ||
-        input_device->SampleRate.IsChanged() ||
         output_device->On.IsChanged() ||
         output_device->Channels.IsChanged() ||
-        output_device->Format.IsChanged() ||
-        output_device->SampleRate.IsChanged()) {
-        for (auto *node : Nodes) node->Uninit();
-        Graph = std::make_unique<MaGraph>(input_device->Channels);
-        for (auto *node : Nodes) node->Init();
-        UpdateConnections();
+        output_device->Format.IsChanged()) {
+        // todo
         return;
     }
 
-    // if (input_device->SampleRate.IsChanged() || output_device->SampleRate.IsChanged()) {
-    //     for (auto *node : Nodes) node->OnDeviceSampleRateChanged();
-    // }
+    if (input_device->SampleRate.IsChanged() || output_device->SampleRate.IsChanged()) {
+        for (auto *node : Nodes) node->OnSampleRateChanged();
+    }
 
     if (Connections.IsChanged()) {
         UpdateConnections();
     }
 }
 
-u32 AudioGraph::GetDeviceSampleRate() const { return GetDeviceOutputNode()->OutputDevice->SampleRate; }
-// u64 AudioGraph::GetDeviceBufferSize() const { return GetDeviceOutputNode()->GetBufferSize(); }
-u64 AudioGraph::GetDeviceBufferSize() const { return GetDeviceOutputNode()->OutputDevice->Get()->playback.internalPeriodSizeInFrames; }
+u32 AudioGraph::GetSampleRate() const {
+    if (Nodes.Size() == 0) return 0;
+    if (Nodes.Size() == 1) return GetDeviceInputNode()->InputDevice->SampleRate;
+    return GetDeviceOutputNode()->OutputDevice->SampleRate;
+}
+
+u64 AudioGraph::GetBufferSize() const { return GetDeviceOutputNode()->OutputDevice->Get()->playback.internalPeriodSizeInFrames; }
 
 void AudioGraph::UpdateConnections() {
     for (auto *node : Nodes) {
-        if (node->AllowInputConnectionChange() && node->AllowOutputConnectionChange()) {
-            node->DisconnectAll();
-        }
+        node->DisconnectAll();
     }
 
     for (auto *out_node : Nodes) {

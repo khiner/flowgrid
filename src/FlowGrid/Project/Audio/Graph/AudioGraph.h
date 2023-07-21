@@ -27,8 +27,8 @@ struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::Chang
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
     ma_node_graph *Get() const;
-    u32 GetDeviceSampleRate() const;
-    u64 GetDeviceBufferSize() const;
+    u32 GetSampleRate() const;
+    u64 GetBufferSize() const;
 
     std::unique_ptr<MaGraph> Graph;
 

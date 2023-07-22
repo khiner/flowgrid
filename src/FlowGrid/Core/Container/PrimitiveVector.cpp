@@ -21,6 +21,15 @@ template<IsPrimitive T> void PrimitiveVector<T>::Set(const std::vector<std::pair
     for (const auto &[i, value] : values) Set(i, value);
 }
 
+template<IsPrimitive T> void PrimitiveVector<T>::PushBack(const T &value) const {
+    RootStore.Set(PathAt(Value.size()), value);
+}
+
+template<IsPrimitive T> void PrimitiveVector<T>::PushBack_(const T &value) {
+    PushBack(value);
+    Value.push_back(value);
+}
+
 template<IsPrimitive T> void PrimitiveVector<T>::Resize(u32 size) const {
     u32 i = size;
     while (RootStore.CountAt(PathAt(i))) {

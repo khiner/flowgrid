@@ -64,6 +64,7 @@ struct Component : Drawable {
         Component *Parent; // Must be present for non-empty constructor.
         string_view PathSegment = "";
         string_view MetaStr = "";
+        string_view PathSegmentPrefix = "";
     };
 
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
@@ -80,6 +81,8 @@ struct Component : Drawable {
 
     Component(const Component &) = delete; // Copying not allowed.
     Component &operator=(const Component &) = delete; // Assignment not allowed.
+
+    Component *GetFirstLeaf() const;
 
     virtual void SetJson(json &&) const;
     virtual json ToJson() const;
@@ -139,7 +142,7 @@ protected:
     static bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr, bool highlight_value = false);
 
 private:
-    Component(Component *parent, string_view path_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
+    Component(Component *parent, string_view path_segment, string_view path_segment_prefix, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
 };
 
 // Minimal/base debug component.

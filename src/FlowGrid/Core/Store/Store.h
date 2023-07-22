@@ -23,6 +23,8 @@ struct Store : Actionable<Action::Store::Any> {
     void Set(const StorePath &, const Primitive &) const;
     void Erase(const StorePath &) const;
 
+    bool Exists(const StorePath &) const;
+
     IdPairs IdPairs(const StorePath &) const;
     bool HasIdPair(const StorePath &, const IdPair &) const;
 

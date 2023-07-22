@@ -223,8 +223,8 @@ AudioGraph::~AudioGraph() {
 void AudioGraph::Apply(const ActionType &action) const {
     Visit(
         action,
-        [this](const Action::AudioGraph::DeleteNode &) {
-            // Nodes.EraseAt(a.id);
+        [this](const Action::AudioGraph::DeleteNode &a) {
+            Nodes.EraseAt(a.id);
         },
     );
 }

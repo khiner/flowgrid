@@ -26,6 +26,8 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     json ToJson() const override;
 
     T operator[](u32 i) const { return Value[i]; }
+    bool Contains(const T &value) const { return std::find(Value.begin(), Value.end(), value) != Value.end(); }
+
     auto begin() const { return Value.begin(); }
     auto end() const { return Value.end(); }
 
@@ -33,11 +35,13 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     u32 Size() const { return Value.size(); }
 
     void Set(const std::vector<T> &) const;
-    void Set(size_t i, const T &value) const;
+    void Set(size_t i, const T &) const;
     void Set(const std::vector<std::pair<int, T>> &) const;
+    void PushBack(const T &) const;
     void Resize(u32) const;
     void Erase() const override;
 
+    void PushBack_(const T &);
 protected:
     std::vector<T> Value;
 };

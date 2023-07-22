@@ -30,6 +30,26 @@ u32 Store::CountAt(const StorePath &path) const { return TransientImpl->Primitiv
 void Store::Set(const StorePath &path, const Primitive &value) const { TransientImpl->PrimitiveByPath.set(path, value); }
 void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.erase(path); }
 
+#include <algorithm>
+
+// bool Store::HasPathStartingWith(const StorePath &path) const {
+//     const auto keys = std::views::keys(TransientImpl->PrimitiveByPath);
+//     // return std::any_of(keys.begin(), keys.end(), [&path](const auto &key) { return key.starts_with(path); });
+
+//     return std::ranges::any_of(keys, [&path](const StorePath &candidate_path) {
+//         const auto &[first_mismatched_path_it, _] = std::mismatch(path.begin(), path.end(), candidate_path.begin(), candidate_path.end());
+//         return first_mismatched_path_it == path.end();
+//     });
+// }
+
+bool Store::Exists(const StorePath &path) const {
+    // xxx this is the only place in the store where we use knowledge about vector paths.
+    // It likely will soon _not_ be the only place, though, if we decide to use a `VectorsByPath`, though.
+    return TransientImpl->PrimitiveByPath.count(path) > 0 ||
+        TransientImpl->PrimitiveByPath.count(path / "0") > 0 ||
+        TransientImpl->IdPairsByPath.count(path) > 0;
+}
+
 IdPairs Store::IdPairs(const StorePath &path) const {
     ::IdPairs id_pairs;
     for (const auto &id_pair : TransientImpl->IdPairsByPath[path]) id_pairs.insert(id_pair);

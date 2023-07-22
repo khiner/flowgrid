@@ -5,6 +5,8 @@
 #include "Core/Store/Patch/Patch.h"
 #include "Project/Style/Style.h"
 
+#include "Helper/String.h"
+
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     FieldById.emplace(Id, this);
     FieldIdByPath.emplace(Path, Id);
@@ -17,11 +19,34 @@ Field::~Field() {
     FieldById.erase(Id);
 }
 
+std::optional<std::filesystem::path> Field::FindLongestIntegerSuffixSubpath(const StorePath &p) {
+    std::filesystem::path subpath = p;
+    for (const auto &segment : std::views::reverse(p)) {
+        if (StringHelper::IsInteger(segment.string())) return subpath;
+        subpath = subpath.parent_path();
+    }
+    return std::nullopt; // No segment is an integer.
+}
+
+Field *Field::FindVectorFieldByChildPath(const StorePath &search_path) {
+    const auto index_subpath = FindLongestIntegerSuffixSubpath(search_path);
+    return index_subpath ? FindByPath(*index_subpath) : nullptr;
+}
+
 void Field::FindAndMarkChanged(const Patch &patch) {
     ClearChanged();
     const auto change_time = Clock::now();
-    for (const auto &path : patch.GetPaths()) {
-        const auto *changed_field = FindByPath(path);
+    for (const auto &[partial_path, op] : patch.Ops) {
+        const auto path = patch.BasePath / partial_path;
+        Field *changed_field;
+        if (op.Op == PatchOp::Add || op.Op == PatchOp::Remove) {
+            changed_field = FindVectorFieldByChildPath(path);
+            // This change could belong to a non-vector container.
+            // E.g. `AdjacencyList` is a container that stores its children directly under it, not under integer index subpaths.
+            if (changed_field == nullptr) changed_field = FindByPath(path);
+        } else {
+            changed_field = FindByPath(path);
+        }
         if (changed_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
         const auto relative_path = path == changed_field->Path ? fs::path("") : path.lexically_relative(changed_field->Path);

@@ -4,6 +4,8 @@
 
 #include "Core/Field/Field.h"
 
+#include "imgui_internal.h"
+
 template<typename T>
 concept HasId = requires(T t) {
     { t.Id } -> std::same_as<const ID &>;
@@ -27,7 +29,12 @@ template<HasId ChildType> struct Vector : Field {
     template<typename ChildSubType, typename... Args>
         requires std::derived_from<ChildSubType, ChildType>
     void EmplaceBack(string_view path_segment = "", string_view meta_str = "", Args &&...other_args) {
-        Value.emplace_back(std::make_unique<ChildSubType>(ComponentArgs{this, path_segment, meta_str}, std::forward<Args>(other_args)...));
+        Value.emplace_back(std::make_unique<ChildSubType>(ComponentArgs{this, path_segment, meta_str, std::to_string(Value.size())}, std::forward<Args>(other_args)...));
+        Creators[Value.back()->Id] = [=]() {
+            return std::make_unique<ChildSubType>(ComponentArgs{this, path_segment, meta_str}, other_args...);
+        };
+        // Value.emplace_back(Creators.back()());
+        // Ids.PushBack_(Value.back()->Id);
     }
 
     // Idea for more general args.
@@ -36,9 +43,7 @@ template<HasId ChildType> struct Vector : Field {
     // void EmplaceBack(Args &&...args_without_parent) {
     //     Value.emplace_back(std::make_unique<ChildSubType>(this, std::forward<Args>(args_without_parent)...));
     //     // Store a lambda that captures the arguments and can create a new object.
-    //     creators.emplace_back([=]() {
-    //         return std::make_unique<ChildSubType>(this, args_without_parent...);
-    //     });
+
     // }
 
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
@@ -57,16 +62,48 @@ template<HasId ChildType> struct Vector : Field {
 
     u32 Size() const { return Value.size(); }
 
-    void EraseAt(ID id) {
+    void Refresh() override;
+
+    void EraseAt(ID id) const {
         auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
         if (it != Value.end()) {
-            Value.erase(it);
+            it->get()->Erase();
         }
     }
 
-    void Refresh() {}
+    void RenderValueTree(bool annotate, bool auto_select) const override {
+        if (Value.empty()) {
+            ImGui::TextUnformatted(std::format("{} (empty)", Name).c_str());
+            return;
+        }
+
+        // todo move the three uses of this block into `TreeNode`? (The other one is in `Component::RenderValueTree`.)
+        if (auto_select) {
+            const bool is_changed = ChangedComponentIds.contains(Id);
+            ImGui::SetNextItemOpen(is_changed);
+            // Scroll to the current tree node row:
+            if (is_changed && ImGui::IsItemVisible()) ImGui::ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
+        }
+
+        if (TreeNode(Name)) {
+            for (u32 i = 0; i < Value.size(); i++) {
+                if (auto_select) {
+                    const bool is_changed = ChangedComponentIds.contains(Value.at(i)->Id);
+                    ImGui::SetNextItemOpen(is_changed);
+                    // Scroll to the current tree node row:
+                    if (is_changed && ImGui::IsItemVisible()) ImGui::ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
+                }
+
+                if (TreeNode(to_string(i))) {
+                    Value.at(i)->RenderValueTree(annotate, auto_select);
+                    ImGui::TreePop();
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
 
 private:
     std::vector<std::unique_ptr<ChildType>> Value;
-    // std::vector<std::function<std::unique_ptr<ChildType>()>> creators; // Stores the object creators
+    std::map<ID, std::function<std::unique_ptr<ChildType>()>> Creators; // Stores the object creators
 };

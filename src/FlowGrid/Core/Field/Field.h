@@ -35,9 +35,10 @@ struct Field : Component {
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
 
+
     // Use when you expect a field with exactly this path to exist.
-    inline static Field *ByPath(const StorePath &path) noexcept { return FieldById[FieldIdByPath[path]]; }
-    inline static Field *ByPath(StorePath &&path) noexcept { return FieldById[FieldIdByPath[std::move(path)]]; }
+    inline static Field *ByPath(const StorePath &path) noexcept { return FieldById.at(FieldIdByPath.at(path)); }
+    inline static Field *ByPath(StorePath &&path) noexcept { return FieldById.at(FieldIdByPath.at(std::move(path))); }
 
     inline static Field *FindByPath(const StorePath &search_path) noexcept {
         if (FieldIdByPath.contains(search_path)) return ByPath(search_path);
@@ -46,6 +47,9 @@ struct Field : Component {
         if (FieldIdByPath.contains(search_path.parent_path().parent_path())) return ByPath(search_path.parent_path().parent_path());
         return nullptr;
     }
+
+    static std::optional<std::filesystem::path> FindLongestIntegerSuffixSubpath(const StorePath &);
+    static Field *FindVectorFieldByChildPath(const StorePath &search_path);
 
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersByFieldId;
 
@@ -79,6 +83,7 @@ struct Field : Component {
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
     // This is always called immediately after a store commit.
     static void RefreshChanged(const Patch &, bool add_to_gesture = false);
+
     inline static void ClearChanged() noexcept {
         ChangedPaths.clear();
         ChangedComponentIds.clear();

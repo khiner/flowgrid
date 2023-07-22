@@ -22,11 +22,11 @@ Component::Component(Store &store)
     ById[Id] = this;
 }
 
-Component::Component(Component *parent, string_view path_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
+Component::Component(Component *parent, string_view path_segment, string_view path_segment_prefix, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
     : RootStore(parent->RootStore),
       Parent(parent),
       PathSegment(path_segment),
-      Path(Parent->Path / PathSegment),
+      Path(path_segment_prefix.empty() ? Parent->Path / PathSegment : Parent->Path / path_segment_prefix / PathSegment),
       Name(meta.Name.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : meta.Name),
       Help(meta.Help),
       ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathSegment)),
@@ -38,18 +38,23 @@ Component::Component(Component *parent, string_view path_segment, Metadata meta,
 }
 
 Component::Component(ComponentArgs &&args)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, Menu{{}}) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, Menu{{}}) {}
 
 Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), flags, Menu{{}}) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), flags, Menu{{}}) {}
 Component::Component(ComponentArgs &&args, Menu &&menu)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
 Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), Metadata::Parse(std::move(args.MetaStr)), flags, std::move(menu)) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), flags, std::move(menu)) {}
 
 Component::~Component() {
     if (Parent) std::erase_if(Parent->Children, [this](const auto *child) { return child == this; });
     ById.erase(Id);
+}
+
+Component *Component::GetFirstLeaf() const {
+    if (Children.empty()) return const_cast<Component *>(this);
+    return Children.front()->GetFirstLeaf();
 }
 
 // By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,

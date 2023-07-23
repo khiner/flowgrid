@@ -6,6 +6,7 @@
 #include "implot.h"
 #include "implot_internal.h"
 
+#include "Helper/Hex.h"
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
 

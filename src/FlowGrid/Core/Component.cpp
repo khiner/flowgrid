@@ -52,11 +52,6 @@ Component::~Component() {
     ById.erase(Id);
 }
 
-Component *Component::GetFirstLeaf() const {
-    if (Children.empty()) return const_cast<Component *>(this);
-    return Children.front()->GetFirstLeaf();
-}
-
 // By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,
 // and assigning the leaf's `json_pointer` to its JSON value.
 json Component::ToJson() const {

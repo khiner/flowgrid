@@ -5,7 +5,7 @@
 #include "Core/Store/Patch/Patch.h"
 #include "Project/Style/Style.h"
 
-#include "Helper/String.h"
+#include "Helper/Hex.h"
 
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     FieldById.emplace(Id, this);
@@ -19,17 +19,17 @@ Field::~Field() {
     FieldById.erase(Id);
 }
 
-std::optional<std::filesystem::path> Field::FindLongestIntegerSuffixSubpath(const StorePath &p) {
+static std::optional<std::filesystem::path> FindLongestHexSuffixSubpath(const StorePath &p) {
     std::filesystem::path subpath = p;
     for (const auto &segment : std::views::reverse(p)) {
-        if (StringHelper::IsInteger(segment.string())) return subpath;
+        if (IsHex(segment.string())) return subpath;
         subpath = subpath.parent_path();
     }
     return std::nullopt; // No segment is an integer.
 }
 
 Field *Field::FindVectorFieldByChildPath(const StorePath &search_path) {
-    const auto index_subpath = FindLongestIntegerSuffixSubpath(search_path);
+    const auto index_subpath = FindLongestHexSuffixSubpath(search_path);
     return index_subpath ? FindByPath(*index_subpath) : nullptr;
 }
 

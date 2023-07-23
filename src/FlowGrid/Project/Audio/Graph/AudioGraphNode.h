@@ -115,6 +115,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     std::unordered_set<const AudioGraphNode *> InputNodes, OutputNodes; // Cache the current sets of input and output nodes.
 
 protected:
+    virtual void UpdateAll(); // Call corresponding MA setters for all fields.
+
     void Render() const override;
 
     MonitorNode *GetMonitor(IO) const;
@@ -124,7 +126,6 @@ protected:
     void UpdateMonitor(IO);
     void UpdateMonitorWindowFunction(IO);
 
-    void UpdateAll();
     void Uninit();
 
     const AudioGraph *Graph;

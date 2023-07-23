@@ -5,7 +5,8 @@
 
 template<IsPrimitive T> struct PrimitiveField : Field {
     PrimitiveField(ComponentArgs &&args, T value = {}) : Field(std::move(args)), Value(value) {
-        Set(value);
+        if (Exists()) Refresh();
+        else Set(value); // We treat the provided value as an initial store value.
     }
     ~PrimitiveField() {
         Erase();
@@ -20,6 +21,7 @@ template<IsPrimitive T> struct PrimitiveField : Field {
     operator T() const { return Value; }
     bool operator==(const T &value) const { return Value == value; }
 
+    bool Exists() const; // Check if exists in store.
     T Get() const; // Get from store.
 
     // Non-mutating set. Only updates store. Used during action application.

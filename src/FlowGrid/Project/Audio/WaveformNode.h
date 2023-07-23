@@ -20,4 +20,8 @@ private:
     std::unique_ptr<ma_waveform_node> _Node;
 
     void Render() const override;
+    void UpdateAll() override;
+
+    void UpdateFrequency();
+    void UpdateType();
 };

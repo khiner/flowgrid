@@ -204,6 +204,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
         output_device->Channels,
         output_device->SampleRate,
         output_device->Format,
+        Nodes,
         Connections,
     };
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
@@ -270,7 +271,7 @@ void AudioGraph::OnFieldChanged() {
         for (auto *node : Nodes) node->OnSampleRateChanged();
     }
 
-    if (Connections.IsChanged()) {
+    if (Nodes.IsChanged() || Connections.IsChanged()) {
         UpdateConnections();
     }
 }

@@ -23,12 +23,25 @@ WaveformNode::~WaveformNode() {
     ma_waveform_node_uninit(_Node.get(), nullptr);
 }
 
+void WaveformNode::UpdateAll() {
+    AudioGraphNode::UpdateAll();
+    UpdateFrequency();
+    UpdateType();
+}
+
+void WaveformNode::UpdateFrequency() {
+    ma_waveform_set_frequency(&_Node.get()->waveform, Frequency);
+}
+
+void WaveformNode::UpdateType() {
+    ma_waveform_set_type(&_Node.get()->waveform, ma_waveform_type(int(Type)));
+}
+
 void WaveformNode::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
 
-    ma_waveform *waveform = &_Node.get()->waveform;
-    if (Frequency.IsChanged()) ma_waveform_set_frequency(waveform, Frequency);
-    if (Type.IsChanged()) ma_waveform_set_type(waveform, ma_waveform_type(int(Type)));
+    if (Frequency.IsChanged()) UpdateFrequency();
+    if (Type.IsChanged()) UpdateType();
 }
 
 void WaveformNode::OnSampleRateChanged() {

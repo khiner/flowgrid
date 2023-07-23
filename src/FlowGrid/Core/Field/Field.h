@@ -47,7 +47,6 @@ struct Field : Component {
         return nullptr;
     }
 
-    static std::optional<std::filesystem::path> FindLongestIntegerSuffixSubpath(const StorePath &);
     static Field *FindVectorFieldByChildPath(const StorePath &search_path);
 
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersByFieldId;

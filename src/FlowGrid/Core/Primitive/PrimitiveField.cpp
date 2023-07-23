@@ -2,6 +2,7 @@
 
 #include "Core/Store/Store.h"
 
+template<IsPrimitive T> bool PrimitiveField<T>::Exists() const { return RootStore.Exists(Path); }
 template<IsPrimitive T> T PrimitiveField<T>::Get() const { return std::get<T>(RootStore.Get(Path)); }
 
 template<IsPrimitive T> void PrimitiveField<T>::Set(const T &value) const { RootStore.Set(Path, value); }

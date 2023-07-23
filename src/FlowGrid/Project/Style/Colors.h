@@ -10,7 +10,6 @@ struct Colors : PrimitiveVector<u32> {
 
     static u32 Float4ToU32(const ImVec4 &value);
     static ImVec4 U32ToFloat4(u32 value);
-    constexpr static std::string U32ToHex(u32 value) noexcept { return std::format("#{:08X}", value); }
 
     // An arbitrary transparent color is used to mark colors as "auto".
     // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.

@@ -189,7 +189,7 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
     }
 
     if (auto_select) {
-        const bool is_changed = ChangedComponentIds.contains(Id);
+        const bool is_changed = IsChanged();
         SetNextItemOpen(is_changed);
         // Scroll to the current tree node row:
         if (is_changed && IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);

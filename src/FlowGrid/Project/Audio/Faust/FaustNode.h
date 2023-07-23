@@ -9,7 +9,7 @@ class dsp;
 struct ma_faust_node;
 
 struct FaustNode : AudioGraphNode {
-    FaustNode(ComponentArgs &&, dsp *);
+    FaustNode(ComponentArgs &&);
     ~FaustNode();
 
     void OnSampleRateChanged() override;

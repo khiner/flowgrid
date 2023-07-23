@@ -13,7 +13,7 @@ template<HasId ChildType> void Vector<ChildType>::Refresh() {
     });
 }
 
+// Explicit instantiations.
 #include "Project/Audio/Graph/AudioGraphNode.h"
 
-// Explicit instantiations.
 template struct Vector<AudioGraphNode>;

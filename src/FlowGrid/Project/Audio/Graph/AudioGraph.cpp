@@ -220,6 +220,7 @@ AudioGraph::~AudioGraph() {
     for (auto *node : Nodes) node->UnregisterListener(this);
     Field::UnregisterChangeListener(this);
 }
+
 void AudioGraph::Apply(const ActionType &action) const {
     Visit(
         action,
@@ -230,6 +231,7 @@ void AudioGraph::Apply(const ActionType &action) const {
 }
 
 ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
+dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
 
 // xxx depending on dynamic node positions is temporary.
 DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(Nodes[0]); }
@@ -237,13 +239,14 @@ DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<D
 GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(Nodes[2]); }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
+    FaustDsp = dsp;
     if (!dsp && Nodes.Size() == 5) {
         Nodes.EraseAt(4);
     } else if (dsp && Nodes.Size() == 4) {
-        Nodes.EmplaceBack<FaustNode>("Faust", "", dsp);
+        Nodes.EmplaceBack<FaustNode>("Faust");
     } else if (dsp) {
         Nodes.EraseAt(4);
-        Nodes.EmplaceBack<FaustNode>("Faust", "", dsp);
+        Nodes.EmplaceBack<FaustNode>("Faust");
     }
     UpdateConnections(); // todo only update connections if the dsp change caused a change in the number of channels.
 }

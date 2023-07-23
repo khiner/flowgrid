@@ -7,7 +7,8 @@
 #include "Project/Audio/Graph/ma_faust_node/ma_faust_node.h"
 
 // todo destroy node when dsp is null
-FaustNode::FaustNode(ComponentArgs &&args, dsp *dsp) : AudioGraphNode(std::move(args)) {
+FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+    auto *dsp = Graph->GetFaustDsp();
     auto config = ma_faust_node_config_init(dsp, GetSampleRate());
     _Node = std::make_unique<ma_faust_node>();
     int result = ma_faust_node_init(Graph->Get(), &config, nullptr, _Node.get());

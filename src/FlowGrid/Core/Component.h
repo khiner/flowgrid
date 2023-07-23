@@ -68,7 +68,7 @@ struct Component : Drawable {
     };
 
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
-    // Components with at least one descendent field updated during the latest action pass.
+    // Components with at least one descendent field (including itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedComponentIds;
 
     Component(Store &);

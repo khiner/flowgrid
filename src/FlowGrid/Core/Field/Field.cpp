@@ -38,24 +38,24 @@ void Field::FindAndMarkChanged(const Patch &patch) {
     const auto change_time = Clock::now();
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto path = patch.BasePath / partial_path;
-        Field *changed_field;
+        Field *affected_field;
         if (op.Op == PatchOp::Add || op.Op == PatchOp::Remove) {
-            changed_field = FindVectorFieldByChildPath(path);
-            // This change could belong to a non-vector container.
+            affected_field = FindVectorFieldByChildPath(path);
+            // This add/remove could be within a non-vector container.
             // E.g. `AdjacencyList` is a container that stores its children directly under it, not under integer index subpaths.
-            if (changed_field == nullptr) changed_field = FindByPath(path);
+            if (affected_field == nullptr) affected_field = FindByPath(path);
         } else {
-            changed_field = FindByPath(path);
+            affected_field = FindByPath(path);
         }
-        if (changed_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
+        if (affected_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
-        const auto relative_path = path == changed_field->Path ? fs::path("") : path.lexically_relative(changed_field->Path);
-        PathsMoment &paths_moment = ChangedPaths[changed_field->Id];
+        const auto relative_path = path == affected_field->Path ? fs::path("") : path.lexically_relative(affected_field->Path);
+        PathsMoment &paths_moment = ChangedPaths[affected_field->Id];
         paths_moment.first = change_time;
         paths_moment.second.insert(relative_path);
 
-        // Mark all ancestor components as changed.
-        const Component *ancestor = changed_field;
+        // Mark the affected field all its ancestor components as changed.
+        const Component *ancestor = affected_field;
         while (ancestor != nullptr) {
             ChangedComponentIds.insert(ancestor->Id);
             ancestor = ancestor->Parent;

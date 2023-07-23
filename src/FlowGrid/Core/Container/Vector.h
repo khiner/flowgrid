@@ -43,7 +43,6 @@ template<HasId ChildType> struct Vector : Field {
     // void EmplaceBack(Args &&...args_without_parent) {
     //     Value.emplace_back(std::make_unique<ChildSubType>(this, std::forward<Args>(args_without_parent)...));
     //     // Store a lambda that captures the arguments and can create a new object.
-
     // }
 
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
@@ -79,7 +78,7 @@ template<HasId ChildType> struct Vector : Field {
 
         // todo move the three uses of this block into `TreeNode`? (The other one is in `Component::RenderValueTree`.)
         if (auto_select) {
-            const bool is_changed = ChangedComponentIds.contains(Id);
+            const bool is_changed = IsChanged();
             ImGui::SetNextItemOpen(is_changed);
             // Scroll to the current tree node row:
             if (is_changed && ImGui::IsItemVisible()) ImGui::ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
@@ -88,7 +87,7 @@ template<HasId ChildType> struct Vector : Field {
         if (TreeNode(Name)) {
             for (u32 i = 0; i < Value.size(); i++) {
                 if (auto_select) {
-                    const bool is_changed = ChangedComponentIds.contains(Value.at(i)->Id);
+                    const bool is_changed = Value.at(i)->IsChanged();
                     ImGui::SetNextItemOpen(is_changed);
                     // Scroll to the current tree node row:
                     if (is_changed && ImGui::IsItemVisible()) ImGui::ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);

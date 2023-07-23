@@ -35,7 +35,6 @@ struct Field : Component {
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
 
-
     // Use when you expect a field with exactly this path to exist.
     inline static Field *ByPath(const StorePath &path) noexcept { return FieldById.at(FieldIdByPath.at(path)); }
     inline static Field *ByPath(StorePath &&path) noexcept { return FieldById.at(FieldIdByPath.at(std::move(path))); }
@@ -62,7 +61,7 @@ struct Field : Component {
     }
     inline void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
-    // IDs of all fields updated during the latest action batch or undo/redo, mapped to all (field-relative) paths affected in the field.
+    // IDs of all fields updated/added/removed during the latest action batch or undo/redo, mapped to all (field-relative) paths affected in the field.
     // For primitive fields, the paths will consist of only the root path.
     // For container fields, the paths will contain the container-relative paths of all affected elements.
     // All values are appended to `GestureChangedPaths` if the change occurred during an action batch.

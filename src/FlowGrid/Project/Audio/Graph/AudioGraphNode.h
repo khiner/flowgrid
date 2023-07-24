@@ -36,8 +36,6 @@ enum WindowType_ {
 
 using WindowType = int;
 
-static inline std::string GraphEndpointPathSegment = "GraphEndpoint";
-
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
 struct AudioGraphNode : Component, Field::ChangeListener {

@@ -22,14 +22,14 @@ Component::Component(Store &store)
     ById[Id] = this;
 }
 
-Component::Component(Component *parent, string_view path_segment, string_view path_segment_prefix, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
+Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
     : RootStore(parent->RootStore),
       Parent(parent),
       PathSegment(path_segment),
-      Path(path_segment_prefix.empty() ? Parent->Path / PathSegment : Parent->Path / path_segment_prefix / PathSegment),
+      Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),
       Name(meta.Name.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : meta.Name),
       Help(meta.Help),
-      ImGuiLabel(Name.empty() ? "" : std::format("{}##{}", Name, PathSegment)),
+      ImGuiLabel(Name.empty() ? "" : (path_prefix_segment.empty() ? std::format("{}##{}", Name, PathSegment) : std::format("{}##{}/{}", Name, path_prefix_segment, PathSegment))),
       Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent->Id)),
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {

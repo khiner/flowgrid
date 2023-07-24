@@ -88,6 +88,8 @@ struct Component : Drawable {
         return json::json_pointer(Path.string()); // Implicit `json_pointer` constructor is disabled.
     }
 
+    virtual void RefreshFromJson(const json &) {} // xxx only component containers implement this.
+
     // Refresh the component's cached value(s) based on the main store.
     // Should be called for each affected field after a state change to avoid stale values.
     // This is overriden by `Field`s to update their `Value` members after a state change.
@@ -140,7 +142,7 @@ protected:
     static bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr, bool highlight_value = false);
 
 private:
-    Component(Component *parent, string_view path_segment, string_view path_segment_prefix, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
+    Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
 };
 
 // Minimal/base debug component.

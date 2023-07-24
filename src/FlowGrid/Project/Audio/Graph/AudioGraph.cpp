@@ -186,12 +186,18 @@ struct GraphEndpointNode : AudioGraphNode {
     bool AllowOutputConnectionChange() const override { return false; }
 };
 
+static const string DeviceInputNodePathSegment = "Input";
+static const string DeviceOutputNodePathSegment = "Output";
+static const string GraphEndpointPathSegment = "GraphEndpoint";
+static const string WaveformNodePathSegment = "Waveform";
+static const string FaustNodePathSegment = "Faust";
+
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
-    Nodes.EmplaceBack<DeviceInputNode>("Input");
-    Nodes.EmplaceBack<DeviceOutputNode>("Output");
-    Nodes.EmplaceBack<GraphEndpointNode>(GraphEndpointPathSegment);
-    Nodes.EmplaceBack<WaveformNode>("Waveform");
+    Nodes.EmplaceBack(DeviceInputNodePathSegment);
+    Nodes.EmplaceBack(DeviceOutputNodePathSegment);
+    Nodes.EmplaceBack(GraphEndpointPathSegment);
+    Nodes.EmplaceBack(WaveformNodePathSegment);
 
     const auto *input_device = GetDeviceInputNode()->InputDevice.get();
     const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
@@ -222,6 +228,14 @@ AudioGraph::~AudioGraph() {
     Field::UnregisterChangeListener(this);
 }
 
+std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
+    if (path_segment == DeviceInputNodePathSegment) return std::make_unique<DeviceInputNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+    if (path_segment == DeviceOutputNodePathSegment) return std::make_unique<DeviceOutputNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+    if (path_segment == GraphEndpointPathSegment) return std::make_unique<GraphEndpointNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+    if (path_segment == WaveformNodePathSegment) return std::make_unique<WaveformNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+    if (path_segment == FaustNodePathSegment) return std::make_unique<FaustNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+}
+
 void AudioGraph::Apply(const ActionType &action) const {
     Visit(
         action,
@@ -244,10 +258,10 @@ void AudioGraph::OnFaustDspChanged(dsp *dsp) {
     if (!dsp && Nodes.Size() == 5) {
         Nodes.EraseAt(4);
     } else if (dsp && Nodes.Size() == 4) {
-        Nodes.EmplaceBack<FaustNode>("Faust");
+        Nodes.EmplaceBack(FaustNodePathSegment);
     } else if (dsp) {
         Nodes.EraseAt(4);
-        Nodes.EmplaceBack<FaustNode>("Faust");
+        Nodes.EmplaceBack(FaustNodePathSegment);
     }
     UpdateConnections(); // todo only update connections if the dsp change caused a change in the number of channels.
 }

@@ -18,6 +18,8 @@ struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::Chang
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
 
+    static std::unique_ptr<AudioGraphNode> CreateNode(Component *, string_view path_prefix_segment, string_view path_segment);
+
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
 
@@ -34,7 +36,7 @@ struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::Chang
     std::unique_ptr<MaGraph> Graph;
     dsp *FaustDsp = nullptr;
 
-    Prop(Vector<AudioGraphNode>, Nodes);
+    Prop(Vector<AudioGraphNode>, Nodes, CreateNode);
     Prop(AdjacencyList, Connections);
 
     struct Style : Component {

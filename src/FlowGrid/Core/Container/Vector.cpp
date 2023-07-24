@@ -5,39 +5,57 @@
 
 #include "imgui_internal.h"
 
-template<HasId ChildType> void Vector<ChildType>::Refresh() {
-    if (!ChangedPaths.contains(Id)) return;
-
-    // Find all unique prefix-ids in the changed paths.
-    const auto &changed_paths = ChangedPaths.at(Id).second;
-    std::unordered_set<u32> changed_prefix_ids;
-    for (const auto &path : changed_paths) {
-        // Path is already relative to this vector's path.
-        const std::string prefix_id_hex = path.begin()->string();
-        const u32 prefix_id = HexToU32(prefix_id_hex);
-        if (!CreatorByPrefixId.contains(prefix_id)) {
-            throw std::runtime_error(std::format("Unknown prefix-id segment: {}", prefix_id));
-        }
-        changed_prefix_ids.insert(prefix_id);
-    }
-
-    for (const auto &prefix_id : changed_prefix_ids) {
-        const std::string prefix_id_hex = U32ToHex(prefix_id);
-        const auto vector_path = Path;
-        const auto child_it = std::find_if(Value.begin(), Value.end(), [&prefix_id_hex, &vector_path](const auto &child) {
-            const auto &child_path = child->Path;
-            const auto relative_path = child_path.lexically_relative(vector_path);
-            return relative_path.begin()->string() == prefix_id_hex;
-        });
-
+template<HasId ChildType> void Vector<ChildType>::RefreshFromChangedPathPairs(const std::unordered_set<StorePath, PathHash> &changed_path_pairs) {
+    for (const StorePath &path_pair : changed_path_pairs) {
+        const auto child_it = FindByPathPair(path_pair);
         if (child_it != Value.end()) {
             Value.erase(child_it);
         } else {
             // todo: insert back into the same position.
             //   This requires storing an auxiliary `Prop(PrimitiveVector<u32>, PrefixIds` tracking prefix-id order.
-            Value.emplace_back(CreatorByPrefixId.at(prefix_id)());
+            const auto &[path_prefix, path_segment] = GetPathPrefixAndSegment(path_pair);
+            Value.emplace_back(Creator(this, path_prefix, path_segment));
         }
     }
+}
+
+template<HasId ChildType> void Vector<ChildType>::Refresh() {
+    if (!ChangedPaths.contains(Id)) return;
+
+    // Find all unique prefix-ids in the changed paths.
+    const auto &changed_paths = ChangedPaths.at(Id).second;
+    std::unordered_set<StorePath, PathHash> changed_path_prefixes;
+    for (const auto &path : changed_paths) {
+        // Path is already relative to this vector's path.
+        auto it = path.begin();
+        changed_path_prefixes.insert(*it / *std::next(it));
+    }
+
+    RefreshFromChangedPathPairs(changed_path_prefixes);
+}
+
+template<HasId ChildType> void Vector<ChildType>::RefreshFromJson(const json &j) {
+    auto &&flattened = std::move(j).flatten();
+
+    // Get all changed path prefixes.
+    std::unordered_set<StorePath, PathHash> json_path_pairs;
+    for (auto &&[key, value] : flattened.items()) {
+        const StorePath path = key; // Already relative.
+        auto it = path.begin();
+        it++; // First segment is just a "/".
+        json_path_pairs.insert(*it / *std::next(it));
+    }
+
+    std::unordered_set<StorePath, PathHash> changed_path_pairs = json_path_pairs;
+    for (const auto &child : Value) {
+        const auto path = child->Path.lexically_relative(Path);
+        auto it = path.begin();
+        const StorePath path_pair = *it / *std::next(it);
+        if (changed_path_pairs.contains(path_pair)) changed_path_pairs.erase(path_pair);
+        else changed_path_pairs.insert(path_pair);
+    }
+
+    RefreshFromChangedPathPairs(changed_path_pairs);
 }
 
 using namespace ImGui;

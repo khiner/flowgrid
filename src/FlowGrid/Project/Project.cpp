@@ -312,11 +312,26 @@ void Project::OnApplicationLaunch() const {
 json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(file_path)); }
 
 // Helper function used in `Project::Open`.
+// Modifies the active transient store.
 void Project::OpenStateFormatProject(const fs::path &file_path) const {
-    SetJson(ReadFileJson(file_path)); // Modifies the active transient store.
-    Field::RefreshChanged(RootStore.CheckedCommit());
+    auto j = ReadFileJson(file_path);
+    // First, refresh all component container fields to ensure the dynamically managed component instances match the JSON.
+    for (const auto container_field_id : Field::ComponentContainerFields) {
+        auto *container_field = Component::ById.at(container_field_id);
+        container_field->RefreshFromJson(j.at(container_field->JsonPointer()));
+    }
+
+    // Now, every flattened JSON pointer is 1:1 with a field instance path.
+    SetJson(std::move(j));
+
+    // We could do `Field::RefreshChanged(RootStore.CheckedCommit())`, and only refresh the changed fields,
+    // but this gets tricky with component container fields, since the store patch will contain added/removed paths
+    // that have already been accounted for in the `RefreshFromJson` calls above.
+    RootStore.Commit();
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
+    Field::RefreshAll();
+
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     imgui_settings.IsChanged = true;
     History.Clear();

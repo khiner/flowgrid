@@ -42,6 +42,7 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     void Erase() const override;
 
     void PushBack_(const T &);
+
 protected:
     std::vector<T> Value;
 };

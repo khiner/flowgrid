@@ -25,7 +25,7 @@ static std::optional<std::filesystem::path> FindLongestHexSuffixSubpath(const St
         if (IsHex(segment.string())) return subpath;
         subpath = subpath.parent_path();
     }
-    return std::nullopt; // No segment is an integer.
+    return std::nullopt;
 }
 
 Field *Field::FindVectorFieldByChildPath(const StorePath &search_path) {
@@ -87,10 +87,6 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
 }
 void Field::RefreshAll() {
     for (auto &[id, field] : FieldById) field->Refresh();
-    std::unordered_set<ChangeListener *> all_listeners;
-    for (auto &[id, listeners] : ChangeListenersByFieldId) {
-        all_listeners.insert(listeners.begin(), listeners.end());
-    }
 }
 
 void Field::UpdateGesturing() {

@@ -1,5 +1,7 @@
 #include "AudioGraph.h"
 
+#include <concepts>
+
 #include "imgui.h"
 #include "implot.h"
 #include "implot_internal.h"
@@ -199,22 +201,8 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Nodes.EmplaceBack(GraphEndpointPathSegment);
     Nodes.EmplaceBack(WaveformPathSegment);
 
-    const auto *input_device = GetDeviceInputNode()->InputDevice.get();
-    const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
-    const Field::References listened_fields = {
-        input_device->On,
-        input_device->Channels,
-        input_device->SampleRate,
-        input_device->Format,
-        output_device->On,
-        output_device->Channels,
-        output_device->SampleRate,
-        output_device->Format,
-        Nodes,
-        Connections,
-    };
+    const Field::References listened_fields = {Nodes, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-    for (auto *node : Nodes) node->RegisterListener(this);
 
     // Set up default connections.
     Connections.Connect(GetDeviceInputNode()->Id, GetDeviceOutputNode()->Id);
@@ -224,17 +212,34 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
 
 AudioGraph::~AudioGraph() {
     Singleton = nullptr;
-    for (auto *node : Nodes) node->UnregisterListener(this);
     Field::UnregisterChangeListener(this);
+}
+
+template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType>
+static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Component::ComponentArgs &&args) {
+    auto node = std::make_unique<AudioGraphNodeSubType>(std::move(args));
+    node->RegisterListener(graph);
+    AudioDevice *device = nullptr;
+    if (const auto *device_input_node = dynamic_cast<DeviceInputNode *>(node.get())) {
+        device = device_input_node->InputDevice.get();
+    } else if (const auto *device_output_node = dynamic_cast<DeviceOutputNode *>(node.get())) {
+        device = device_output_node->OutputDevice.get();
+    }
+    if (device) {
+        const Field::References listened_fields = {device->On, device->Channels, device->SampleRate, device->Format};
+        for (const Field &field : listened_fields) field.RegisterChangeListener(graph);
+    }
+    return node;
 }
 
 std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     ComponentArgs args{parent, path_segment, "", path_prefix_segment};
-    if (path_segment == DeviceInputPathSegment) return std::make_unique<DeviceInputNode>(std::move(args));
-    if (path_segment == DeviceOutputPathSegment) return std::make_unique<DeviceOutputNode>(std::move(args));
-    if (path_segment == GraphEndpointPathSegment) return std::make_unique<GraphEndpointNode>(std::move(args));
-    if (path_segment == WaveformPathSegment) return std::make_unique<WaveformNode>(std::move(args));
-    if (path_segment == FaustPathSegment) return std::make_unique<FaustNode>(std::move(args));
+    auto *graph = static_cast<AudioGraph *>(parent->Parent);
+    if (path_segment == DeviceInputPathSegment) return CreateNode<DeviceInputNode>(graph, std::move(args));
+    if (path_segment == DeviceOutputPathSegment) return CreateNode<DeviceOutputNode>(graph, std::move(args));
+    if (path_segment == GraphEndpointPathSegment) return CreateNode<GraphEndpointNode>(graph, std::move(args));
+    if (path_segment == WaveformPathSegment) return CreateNode<WaveformNode>(graph, std::move(args));
+    if (path_segment == FaustPathSegment) return CreateNode<FaustNode>(graph, std::move(args));
 
     return nullptr;
 }

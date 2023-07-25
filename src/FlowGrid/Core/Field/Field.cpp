@@ -17,6 +17,7 @@ Field::~Field() {
     Erase();
     FieldIdByPath.erase(Path);
     FieldById.erase(Id);
+    ChangeListenersByFieldId.erase(Id);
 }
 
 static std::optional<std::filesystem::path> FindLongestHexSuffixSubpath(const StorePath &p) {

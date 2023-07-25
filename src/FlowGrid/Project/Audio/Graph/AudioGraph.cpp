@@ -186,18 +186,18 @@ struct GraphEndpointNode : AudioGraphNode {
     bool AllowOutputConnectionChange() const override { return false; }
 };
 
-static const string DeviceInputNodePathSegment = "Input";
-static const string DeviceOutputNodePathSegment = "Output";
+static const string DeviceInputPathSegment = "Input";
+static const string DeviceOutputPathSegment = "Output";
 static const string GraphEndpointPathSegment = "GraphEndpoint";
-static const string WaveformNodePathSegment = "Waveform";
-static const string FaustNodePathSegment = "Faust";
+static const string WaveformPathSegment = "Waveform";
+static const string FaustPathSegment = "Faust";
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
-    Nodes.EmplaceBack(DeviceInputNodePathSegment);
-    Nodes.EmplaceBack(DeviceOutputNodePathSegment);
+    Nodes.EmplaceBack(DeviceInputPathSegment);
+    Nodes.EmplaceBack(DeviceOutputPathSegment);
     Nodes.EmplaceBack(GraphEndpointPathSegment);
-    Nodes.EmplaceBack(WaveformNodePathSegment);
+    Nodes.EmplaceBack(WaveformPathSegment);
 
     const auto *input_device = GetDeviceInputNode()->InputDevice.get();
     const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
@@ -229,18 +229,21 @@ AudioGraph::~AudioGraph() {
 }
 
 std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    if (path_segment == DeviceInputNodePathSegment) return std::make_unique<DeviceInputNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
-    if (path_segment == DeviceOutputNodePathSegment) return std::make_unique<DeviceOutputNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
-    if (path_segment == GraphEndpointPathSegment) return std::make_unique<GraphEndpointNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
-    if (path_segment == WaveformNodePathSegment) return std::make_unique<WaveformNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
-    if (path_segment == FaustNodePathSegment) return std::make_unique<FaustNode>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+    ComponentArgs args{parent, path_segment, "", path_prefix_segment};
+    if (path_segment == DeviceInputPathSegment) return std::make_unique<DeviceInputNode>(std::move(args));
+    if (path_segment == DeviceOutputPathSegment) return std::make_unique<DeviceOutputNode>(std::move(args));
+    if (path_segment == GraphEndpointPathSegment) return std::make_unique<GraphEndpointNode>(std::move(args));
+    if (path_segment == WaveformPathSegment) return std::make_unique<WaveformNode>(std::move(args));
+    if (path_segment == FaustPathSegment) return std::make_unique<FaustNode>(std::move(args));
+
+    return nullptr;
 }
 
 void AudioGraph::Apply(const ActionType &action) const {
     Visit(
         action,
         [this](const Action::AudioGraph::DeleteNode &a) {
-            Nodes.EraseAt(a.id);
+            Nodes.EraseId(a.id);
         },
     );
 }
@@ -248,20 +251,23 @@ void AudioGraph::Apply(const ActionType &action) const {
 ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
 dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
 
-// xxx depending on dynamic node positions is temporary.
-DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(Nodes[0]); }
-DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(Nodes[1]); }
-GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(Nodes[2]); }
+AudioGraphNode *AudioGraph::FindByPathSegment(string_view path_segment) const {
+    auto node_it = std::find_if(Nodes.begin(), Nodes.end(), [path_segment](const auto *node) { return node->PathSegment == path_segment; });
+    return node_it != Nodes.end() ? node_it->get() : nullptr;
+}
+
+DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(FindByPathSegment(DeviceInputPathSegment)); }
+DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(FindByPathSegment(DeviceOutputPathSegment)); }
+GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(FindByPathSegment(GraphEndpointPathSegment)); }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
+    const auto *faust_node = FindByPathSegment(FaustPathSegment);
     FaustDsp = dsp;
-    if (!dsp && Nodes.Size() == 5) {
-        Nodes.EraseAt(4);
-    } else if (dsp && Nodes.Size() == 4) {
-        Nodes.EmplaceBack(FaustNodePathSegment);
+    if (!dsp && faust_node) {
+        Nodes.EraseId(faust_node->Id);
     } else if (dsp) {
-        Nodes.EraseAt(4);
-        Nodes.EmplaceBack(FaustNodePathSegment);
+        if (faust_node) Nodes.EraseId(faust_node->Id);
+        Nodes.EmplaceBack(FaustPathSegment);
     }
     UpdateConnections(); // todo only update connections if the dsp change caused a change in the number of channels.
 }
@@ -291,12 +297,15 @@ void AudioGraph::OnFieldChanged() {
 }
 
 u32 AudioGraph::GetSampleRate() const {
-    if (Nodes.Size() == 0) return 0;
-    if (Nodes.Size() == 1) return GetDeviceInputNode()->InputDevice->SampleRate;
-    return GetDeviceOutputNode()->OutputDevice->SampleRate;
+    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->OutputDevice->SampleRate;
+    if (const auto *device_input_node = GetDeviceInputNode()) return device_input_node->InputDevice->SampleRate;
+    return 0;
 }
 
-u64 AudioGraph::GetBufferSize() const { return GetDeviceOutputNode()->OutputDevice->Get()->playback.internalPeriodSizeInFrames; }
+u64 AudioGraph::GetBufferSize() const {
+    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->OutputDevice->Get()->playback.internalPeriodSizeInFrames;
+    return 0;
+}
 
 void AudioGraph::UpdateConnections() {
     for (auto *node : Nodes) {

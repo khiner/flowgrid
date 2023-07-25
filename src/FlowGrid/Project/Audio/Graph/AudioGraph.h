@@ -70,6 +70,7 @@ private:
 
     void UpdateConnections();
 
+    AudioGraphNode *FindByPathSegment(string_view) const;
     DeviceInputNode *GetDeviceInputNode() const;
     DeviceOutputNode *GetDeviceOutputNode() const;
     GraphEndpointNode *GetGraphEndpointNode() const;

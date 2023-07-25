@@ -93,7 +93,7 @@ template<HasId ChildType> struct Vector : Field {
 
     void Refresh() override;
 
-    void EraseAt(ID id) const {
+    void EraseId(ID id) const {
         Ids.Erase(id);
         const auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
         if (it != Value.end()) {

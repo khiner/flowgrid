@@ -11,16 +11,20 @@ template<HasId ChildType> void Vector<ChildType>::RefreshFromChangedPathPairs(co
         if (child_it != Value.end()) {
             Value.erase(child_it);
         } else {
-            // todo: insert back into the same position.
-            //   This requires storing an auxiliary `Prop(PrimitiveVector<u32>, PrefixIds` tracking prefix-id order.
             const auto &[path_prefix, path_segment] = GetPathPrefixAndSegment(path_pair);
-            Value.emplace_back(Creator(this, path_prefix, path_segment));
+            auto new_child = Creator(this, path_prefix, path_segment);
+            u32 index = Ids.IndexOf(new_child->Id);
+            Value.insert(Value.begin() + index, std::move(new_child));
         }
     }
 }
 
 template<HasId ChildType> void Vector<ChildType>::Refresh() {
     if (!ChangedPaths.contains(Id)) return;
+
+    // xxx this is redundant but need to ensure it's run first.
+    //  Can we change `Field::RefreshChanged` to guarantee that children will be refreshed before parents?
+    Ids.Refresh();
 
     // Find all unique prefix-ids in the changed paths.
     const auto &changed_paths = ChangedPaths.at(Id).second;
@@ -43,7 +47,12 @@ template<HasId ChildType> void Vector<ChildType>::RefreshFromJson(const json &j)
         const StorePath path = key; // Already relative.
         auto it = path.begin();
         it++; // First segment is just a "/".
-        json_path_pairs.insert(*it / *std::next(it));
+        if (it->string() == Ids.PathSegment) {
+            Ids.SetJson(std::move(value));
+            Ids.Refresh();
+        } else {
+            json_path_pairs.insert(*it / *std::next(it));
+        }
     }
 
     std::unordered_set<StorePath, PathHash> changed_path_pairs = json_path_pairs;

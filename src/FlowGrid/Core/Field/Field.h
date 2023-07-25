@@ -35,7 +35,7 @@ struct Field : Component {
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
 
-    inline static std::vector<ID> ComponentContainerFields;
+    inline static std::vector<ID> ComponentContainerFields; // All containers fields that dynamically create/destroy their child components.
 
     // Use when you expect a field with exactly this path to exist.
     inline static Field *ByPath(const StorePath &path) noexcept { return FieldById.at(FieldIdByPath.at(path)); }

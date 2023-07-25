@@ -2,7 +2,7 @@
 
 #include <concepts>
 
-#include "Core/Field/Field.h"
+#include "Core/Container/PrimitiveVector.h"
 #include "Helper/Hex.h"
 
 template<typename T>
@@ -23,10 +23,14 @@ Using `Vector` allows for runtime creation/destruction of children, and for chil
 3) Consistent component paths: Adding a child should not change the store paths of existing children.
 4) Reduce the number of deletions/insertions when refreshing to the current store.
    - Favor updating an existing child to have the properties of a different child over deleting and inserting a new child.
+5) We can't use raw int segments, since we rely on flattening JSON to deserialize, and flattening interprets int segments as array indices.
 
 The path prefix strategy is as follows:
 * If a child is added with a path segment different from any existing children, it gets a prefix of '0'.
 * If a child is added with a path segment equal to an existing child, it gets a prefix equal to the minimum available prefix between '0' and max existing prefix + 1.
+
+Child order is tracked with a separate ID vector.
+We need to store this in an auxiliary store member since child component members are stored in a persistent map without key ordering.
 */
 template<HasId ChildType> struct Vector : Field {
     using CreatorFunction = std::function<std::unique_ptr<ChildType>(Component *, string_view path_prefix_segment, string_view path_segment)>;
@@ -68,6 +72,7 @@ template<HasId ChildType> struct Vector : Field {
 
     void EmplaceBack(string_view path_segment) {
         Value.emplace_back(Creator(this, GenerateNextPrefix(path_segment), path_segment));
+        Ids.PushBack_(Value.back()->Id);
     }
 
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
@@ -89,6 +94,7 @@ template<HasId ChildType> struct Vector : Field {
     void Refresh() override;
 
     void EraseAt(ID id) const {
+        Ids.Erase(id);
         const auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
         if (it != Value.end()) {
             it->get()->Erase();
@@ -113,4 +119,6 @@ private:
 
     CreatorFunction Creator;
     std::vector<std::unique_ptr<ChildType>> Value;
+
+    Prop(PrimitiveVector<ID>, Ids); // Keep track of child ordering.
 };

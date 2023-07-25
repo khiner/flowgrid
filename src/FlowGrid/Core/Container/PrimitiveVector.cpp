@@ -40,6 +40,17 @@ template<IsPrimitive T> void PrimitiveVector<T>::Resize(u32 size) const {
 
 template<IsPrimitive T> void PrimitiveVector<T>::Erase() const { Resize(0); }
 
+template<IsPrimitive T> void PrimitiveVector<T>::Erase(const T &value) const {
+    auto it = std::find(Value.begin(), Value.end(), value);
+    if (it != Value.end()) {
+        const u32 index = it - Value.begin();
+        for (u32 relocate_index = Value.size() - 1; relocate_index > index; relocate_index--) {
+            Set(relocate_index - 1, Value.at(relocate_index));
+        }
+        Resize(Value.size() - 1);
+    }
+}
+
 template<IsPrimitive T> void PrimitiveVector<T>::Refresh() {
     u32 i = 0;
     while (RootStore.CountAt(PathAt(i))) {

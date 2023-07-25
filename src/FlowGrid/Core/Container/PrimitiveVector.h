@@ -27,6 +27,7 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
 
     T operator[](u32 i) const { return Value[i]; }
     bool Contains(const T &value) const { return std::find(Value.begin(), Value.end(), value) != Value.end(); }
+    u32 IndexOf(const T &value) const { return std::find(Value.begin(), Value.end(), value) - Value.begin(); }
 
     auto begin() const { return Value.begin(); }
     auto end() const { return Value.end(); }
@@ -40,6 +41,7 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     void PushBack(const T &) const;
     void Resize(u32) const;
     void Erase() const override;
+    void Erase(const T &) const;
 
     void PushBack_(const T &);
 

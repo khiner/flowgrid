@@ -126,7 +126,6 @@ private:
 // A source node that owns an input device and copies the device callback input buffer to its own buffer.
 struct DeviceInputNode : SourceBufferNode {
     DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
-        Muted.Set_(true); // External input is muted by default.
         InputDevice = std::make_unique<AudioInputDevice>(ComponentArgs{this, "InputDevice"}, AudioInputCallback, this);
         UpdateAll();
     }
@@ -137,8 +136,6 @@ struct DeviceInputNode : SourceBufferNode {
 
         (void)output;
     }
-
-    bool AllowDelete() const override { return false; } // For now...
 
     std::unique_ptr<AudioInputDevice> InputDevice;
 };
@@ -161,8 +158,6 @@ struct DeviceOutputNode : PassthroughBufferNode {
         (void)device;
         (void)input;
     }
-
-    bool AllowDelete() const override { return false; } // For now...
 
     // Always connects directly/only to the graph endpoint node.
     bool AllowOutputConnectionChange() const override { return false; }
@@ -197,6 +192,7 @@ static const string FaustPathSegment = "Faust";
 AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
     Nodes.EmplaceBack(DeviceInputPathSegment);
+    Nodes.back()->SetMuted(true); // External input is muted by default.
     Nodes.EmplaceBack(DeviceOutputPathSegment);
     Nodes.EmplaceBack(GraphEndpointPathSegment);
     Nodes.EmplaceBack(WaveformPathSegment);
@@ -280,20 +276,23 @@ void AudioGraph::OnFaustDspChanged(dsp *dsp) {
 void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(); }
 
 void AudioGraph::OnFieldChanged() {
-    const auto *input_device = GetDeviceInputNode()->InputDevice.get();
-    const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
-    if (input_device->On.IsChanged() ||
-        input_device->Channels.IsChanged() ||
-        input_device->Format.IsChanged() ||
-        output_device->On.IsChanged() ||
-        output_device->Channels.IsChanged() ||
-        output_device->Format.IsChanged()) {
-        // todo
-        return;
+    if (const auto *device_node = GetDeviceOutputNode()) {
+        const auto *device = device_node->OutputDevice.get();
+        if (device->On.IsChanged() || device->Channels.IsChanged() || device->Format.IsChanged()) {
+            // todo
+        }
+        if (device->SampleRate.IsChanged()) {
+            for (auto *node : Nodes) node->OnSampleRateChanged();
+        }
     }
-
-    if (input_device->SampleRate.IsChanged() || output_device->SampleRate.IsChanged()) {
-        for (auto *node : Nodes) node->OnSampleRateChanged();
+    if (const auto *device_node = GetDeviceInputNode()) {
+        const auto *device = device_node->InputDevice.get();
+        if (device->On.IsChanged() || device->Channels.IsChanged() || device->Format.IsChanged()) {
+            // todo
+        }
+        if (device->SampleRate.IsChanged()) {
+            for (auto *node : Nodes) node->OnSampleRateChanged();
+        }
     }
 
     if (Nodes.IsChanged() || Connections.IsChanged()) {
@@ -482,15 +481,19 @@ void AudioGraph::RenderNodes() const {
 }
 
 void AudioGraph::Render() const {
-    const auto *input_device = GetDeviceInputNode()->InputDevice.get();
-    const auto *output_device = GetDeviceOutputNode()->OutputDevice.get();
-    if (BeginTabItem(input_device->ImGuiLabel.c_str())) {
-        input_device->Draw();
-        EndTabItem();
+    if (const auto *node = GetDeviceInputNode()) {
+        const auto *device = node->InputDevice.get();
+        if (BeginTabItem(device->ImGuiLabel.c_str())) {
+            device->Draw();
+            EndTabItem();
+        }
     }
-    if (BeginTabItem(output_device->ImGuiLabel.c_str())) {
-        output_device->Draw();
-        EndTabItem();
+    if (const auto *node = GetDeviceOutputNode()) {
+        const auto *device = node->OutputDevice.get();
+        if (BeginTabItem(device->ImGuiLabel.c_str())) {
+            device->Draw();
+            EndTabItem();
+        }
     }
     if (BeginTabItem("Nodes")) {
         RenderNodes();

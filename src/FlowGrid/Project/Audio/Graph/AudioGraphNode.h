@@ -79,6 +79,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     // When this node is no longer connected to the output node (directly or indirectly), it is considered inactive.
     inline void SetActive(bool is_active) noexcept { IsActive = is_active; }
 
+    void SetMuted(bool muted) {
+        Muted.Set_(muted);
+        UpdateOutputLevel();
+    }
+
     // Should be called whenever the graph's sample rate changes.
     // At the very least, each node updates any active IO monitors based on the new sample rate.
     virtual void OnSampleRateChanged();

@@ -125,7 +125,7 @@ private:
 // A source node that owns an input device and copies the device callback input buffer to its own buffer.
 struct DeviceInputNode : SourceBufferNode {
     DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
-        InputDevice = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, AudioInputCallback, this);
+        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, AudioInputCallback, this);
         UpdateAll();
     }
 
@@ -136,7 +136,7 @@ struct DeviceInputNode : SourceBufferNode {
         (void)output;
     }
 
-    std::unique_ptr<AudioDevice> InputDevice;
+    std::unique_ptr<AudioDevice> Device;
 };
 
 // A passthrough node that owns an output device.
@@ -145,7 +145,7 @@ struct DeviceInputNode : SourceBufferNode {
 // Each remaining `DeviceOutputNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
 struct DeviceOutputNode : PassthroughBufferNode {
     DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
-        OutputDevice = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, AudioOutputCallback, this);
+        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, AudioOutputCallback, this);
         UpdateAll();
     }
 
@@ -161,7 +161,7 @@ struct DeviceOutputNode : PassthroughBufferNode {
     // Always connects directly/only to the graph endpoint node.
     bool AllowOutputConnectionChange() const override { return false; }
 
-    std::unique_ptr<AudioDevice> OutputDevice;
+    std::unique_ptr<AudioDevice> Device;
 };
 
 // Wrapper around the graph endpoint node, which is allocated and managed by the MA graph.
@@ -216,9 +216,9 @@ static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Comp
     node->RegisterListener(graph);
     AudioDevice *device = nullptr;
     if (const auto *device_input_node = dynamic_cast<DeviceInputNode *>(node.get())) {
-        device = device_input_node->InputDevice.get();
+        device = device_input_node->Device.get();
     } else if (const auto *device_output_node = dynamic_cast<DeviceOutputNode *>(node.get())) {
-        device = device_output_node->OutputDevice.get();
+        device = device_output_node->Device.get();
     }
     if (device) {
         const Field::References listened_fields = {device->On, device->Channels, device->SampleRate, device->Format};
@@ -276,7 +276,7 @@ void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(
 
 void AudioGraph::OnFieldChanged() {
     if (const auto *device_node = GetDeviceOutputNode()) {
-        const auto *device = device_node->OutputDevice.get();
+        const auto *device = device_node->Device.get();
         if (device->On.IsChanged() || device->Channels.IsChanged() || device->Format.IsChanged()) {
             // todo
         }
@@ -285,7 +285,7 @@ void AudioGraph::OnFieldChanged() {
         }
     }
     if (const auto *device_node = GetDeviceInputNode()) {
-        const auto *device = device_node->InputDevice.get();
+        const auto *device = device_node->Device.get();
         if (device->On.IsChanged() || device->Channels.IsChanged() || device->Format.IsChanged()) {
             // todo
         }
@@ -300,13 +300,13 @@ void AudioGraph::OnFieldChanged() {
 }
 
 u32 AudioGraph::GetSampleRate() const {
-    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->OutputDevice->SampleRate;
-    if (const auto *device_input_node = GetDeviceInputNode()) return device_input_node->InputDevice->SampleRate;
+    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->Device->SampleRate;
+    if (const auto *device_input_node = GetDeviceInputNode()) return device_input_node->Device->SampleRate;
     return 0;
 }
 
 u64 AudioGraph::GetBufferSize() const {
-    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->OutputDevice->GetBufferSize();
+    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->Device->GetBufferSize();
     return 0;
 }
 
@@ -481,14 +481,14 @@ void AudioGraph::RenderNodes() const {
 
 void AudioGraph::Render() const {
     if (const auto *node = GetDeviceInputNode()) {
-        const auto *device = node->InputDevice.get();
+        const auto *device = node->Device.get();
         if (BeginTabItem(device->ImGuiLabel.c_str())) {
             device->Draw();
             EndTabItem();
         }
     }
     if (const auto *node = GetDeviceOutputNode()) {
-        const auto *device = node->OutputDevice.get();
+        const auto *device = node->Device.get();
         if (BeginTabItem(device->ImGuiLabel.c_str())) {
             device->Draw();
             EndTabItem();

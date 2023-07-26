@@ -7,12 +7,8 @@
 #include "Core/Primitive/String.h"
 #include "Core/Primitive/UInt.h"
 
-#include "miniaudio.h"
-
 struct ma_device;
-// typedef struct ma_device_id ma_device_id;
 
-// Corresponds to `ma_device`.
 struct AudioDevice : Component, Field::ChangeListener {
     using AudioCallback = void (*)(ma_device *, void *, const void *, u32);
     using UserData = void *;
@@ -37,14 +33,9 @@ struct AudioDevice : Component, Field::ChangeListener {
 private:
     void Render() const override;
 
-    const ma_device_id *GetDeviceId(string_view device_name) const;
-
     // Uses the current `SampleRate`, the `PrioritizedSampleRates` list, and the device's native sample rates
     // to determine the best sample rate with which to initialize the `ma_device`.
     u32 GetConfigSampleRate() const;
-
-    bool IsNativeSampleRate(u32 sample_rate) const;
-    bool IsNativeFormat(ma_format format) const;
 
     IO Type;
     AudioCallback Callback;

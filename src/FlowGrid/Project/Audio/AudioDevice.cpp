@@ -92,12 +92,21 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, AudioDevice::AudioCallba
     }
 
     ma_device_config config = ma_device_config_init(Type == IO_In ? ma_device_type_capture : ma_device_type_playback);
+
+    const ma_device_id *device_id = nullptr;
+    for (const ma_device_info *info : DeviceInfos[Type]) {
+        if (info->name == string_view(Name)) {
+            device_id = &(info->id);
+            break;
+        }
+    }
+
     if (Type == IO_In) {
-        config.capture.pDeviceID = GetDeviceId(Name);
+        config.capture.pDeviceID = device_id;
         config.capture.format = ma_format_f32;
         config.capture.channels = Channels;
     } else {
-        config.playback.pDeviceID = GetDeviceId(Name);
+        config.playback.pDeviceID = device_id;
         config.playback.format = ma_format_f32;
         config.playback.channels = Channels;
     }
@@ -153,35 +162,28 @@ void AudioDevice::OnFieldChanged() {
     }
 }
 
-bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const {
-    if (!NativeSampleRates.contains(Type)) return false;
+static bool IsNativeSampleRate(u32 sample_rate, IO type) {
+    if (!NativeSampleRates.contains(type)) return false;
 
-    const auto &native_sample_rates = NativeSampleRates.at(Type);
+    const auto &native_sample_rates = NativeSampleRates.at(type);
     return std::find(native_sample_rates.begin(), native_sample_rates.end(), sample_rate) != native_sample_rates.end();
 }
 
-bool AudioDevice::IsNativeFormat(ma_format format) const {
-    if (!NativeFormats.contains(Type)) return false;
+static bool IsNativeFormat(ma_format format, IO type) {
+    if (!NativeFormats.contains(type)) return false;
 
-    const auto &native_formats = NativeFormats.at(Type);
+    const auto &native_formats = NativeFormats.at(type);
     return std::find(native_formats.begin(), native_formats.end(), format) != native_formats.end();
 }
 
 string AudioDevice::GetFormatName(int format) const {
-    return ::std::format("{}{}", ma_get_format_name(ma_format(format)), IsNativeFormat(ma_format(format)) ? "*" : "");
+    return ::std::format("{}{}", ma_get_format_name(ma_format(format)), IsNativeFormat(ma_format(format), Type) ? "*" : "");
 }
 string AudioDevice::GetSampleRateName(u32 sample_rate) const {
-    return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
+    return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate, Type) ? "*" : "");
 }
 u64 AudioDevice::GetBufferSize() const {
     return Type == IO_Out ? Device->playback.internalPeriodSizeInFrames : 0;
-}
-
-const ma_device_id *AudioDevice::GetDeviceId(string_view device_name) const {
-    for (const ma_device_info *info : DeviceInfos[Type]) {
-        if (info->name == device_name) return &(info->id);
-    }
-    return nullptr;
 }
 
 u32 AudioDevice::GetConfigSampleRate() const {

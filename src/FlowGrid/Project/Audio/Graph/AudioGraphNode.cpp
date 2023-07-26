@@ -45,7 +45,7 @@ private:
 
 struct AudioGraphNode::SplitterNode {
     SplitterNode(ma_node_graph *ma_graph, u32 channels) {
-        ma_splitter_node_config config = ma_splitter_node_config_init(channels);
+        auto config = ma_splitter_node_config_init(channels);
         int result = ma_splitter_node_init(ma_graph, &config, nullptr, &Splitter);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", result));
     }
@@ -61,7 +61,7 @@ private:
 
 struct AudioGraphNode::MonitorNode {
     MonitorNode(ma_node_graph *ma_graph, u32 channels, u32 sample_rate, u32 buffer_frames) {
-        ma_monitor_node_config config = ma_monitor_node_config_init(channels, sample_rate, buffer_frames);
+        auto config = ma_monitor_node_config_init(channels, sample_rate, buffer_frames);
         int result = ma_monitor_node_init(ma_graph, &config, nullptr, &Monitor);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize monitor node: {}", result));
     }
@@ -145,20 +145,15 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
 }
 
 AudioGraphNode::~AudioGraphNode() {
-    Uninit();
-    Field::UnregisterChangeListener(this);
-}
-
-void AudioGraphNode::Uninit() {
-    // Disconnect from earliest to latest in the signal path.
+    Splitters.clear();
     InputMonitor.reset();
     Gainer.reset();
     OutputMonitor.reset();
-    Splitters.clear();
     if (Node != nullptr) {
         ma_node_uninit(Node, nullptr);
         Node = nullptr;
     }
+    Field::UnregisterChangeListener(this);
 }
 
 u32 AudioGraphNode::GetSampleRate() const { return Graph->GetSampleRate(); }
@@ -241,7 +236,12 @@ void AudioGraphNode::OnFieldChanged() {
 }
 
 u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
-u32 AudioGraphNode::OutputBusCount() const { return ma_node_get_output_bus_count(Node); }
+
+// Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
+// Most importantly, it is not possible to attach the graph endpoint's node into any other node.
+// Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
+u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_node_get_output_bus_count(Node); }
+
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Node, bus); }
 u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
 
@@ -308,9 +308,6 @@ void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
         else ma_node_attach_output_bus(Node, 0, OutputMonitor->Get(), 0);
     }
 
-    to.InputNodes.insert(this);
-    OutputNodes.insert(&to);
-
     auto *output_node = OutputNode();
     if (auto *currently_connected_to = ((ma_node_base *)output_node)->pOutputBuses[0].pInputNode) {
         // Connecting a single source to multiple destinations requires a splitter node.
@@ -328,13 +325,9 @@ void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
 void AudioGraphNode::DisconnectAll() {
     ma_node_detach_output_bus(OutputNode(), 0);
     Splitters.clear();
-
-    // Clear cached pointers to input/output nodes.
-    InputNodes.clear();
-    OutputNodes.clear();
 }
 
-std::string NodesToString(const std::unordered_set<const AudioGraphNode *> &nodes, bool is_input) {
+std::string NodesToString(const std::unordered_set<AudioGraphNode *> &nodes, bool is_input) {
     if (nodes.empty()) return "";
 
     std::string str;
@@ -350,7 +343,7 @@ std::string NodesToString(const std::unordered_set<const AudioGraphNode *> &node
 }
 
 void AudioGraphNode::Render() const {
-    if (this != Graph) {
+    if (!IsGraphEndpoint()) {
         if (Button("X")) {
             Action::AudioGraph::DeleteNode{Id}.q();
         }
@@ -366,10 +359,15 @@ void AudioGraphNode::Render() const {
     }
     PopStyleColor();
 
-    if (!InputNodes.empty() || !OutputNodes.empty()) {
-        Text("Connections: %s%s%s", NodesToString(InputNodes, true).c_str(), Name.c_str(), NodesToString(OutputNodes, false).c_str());
-    } else {
-        TextUnformatted("No connections");
+    if (TreeNode("Connections")) {
+        auto source_nodes = Graph->GetSourceNodes(this);
+        auto destination_nodes = Graph->GetDestinationNodes(this);
+        if (!source_nodes.empty() || !destination_nodes.empty()) {
+            Text("%s%s%s", NodesToString(source_nodes, true).c_str(), Name.c_str(), NodesToString(destination_nodes, false).c_str());
+        } else {
+            TextUnformatted("No connections");
+        }
+        TreePop();
     }
 
     Spacing();

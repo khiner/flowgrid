@@ -19,11 +19,8 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
 
     // Node overrides.
     // The graph is also a graph endpoint node.
-    // Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
-    // Most importantly, it is not possible to attach the graph endpoint's node into any other node.
-    // Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
     // The graph enforces that the only input to the graph endpoint node is the "Master" `DeviceOutputNode`.
-    // The graph endpoint MA node is allocated and managed by the MA graph.
+    // The graph endpoint MA node is allocated and managed by the MA graph, unlike other node types whose MA counterparts are explicitly managed.
     bool AllowInputConnectionChange() const override { return false; }
     bool AllowOutputConnectionChange() const override { return false; }
 
@@ -41,6 +38,9 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     dsp *GetFaustDsp() const;
     u32 GetSampleRate() const;
     u64 GetBufferSize() const;
+
+    std::unordered_set<AudioGraphNode *> GetSourceNodes(const AudioGraphNode *) const;
+    std::unordered_set<AudioGraphNode *> GetDestinationNodes(const AudioGraphNode *) const;
 
     std::unique_ptr<MaGraph> Graph;
     dsp *FaustDsp = nullptr;

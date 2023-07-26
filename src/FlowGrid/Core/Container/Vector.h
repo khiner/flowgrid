@@ -43,6 +43,8 @@ template<HasId ChildType> struct Vector : Field {
         std::erase_if(ComponentContainerFields, [this](const auto &id) { return id == Id; });
     }
 
+    inline void Clear() { Value.clear(); }
+
     inline static std::pair<std::string, std::string> GetPathPrefixAndSegment(StorePath relative_path) {
         auto it = relative_path.begin();
         const auto path_prefix = *it;

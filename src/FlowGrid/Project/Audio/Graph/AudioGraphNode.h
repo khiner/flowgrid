@@ -58,6 +58,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     inline bool CanConnectInput() const { return AllowInputConnectionChange() && InputBusCount() > 0; }
     inline bool CanConnectOutput() const { return AllowOutputConnectionChange() && OutputBusCount() > 0; }
 
+    inline bool IsGraphEndpoint() const { return this == (void *)Graph; }
+
     u32 InputBusCount() const;
     u32 OutputBusCount() const;
     inline u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
@@ -75,8 +77,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     void DisconnectAll();
 
     // The graph is responsible for calling this method whenever the topology of the graph changes.
-    // When this node is no longer connected to the output node (directly or indirectly), it is considered inactive.
-    inline void SetActive(bool is_active) noexcept { IsActive = is_active; }
+    // When this node is connected to the graph endpoing node (directly or indirectly), it is considered active.
+    // As a special case, the graph endpoint node is always considered active.
+    inline void SetActive(bool is_active) noexcept {
+        IsActive = IsGraphEndpoint() || is_active;
+    }
 
     void SetMuted(bool muted) {
         Muted.Set_(muted);
@@ -114,7 +119,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     // These fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
     bool IsActive{false}; // `true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
-    std::unordered_set<const AudioGraphNode *> InputNodes, OutputNodes; // Cache the current sets of input and output nodes.
 
 protected:
     virtual void UpdateAll(); // Call corresponding MA setters for all fields.
@@ -127,8 +131,6 @@ protected:
     void UpdateGainer();
     void UpdateMonitor(IO);
     void UpdateMonitorWindowFunction(IO);
-
-    void Uninit();
 
     const AudioGraph *Graph;
     ma_node *Node;

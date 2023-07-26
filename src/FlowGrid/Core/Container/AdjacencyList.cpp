@@ -29,6 +29,17 @@ void AdjacencyList::ToggleConnection(ID source, ID destination) const {
     else Connect(source, destination);
 }
 
+void AdjacencyList::DisconnectAll(ID id) const {
+    const auto id_pairs = Get();
+    for (const auto &[source_id, destination_id] : id_pairs) {
+        if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);
+    }
+}
+
+void AdjacencyList::Erase() const {
+    RootStore.ClearIdPairs(Path);
+}
+
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
     return RootStore.HasIdPair(Path, {source, destination});
 }
@@ -79,10 +90,6 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
         }
         TreePop();
     }
-}
-
-void AdjacencyList::Erase() const {
-    RootStore.ClearIdPairs(Path);
 }
 
 void AdjacencyList::SetJson(json &&j) const {

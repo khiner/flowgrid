@@ -31,7 +31,7 @@ struct MaGraph {
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
     }
     ~MaGraph() {
-        // Graph endpoint node is already uninitialized by `Nodes.Output`.
+        ma_node_graph_uninit(_Graph.get(), nullptr);
         _Graph.reset();
     }
 
@@ -188,6 +188,7 @@ static const string FaustPathSegment = "Faust";
 AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
     Node = ma_node_graph_get_endpoint(Graph->Get());
+    IsActive = true; // The graph is always active, since it is always connected to itself.
     UpdateAll();
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 
@@ -206,6 +207,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
 }
 
 AudioGraph::~AudioGraph() {
+    Nodes.Clear();
     Singleton = nullptr;
     Field::UnregisterChangeListener(this);
 }
@@ -244,6 +246,7 @@ void AudioGraph::Apply(const ActionType &action) const {
         action,
         [this](const Action::AudioGraph::DeleteNode &a) {
             Nodes.EraseId(a.id);
+            Connections.DisconnectAll(a.id);
         },
     );
 }
@@ -274,6 +277,8 @@ void AudioGraph::OnFaustDspChanged(dsp *dsp) {
 void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(); }
 
 void AudioGraph::OnFieldChanged() {
+    AudioGraphNode::OnFieldChanged();
+
     if (const auto *device_node = GetDeviceOutputNode()) {
         const auto *device = device_node->Device.get();
         if (device->Channels.IsChanged() || device->Format.IsChanged()) {
@@ -307,6 +312,28 @@ u32 AudioGraph::GetSampleRate() const {
 u64 AudioGraph::GetBufferSize() const {
     if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->Device->GetBufferSize();
     return 0;
+}
+
+std::unordered_set<AudioGraphNode *> AudioGraph::GetSourceNodes(const AudioGraphNode *node) const {
+    std::unordered_set<AudioGraphNode *> nodes;
+    for (auto *other_node : Nodes) {
+        if (other_node == node) continue;
+        if (Connections.IsConnected(other_node->Id, node->Id)) {
+            nodes.insert(other_node);
+        }
+    }
+    return nodes;
+}
+
+std::unordered_set<AudioGraphNode *> AudioGraph::GetDestinationNodes(const AudioGraphNode *node) const {
+    std::unordered_set<AudioGraphNode *> nodes;
+    for (auto *other_node : Nodes) {
+        if (other_node == node) continue;
+        if (Connections.IsConnected(node->Id, other_node->Id)) {
+            nodes.insert(other_node);
+        }
+    }
+    return nodes;
 }
 
 void AudioGraph::UpdateConnections() {

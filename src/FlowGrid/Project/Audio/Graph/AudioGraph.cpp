@@ -9,8 +9,7 @@
 #include "miniaudio.h"
 
 #include "Core/Container/AdjacencyListAction.h"
-#include "Project/Audio/AudioInputDevice.h"
-#include "Project/Audio/AudioOutputDevice.h"
+#include "Project/Audio/AudioDevice.h"
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
@@ -126,7 +125,7 @@ private:
 // A source node that owns an input device and copies the device callback input buffer to its own buffer.
 struct DeviceInputNode : SourceBufferNode {
     DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
-        InputDevice = std::make_unique<AudioInputDevice>(ComponentArgs{this, "InputDevice"}, AudioInputCallback, this);
+        InputDevice = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, AudioInputCallback, this);
         UpdateAll();
     }
 
@@ -137,7 +136,7 @@ struct DeviceInputNode : SourceBufferNode {
         (void)output;
     }
 
-    std::unique_ptr<AudioInputDevice> InputDevice;
+    std::unique_ptr<AudioDevice> InputDevice;
 };
 
 // A passthrough node that owns an output device.
@@ -146,7 +145,7 @@ struct DeviceInputNode : SourceBufferNode {
 // Each remaining `DeviceOutputNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
 struct DeviceOutputNode : PassthroughBufferNode {
     DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
-        OutputDevice = std::make_unique<AudioOutputDevice>(ComponentArgs{this, "OutputDevice"}, AudioOutputCallback, this);
+        OutputDevice = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, AudioOutputCallback, this);
         UpdateAll();
     }
 
@@ -162,7 +161,7 @@ struct DeviceOutputNode : PassthroughBufferNode {
     // Always connects directly/only to the graph endpoint node.
     bool AllowOutputConnectionChange() const override { return false; }
 
-    std::unique_ptr<AudioOutputDevice> OutputDevice;
+    std::unique_ptr<AudioDevice> OutputDevice;
 };
 
 // Wrapper around the graph endpoint node, which is allocated and managed by the MA graph.
@@ -307,7 +306,7 @@ u32 AudioGraph::GetSampleRate() const {
 }
 
 u64 AudioGraph::GetBufferSize() const {
-    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->OutputDevice->Get()->playback.internalPeriodSizeInFrames;
+    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->OutputDevice->GetBufferSize();
     return 0;
 }
 

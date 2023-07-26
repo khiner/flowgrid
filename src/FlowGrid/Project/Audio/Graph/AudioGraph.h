@@ -12,11 +12,20 @@ struct ma_node_graph;
 struct MaGraph;
 struct DeviceInputNode;
 struct DeviceOutputNode;
-struct GraphEndpointNode;
 
-struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::ChangeListener, FaustDspChangeListener, AudioGraphNode::Listener {
+struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDspChangeListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
+
+    // Node overrides.
+    // The graph is also a graph endpoint node.
+    // Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
+    // Most importantly, it is not possible to attach the graph endpoint's node into any other node.
+    // Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
+    // The graph enforces that the only input to the graph endpoint node is the "Master" `DeviceOutputNode`.
+    // The graph endpoint MA node is allocated and managed by the MA graph.
+    bool AllowInputConnectionChange() const override { return false; }
+    bool AllowOutputConnectionChange() const override { return false; }
 
     static std::unique_ptr<AudioGraphNode> CreateNode(Component *, string_view path_prefix_segment, string_view path_segment);
 
@@ -66,12 +75,10 @@ struct AudioGraph : Component, Actionable<Action::AudioGraph::Any>, Field::Chang
 private:
     void Render() const override;
     void RenderConnections() const;
-    void RenderNodes() const;
 
     void UpdateConnections();
 
     AudioGraphNode *FindByPathSegment(string_view) const;
     DeviceInputNode *GetDeviceInputNode() const;
     DeviceOutputNode *GetDeviceOutputNode() const;
-    GraphEndpointNode *GetGraphEndpointNode() const;
 };

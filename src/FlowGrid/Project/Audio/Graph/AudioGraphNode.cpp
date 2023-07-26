@@ -138,7 +138,8 @@ private:
 };
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Parent->Parent)) {
+    : Component(std::move(args)) {
+    Graph = static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent); // The graph is itself a graph node.
     const Field::References listened_fields = {Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
@@ -349,7 +350,7 @@ std::string NodesToString(const std::unordered_set<const AudioGraphNode *> &node
 }
 
 void AudioGraphNode::Render() const {
-    if (AllowDelete()) {
+    if (this != Graph) {
         if (Button("X")) {
             Action::AudioGraph::DeleteNode{Id}.q();
         }

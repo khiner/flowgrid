@@ -180,44 +180,28 @@ private:
     }
 };
 
-// Wrapper around the graph endpoint node, which is allocated and managed by the MA graph.
-// Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
-// Most importantly, it is not possible to attach the graph endpoint's node into any other node.
-// Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
-// The graph enforces that the only input is the "Master" `DeviceOutputNode` (hence not allowing dynamic input changes).
-struct GraphEndpointNode : AudioGraphNode {
-    GraphEndpointNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-        Node = ma_node_graph_get_endpoint(Graph->Get());
-        UpdateAll();
-    }
-
-    bool AllowDelete() const override { return false; }
-
-    // The graph endpoint node is completely hidden in the connection matrix.
-    bool AllowInputConnectionChange() const override { return false; }
-    bool AllowOutputConnectionChange() const override { return false; }
-};
-
 static const string DeviceInputPathSegment = "Input";
 static const string DeviceOutputPathSegment = "Output";
-static const string GraphEndpointPathSegment = "GraphEndpoint";
 static const string WaveformPathSegment = "Waveform";
 static const string FaustPathSegment = "Faust";
 
-AudioGraph::AudioGraph(ComponentArgs &&args) : Component(std::move(args)) {
+AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
+    Node = ma_node_graph_get_endpoint(Graph->Get());
+    UpdateAll();
+    this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
+
     Nodes.EmplaceBack(DeviceInputPathSegment);
     Nodes.back()->SetMuted(true); // External input is muted by default.
     Nodes.EmplaceBack(DeviceOutputPathSegment);
-    Nodes.EmplaceBack(GraphEndpointPathSegment);
     Nodes.EmplaceBack(WaveformPathSegment);
 
     const Field::References listened_fields = {Nodes, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 
     // Set up default connections.
+    // Note that the device output -> graph endpoint node connection is handled during device output node initialization.
     Connections.Connect(GetDeviceInputNode()->Id, GetDeviceOutputNode()->Id);
-    Connections.Connect(GetDeviceOutputNode()->Id, GetGraphEndpointNode()->Id);
     Singleton = this;
 }
 
@@ -235,6 +219,7 @@ static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Comp
         device = device_input_node->Device.get();
     } else if (const auto *device_output_node = dynamic_cast<DeviceOutputNode *>(node.get())) {
         device = device_output_node->Device.get();
+        graph->Connections.Connect(device_output_node->Id, graph->Id);
     }
     if (device) {
         const Field::References listened_fields = {device->Channels, device->SampleRate, device->Format};
@@ -248,7 +233,6 @@ std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string
     auto *graph = static_cast<AudioGraph *>(parent->Parent);
     if (path_segment == DeviceInputPathSegment) return CreateNode<DeviceInputNode>(graph, std::move(args));
     if (path_segment == DeviceOutputPathSegment) return CreateNode<DeviceOutputNode>(graph, std::move(args));
-    if (path_segment == GraphEndpointPathSegment) return CreateNode<GraphEndpointNode>(graph, std::move(args));
     if (path_segment == WaveformPathSegment) return CreateNode<WaveformNode>(graph, std::move(args));
     if (path_segment == FaustPathSegment) return CreateNode<FaustNode>(graph, std::move(args));
 
@@ -274,7 +258,6 @@ AudioGraphNode *AudioGraph::FindByPathSegment(string_view path_segment) const {
 
 DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(FindByPathSegment(DeviceInputPathSegment)); }
 DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(FindByPathSegment(DeviceOutputPathSegment)); }
-GraphEndpointNode *AudioGraph::GetGraphEndpointNode() const { return static_cast<GraphEndpointNode *>(FindByPathSegment(GraphEndpointPathSegment)); }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
     const auto *faust_node = FindByPathSegment(FaustPathSegment);
@@ -331,6 +314,9 @@ void AudioGraph::UpdateConnections() {
         node->DisconnectAll();
     }
 
+    // The graph does not keep itself in its `Nodes` list, so we must connect it manually.
+    if (auto *device_output_node = GetDeviceOutputNode()) device_output_node->ConnectTo(*this);
+
     for (auto *out_node : Nodes) {
         for (auto *in_node : Nodes) {
             if (Connections.IsConnected(out_node->Id, in_node->Id)) {
@@ -339,12 +325,7 @@ void AudioGraph::UpdateConnections() {
         }
     }
 
-    // Update node active states.
-    // Nodes that are turned off (here - disabled) are not removed from the `Connections` object in order to preserve their connections.
-    // So we need to check if there is a path to the output node that doesn't go through any disabled nodes.
-    for (auto *node : Nodes) {
-        node->SetActive(GetGraphEndpointNode() != nullptr && Connections.HasPath(node->Id, GetGraphEndpointNode()->Id));
-    }
+    for (auto *node : Nodes) node->SetActive(Connections.HasPath(node->Id, Id));
 }
 
 using namespace ImGui;
@@ -486,18 +467,18 @@ void AudioGraph::Style::Matrix::Render() const {
     MaxLabelSpace.Draw();
 }
 
-void AudioGraph::RenderNodes() const {
-    for (const auto *node : Nodes) {
-        if (TreeNodeEx(node->ImGuiLabel.c_str())) {
-            node->Draw();
-            TreePop();
-        }
-    }
-}
-
 void AudioGraph::Render() const {
     if (BeginTabItem("Nodes")) {
-        RenderNodes();
+        if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            AudioGraphNode::Render();
+            for (const auto *node : Nodes) {
+                if (TreeNodeEx(node->ImGuiLabel.c_str())) {
+                    node->Draw();
+                    TreePop();
+                }
+            }
+            EndTabItem();
+        }
         EndTabItem();
     }
     if (BeginTabItem(Connections.ImGuiLabel.c_str())) {

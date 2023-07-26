@@ -51,7 +51,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
-    virtual bool AllowDelete() const { return true; }
     // If `Allow...ConnectionChange` returns `true`, users can dynamically change the input/output connections.
     // Nodes whose connections are managed and enforced by the `AudioGraph` return `false` (the graph endpoint node and device IO nodes).
     virtual bool AllowInputConnectionChange() const { return true; }

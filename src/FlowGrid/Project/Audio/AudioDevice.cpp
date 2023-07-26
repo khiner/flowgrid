@@ -38,7 +38,7 @@ static std::vector<string> DeviceNames[IO_Count];
 
 AudioDevice::AudioDevice(ComponentArgs &&args, IO type, AudioDevice::AudioCallback callback, UserData user_data)
     : Component(std::move(args)), Type(type), Callback(callback), _UserData(user_data) {
-    const Field::References listened_fields{On, Name, Format, Channels, SampleRate};
+    const Field::References listened_fields{Name, Format, Channels, SampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 
     Device = std::make_unique<ma_device>();
@@ -151,12 +151,12 @@ AudioDevice::~AudioDevice() {
 }
 
 void AudioDevice::OnFieldChanged() {
-    if (On.IsChanged() || Name.IsChanged() || Format.IsChanged() || Channels.IsChanged() || SampleRate.IsChanged()) {
+    if (Name.IsChanged() || Format.IsChanged() || Channels.IsChanged() || SampleRate.IsChanged()) {
         // const bool is_started = IsStarted();
-        // if (On && !is_started) {
+        // if (!is_started) {
         //     Init();
         // } else if (is_started) {
-        //    if (!On) Uninit();
+        //    Uninit();
         //    Init();
         // }
     }
@@ -216,7 +216,6 @@ bool AudioDevice::IsStarted() const { return ma_device_is_started(Device.get());
 using namespace ImGui;
 
 void AudioDevice::Render() const {
-    On.Draw();
     if (!IsStarted()) {
         TextUnformatted("Audio device is not started.");
         return;
@@ -229,57 +228,49 @@ void AudioDevice::Render() const {
 
     if (TreeNode("Info")) {
         static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
-
         auto *device = Device.get();
-        Text("[%s]", ma_get_backend_name(device->pContext->backend));
-
+        ma_device_get_name(device, Type == IO_In ? ma_device_type_capture : ma_device_type_playback, name, sizeof(name), nullptr);
+        Text("%s (%s)", name, Type == IO_In ? "Capture" : "Playback");
+        Text("Backend: %s", ma_get_backend_name(device->pContext->backend));
         if (Type == IO_In) {
-            ma_device_get_name(device, ma_device_type_capture, name, sizeof(name), nullptr);
-            if (TreeNode(std::format("{} ({})", name, "Capture").c_str())) {
-                Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
-                Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
-                Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
-                Text("Buffer Size: %d*%d (%d)\n", device->capture.internalPeriodSizeInFrames, device->capture.internalPeriods, (device->capture.internalPeriodSizeInFrames * device->capture.internalPeriods));
-                if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
-                    Text("Pre Format Conversion: %s\n", device->capture.converter.hasPreFormatConversion ? "YES" : "NO");
-                    Text("Post Format Conversion: %s\n", device->capture.converter.hasPostFormatConversion ? "YES" : "NO");
-                    Text("Channel Routing: %s\n", device->capture.converter.hasChannelConverter ? "YES" : "NO");
-                    Text("Resampling: %s\n", device->capture.converter.hasResampler ? "YES" : "NO");
-                    Text("Passthrough: %s\n", device->capture.converter.isPassthrough ? "YES" : "NO");
-                    {
-                        char channel_map[1024];
-                        ma_channel_map_to_string(device->capture.internalChannelMap, device->capture.internalChannels, channel_map, sizeof(channel_map));
-                        Text("Channel Map In: {%s}\n", channel_map);
+            Text("Format: %s -> %s", ma_get_format_name(device->capture.internalFormat), ma_get_format_name(device->capture.format));
+            Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
+            Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
+            Text("Buffer Size: %d*%d (%d)\n", device->capture.internalPeriodSizeInFrames, device->capture.internalPeriods, (device->capture.internalPeriodSizeInFrames * device->capture.internalPeriods));
+            if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
+                Text("Pre Format Conversion: %s\n", device->capture.converter.hasPreFormatConversion ? "YES" : "NO");
+                Text("Post Format Conversion: %s\n", device->capture.converter.hasPostFormatConversion ? "YES" : "NO");
+                Text("Channel Routing: %s\n", device->capture.converter.hasChannelConverter ? "YES" : "NO");
+                Text("Resampling: %s\n", device->capture.converter.hasResampler ? "YES" : "NO");
+                Text("Passthrough: %s\n", device->capture.converter.isPassthrough ? "YES" : "NO");
+                {
+                    char channel_map[1024];
+                    ma_channel_map_to_string(device->capture.internalChannelMap, device->capture.internalChannels, channel_map, sizeof(channel_map));
+                    Text("Channel Map In: {%s}\n", channel_map);
 
-                        ma_channel_map_to_string(device->capture.channelMap, device->capture.channels, channel_map, sizeof(channel_map));
-                        Text("Channel Map Out: {%s}\n", channel_map);
-                    }
-                    TreePop();
+                    ma_channel_map_to_string(device->capture.channelMap, device->capture.channels, channel_map, sizeof(channel_map));
+                    Text("Channel Map Out: {%s}\n", channel_map);
                 }
                 TreePop();
             }
         } else {
-            ma_device_get_name(device, ma_device_type_playback, name, sizeof(name), nullptr);
-            if (TreeNode(std::format("{} ({})", name, "Playback").c_str())) {
-                Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
-                Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
-                Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
-                Text("Buffer Size: %d*%d (%d)", device->playback.internalPeriodSizeInFrames, device->playback.internalPeriods, (device->playback.internalPeriodSizeInFrames * device->playback.internalPeriods));
-                if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
-                    Text("Pre Format Conversion:  %s", device->playback.converter.hasPreFormatConversion ? "YES" : "NO");
-                    Text("Post Format Conversion: %s", device->playback.converter.hasPostFormatConversion ? "YES" : "NO");
-                    Text("Channel Routing: %s", device->playback.converter.hasChannelConverter ? "YES" : "NO");
-                    Text("Resampling: %s", device->playback.converter.hasResampler ? "YES" : "NO");
-                    Text("Passthrough: %s", device->playback.converter.isPassthrough ? "YES" : "NO");
-                    {
-                        char channel_map[1024];
-                        ma_channel_map_to_string(device->playback.channelMap, device->playback.channels, channel_map, sizeof(channel_map));
-                        Text("Channel Map In: {%s}", channel_map);
+            Text("Format: %s -> %s", ma_get_format_name(device->playback.format), ma_get_format_name(device->playback.internalFormat));
+            Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
+            Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
+            Text("Buffer Size: %d*%d (%d)", device->playback.internalPeriodSizeInFrames, device->playback.internalPeriods, (device->playback.internalPeriodSizeInFrames * device->playback.internalPeriods));
+            if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
+                Text("Pre Format Conversion:  %s", device->playback.converter.hasPreFormatConversion ? "YES" : "NO");
+                Text("Post Format Conversion: %s", device->playback.converter.hasPostFormatConversion ? "YES" : "NO");
+                Text("Channel Routing: %s", device->playback.converter.hasChannelConverter ? "YES" : "NO");
+                Text("Resampling: %s", device->playback.converter.hasResampler ? "YES" : "NO");
+                Text("Passthrough: %s", device->playback.converter.isPassthrough ? "YES" : "NO");
+                {
+                    char channel_map[1024];
+                    ma_channel_map_to_string(device->playback.channelMap, device->playback.channels, channel_map, sizeof(channel_map));
+                    Text("Channel Map In: {%s}", channel_map);
 
-                        ma_channel_map_to_string(device->playback.internalChannelMap, device->playback.internalChannels, channel_map, sizeof(channel_map));
-                        Text("Channel Map Out: {%s}", channel_map);
-                    }
-                    TreePop();
+                    ma_channel_map_to_string(device->playback.internalChannelMap, device->playback.internalChannels, channel_map, sizeof(channel_map));
+                    Text("Channel Map Out: {%s}", channel_map);
                 }
                 TreePop();
             }

@@ -137,6 +137,14 @@ struct DeviceInputNode : SourceBufferNode {
     }
 
     std::unique_ptr<AudioDevice> Device;
+
+private:
+    void Render() const override {
+        AudioGraphNode::Render();
+
+        ImGui::Spacing();
+        Device->Draw();
+    }
 };
 
 // A passthrough node that owns an output device.
@@ -162,6 +170,14 @@ struct DeviceOutputNode : PassthroughBufferNode {
     bool AllowOutputConnectionChange() const override { return false; }
 
     std::unique_ptr<AudioDevice> Device;
+
+private:
+    void Render() const override {
+        AudioGraphNode::Render();
+
+        ImGui::Spacing();
+        Device->Draw();
+    }
 };
 
 // Wrapper around the graph endpoint node, which is allocated and managed by the MA graph.
@@ -221,7 +237,7 @@ static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Comp
         device = device_output_node->Device.get();
     }
     if (device) {
-        const Field::References listened_fields = {device->On, device->Channels, device->SampleRate, device->Format};
+        const Field::References listened_fields = {device->Channels, device->SampleRate, device->Format};
         for (const Field &field : listened_fields) field.RegisterChangeListener(graph);
     }
     return node;
@@ -277,7 +293,7 @@ void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(
 void AudioGraph::OnFieldChanged() {
     if (const auto *device_node = GetDeviceOutputNode()) {
         const auto *device = device_node->Device.get();
-        if (device->On.IsChanged() || device->Channels.IsChanged() || device->Format.IsChanged()) {
+        if (device->Channels.IsChanged() || device->Format.IsChanged()) {
             // todo
         }
         if (device->SampleRate.IsChanged()) {
@@ -286,7 +302,7 @@ void AudioGraph::OnFieldChanged() {
     }
     if (const auto *device_node = GetDeviceInputNode()) {
         const auto *device = device_node->Device.get();
-        if (device->On.IsChanged() || device->Channels.IsChanged() || device->Format.IsChanged()) {
+        if (device->Channels.IsChanged() || device->Format.IsChanged()) {
             // todo
         }
         if (device->SampleRate.IsChanged()) {
@@ -480,20 +496,6 @@ void AudioGraph::RenderNodes() const {
 }
 
 void AudioGraph::Render() const {
-    if (const auto *node = GetDeviceInputNode()) {
-        const auto *device = node->Device.get();
-        if (BeginTabItem(device->ImGuiLabel.c_str())) {
-            device->Draw();
-            EndTabItem();
-        }
-    }
-    if (const auto *node = GetDeviceOutputNode()) {
-        const auto *device = node->Device.get();
-        if (BeginTabItem(device->ImGuiLabel.c_str())) {
-            device->Draw();
-            EndTabItem();
-        }
-    }
     if (BeginTabItem("Nodes")) {
         RenderNodes();
         EndTabItem();

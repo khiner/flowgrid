@@ -23,7 +23,6 @@ struct AudioDevice : Component, Field::ChangeListener {
     std::string GetSampleRateName(u32) const;
     u64 GetBufferSize() const;
 
-    Prop(Bool, On, true);
     Prop(String, Name);
     Prop(UInt, Channels, 1);
     Prop_(Enum, Format, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", [this](int f) { return GetFormatName(f); });

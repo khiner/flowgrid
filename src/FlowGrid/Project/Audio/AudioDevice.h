@@ -13,7 +13,9 @@ struct AudioDevice : Component, Field::ChangeListener {
     using AudioCallback = void (*)(ma_device *, void *, const void *, u32);
     using UserData = void *;
 
-    AudioDevice(ComponentArgs &&, IO, AudioCallback, UserData user_data = nullptr);
+    static const std::vector<u32> PrioritizedSampleRates;
+
+    AudioDevice(ComponentArgs &&, IO, u32 sample_rate, AudioCallback, UserData user_data = nullptr);
     virtual ~AudioDevice();
 
     void OnFieldChanged() override;
@@ -23,18 +25,24 @@ struct AudioDevice : Component, Field::ChangeListener {
     std::string GetSampleRateName(u32) const;
     u64 GetBufferSize() const;
 
+    bool IsNativeSampleRate(u32) const;
+    void SetSampleRate(u32);
+
     Prop(String, Name);
     Prop(UInt, Channels, 1);
     Prop_(Enum, Format, "?An asterisk (*) indicates the format is natively supported by the audio device. All non-native formats require conversion.", [this](int f) { return GetFormatName(f); });
-    // We initialize with a `SampleRate` of 0, which will choose the default device sample rate.
-    Prop_(UInt, SampleRate, "?An asterisk (*) indicates the sample rate is natively supported by the audio device. All non-native sample rates require resampling.", [this](u32 sr) { return GetSampleRateName(sr); });
+
+    // We initialize with a sample rate of 0, which will choose the default device sample rate.
+    Prop_(
+        UInt, NativeSampleRate,
+        "?The native device processing sample rate.\n"
+        "All sample rates natively supported by the audio device are allowed.\n"
+        "If this sample rate is different from that of the audio graph, the audio will be converted from this native sample rate.",
+        [this](u32 sr) { return GetSampleRateName(sr); }
+    );
 
 private:
     void Render() const override;
-
-    // Uses the current `SampleRate`, the `PrioritizedSampleRates` list, and the device's native sample rates
-    // to determine the best sample rate with which to initialize the `ma_device`.
-    u32 GetConfigSampleRate() const;
 
     IO Type;
     AudioCallback Callback;

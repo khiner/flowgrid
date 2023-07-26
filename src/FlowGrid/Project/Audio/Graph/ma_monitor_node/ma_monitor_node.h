@@ -17,6 +17,10 @@ struct ma_monitor_node {
     ma_node_base base;
     ma_monitor_node_config config;
     fft_data *fft;
+    // Since MA splits up callback buffers into chunks limited by `cachedDataCapInFramesPerBus`,
+    // we need to keep track of how many frames we've processed so far.
+    // When `processed_buffer_frame_count` reaches `config.buffer_frames`, we process the buffer.
+    ma_uint16 processed_buffer_frame_count{0};
     // Buffers are guaranteed to be of size `config.buffer_frames * config.channels` if initialized successfully.
     // `buffer` is the raw buffer, `window` holds the window function data, and `windowed_buffer` is the buffer after applying the window function.
     float *buffer;

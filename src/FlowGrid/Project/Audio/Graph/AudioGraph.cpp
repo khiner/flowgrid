@@ -19,8 +19,6 @@
 
 #include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
-static const AudioGraph *Singleton;
-
 // Wraps around `ma_node_graph`.
 struct MaGraph {
     MaGraph(u32 channels) {
@@ -69,7 +67,7 @@ private:
 struct BufferRefNode : AudioGraphNode {
     using AudioGraphNode::AudioGraphNode;
 
-    inline u64 GetBufferSize() const { return _BufferRef ? _BufferRef->GetSize() : 0; }
+    // inline u64 GetBufferSize() const { return _BufferRef ? _BufferRef->GetSize() : 0; }
     inline void InitBuffer(u32 channels) { _BufferRef = std::make_unique<BufferRef>(ma_format_f32, channels); }
 
 protected:
@@ -125,7 +123,7 @@ private:
 // A source node that owns an input device and copies the device callback input buffer to its own buffer.
 struct DeviceInputNode : SourceBufferNode {
     DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
-        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, AudioInputCallback, this);
+        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, Graph->SampleRate, AudioInputCallback, this);
         UpdateAll();
     }
 
@@ -134,6 +132,11 @@ struct DeviceInputNode : SourceBufferNode {
         self->SetBufferData(input, frame_count);
 
         (void)output;
+    }
+
+    void OnSampleRateChanged() override {
+        SourceBufferNode::OnSampleRateChanged();
+        Device->SetSampleRate(GetSampleRate());
     }
 
     std::unique_ptr<AudioDevice> Device;
@@ -153,13 +156,15 @@ private:
 // Each remaining `DeviceOutputNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
 struct DeviceOutputNode : PassthroughBufferNode {
     DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
-        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, AudioOutputCallback, this);
+        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
         UpdateAll();
     }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-        if (Singleton) ma_node_graph_read_pcm_frames(Singleton->Get(), output, frame_count, nullptr);
-        // auto *self = reinterpret_cast<DeviceOutputNode *>(device->pUserData);
+        auto *self = reinterpret_cast<DeviceOutputNode *>(device->pUserData);
+        // This is what we want the "Master" `DeviceOutputNode` to do.
+        if (self->Graph) ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
+        // This is what we want the remaining `DeviceOutputNode`s to do.
         // self->ReadBufferData(output, frame_count);
 
         (void)device;
@@ -168,6 +173,11 @@ struct DeviceOutputNode : PassthroughBufferNode {
 
     // Always connects directly/only to the graph endpoint node.
     bool AllowOutputConnectionChange() const override { return false; }
+
+    void OnSampleRateChanged() override {
+        PassthroughBufferNode::OnSampleRateChanged();
+        Device->SetSampleRate(GetSampleRate());
+    }
 
     std::unique_ptr<AudioDevice> Device;
 
@@ -195,6 +205,8 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Nodes.EmplaceBack(DeviceInputPathSegment);
     Nodes.back()->SetMuted(true); // External input is muted by default.
     Nodes.EmplaceBack(DeviceOutputPathSegment);
+
+    if (SampleRate == 0u) SampleRate.Set_(GetDefaultSampleRate());
     Nodes.EmplaceBack(WaveformPathSegment);
 
     const Field::References listened_fields = {Nodes, Connections};
@@ -203,12 +215,10 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     // Set up default connections.
     // Note that the device output -> graph endpoint node connection is handled during device output node initialization.
     Connections.Connect(GetDeviceInputNode()->Id, GetDeviceOutputNode()->Id);
-    Singleton = this;
 }
 
 AudioGraph::~AudioGraph() {
     Nodes.Clear();
-    Singleton = nullptr;
     Field::UnregisterChangeListener(this);
 }
 
@@ -216,16 +226,8 @@ template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType>
 static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Component::ComponentArgs &&args) {
     auto node = std::make_unique<AudioGraphNodeSubType>(std::move(args));
     node->RegisterListener(graph);
-    AudioDevice *device = nullptr;
-    if (const auto *device_input_node = dynamic_cast<DeviceInputNode *>(node.get())) {
-        device = device_input_node->Device.get();
-    } else if (const auto *device_output_node = dynamic_cast<DeviceOutputNode *>(node.get())) {
-        device = device_output_node->Device.get();
+    if (const auto *device_output_node = dynamic_cast<DeviceOutputNode *>(node.get())) {
         graph->Connections.Connect(device_output_node->Id, graph->Id);
-    }
-    if (device) {
-        const Field::References listened_fields = {device->Channels, device->SampleRate, device->Format};
-        for (const Field &field : listened_fields) field.RegisterChangeListener(graph);
     }
     return node;
 }
@@ -262,6 +264,39 @@ AudioGraphNode *AudioGraph::FindByPathSegment(string_view path_segment) const {
 DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(FindByPathSegment(DeviceInputPathSegment)); }
 DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(FindByPathSegment(DeviceOutputPathSegment)); }
 
+// A sample rate is considered "native" by the graph (and suffixed with an asterix)
+// if it is native to all device nodes within the graph (or if there are no device nodes in the graph).
+bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
+    if (auto *device_node = GetDeviceInputNode()) {
+        if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
+    }
+    if (auto *device_node = GetDeviceOutputNode()) {
+        if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
+    }
+    return true;
+}
+
+// Returns the highest-priority sample rate (see `AudioDevice::PrioritizedSampleRates`) natively supported by all device nodes in this graph,
+// or the highest-priority sample rate supported by any device node if none are natively supported by all device nodes.
+u32 AudioGraph::GetDefaultSampleRate() const {
+    for (const u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
+        if (IsNativeSampleRate(sample_rate)) return sample_rate;
+    }
+    for (const u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
+        // Favor doing sample rate conversion on input rather than output.
+        if (auto *device_node = GetDeviceOutputNode()) {
+            if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
+        }
+        if (auto *device_node = GetDeviceInputNode()) {
+            if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
+        }
+    }
+}
+
+std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
+    return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
+}
+
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
     const auto *faust_node = FindByPathSegment(FaustPathSegment);
     FaustDsp = dsp;
@@ -279,34 +314,9 @@ void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(
 void AudioGraph::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
 
-    if (const auto *device_node = GetDeviceOutputNode()) {
-        const auto *device = device_node->Device.get();
-        if (device->Channels.IsChanged() || device->Format.IsChanged()) {
-            // todo
-        }
-        if (device->SampleRate.IsChanged()) {
-            for (auto *node : Nodes) node->OnSampleRateChanged();
-        }
-    }
-    if (const auto *device_node = GetDeviceInputNode()) {
-        const auto *device = device_node->Device.get();
-        if (device->Channels.IsChanged() || device->Format.IsChanged()) {
-            // todo
-        }
-        if (device->SampleRate.IsChanged()) {
-            for (auto *node : Nodes) node->OnSampleRateChanged();
-        }
-    }
-
     if (Nodes.IsChanged() || Connections.IsChanged()) {
         UpdateConnections();
     }
-}
-
-u32 AudioGraph::GetSampleRate() const {
-    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->Device->SampleRate;
-    if (const auto *device_input_node = GetDeviceInputNode()) return device_input_node->Device->SampleRate;
-    return 0;
 }
 
 u64 AudioGraph::GetBufferSize() const {
@@ -498,6 +508,9 @@ void AudioGraph::Render() const {
     if (BeginTabItem("Nodes")) {
         if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
             AudioGraphNode::Render();
+
+            SampleRate.Render(AudioDevice::PrioritizedSampleRates);
+
             for (const auto *node : Nodes) {
                 if (TreeNodeEx(node->ImGuiLabel.c_str())) {
                     node->Draw();

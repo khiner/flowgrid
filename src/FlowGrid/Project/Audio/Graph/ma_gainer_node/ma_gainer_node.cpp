@@ -18,7 +18,7 @@ static void ma_gainer_node_process_pcm_frames(ma_node *node, const float **frame
 }
 
 ma_result ma_gainer_node_init(ma_node_graph *node_graph, const ma_gainer_node_config *config, const ma_allocation_callbacks *allocation_callbacks, ma_gainer_node *gainer_node) {
-    if (gainer_node == NULL || config == NULL) return MA_INVALID_ARGS;
+    if (gainer_node == nullptr || config == nullptr) return MA_INVALID_ARGS;
 
     MA_ZERO_OBJECT(gainer_node);
     gainer_node->config = *config;
@@ -26,7 +26,7 @@ ma_result ma_gainer_node_init(ma_node_graph *node_graph, const ma_gainer_node_co
     ma_result result = ma_gainer_init(&config->gainer_config, allocation_callbacks, &gainer_node->gainer);
     if (result != MA_SUCCESS) return result;
 
-    static ma_node_vtable vtable = {ma_gainer_node_process_pcm_frames, NULL, 1, 1, 0};
+    static ma_node_vtable vtable = {ma_gainer_node_process_pcm_frames, nullptr, 1, 1, 0};
     ma_node_config base_config = config->node_config;
     base_config.vtable = &vtable;
     base_config.pInputChannels = &config->gainer_config.channels;
@@ -36,14 +36,14 @@ ma_result ma_gainer_node_init(ma_node_graph *node_graph, const ma_gainer_node_co
 }
 
 void ma_gainer_node_uninit(ma_gainer_node *gainer_node, const ma_allocation_callbacks *allocation_callbacks) {
-    if (gainer_node == NULL) return;
+    if (gainer_node == nullptr) return;
 
     ma_gainer_uninit(&gainer_node->gainer, allocation_callbacks);
     ma_node_uninit(gainer_node, allocation_callbacks);
 }
 
 ma_result ma_gainer_node_set_gain(ma_gainer_node *gainer_node, float volume) {
-    if (gainer_node == NULL) return MA_INVALID_ARGS;
+    if (gainer_node == nullptr) return MA_INVALID_ARGS;
 
     return ma_gainer_set_gain(&gainer_node->gainer, volume);
 }
@@ -55,7 +55,7 @@ static void ma_gainer_reset_smoothing_time(ma_gainer *gainer) {
 }
 
 ma_result ma_gainer_node_set_smooth_time_frames(ma_gainer_node *gainer_node, ma_uint32 smooth_time_frames) {
-    if (gainer_node == NULL) return MA_INVALID_ARGS;
+    if (gainer_node == nullptr) return MA_INVALID_ARGS;
 
     gainer_node->config.gainer_config.smoothTimeInFrames = smooth_time_frames;
     ma_gainer_reset_smoothing_time(&gainer_node->gainer);

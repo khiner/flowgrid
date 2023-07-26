@@ -18,9 +18,10 @@ ma_faust_node_config ma_faust_node_config_init(dsp *faust_dsp, ma_uint32 sample_
 }
 
 ma_result ma_faust_node_set_sample_rate(ma_faust_node *faust_node, ma_uint32 sample_rate) {
-    if (faust_node == NULL) return MA_INVALID_ARGS;
+    if (faust_node == nullptr) return MA_INVALID_ARGS;
 
-    if (faust_node->config.faust_dsp) faust_node->config.faust_dsp->init(sample_rate);
+    if (faust_node->config.faust_dsp != nullptr) faust_node->config.faust_dsp->init(sample_rate);
+    return MA_SUCCESS;
 }
 
 static void ma_faust_node_process_pcm_frames(ma_node *node, const float **const_frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
@@ -35,7 +36,7 @@ static void ma_faust_node_process_pcm_frames(ma_node *node, const float **const_
 }
 
 ma_result ma_faust_node_init(ma_node_graph *node_graph, const ma_faust_node_config *config, const ma_allocation_callbacks *allocation_callbacks, ma_faust_node *faust_node) {
-    if (faust_node == NULL || config == NULL || config->faust_dsp == NULL) return MA_INVALID_ARGS;
+    if (faust_node == nullptr || config == nullptr || config->faust_dsp == nullptr) return MA_INVALID_ARGS;
 
     MA_ZERO_OBJECT(faust_node);
     faust_node->config = *config;
@@ -43,7 +44,7 @@ ma_result ma_faust_node_init(ma_node_graph *node_graph, const ma_faust_node_conf
     faust_node->config.faust_dsp->init(faust_node->config.sample_rate);
     ma_uint32 in_channels = faust_node->config.faust_dsp->getNumInputs();
     ma_uint32 out_channels = faust_node->config.faust_dsp->getNumOutputs();
-    static ma_node_vtable vtable = {ma_faust_node_process_pcm_frames, NULL, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
+    static ma_node_vtable vtable = {ma_faust_node_process_pcm_frames, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
     ma_node_config base_config = config->node_config;
     base_config.vtable = &vtable;
     base_config.pInputChannels = &in_channels;

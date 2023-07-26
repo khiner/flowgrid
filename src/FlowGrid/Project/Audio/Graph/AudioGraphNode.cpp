@@ -140,7 +140,7 @@ private:
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)) {
     Graph = static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent); // The graph is itself a graph node.
-    const Field::References listened_fields = {Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
+    const Field::References listened_fields = {Graph->SampleRate, Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 
@@ -156,7 +156,7 @@ AudioGraphNode::~AudioGraphNode() {
     Field::UnregisterChangeListener(this);
 }
 
-u32 AudioGraphNode::GetSampleRate() const { return Graph->GetSampleRate(); }
+u32 AudioGraphNode::GetSampleRate() const { return Graph->SampleRate; }
 u32 AudioGraphNode::GetBufferSize() const { return Graph->GetBufferSize(); }
 
 ma_node *AudioGraphNode::InputNode() const {
@@ -217,6 +217,9 @@ void AudioGraphNode::OnSampleRateChanged() {
 }
 
 void AudioGraphNode::OnFieldChanged() {
+    if (Graph->SampleRate.IsChanged()) {
+        OnSampleRateChanged();
+    }
     if (SmoothOutputLevel.IsChanged() || SmoothOutputLevelMs.IsChanged()) {
         UpdateGainer();
     }

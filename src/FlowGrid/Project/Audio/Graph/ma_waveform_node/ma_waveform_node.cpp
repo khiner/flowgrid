@@ -11,9 +11,9 @@ ma_waveform_node_config ma_waveform_node_config_init(ma_uint32 sample_rate, ma_w
 }
 
 ma_result ma_waveform_node_set_sample_rate(ma_waveform_node *waveform_node, ma_uint32 sample_rate) {
-    if (waveform_node == NULL) return MA_INVALID_ARGS;
+    if (waveform_node == nullptr) return MA_INVALID_ARGS;
 
-    ma_waveform_set_sample_rate(&waveform_node->waveform, sample_rate);
+    return ma_waveform_set_sample_rate(&waveform_node->waveform, sample_rate);
 }
 
 static void ma_waveform_node_process_pcm_frames(ma_node *node, const float **frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
@@ -25,7 +25,7 @@ static void ma_waveform_node_process_pcm_frames(ma_node *node, const float **fra
 }
 
 ma_result ma_waveform_node_init(ma_node_graph *node_graph, const ma_waveform_node_config *config, const ma_allocation_callbacks *allocation_callbacks, ma_waveform_node *waveform_node) {
-    if (waveform_node == NULL || config == NULL) return MA_INVALID_ARGS;
+    if (waveform_node == nullptr || config == nullptr) return MA_INVALID_ARGS;
 
     MA_ZERO_OBJECT(waveform_node);
     waveform_node->config = *config;
@@ -33,7 +33,7 @@ ma_result ma_waveform_node_init(ma_node_graph *node_graph, const ma_waveform_nod
     ma_result result = ma_waveform_init(&config->waveform_config, &waveform_node->waveform);
     if (result != MA_SUCCESS) return result;
 
-    static ma_node_vtable vtable = {ma_waveform_node_process_pcm_frames, NULL, 0, 1, 0};
+    static ma_node_vtable vtable = {ma_waveform_node_process_pcm_frames, nullptr, 0, 1, 0};
     ma_node_config base_config = config->node_config;
     base_config.vtable = &vtable;
     static ma_uint32 in_channels = 0;

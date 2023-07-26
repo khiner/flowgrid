@@ -6,6 +6,7 @@
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
 
 #include "Core/Container/Vector.h"
+#include "Core/Primitive/UInt.h"
 
 struct ma_node_graph;
 
@@ -36,17 +37,14 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
 
     ma_node_graph *Get() const;
     dsp *GetFaustDsp() const;
-    u32 GetSampleRate() const;
     u64 GetBufferSize() const;
+
+    bool IsNativeSampleRate(u32) const;
+    u32 GetDefaultSampleRate() const;
+    std::string GetSampleRateName(u32) const;
 
     std::unordered_set<AudioGraphNode *> GetSourceNodes(const AudioGraphNode *) const;
     std::unordered_set<AudioGraphNode *> GetDestinationNodes(const AudioGraphNode *) const;
-
-    std::unique_ptr<MaGraph> Graph;
-    dsp *FaustDsp = nullptr;
-
-    Prop(Vector<AudioGraphNode>, Nodes, CreateNode);
-    Prop(AdjacencyList, Connections);
 
     struct Style : Component {
         using Component::Component;
@@ -70,6 +68,21 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
         Prop(Matrix, Matrix);
     };
 
+    std::unique_ptr<MaGraph> Graph;
+    dsp *FaustDsp = nullptr;
+
+    Prop(Vector<AudioGraphNode>, Nodes, CreateNode);
+    Prop(AdjacencyList, Connections);
+
+    // We initialize with a sample rate of 0, which is the default sample rate. See `GetDefaultSampleRate` for details.
+    Prop_(
+        UInt, SampleRate,
+        "?The audio graph sample rate.\n"
+        "This is the rate at which the graph and all of the its nodes internally process audio.\n"
+        "An asterisk (*) indicates the sample rate is natively supported by all audio device nodes within the graph.\n"
+        "Each audio device I/O node within the graph converts to/from this rate if necessary.",
+        [this](u32 sr) { return GetSampleRateName(sr); }
+    );
     Prop(Style, Style);
 
 private:

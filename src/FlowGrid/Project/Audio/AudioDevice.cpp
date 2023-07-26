@@ -6,7 +6,7 @@
 #include "Helper/String.h"
 
 // Copied from `miniaudio.c::g_maStandardSampleRatePriorities`.
-static const std::vector<u32> PrioritizedSampleRates = {
+const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
     ma_standard_sample_rate_48000,
     ma_standard_sample_rate_44100,
 
@@ -36,9 +36,35 @@ static u16 AudioContextInitializedCount = 0;
 static std::vector<ma_device_info *> DeviceInfos[IO_Count];
 static std::vector<string> DeviceNames[IO_Count];
 
-AudioDevice::AudioDevice(ComponentArgs &&args, IO type, AudioDevice::AudioCallback callback, UserData user_data)
+// The native sample rate list may have a different prioritized order than our priority list.
+// If `sample_rate_target == 0`, returns the the highest-priority sample rate that is also native to the device,
+// If `sample_rate_target != 0`, returns the provided `sample_rate_target` if it is natively supported, or the first native sample rate otherwise.
+// Assumes `NativeSampleRates` has already been populated.
+static u32 GetHighestPriorityNativeSampleRate(IO type, u32 sample_rate_target) {
+    if (!NativeSampleRates.contains(type) || NativeSampleRates.at(type).empty()) {
+        throw std::runtime_error("No native sample rates found. Perhaps `InitContext` was not called before calling `GetHighestPriorityNativeSampleRate`?");
+    }
+
+    const auto &native_sample_rates = NativeSampleRates.at(type);
+    if (sample_rate_target == 0) { // Default.
+        // By default, we want to choose the highest-priority sample rate that is native to the device.
+        for (u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
+            if (std::find(native_sample_rates.begin(), native_sample_rates.end(), sample_rate) != native_sample_rates.end()) return sample_rate;
+        }
+    } else {
+        // Specific sample rate requested.
+        if (std::find(native_sample_rates.begin(), native_sample_rates.end(), sample_rate_target) != native_sample_rates.end()) return sample_rate_target;
+    }
+
+    // Either a specific (non-default) sample rate is configured that's not natively supported,
+    // or the device doesn't natively support any of the prioritized sample rates.
+    // We return the first native sample rate.
+    return native_sample_rates[0];
+}
+
+AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 sample_rate, AudioDevice::AudioCallback callback, UserData user_data)
     : Component(std::move(args)), Type(type), Callback(callback), _UserData(user_data) {
-    const Field::References listened_fields{Name, Format, Channels, SampleRate};
+    const Field::References listened_fields{Name, Format, Channels, NativeSampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 
     Device = std::make_unique<ma_device>();
@@ -68,8 +94,7 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, AudioDevice::AudioCallba
             result = ma_context_get_device_info(&AudioContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &DeviceInfo);
             if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), result));
 
-            // todo need to verify that the cross-product of these formats & sample rates are supported natively.
-            // Create a new format type that mirrors MA's (with sample format and sample rate).
+            // todo  Create a new format type that mirrors MA's (format, rate).
             for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
                 const auto &native_format = DeviceInfo.nativeDataFormats[i];
                 NativeFormats[io].emplace_back(native_format.format);
@@ -113,20 +138,30 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, AudioDevice::AudioCallba
 
     config.dataCallback = Callback;
     config.pUserData = _UserData;
-    config.sampleRate = GetConfigSampleRate();
+
+    u32 native_sample_rate = GetHighestPriorityNativeSampleRate(Type, sample_rate == 0 ? u32(NativeSampleRate) : sample_rate);
+    u32 target_sample_rate = sample_rate == 0 ? native_sample_rate : sample_rate;
+    u32 from_sample_rate = Type == IO_In ? native_sample_rate : target_sample_rate;
+    u32 to_sample_rate = Type == IO_In ? target_sample_rate : native_sample_rate;
+
+    config.sampleRate = target_sample_rate;
+    // Format/channels/rate doesn't matter here.
+    config.resampling = ma_resampler_config_init(ma_format_unknown, 0, from_sample_rate, to_sample_rate, ma_resample_algorithm_linear);
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
     config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.
+
     int result = ma_device_init(nullptr, &config, Device.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), result));
 
     // The device may have a different configuration than what we requested.
     // Update the fields to reflect the actual device configuration.
-    if (Device->sampleRate != SampleRate) SampleRate.Set_(Device->sampleRate);
     if (Type == IO_Out) {
+        if (Device->playback.internalSampleRate != NativeSampleRate) NativeSampleRate.Set_(Device->playback.internalSampleRate);
         if (Device->playback.name != Name) Name.Set_(Device->playback.name);
         if (Device->playback.format != Format) Format.Set_(Device->playback.format);
         if (Device->playback.channels != Channels) Channels.Set_(Device->playback.channels);
     } else {
+        if (Device->capture.internalSampleRate != NativeSampleRate) NativeSampleRate.Set_(Device->capture.internalSampleRate);
         if (Device->capture.name != Name) Name.Set_(Device->capture.name);
         if (Device->capture.format != Format) Format.Set_(Device->capture.format);
         if (Device->capture.channels != Channels) Channels.Set_(Device->capture.channels);
@@ -151,7 +186,7 @@ AudioDevice::~AudioDevice() {
 }
 
 void AudioDevice::OnFieldChanged() {
-    if (Name.IsChanged() || Format.IsChanged() || Channels.IsChanged() || SampleRate.IsChanged()) {
+    if (Name.IsChanged() || Format.IsChanged() || Channels.IsChanged() || NativeSampleRate.IsChanged()) {
         // const bool is_started = IsStarted();
         // if (!is_started) {
         //     Init();
@@ -162,10 +197,10 @@ void AudioDevice::OnFieldChanged() {
     }
 }
 
-static bool IsNativeSampleRate(u32 sample_rate, IO type) {
-    if (!NativeSampleRates.contains(type)) return false;
+bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const {
+    if (!NativeSampleRates.contains(Type)) return false;
 
-    const auto &native_sample_rates = NativeSampleRates.at(type);
+    const auto &native_sample_rates = NativeSampleRates.at(Type);
     return std::find(native_sample_rates.begin(), native_sample_rates.end(), sample_rate) != native_sample_rates.end();
 }
 
@@ -176,39 +211,26 @@ static bool IsNativeFormat(ma_format format, IO type) {
     return std::find(native_formats.begin(), native_formats.end(), format) != native_formats.end();
 }
 
-string AudioDevice::GetFormatName(int format) const {
-    return ::std::format("{}{}", ma_get_format_name(ma_format(format)), IsNativeFormat(ma_format(format), Type) ? "*" : "");
-}
-string AudioDevice::GetSampleRateName(u32 sample_rate) const {
-    return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate, Type) ? "*" : "");
-}
 u64 AudioDevice::GetBufferSize() const {
     return Type == IO_Out ? Device->playback.internalPeriodSizeInFrames : 0;
 }
 
-u32 AudioDevice::GetConfigSampleRate() const {
-    // The native sample rate list may have a different prioritized order than our priority list.
-    // We want to choose the highest-priority sample rate that is also native to the device, or
-    // the current `SampleRate` if it is natively supported.
-    // Assumes `InitContext` has already been called.
+string AudioDevice::GetFormatName(int format) const {
+    return ::std::format("{}{}", ma_get_format_name(ma_format(format)), IsNativeFormat(ma_format(format), Type) ? "*" : "");
+}
 
-    if (!NativeSampleRates.contains(Type) || NativeSampleRates.at(Type).empty()) {
-        throw std::runtime_error("No native sample rates found. Perhaps `InitContext` was not called before calling `GetConfigSampleRate`?");
-    }
+string AudioDevice::GetSampleRateName(u32 sample_rate) const { return to_string(sample_rate); }
 
-    const auto &native_sample_rates = NativeSampleRates.at(Type);
-    if (u32(SampleRate) == 0) { // Default.
-        // If `SampleRate` is 0, we want to choose the highest-priority sample rate that is native to the device.
-        for (u32 sample_rate : PrioritizedSampleRates) {
-            if (std::find(native_sample_rates.begin(), native_sample_rates.end(), sample_rate) != native_sample_rates.end()) return sample_rate;
+void AudioDevice::SetSampleRate(u32 sample_rate) {
+    if (Type == IO_In) {
+        if (Device->capture.converter.hasResampler) {
+            ma_data_converter_set_rate(&Device->capture.converter, Device->capture.converter.resampler.sampleRateIn, sample_rate);
         }
     } else {
-        if (std::find(native_sample_rates.begin(), native_sample_rates.end(), SampleRate) != native_sample_rates.end()) return SampleRate;
+        if (Device->playback.converter.hasResampler) {
+            ma_data_converter_set_rate(&Device->playback.converter, sample_rate, Device->playback.converter.resampler.sampleRateOut);
+        }
     }
-
-    // Either an explicit (non-default) sample rate that's not natively supported, or the device doesn't support any of the prioritized sample rates.
-    // This will cause MA to perform automatic resampling.
-    return SampleRate;
 }
 
 bool AudioDevice::IsStarted() const { return ma_device_is_started(Device.get()); }
@@ -221,10 +243,10 @@ void AudioDevice::Render() const {
         return;
     }
 
-    SampleRate.Render(PrioritizedSampleRates);
     TextUnformatted(StringHelper::Capitalize(to_string(Type)).c_str());
     Name.Render(DeviceNames[Type]);
-    // Format.Render(PrioritizedFormats); // See above - always using f32 format.
+    NativeSampleRate.Render(NativeSampleRates[Type]);
+    // Format.Render(PrioritizedFormats); // todo choose (format, sample rate) pairs, since these are actually what's considered a "native format" by MA.
 
     if (TreeNode("Info")) {
         static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];

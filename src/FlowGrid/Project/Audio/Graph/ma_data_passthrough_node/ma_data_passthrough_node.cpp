@@ -21,14 +21,14 @@ static void ma_data_passthrough_node_process_pcm_frames(ma_node *node, const flo
 }
 
 ma_result ma_data_passthrough_node_init(ma_node_graph *pNodeGraph, const ma_data_passthrough_node_config *config, const ma_allocation_callbacks *allocation_callbacks, ma_data_passthrough_node *passthrough) {
-    if (passthrough == NULL || config == NULL) return MA_INVALID_ARGS;
+    if (passthrough == nullptr || config == nullptr) return MA_INVALID_ARGS;
 
     MA_ZERO_OBJECT(passthrough);
 
     ma_uint32 channels = config->buffer_ref->channels;
     ma_node_config base_config = config->node_config;
 
-    static ma_node_vtable vtable = {ma_data_passthrough_node_process_pcm_frames, NULL, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
+    static ma_node_vtable vtable = {ma_data_passthrough_node_process_pcm_frames, nullptr, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
     base_config.vtable = &vtable;
     base_config.pInputChannels = &channels;
     base_config.pOutputChannels = &channels;

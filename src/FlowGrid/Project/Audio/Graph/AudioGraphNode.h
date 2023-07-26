@@ -88,7 +88,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         UpdateOutputLevel();
     }
 
-    // Should be called whenever the graph's sample rate changes.
+    // Called whenever the graph's sample rate changes.
     // At the very least, each node updates any active IO monitors based on the new sample rate.
     virtual void OnSampleRateChanged();
 

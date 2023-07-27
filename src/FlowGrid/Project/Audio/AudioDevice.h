@@ -20,6 +20,8 @@ struct AudioDevice : Component, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
+    ma_device *Get() const { return Device.get(); }
+
     bool IsStarted() const;
     std::string GetFormatName(int) const;
     std::string GetSampleRateName(u32) const;

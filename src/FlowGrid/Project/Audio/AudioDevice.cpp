@@ -130,6 +130,9 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 sample_rate, AudioDe
         config.capture.pDeviceID = device_id;
         config.capture.format = ma_format_f32;
         config.capture.channels = Channels;
+        // `noFixedSizedCallback` is more efficient, and seems to be ok.
+        // Also seems fine for the output device, but only using it for the input device for now.
+        config.noFixedSizedCallback = true;
     } else {
         config.playback.pDeviceID = device_id;
         config.playback.format = ma_format_f32;

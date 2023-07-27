@@ -19,6 +19,8 @@
 
 #include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
+#define ma_offset_ptr(p, offset) (((ma_uint8 *)(p)) + (offset))
+
 // Wraps around `ma_node_graph`.
 struct MaGraph {
     MaGraph(u32 channels) {
@@ -48,7 +50,7 @@ struct BufferRef {
         ma_audio_buffer_ref_uninit(&Ref);
     }
 
-    u64 GetSize() const { return Ref.sizeInFrames; }
+    // u64 GetSize() const { return Ref.sizeInFrames; }
 
     void SetData(const void *input, u32 frame_count) {
         ma_audio_buffer_ref_set_data(&Ref, input, frame_count);
@@ -78,23 +80,84 @@ protected:
     std::unique_ptr<BufferRef> _BufferRef;
 };
 
-// A `ma_data_source_node` whose `ma_data_source` is a `ma_audio_buffer_ref`.
-struct SourceBufferNode : BufferRefNode {
-    SourceBufferNode(ComponentArgs &&args) : BufferRefNode(std::move(args)) {
-        InitBuffer(1);
-        auto config = ma_data_source_node_config_init(_BufferRef->Get());
-        int result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &SourceNode);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data source node: ", result));
+// A `ma_data_source_node` whose `ma_data_source` is a `ma_duplex_rb`.
+// A source node that owns an input device and copies the device callback input buffer to a ring buffer.
+struct DeviceInputNode : AudioGraphNode {
+    DeviceInputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, Graph->SampleRate, AudioInputCallback, this);
+
+        ma_device *device = Device->Get();
+
+        // This min/max SR approach seems to work to get both upsampling and downsampling
+        // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
+        const auto [sr_min, sr_max] = std::minmax(device->capture.internalSampleRate, device->sampleRate);
+        ma_result result = ma_duplex_rb_init(device->capture.format, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize ring buffer: ", int(result)));
+
+        auto config = ma_data_source_node_config_init(&DuplexRb);
+        result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &SourceNode);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data source node: ", int(result)));
 
         Node = &SourceNode;
+
+        UpdateAll();
     }
-    ~SourceBufferNode() {
-        ma_data_source_node_uninit((ma_data_source_node *)Node, nullptr);
+    ~DeviceInputNode() {
+        ma_duplex_rb_uninit(&DuplexRb);
+        ma_data_source_node_uninit(&SourceNode, nullptr);
         Node = nullptr;
     }
 
-private:
+    // Adapted from `ma_device__handle_duplex_callback_capture`.
+    static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
+        auto *self = reinterpret_cast<DeviceInputNode *>(device->pUserData);
+        ma_duplex_rb *duplex_rb = &self->DuplexRb;
+
+        ma_uint32 total_frames_processed = 0;
+        const void *running_frames = input;
+        for (;;) {
+            ma_uint32 frames_to_process = frame_count - total_frames_processed;
+            ma_uint64 frames_processed;
+            void *frames;
+            ma_result result = ma_pcm_rb_acquire_write(&duplex_rb->rb, &frames_to_process, &frames);
+            if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to acquire write pointer for capture ring buffer: {}", int(result)));
+
+            if (frames_to_process == 0) {
+                if (ma_pcm_rb_pointer_distance(&duplex_rb->rb) == (ma_int32)ma_pcm_rb_get_subbuffer_size(&duplex_rb->rb)) {
+                    break; // Overrun. Not enough room in the ring buffer for input frame. Excess frames are dropped.
+                }
+            }
+            ma_copy_pcm_frames(frames, running_frames, frames_to_process, ma_format_f32, device->capture.channels);
+
+            frames_processed = frames_to_process;
+            result = ma_pcm_rb_commit_write(&duplex_rb->rb, (ma_uint32)frames_processed);
+            if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to commit capture PCM frames to ring buffer: {}", int(result)));
+
+            running_frames = ma_offset_ptr(running_frames, frames_processed * ma_get_bytes_per_frame(device->capture.internalFormat, device->capture.internalChannels));
+            total_frames_processed += (ma_uint32)frames_processed;
+
+            if (frames_processed == 0) break; /* Done. */
+        }
+
+        (void)output;
+    }
+
+    void OnSampleRateChanged() override {
+        AudioGraphNode::OnSampleRateChanged();
+        Device->SetSampleRate(GetSampleRate());
+    }
+
+    std::unique_ptr<AudioDevice> Device;
+    ma_duplex_rb DuplexRb;
     ma_data_source_node SourceNode;
+
+private:
+    void Render() const override {
+        AudioGraphNode::Render();
+
+        ImGui::Spacing();
+        Device->Draw();
+    }
 };
 
 // Wraps around (custom) `ma_data_passthrough_node`.
@@ -118,36 +181,6 @@ struct PassthroughBufferNode : BufferRefNode {
 
 private:
     ma_data_passthrough_node PassthroughNode;
-};
-
-// A source node that owns an input device and copies the device callback input buffer to its own buffer.
-struct DeviceInputNode : SourceBufferNode {
-    DeviceInputNode(ComponentArgs &&args) : SourceBufferNode(std::move(args)) {
-        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, Graph->SampleRate, AudioInputCallback, this);
-        UpdateAll();
-    }
-
-    static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-        auto *self = reinterpret_cast<DeviceInputNode *>(device->pUserData);
-        self->SetBufferData(input, frame_count);
-
-        (void)output;
-    }
-
-    void OnSampleRateChanged() override {
-        SourceBufferNode::OnSampleRateChanged();
-        Device->SetSampleRate(GetSampleRate());
-    }
-
-    std::unique_ptr<AudioDevice> Device;
-
-private:
-    void Render() const override {
-        AudioGraphNode::Render();
-
-        ImGui::Spacing();
-        Device->Draw();
-    }
 };
 
 // A passthrough node that owns an output device.

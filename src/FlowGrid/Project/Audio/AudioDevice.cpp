@@ -62,13 +62,19 @@ static u32 GetHighestPriorityNativeSampleRate(IO type, u32 sample_rate_target) {
     return native_sample_rates[0];
 }
 
-AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 sample_rate, AudioDevice::AudioCallback callback, UserData user_data)
+AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 client_sample_rate, AudioDevice::AudioCallback callback, UserData user_data)
     : Component(std::move(args)), Type(type), Callback(callback), _UserData(user_data) {
     const Field::References listened_fields{Name, Format, Channels, NativeSampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+    Init(client_sample_rate);
+}
 
-    Device = std::make_unique<ma_device>();
+AudioDevice::~AudioDevice() {
+    Uninit();
+    Field::UnregisterChangeListener(this);
+}
 
+void AudioDevice::Init(u32 client_sample_rate) {
     AudioContextInitializedCount++;
     if (AudioContextInitializedCount <= 1) {
         int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
@@ -116,6 +122,7 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 sample_rate, AudioDe
         // ResamplerConfig.pBackendVTable = &ResamplerVTable;
     }
 
+    Device = std::make_unique<ma_device>();
     ma_device_config config = ma_device_config_init(Type == IO_In ? ma_device_type_capture : ma_device_type_playback);
 
     const ma_device_id *device_id = nullptr;
@@ -142,12 +149,13 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 sample_rate, AudioDe
     config.dataCallback = Callback;
     config.pUserData = _UserData;
 
-    u32 native_sample_rate = GetHighestPriorityNativeSampleRate(Type, sample_rate == 0 ? u32(NativeSampleRate) : sample_rate);
-    u32 target_sample_rate = sample_rate == 0 ? native_sample_rate : sample_rate;
-    u32 from_sample_rate = Type == IO_In ? native_sample_rate : target_sample_rate;
-    u32 to_sample_rate = Type == IO_In ? target_sample_rate : native_sample_rate;
+    u32 native_sample_rate_valid = GetHighestPriorityNativeSampleRate(Type, NativeSampleRate);
+    ClientSampleRate = client_sample_rate == 0 ? native_sample_rate_valid : client_sample_rate;
 
-    config.sampleRate = target_sample_rate;
+    u32 from_sample_rate = Type == IO_In ? native_sample_rate_valid : ClientSampleRate;
+    u32 to_sample_rate = Type == IO_In ? ClientSampleRate : native_sample_rate_valid;
+
+    config.sampleRate = ClientSampleRate;
     // Format/channels/rate doesn't matter here.
     config.resampling = ma_resampler_config_init(ma_format_unknown, 0, from_sample_rate, to_sample_rate, ma_resample_algorithm_linear);
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
@@ -173,9 +181,10 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 sample_rate, AudioDe
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio {} device: {}", to_string(Type), result));
 }
 
-AudioDevice::~AudioDevice() {
+void AudioDevice::Uninit() {
     if (IsStarted()) ma_device_stop(Device.get());
     ma_device_uninit(Device.get());
+    Device.reset();
 
     AudioContextInitializedCount--;
     if (AudioContextInitializedCount <= 0) {
@@ -185,18 +194,12 @@ AudioDevice::~AudioDevice() {
         }
         ma_context_uninit(&AudioContext);
     }
-    Field::UnregisterChangeListener(this);
 }
 
 void AudioDevice::OnFieldChanged() {
     if (Name.IsChanged() || Format.IsChanged() || Channels.IsChanged() || NativeSampleRate.IsChanged()) {
-        // const bool is_started = IsStarted();
-        // if (!is_started) {
-        //     Init();
-        // } else if (is_started) {
-        //    Uninit();
-        //    Init();
-        // }
+        Uninit();
+        Init(ClientSampleRate);
     }
 }
 
@@ -224,16 +227,25 @@ string AudioDevice::GetFormatName(int format) const {
 
 string AudioDevice::GetSampleRateName(u32 sample_rate) const { return to_string(sample_rate); }
 
-void AudioDevice::SetSampleRate(u32 sample_rate) {
-    if (Type == IO_In) {
-        if (Device->capture.converter.hasResampler) {
-            ma_data_converter_set_rate(&Device->capture.converter, Device->capture.converter.resampler.sampleRateIn, sample_rate);
-        }
-    } else {
-        if (Device->playback.converter.hasResampler) {
-            ma_data_converter_set_rate(&Device->playback.converter, sample_rate, Device->playback.converter.resampler.sampleRateOut);
-        }
-    }
+void AudioDevice::SetClientSampleRate(u32 client_sample_rate) {
+    if (client_sample_rate == ClientSampleRate) return;
+
+    // For now at least, just restart the device even if there is a resampler, since the device data converter is not intended
+    // to be adjusted like this, and it leaves other internal fields out of sync.
+    // I'm pretty sure we could just manually update the `internalSampleRate` in addition to this, but other things may be needed.
+    // Also, it seems performant enough to just restart the device always.
+    // if (Type == IO_In) {
+    //     if (Device->capture.converter.hasResampler) {
+    //         ma_data_converter_set_rate(&Device->capture.converter, Device->capture.converter.resampler.sampleRateIn, sample_rate);
+    //     }
+    // } else {
+    //     if (Device->playback.converter.hasResampler) {
+    //         ma_data_converter_set_rate(&Device->playback.converter, sample_rate, Device->playback.converter.resampler.sampleRateOut);
+    //     }
+    // }
+
+    Uninit();
+    Init(client_sample_rate);
 }
 
 bool AudioDevice::IsStarted() const { return ma_device_is_started(Device.get()); }

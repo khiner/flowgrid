@@ -15,7 +15,7 @@ struct AudioDevice : Component, Field::ChangeListener {
 
     static const std::vector<u32> PrioritizedSampleRates;
 
-    AudioDevice(ComponentArgs &&, IO, u32 sample_rate, AudioCallback, UserData user_data = nullptr);
+    AudioDevice(ComponentArgs &&, IO, u32 client_sample_rate, AudioCallback, UserData user_data = nullptr);
     virtual ~AudioDevice();
 
     void OnFieldChanged() override;
@@ -28,7 +28,7 @@ struct AudioDevice : Component, Field::ChangeListener {
     u64 GetBufferSize() const;
 
     bool IsNativeSampleRate(u32) const;
-    void SetSampleRate(u32);
+    void SetClientSampleRate(u32); // The graph sample rate.
 
     Prop(String, Name);
     Prop(UInt, Channels, 1);
@@ -46,6 +46,10 @@ struct AudioDevice : Component, Field::ChangeListener {
 private:
     void Render() const override;
 
+    void Init(u32 client_sample_rate);
+    void Uninit();
+
+    u32 ClientSampleRate{0};
     IO Type;
     AudioCallback Callback;
     UserData _UserData;

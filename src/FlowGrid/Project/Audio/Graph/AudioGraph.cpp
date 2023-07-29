@@ -102,6 +102,7 @@ struct DeviceInputNode : AudioGraphNode {
 
         UpdateAll();
     }
+
     ~DeviceInputNode() {
         ma_duplex_rb_uninit(&DuplexRb);
         ma_data_source_node_uninit(&SourceNode, nullptr);
@@ -144,7 +145,7 @@ struct DeviceInputNode : AudioGraphNode {
 
     void OnSampleRateChanged() override {
         AudioGraphNode::OnSampleRateChanged();
-        Device->SetSampleRate(GetSampleRate());
+        Device->SetClientSampleRate(GetSampleRate());
     }
 
     std::unique_ptr<AudioDevice> Device;
@@ -170,6 +171,7 @@ struct PassthroughBufferNode : BufferRefNode {
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", result));
         Node = &PassthroughNode;
     }
+
     ~PassthroughBufferNode() {
         ma_data_passthrough_node_uninit((ma_data_passthrough_node *)Node, nullptr);
         Node = nullptr;
@@ -209,7 +211,7 @@ struct DeviceOutputNode : PassthroughBufferNode {
 
     void OnSampleRateChanged() override {
         PassthroughBufferNode::OnSampleRateChanged();
-        Device->SetSampleRate(GetSampleRate());
+        Device->SetClientSampleRate(GetSampleRate());
     }
 
     std::unique_ptr<AudioDevice> Device;

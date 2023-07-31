@@ -68,7 +68,6 @@ private:
 struct BufferRefNode : AudioGraphNode {
     using AudioGraphNode::AudioGraphNode;
 
-    // inline u64 GetBufferSize() const { return _BufferRef ? _BufferRef->GetSize() : 0; }
     inline void InitBuffer(u32 channels) { _BufferRef = std::make_unique<BufferRef>(ma_format_f32, channels); }
 
 protected:
@@ -144,7 +143,7 @@ struct DeviceInputNode : AudioGraphNode {
 
     void OnSampleRateChanged() override {
         AudioGraphNode::OnSampleRateChanged();
-        Device->SetClientSampleRate(GetSampleRate());
+        Device->SetClientSampleRate(Graph->SampleRate);
     }
 
     std::unique_ptr<AudioDevice> Device;
@@ -210,7 +209,7 @@ struct DeviceOutputNode : PassthroughBufferNode {
 
     void OnSampleRateChanged() override {
         PassthroughBufferNode::OnSampleRateChanged();
-        Device->SetClientSampleRate(GetSampleRate());
+        Device->SetClientSampleRate(Graph->SampleRate);
     }
 
     std::unique_ptr<AudioDevice> Device;
@@ -351,11 +350,6 @@ void AudioGraph::OnFieldChanged() {
     if (Nodes.IsChanged() || Connections.IsChanged()) {
         UpdateConnections();
     }
-}
-
-u64 AudioGraph::GetBufferSize() const {
-    if (const auto *device_output_node = GetDeviceOutputNode()) return device_output_node->Device->GetBufferSize();
-    return 0;
 }
 
 std::unordered_set<AudioGraphNode *> AudioGraph::GetSourceNodes(const AudioGraphNode *node) const {

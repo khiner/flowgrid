@@ -9,7 +9,7 @@
 // todo destroy node when dsp is null
 FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     auto *dsp = Graph->GetFaustDsp();
-    auto config = ma_faust_node_config_init(dsp, GetSampleRate());
+    auto config = ma_faust_node_config_init(dsp, Graph->SampleRate);
     _Node = std::make_unique<ma_faust_node>();
     ma_result result = ma_faust_node_init(Graph->Get(), &config, nullptr, _Node.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", int(result)));
@@ -25,5 +25,5 @@ FaustNode::~FaustNode() {
 
 void FaustNode::OnSampleRateChanged() {
     AudioGraphNode::OnSampleRateChanged();
-    ma_faust_node_set_sample_rate(_Node.get(), GetSampleRate());
+    ma_faust_node_set_sample_rate(_Node.get(), Graph->SampleRate);
 }

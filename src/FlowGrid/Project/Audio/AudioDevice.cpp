@@ -217,10 +217,6 @@ static bool IsNativeFormat(ma_format format, IO type) {
     return std::find(native_formats.begin(), native_formats.end(), format) != native_formats.end();
 }
 
-u64 AudioDevice::GetBufferSize() const {
-    return Type == IO_Out ? Device->playback.internalPeriodSizeInFrames : 0;
-}
-
 string AudioDevice::GetFormatName(int format) const {
     return ::std::format("{}{}", ma_get_format_name(ma_format(format)), IsNativeFormat(ma_format(format), Type) ? "*" : "");
 }

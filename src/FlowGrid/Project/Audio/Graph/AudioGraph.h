@@ -37,7 +37,6 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
 
     ma_node_graph *Get() const;
     dsp *GetFaustDsp() const;
-    u64 GetBufferSize() const;
 
     bool IsNativeSampleRate(u32) const;
     u32 GetDefaultSampleRate() const;

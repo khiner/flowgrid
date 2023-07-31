@@ -25,7 +25,6 @@ struct AudioDevice : Component, Field::ChangeListener {
     bool IsStarted() const;
     std::string GetFormatName(int) const;
     std::string GetSampleRateName(u32) const;
-    u64 GetBufferSize() const;
 
     bool IsNativeSampleRate(u32) const;
     void SetClientSampleRate(u32); // The graph sample rate.

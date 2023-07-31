@@ -3,6 +3,7 @@
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
+#include "Core/Primitive/UInt.h"
 #include "Project/Audio/AudioIO.h"
 
 using ma_node = void;
@@ -60,6 +61,10 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     inline bool IsGraphEndpoint() const { return this == (void *)Graph; }
 
+    // Called whenever the graph's sample rate changes.
+    // At the very least, each node updates any active IO monitors based on the new sample rate.
+    virtual void OnSampleRateChanged();
+
     u32 InputBusCount() const;
     u32 OutputBusCount() const;
     inline u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
@@ -88,13 +93,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         UpdateOutputLevel();
     }
 
-    // Called whenever the graph's sample rate changes.
-    // At the very least, each node updates any active IO monitors based on the new sample rate.
-    virtual void OnSampleRateChanged();
-
-    // These getters delegate to Graph->Device.
-    u32 GetSampleRate() const;
-    u32 GetBufferSize() const;
+    std::string GetWindowLengthName(u32 frames) const;
 
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, OutputLevel, 1.0);
@@ -102,6 +101,12 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     Prop(Float, SmoothOutputLevelMs, 30);
 
     Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
+    Prop_(
+        UInt, MonitorWindowLength,
+        "?The number of most-recently processed frames stored for display in the waveform and magnitude spectrum views.",
+        [this](u32 frames) { return GetWindowLengthName(frames); },
+        1024
+    );
     Prop_(
         Enum, MonitorWindowType, "?The window type used for the magnitude spectrum FFT.",
         {"Rectangular", "Hann", "Hamming", "Blackman", "Blackman-Harris", "Nuttall", "Flat-Top", "Triangular", "Bartlett", "Bartlett-Hann", "Bohman", "Parzen"},
@@ -127,10 +132,12 @@ protected:
 
     MonitorNode *GetMonitor(IO) const;
 
+    void CreateMonitor(IO);
     void UpdateOutputLevel();
     void UpdateGainer();
     void UpdateMonitor(IO);
     void UpdateMonitorWindowFunction(IO);
+    void UpdateMonitorWindowLength(IO);
 
     const AudioGraph *Graph;
     ma_node *Node;

@@ -10,7 +10,7 @@ WaveformNode::WaveformNode(ComponentArgs &&args) : AudioGraphNode(std::move(args
     Frequency.RegisterChangeListener(this);
     Type.RegisterChangeListener(this);
 
-    auto config = ma_waveform_node_config_init(GetSampleRate(), ma_waveform_type(int(Type)), Frequency);
+    auto config = ma_waveform_node_config_init(Graph->SampleRate, ma_waveform_type(int(Type)), Frequency);
     _Node = std::make_unique<ma_waveform_node>();
     ma_result result = ma_waveform_node_init(Graph->Get(), &config, nullptr, _Node.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the waveform node: {}", int(result)));
@@ -46,7 +46,7 @@ void WaveformNode::OnFieldChanged() {
 
 void WaveformNode::OnSampleRateChanged() {
     AudioGraphNode::OnSampleRateChanged();
-    ma_waveform_node_set_sample_rate(_Node.get(), GetSampleRate());
+    ma_waveform_node_set_sample_rate(_Node.get(), Graph->SampleRate);
 }
 
 void WaveformNode::Render() const {

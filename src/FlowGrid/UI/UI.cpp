@@ -51,9 +51,9 @@ static void CheckVk(VkResult err) {
 }
 
 static bool IsExtensionAvailable(const ImVector<VkExtensionProperties> &properties, const char *extension) {
-    for (const VkExtensionProperties &p : properties)
-        if (strcmp(p.extensionName, extension) == 0)
-            return true;
+    for (const VkExtensionProperties &p : properties) {
+        if (strcmp(p.extensionName, extension) == 0) return true;
+    }
     return false;
 }
 
@@ -66,16 +66,15 @@ static VkPhysicalDevice SetupVulkan_SelectPhysicalDevice() {
     gpus.resize(gpu_count);
     CheckVk(vkEnumeratePhysicalDevices(g_Instance, &gpu_count, gpus.Data));
 
-    // If a number >1 of GPUs got reported, find discrete GPU if present, or use first one available. This covers
-    // most common cases (multi-gpu/integrated+dedicated graphics). Handling more complicated setups (multiple
-    // dedicated GPUs) is out of scope of this sample.
+    // If any GPUs got reported, find a discrete GPU if present, or use the first one available.
+    // This covers most common cases (multi-gpu/integrated+dedicated graphics).
     for (VkPhysicalDevice &device : gpus) {
         VkPhysicalDeviceProperties properties;
         vkGetPhysicalDeviceProperties(device, &properties);
         if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) return device;
     }
 
-    // Use first GPU (Integrated) is a Discrete one is not available.
+    // Use first GPU (integrated) if a discrete one is not available.
     if (gpu_count > 0) return gpus[0];
 
     return VK_NULL_HANDLE;
@@ -130,7 +129,7 @@ static void SetupVulkan(ImVector<const char *> instance_extensions) {
         IM_ASSERT(g_QueueFamily != (uint32_t)-1);
     }
 
-    // Create Logical Device (with 1 queue)
+    // Create logical device (with 1 queue)
     {
         ImVector<const char *> device_extensions;
         device_extensions.push_back("VK_KHR_swapchain");
@@ -163,7 +162,7 @@ static void SetupVulkan(ImVector<const char *> instance_extensions) {
         vkGetDeviceQueue(g_Device, g_QueueFamily, 0, &g_Queue);
     }
 
-    // Create Descriptor Pool
+    // Create descriptor pool.
     // The app only requires a single combined image sampler descriptor for the font image.
     {
         const VkDescriptorPoolSize pool_sizes[] = {
@@ -179,8 +178,6 @@ static void SetupVulkan(ImVector<const char *> instance_extensions) {
     }
 }
 
-// All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
-// Your real engine/app may not use them.
 static void SetupVulkanWindow(ImGui_ImplVulkanH_Window *VulkanWindow, VkSurfaceKHR surface, int width, int height) {
     VulkanWindow->Surface = surface;
 
@@ -304,14 +301,12 @@ UIContext::UIContext() {
     VulkanWindow = &g_MainWindowData;
     SetupVulkanWindow(VulkanWindow, surface, w, h);
 
-    // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
 
     auto &io = ImGui::GetIO();
     io.IniFilename = nullptr; // Disable ImGui's .ini file saving. We handle this manually.
-
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     // io.FontAllowUserScaling = true;
     // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
@@ -335,11 +330,7 @@ UIContext::UIContext() {
     init_info.CheckVkResultFn = CheckVk;
     ImGui_ImplVulkan_Init(&init_info, VulkanWindow->RenderPass);
 
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Read 'docs/FONTS.md' for more instructions and details.
+    // Setup fonts
     io.FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
     Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
     Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);

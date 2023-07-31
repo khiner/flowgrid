@@ -37,10 +37,10 @@ template<HasId ChildType> struct Vector : Field {
 
     Vector(ComponentArgs &&args, CreatorFunction creator)
         : Field(std::move(args)), Creator(std::move(creator)) {
-        ComponentContainerFields.emplace_back(Id);
+        ComponentContainerFields.insert(Id);
     }
     ~Vector() {
-        std::erase_if(ComponentContainerFields, [this](const auto &id) { return id == Id; });
+        ComponentContainerFields.erase(Id);
     }
 
     inline void Clear() { Value.clear(); }

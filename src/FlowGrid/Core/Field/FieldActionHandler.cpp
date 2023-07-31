@@ -1,6 +1,7 @@
 #include "FieldActionHandler.h"
 
 #include "Core/Container/AdjacencyList.h"
+#include "Core/Container/DynamicComponent.h"
 #include "Core/Container/PrimitiveVector.h"
 #include "Core/Container/PrimitiveVector2D.h"
 #include "Core/Container/TextBuffer.h"

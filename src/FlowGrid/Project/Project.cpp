@@ -316,9 +316,14 @@ json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(f
 void Project::OpenStateFormatProject(const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
     // First, refresh all component container fields to ensure the dynamically managed component instances match the JSON.
+    // todo replace with auxiliary `PathPairs` field
     for (const auto container_field_id : Field::ComponentContainerFields) {
         auto *container_field = Component::ById.at(container_field_id);
         container_field->RefreshFromJson(j.at(container_field->JsonPointer()));
+    }
+    for (const auto container_auxiliary_field_id : Field::ComponentContainerAuxiliaryFields) {
+        auto *container_auxiliary_field = Field::ById.at(container_auxiliary_field_id);
+        container_auxiliary_field->RefreshFromJson(j.at(container_auxiliary_field->JsonPointer().parent_pointer()));
     }
 
     // Now, every flattened JSON pointer is 1:1 with a field instance path.

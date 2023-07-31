@@ -35,7 +35,10 @@ struct Field : Component {
     inline static std::unordered_map<ID, Field *> FieldById;
     inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
 
-    inline static std::vector<ID> ComponentContainerFields; // All containers fields that dynamically create/destroy their child components.
+    inline static std::unordered_set<ID> ComponentContainerFields; // All containers fields that dynamically create/destroy their child components.
+    // todo I think we should switch Vector to also use the auxiliary fields system instead of `ComponentContainerFields`,
+    // using path pairs instead of `Ids`.
+    inline static std::unordered_set<ID> ComponentContainerAuxiliaryFields; // Direct children of component container fields that track metadata about their parent container.
 
     // Use when you expect a field with exactly this path to exist.
     inline static Field *ByPath(const StorePath &path) noexcept { return FieldById.at(FieldIdByPath.at(path)); }
@@ -49,7 +52,7 @@ struct Field : Component {
         return nullptr;
     }
 
-    static Field *FindVectorFieldByChildPath(const StorePath &search_path);
+    static Field *FindComponentContainerFieldByPath(const StorePath &search_path);
 
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersByFieldId;
 

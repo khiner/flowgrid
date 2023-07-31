@@ -14,6 +14,8 @@ struct Bool : PrimitiveField<bool>, Actionable<Action::Primitive::Bool::Any>, Me
 
     void Toggle() const; // Issue toggle action.
 
+    void Render(string_view label) const;
+
 private:
     void Render() const override;
 };

@@ -324,6 +324,7 @@ u32 AudioGraph::GetDefaultSampleRate() const {
             if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
         }
     }
+    return AudioDevice::PrioritizedSampleRates.front();
 }
 
 std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {

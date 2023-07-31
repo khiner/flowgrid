@@ -3,9 +3,8 @@
 #include "imgui.h"
 
 #include "Core/Store/Patch/Patch.h"
+#include "Helper/String.h"
 #include "Project/Style/Style.h"
-
-#include "Helper/Hex.h"
 
 Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
     FieldById.emplace(Id, this);
@@ -20,18 +19,16 @@ Field::~Field() {
     ChangeListenersByFieldId.erase(Id);
 }
 
-static std::optional<std::filesystem::path> FindLongestHexSuffixSubpath(const StorePath &p) {
-    std::filesystem::path subpath = p;
-    for (const auto &segment : std::views::reverse(p)) {
-        if (IsHex(segment.string())) return subpath;
+Field *Field::FindComponentContainerFieldByPath(const StorePath &search_path) {
+    StorePath subpath = search_path;
+    while (subpath != "/") {
+        if (FieldIdByPath.contains(subpath)) {
+            const auto field_id = FieldIdByPath.at(subpath);
+            if (ComponentContainerFields.contains(field_id)) return FieldById[field_id];
+        }
         subpath = subpath.parent_path();
     }
-    return std::nullopt;
-}
-
-Field *Field::FindVectorFieldByChildPath(const StorePath &search_path) {
-    const auto index_subpath = FindLongestHexSuffixSubpath(search_path);
-    return index_subpath ? FindByPath(*index_subpath) : nullptr;
+    return nullptr;
 }
 
 void Field::FindAndMarkChanged(const Patch &patch) {
@@ -40,10 +37,10 @@ void Field::FindAndMarkChanged(const Patch &patch) {
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto path = patch.BasePath / partial_path;
         Field *affected_field;
-        if (op.Op == PatchOp::Add || op.Op == PatchOp::Remove) {
-            affected_field = FindVectorFieldByChildPath(path);
-            // This add/remove could be within a non-vector container.
-            // E.g. `AdjacencyList` is a container that stores its children directly under it, not under integer index subpaths.
+        if ((op.Op == PatchOp::Add || op.Op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
+            affected_field = FindComponentContainerFieldByPath(path); // Look for the nearest ancestor component container field. todo auxiliary PathPairs field instead.
+            // This add/remove could be within a non-component container.
+            // E.g. `AdjacencyList` is a container that stores its children directly under it, not under index subpaths.
             if (affected_field == nullptr) affected_field = FindByPath(path);
         } else {
             affected_field = FindByPath(path);
@@ -71,11 +68,18 @@ void Field::FindAndMarkChanged(const Patch &patch) {
 void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     FindAndMarkChanged(patch);
     static std::unordered_set<ChangeListener *> affected_listeners;
-    for (const auto &[field_id, _] : ChangedPaths) {
-        auto *changed_field = FieldById[field_id];
+    for (const auto &[changed_field_id, _] : ChangedPaths) {
+        auto *changed_field = FieldById.at(changed_field_id);
         changed_field->Refresh();
-        const auto &listeners = ChangeListenersByFieldId[field_id];
-        affected_listeners.insert(listeners.begin(), listeners.end());
+        if (ComponentContainerAuxiliaryFields.contains(changed_field_id)) {
+            changed_field->Parent->Refresh(); // Refresh the parent component container field after updating its auxiliary field.
+            // We consider the parent component container field to be the changed field.
+            const auto &listeners = ChangeListenersByFieldId[changed_field->Parent->Id];
+            affected_listeners.insert(listeners.begin(), listeners.end());
+        } else {
+            const auto &listeners = ChangeListenersByFieldId[changed_field_id];
+            affected_listeners.insert(listeners.begin(), listeners.end());
+        }
     }
 
     for (auto *listener : affected_listeners) listener->OnFieldChanged();

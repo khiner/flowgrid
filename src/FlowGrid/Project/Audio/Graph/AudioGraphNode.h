@@ -4,6 +4,7 @@
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/UInt.h"
+#include "Core/Container/DynamicComponent.h"
 #include "Project/Audio/AudioIO.h"
 
 using ma_node = void;
@@ -11,6 +12,7 @@ using ma_node = void;
 struct AudioGraph;
 
 struct ma_node_graph;
+struct ma_gainer_node;
 
 enum WindowType_ {
     WindowType_Rectangular,
@@ -95,10 +97,30 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     std::string GetWindowLengthName(u32 frames) const;
 
+    struct GainerNode : Component, Field::ChangeListener {
+        GainerNode(ComponentArgs &&);
+        ~GainerNode();
+
+        void OnFieldChanged() override;
+
+        ma_gainer_node *Get();
+
+        void SetGain(float gain);
+        void SetSampleRate(u32 sample_rate);
+
+        Prop(Float, SmoothTimeMs, 30);
+
+    private:
+        void UpdateSmoothTime();
+
+        AudioGraphNode *Node;
+        std::unique_ptr<ma_gainer_node> Gainer;
+        u32 SampleRate;
+    };
+
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, OutputLevel, 1.0);
-    Prop(Bool, SmoothOutputLevel, true);
-    Prop(Float, SmoothOutputLevelMs, 30);
+    Prop(DynamicComponent<GainerNode>, OutputGainer);
 
     Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
     Prop_(
@@ -112,9 +134,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         {"Rectangular", "Hann", "Hamming", "Blackman", "Blackman-Harris", "Nuttall", "Flat-Top", "Triangular", "Bartlett", "Bartlett-Hann", "Bohman", "Parzen"},
         WindowType_BlackmanHarris
     );
-
-    struct GainerNode;
-    std::unique_ptr<GainerNode> Gainer;
 
     struct SplitterNode;
     std::vector<std::unique_ptr<SplitterNode>> Splitters;

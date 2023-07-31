@@ -15,33 +15,37 @@
 
 using namespace ImGui;
 
-struct AudioGraphNode::GainerNode {
-    GainerNode(ma_node_graph *ma_graph, u32 channels, u32 sample_rate, float smooth_time_ms)
-        : SmoothTimeMs(smooth_time_ms) {
-        const u32 smooth_time_frames = SmoothTimeMs * float(sample_rate) / 1000.f;
-        auto config = ma_gainer_node_config_init(channels, smooth_time_frames);
-        ma_result result = ma_gainer_node_init(ma_graph, &config, nullptr, &Gainer);
-        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", int(result))); }
-    }
-    ~GainerNode() {
-        ma_gainer_node_uninit(&Gainer, nullptr);
-    }
+AudioGraphNode::GainerNode::GainerNode(ComponentArgs &&args)
+    : Component(std::move(args)), Node(static_cast<AudioGraphNode *>(Parent->Parent)), Gainer(std::make_unique<ma_gainer_node>()), SampleRate(Node->Graph->SampleRate) {
+    SmoothTimeMs.RegisterChangeListener(this);
+    const u32 smooth_time_frames = SmoothTimeMs * float(SampleRate) / 1000.f;
+    auto config = ma_gainer_node_config_init(Node->OutputChannelCount(0), smooth_time_frames);
+    ma_result result = ma_gainer_node_init(Node->Graph->Get(), &config, nullptr, Get());
+    if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", int(result))); }
+}
 
-    inline ma_gainer_node *Get() noexcept { return &Gainer; }
+AudioGraphNode::GainerNode::~GainerNode() {
+    ma_gainer_node_uninit(Get(), nullptr);
+}
 
-    void SetGain(float gain) {
-        ma_gainer_node_set_gain(&Gainer, gain);
-    }
+void AudioGraphNode::GainerNode::OnFieldChanged() {
+    if (SmoothTimeMs.IsChanged()) UpdateSmoothTime();
+}
 
-    void SetSampleRate(u32 sample_rate) {
-        const u32 smooth_time_frames = SmoothTimeMs * float(sample_rate) / 1000.f;
-        ma_gainer_node_set_smooth_time_frames(&Gainer, smooth_time_frames);
-    }
+ma_gainer_node *AudioGraphNode::GainerNode::Get() { return Gainer.get(); }
 
-private:
-    ma_gainer_node Gainer;
-    float SmoothTimeMs;
-};
+void AudioGraphNode::GainerNode::SetGain(float gain) { ma_gainer_node_set_gain(Get(), gain); }
+
+void AudioGraphNode::GainerNode::UpdateSmoothTime() {
+    const u32 smooth_time_frames = SmoothTimeMs * float(SampleRate) / 1000.f;
+    ma_gainer_node_set_smooth_time_frames(Get(), smooth_time_frames);
+}
+
+void AudioGraphNode::GainerNode::SetSampleRate(u32 sample_rate) {
+    if (SampleRate == sample_rate) return;
+    SampleRate = sample_rate;
+    UpdateSmoothTime();
+}
 
 struct AudioGraphNode::SplitterNode {
     SplitterNode(ma_node_graph *ma_graph, u32 channels) {
@@ -136,19 +140,20 @@ private:
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)) {
     Graph = static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent); // The graph is itself a graph node.
-    const Field::References listened_fields = {Graph->SampleRate, Muted, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, Monitor, MonitorWindowLength, MonitorWindowType};
+    const Field::References listened_fields = {Graph->SampleRate, Muted, OutputLevel, OutputGainer, Monitor, MonitorWindowLength, MonitorWindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 
 AudioGraphNode::~AudioGraphNode() {
     Splitters.clear();
     InputMonitor.reset();
-    Gainer.reset();
+    OutputGainer.Reset();
     OutputMonitor.reset();
     if (Node != nullptr) {
         ma_node_uninit(Node, nullptr);
         Node = nullptr;
     }
+    Listeners.clear();
     Field::UnregisterChangeListener(this);
 }
 
@@ -158,7 +163,7 @@ ma_node *AudioGraphNode::InputNode() const {
 }
 ma_node *AudioGraphNode::OutputNode() const {
     if (OutputMonitor) return OutputMonitor->Get();
-    if (Gainer) return Gainer->Get();
+    if (OutputGainer) return OutputGainer->Get();
     return Node;
 }
 
@@ -200,15 +205,15 @@ WindowFunctionType GetWindowFunction(WindowType type) {
 }
 
 void AudioGraphNode::OnSampleRateChanged() {
-    if (Gainer) Gainer->SetSampleRate(Graph->SampleRate);
+    if (OutputGainer) OutputGainer->SetSampleRate(Graph->SampleRate);
 }
 
 void AudioGraphNode::OnFieldChanged() {
     if (Graph->SampleRate.IsChanged()) {
         OnSampleRateChanged();
     }
-    if (SmoothOutputLevel.IsChanged() || SmoothOutputLevelMs.IsChanged()) {
-        UpdateGainer();
+    if (OutputGainer.IsChanged()) {
+        UpdateOutputLevel();
     }
     if (Monitor.IsChanged()) {
         for (const IO io : IO_All) UpdateMonitor(io);
@@ -223,7 +228,7 @@ void AudioGraphNode::OnFieldChanged() {
         for (const IO io : IO_All) UpdateMonitorWindowFunction(io);
     }
     // Notify on field changes that can result in connection changes.
-    if (SmoothOutputLevel.IsChanged() || Monitor.IsChanged() || MonitorWindowLength.IsChanged()) {
+    if (OutputGainer.IsChanged() || Monitor.IsChanged() || MonitorWindowLength.IsChanged()) {
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
     }
 }
@@ -242,21 +247,11 @@ void AudioGraphNode::UpdateOutputLevel() {
     if (OutputBusCount() == 0) return;
 
     const float output_level = Muted ? 0.f : float(OutputLevel);
-    if (Gainer) {
-        Gainer->SetGain(output_level);
+    if (OutputGainer) {
+        OutputGainer->SetGain(output_level);
         ma_node_set_output_bus_volume(Node, 0, 1);
     } else {
         ma_node_set_output_bus_volume(Node, 0, output_level);
-    }
-}
-
-void AudioGraphNode::UpdateGainer() {
-    if (OutputBusCount() > 0 && SmoothOutputLevel && !Gainer) {
-        Gainer = std::make_unique<GainerNode>(Graph->Get(), OutputChannelCount(0), Graph->SampleRate, SmoothOutputLevelMs);
-        UpdateOutputLevel();
-    } else if (!SmoothOutputLevel && Gainer) {
-        Gainer.reset();
-        UpdateOutputLevel();
     }
 }
 
@@ -295,7 +290,7 @@ void AudioGraphNode::UpdateMonitor(IO io) {
 void AudioGraphNode::UpdateAll() {
     // Update nodes from earliest to latest in the signal path.
     UpdateMonitor(IO_In);
-    UpdateGainer();
+    // UpdateGainer();
     UpdateMonitor(IO_Out);
 
     UpdateOutputLevel();
@@ -303,9 +298,9 @@ void AudioGraphNode::UpdateAll() {
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
     if (auto *to_input_monitor = to.GetMonitor(IO_In)) ma_node_attach_output_bus(to_input_monitor->Get(), 0, to.Node, 0);
-    if (Gainer) ma_node_attach_output_bus(Node, 0, Gainer->Get(), 0);
+    if (OutputGainer) ma_node_attach_output_bus(Node, 0, OutputGainer->Get(), 0);
     if (OutputMonitor) {
-        if (Gainer) ma_node_attach_output_bus(Gainer->Get(), 0, OutputMonitor->Get(), 0); // Monitor after applying gain.
+        if (OutputGainer) ma_node_attach_output_bus(OutputGainer->Get(), 0, OutputMonitor->Get(), 0); // Monitor after applying gain.
         else ma_node_attach_output_bus(Node, 0, OutputMonitor->Get(), 0);
     }
 
@@ -378,7 +373,7 @@ void AudioGraphNode::Render() const {
     Spacing();
     Muted.Draw();
     OutputLevel.Draw();
-    SmoothOutputLevel.Draw();
+    if (OutputBusCount() > 0) OutputGainer.Draw();
 
     Spacing();
     Monitor.Draw();

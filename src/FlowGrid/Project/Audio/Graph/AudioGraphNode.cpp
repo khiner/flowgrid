@@ -20,8 +20,8 @@ struct AudioGraphNode::GainerNode {
         : SmoothTimeMs(smooth_time_ms) {
         const u32 smooth_time_frames = SmoothTimeMs * float(sample_rate) / 1000.f;
         auto config = ma_gainer_node_config_init(channels, smooth_time_frames);
-        const int result = ma_gainer_node_init(ma_graph, &config, nullptr, &Gainer);
-        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", result)); }
+        ma_result result = ma_gainer_node_init(ma_graph, &config, nullptr, &Gainer);
+        if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", int(result))); }
     }
     ~GainerNode() {
         ma_gainer_node_uninit(&Gainer, nullptr);
@@ -46,8 +46,8 @@ private:
 struct AudioGraphNode::SplitterNode {
     SplitterNode(ma_node_graph *ma_graph, u32 channels) {
         auto config = ma_splitter_node_config_init(channels);
-        int result = ma_splitter_node_init(ma_graph, &config, nullptr, &Splitter);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", result));
+        ma_result result = ma_splitter_node_init(ma_graph, &config, nullptr, &Splitter);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", int(result)));
     }
     ~SplitterNode() {
         ma_splitter_node_uninit(&Splitter, nullptr);
@@ -62,8 +62,8 @@ private:
 struct AudioGraphNode::MonitorNode {
     MonitorNode(ma_node_graph *ma_graph, u32 channels, u32 sample_rate, u32 buffer_frames) {
         auto config = ma_monitor_node_config_init(channels, sample_rate, buffer_frames);
-        int result = ma_monitor_node_init(ma_graph, &config, nullptr, &Monitor);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize monitor node: {}", result));
+        ma_result result = ma_monitor_node_init(ma_graph, &config, nullptr, &Monitor);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize monitor node: {}", int(result)));
     }
     ~MonitorNode() {
         ma_monitor_node_uninit(&Monitor, nullptr);
@@ -140,7 +140,7 @@ private:
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
     : Component(std::move(args)) {
     Graph = static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent); // The graph is itself a graph node.
-    const Field::References listened_fields = {Graph->SampleRate, Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, WindowType};
+    const Field::References listened_fields = {Graph->SampleRate, Muted, Monitor, OutputLevel, SmoothOutputLevel, SmoothOutputLevelMs, MonitorWindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 
@@ -229,7 +229,7 @@ void AudioGraphNode::OnFieldChanged() {
     if (Muted.IsChanged() || OutputLevel.IsChanged()) {
         UpdateOutputLevel();
     }
-    if (WindowType.IsChanged()) {
+    if (MonitorWindowType.IsChanged()) {
         for (const IO io : IO_All) UpdateMonitorWindowFunction(io);
     }
     // Notify on field changes that can result in connection changes.
@@ -272,8 +272,8 @@ void AudioGraphNode::UpdateGainer() {
 
 void AudioGraphNode::UpdateMonitorWindowFunction(IO io) {
     if (auto *monitor = GetMonitor(io)) {
-        auto window_function = GetWindowFunction(WindowType);
-        if (window_function == nullptr) throw std::runtime_error(std::format("Failed to get window function for window type {}.", int(WindowType)));
+        auto window_function = GetWindowFunction(MonitorWindowType);
+        if (window_function == nullptr) throw std::runtime_error(std::format("Failed to get window function for window type {}.", int(MonitorWindowType)));
 
         monitor->ApplyWindowFunction(window_function);
     }
@@ -383,7 +383,7 @@ void AudioGraphNode::Render() const {
     if (Monitor) {
         SameLine();
         SetNextItemWidth(GetFontSize() * 9);
-        WindowType.Draw();
+        MonitorWindowType.Draw();
         for (const IO io : IO_All) {
             if (GetMonitor(io) == nullptr) continue;
 

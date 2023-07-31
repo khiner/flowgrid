@@ -103,7 +103,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
     Prop_(
-        Enum, WindowType, "?The window type used for the magnitude spectrum FFT.",
+        Enum, MonitorWindowType, "?The window type used for the magnitude spectrum FFT.",
         {"Rectangular", "Hann", "Hamming", "Blackman", "Blackman-Harris", "Nuttall", "Flat-Top", "Triangular", "Bartlett", "Bartlett-Hann", "Bohman", "Parzen"},
         WindowType_BlackmanHarris
     );

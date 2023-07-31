@@ -12,8 +12,8 @@ WaveformNode::WaveformNode(ComponentArgs &&args) : AudioGraphNode(std::move(args
 
     auto config = ma_waveform_node_config_init(GetSampleRate(), ma_waveform_type(int(Type)), Frequency);
     _Node = std::make_unique<ma_waveform_node>();
-    int result = ma_waveform_node_init(Graph->Get(), &config, nullptr, _Node.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the waveform node: {}", result));
+    ma_result result = ma_waveform_node_init(Graph->Get(), &config, nullptr, _Node.get());
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the waveform node: {}", int(result)));
     Node = _Node.get();
 
     UpdateAll();

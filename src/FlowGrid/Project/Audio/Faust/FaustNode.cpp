@@ -11,8 +11,8 @@ FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     auto *dsp = Graph->GetFaustDsp();
     auto config = ma_faust_node_config_init(dsp, GetSampleRate());
     _Node = std::make_unique<ma_faust_node>();
-    int result = ma_faust_node_init(Graph->Get(), &config, nullptr, _Node.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", result));
+    ma_result result = ma_faust_node_init(Graph->Get(), &config, nullptr, _Node.get());
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", int(result)));
     Node = _Node.get();
 
     UpdateAll();

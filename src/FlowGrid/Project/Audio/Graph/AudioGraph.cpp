@@ -26,9 +26,8 @@ struct MaGraph {
     MaGraph(u32 channels) {
         auto config = ma_node_graph_config_init(channels);
         _Graph = std::make_unique<ma_node_graph>();
-        const int result = ma_node_graph_init(&config, nullptr, _Graph.get());
-
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", result));
+        ma_result result = ma_node_graph_init(&config, nullptr, _Graph.get());
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
     }
     ~MaGraph() {
         ma_node_graph_uninit(_Graph.get(), nullptr);
@@ -43,8 +42,8 @@ private:
 
 struct BufferRef {
     BufferRef(ma_format format, u32 channels) {
-        int result = ma_audio_buffer_ref_init(format, channels, nullptr, 0, &Ref);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize buffer ref: ", result));
+        ma_result result = ma_audio_buffer_ref_init(format, channels, nullptr, 0, &Ref);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize buffer ref: ", int(result)));
     }
     ~BufferRef() {
         ma_audio_buffer_ref_uninit(&Ref);
@@ -167,8 +166,8 @@ struct PassthroughBufferNode : BufferRefNode {
     PassthroughBufferNode(ComponentArgs &&args) : BufferRefNode(std::move(args)) {
         InitBuffer(1);
         auto config = ma_data_passthrough_node_config_init(_BufferRef->Get());
-        int result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", result));
+        ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
         Node = &PassthroughNode;
     }
 

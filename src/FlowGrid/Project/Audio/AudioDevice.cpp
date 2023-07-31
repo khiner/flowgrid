@@ -77,13 +77,13 @@ AudioDevice::~AudioDevice() {
 void AudioDevice::Init(u32 client_sample_rate) {
     AudioContextInitializedCount++;
     if (AudioContextInitializedCount <= 1) {
-        int result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", result));
+        ma_result result = ma_context_init(nullptr, 0, nullptr, &AudioContext);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", int(result)));
 
         static u32 PlaybackDeviceCount, CaptureDeviceCount;
         static ma_device_info *PlaybackDeviceInfos, *CaptureDeviceInfos;
         result = ma_context_get_devices(&AudioContext, &PlaybackDeviceInfos, &PlaybackDeviceCount, &CaptureDeviceInfos, &CaptureDeviceCount);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio devices: {}", result));
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio devices: {}", int(result)));
 
         for (u32 i = 0; i < CaptureDeviceCount; i++) {
             DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
@@ -98,7 +98,7 @@ void AudioDevice::Init(u32 client_sample_rate) {
             ma_device_info DeviceInfo;
 
             result = ma_context_get_device_info(&AudioContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &DeviceInfo);
-            if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), result));
+            if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), int(result)));
 
             // todo  Create a new format type that mirrors MA's (format, rate).
             for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
@@ -161,8 +161,8 @@ void AudioDevice::Init(u32 client_sample_rate) {
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer already writes to every output frame.
     config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.
 
-    int result = ma_device_init(nullptr, &config, Device.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), result));
+    ma_result result = ma_device_init(nullptr, &config, Device.get());
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), int(result)));
 
     // The device may have a different configuration than what we requested.
     // Update the fields to reflect the actual device configuration.
@@ -178,7 +178,7 @@ void AudioDevice::Init(u32 client_sample_rate) {
         if (Device->capture.channels != Channels) Channels.Set_(Device->capture.channels);
     }
     result = ma_device_start(Device.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio {} device: {}", to_string(Type), result));
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio {} device: {}", to_string(Type), int(result)));
 }
 
 void AudioDevice::Uninit() {

@@ -4,7 +4,7 @@
 
 #include "UI/HelpMarker.h"
 
-void Bool::Toggle() const { Action::Primitive::Bool::Toggle{Path}.q(); }
+void Bool::IssueToggle() const { Action::Primitive::Bool::Toggle{Path}.q(); }
 
 void Bool::Apply(const ActionType &action) const {
     Visit(
@@ -17,7 +17,7 @@ using namespace ImGui;
 
 void Bool::Render(string_view label) const {
     bool value = Value;
-    if (Checkbox(string(label).c_str(), &value)) Toggle();
+    if (Checkbox(string(label).c_str(), &value)) IssueToggle();
     HelpMarker();
 }
 
@@ -28,7 +28,7 @@ void Bool::Render() const {
 bool Bool::CheckedDraw() const {
     bool value = Value;
     bool toggled = Checkbox(ImGuiLabel.c_str(), &value);
-    if (toggled) Toggle();
+    if (toggled) IssueToggle();
     HelpMarker();
     return toggled;
 }
@@ -36,5 +36,5 @@ bool Bool::CheckedDraw() const {
 void Bool::MenuItem() const {
     const bool value = Value;
     HelpMarker(false);
-    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) Toggle();
+    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) IssueToggle();
 }

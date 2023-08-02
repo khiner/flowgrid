@@ -19,30 +19,23 @@ template<typename ComponentType> struct DynamicComponent : Field {
 
     operator bool() const { return bool(Value); }
     auto operator->() const { return Value.get(); }
-
-    inline void Create() {
-        Value = std::make_unique<ComponentType>(ComponentArgs{this, "Value"});
-    }
-
-    inline void Reset() { Value.reset(); }
-
-    void Toggle() {
-        if (Value) Reset();
-        else Create();
-    }
+    inline auto Get() const { return Value.get(); }
 
     void Refresh() override {
-        if (HasValue && !Value) Create();
+        if (HasValue && !Value) Value = std::make_unique<ComponentType>(ComponentArgs{this, "Value"});
         else if (!HasValue && Value) Reset();
     }
 
-    void Erase() const override {
+    inline void IssueToggle() const {
+        HasValue.IssueToggle();
+    }
+
+    inline void Erase() const override {
+        HasValue.Set(false);
         if (Value) Value->Erase();
     }
 
-    void Render() const override {
-        HasValue.Render(ImGuiLabel);
-    }
+    inline void Reset() { Value.reset(); }
 
     void RenderValueTree(bool annotate, bool auto_select) const override {
         if (!Value) {

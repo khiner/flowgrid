@@ -18,5 +18,5 @@ struct ma_gainer_node {
 ma_result ma_gainer_node_init(ma_node_graph *, const ma_gainer_node_config *, const ma_allocation_callbacks *, ma_gainer_node *);
 void ma_gainer_node_uninit(ma_gainer_node *, const ma_allocation_callbacks *);
 
-ma_result ma_gainer_node_set_gain(ma_gainer_node *, float volume);
+ma_result ma_gainer_node_set_gain(ma_gainer_node *, float gain);
 ma_result ma_gainer_node_set_smooth_time_frames(ma_gainer_node *, ma_uint32 smooth_time_frames);

@@ -91,8 +91,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     }
 
     void SetMuted(bool muted) {
-        Muted.Set_(muted);
-        UpdateOutputLevel();
+        if (OutputGainer) OutputGainer->Muted.Set_(muted);
     }
 
     std::string GetWindowLengthName(u32 frames) const;
@@ -103,25 +102,30 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
         void OnFieldChanged() override;
 
-        ma_gainer_node *Get();
+        ma_gainer_node *GetSmoother();
 
-        void SetGain(float gain);
         void SetSampleRate(u32 sample_rate);
 
-        Prop(Float, SmoothTimeMs, 30);
+        Prop_(Bool, Muted, "?This does not affect CPU load.", false);
+        Prop(Float, Level, 1.0);
+        Prop(Bool, Smooth, true);
+        float SmoothTimeMs = 15;
+        // Prop(Float, SmoothTimeMs, 15, 0, 50);
 
     private:
-        void UpdateSmoothTime();
+        void Render() const override;
+
+        void UpdateLevel();
+        void UpdateSmoother();
 
         AudioGraphNode *Node;
-        std::unique_ptr<ma_gainer_node> Gainer;
+        std::unique_ptr<ma_gainer_node> Smoother;
         u32 SampleRate;
     };
 
     const AudioGraph *Graph;
 
-    Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
-    Prop(Float, OutputLevel, 1.0);
+    Prop(DynamicComponent<GainerNode>, InputGainer);
     Prop(DynamicComponent<GainerNode>, OutputGainer);
 
     Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
@@ -151,14 +155,19 @@ protected:
 
     void Render() const override;
 
+    const DynamicComponent<GainerNode> &GetGainer(IO) const;
+    ma_gainer_node *GetGainSmoother(IO) const;
     MonitorNode *GetMonitor(IO) const;
 
     void CreateMonitor(IO);
-    void UpdateOutputLevel();
     void UpdateGainer();
     void UpdateMonitor(IO);
     void UpdateMonitorWindowFunction(IO);
     void UpdateMonitorWindowLength(IO);
+
+    void NotifyConnectionsChanged() {
+        for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
+    }
 
     ma_node *Node;
     std::unordered_set<Listener *> Listeners{};

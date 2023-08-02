@@ -12,7 +12,7 @@ struct Bool : PrimitiveField<bool>, Actionable<Action::Primitive::Bool::Any>, Me
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
     void MenuItem() const override;
 
-    void Toggle() const; // Issue toggle action.
+    void IssueToggle() const;
 
     void Render(string_view label) const;
 

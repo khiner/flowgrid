@@ -131,13 +131,18 @@ struct Component : Drawable {
     void RenderTabs() const;
     void RenderTreeNodes(ImGuiTreeNodeFlags flags = 0) const;
 
+    bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr, bool highlight_value = false, bool auto_select = false) const;
+
+    // Wrappers around ImGui methods to avoid including `imgui.h` in this header.
+    static void TreePop();
+    static void TextUnformatted(string_view);
+
 protected:
     virtual void Render() const override {} // By default, components don't render anything.
 
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
-
-    static bool TreeNode(std::string_view label, bool highlight_label = false, const char *value = nullptr, bool highlight_value = false);
+    void ScrollToChanged() const; // Scroll to this item if changed.
 
 private:
     Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);

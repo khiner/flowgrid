@@ -1,14 +1,7 @@
 #pragma once
 
-#include <concepts>
-
 #include "Core/Container/PrimitiveVector.h"
 #include "Helper/Hex.h"
-
-template<typename T>
-concept HasId = requires(T t) {
-    { t.Id } -> std::same_as<const ID &>;
-};
 
 /*
 A component whose children are created/destroyed dynamically, with vector-ish semantics.
@@ -32,7 +25,7 @@ The path prefix strategy is as follows:
 Child order is tracked with a separate `ChildPrefixes` vector.
 We need to store this in an auxiliary store member since child component members are stored in a persistent map without key ordering.
 */
-template<HasId ChildType> struct Vector : Field {
+template<typename ChildType> struct Vector : Field {
     using CreatorFunction = std::function<std::unique_ptr<ChildType>(Component *, string_view path_prefix_segment, string_view path_segment)>;
 
     Vector(ComponentArgs &&args, CreatorFunction creator)
@@ -113,7 +106,18 @@ template<HasId ChildType> struct Vector : Field {
 
     u32 Size() const { return Value.size(); }
 
-    void Refresh() override;
+    void Refresh() override {
+        for (const StorePath prefix : ChildPrefixes) {
+            const auto child_it = FindIt(prefix);
+            if (child_it == Value.end()) {
+                const auto &[path_prefix, path_segment] = GetPathPrefixAndSegment(prefix);
+                auto new_child = Creator(this, path_prefix, path_segment);
+                u32 index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));
+                Value.insert(Value.begin() + index, std::move(new_child));
+            }
+        }
+        std::erase_if(Value, [this](const auto &child) { return !ChildPrefixes.Contains(GetChildPrefix(child.get())); });
+    }
 
     void EraseId(ID id) const {
         auto *child = Find(id);
@@ -123,7 +127,22 @@ template<HasId ChildType> struct Vector : Field {
         child->Erase();
     }
 
-    void RenderValueTree(bool annotate, bool auto_select) const override;
+    void RenderValueTree(bool annotate, bool auto_select) const override {
+        if (Value.empty()) {
+            TextUnformatted(std::format("{} (empty)", Name));
+            return;
+        }
+
+        if (TreeNode(Name, false, nullptr, false, auto_select)) {
+            for (u32 i = 0; i < Value.size(); i++) {
+                if (Value.at(i)->TreeNode(to_string(i), false, nullptr, false, auto_select)) {
+                    Value.at(i)->RenderValueTree(annotate, auto_select);
+                    TreePop();
+                }
+            }
+            TreePop();
+        }
+    }
 
 private:
     // Keep track of child ordering.

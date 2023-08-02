@@ -156,7 +156,18 @@ void Component::RenderTreeNodes(ImGuiTreeNodeFlags flags) const {
     }
 }
 
-bool Component::TreeNode(std::string_view label_view, bool highlight_label, const char *value, bool highlight_value) {
+void Component::ScrollToChanged() const {
+    if (IsChanged() && IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
+}
+
+bool Component::TreeNode(std::string_view label_view, bool highlight_label, const char *value, bool highlight_value, bool auto_select) const {
+    if (auto_select) {
+        const bool is_changed = IsChanged();
+        SetNextItemOpen(is_changed);
+        // Scroll to the current tree node row:
+        if (is_changed && IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
+    }
+
     bool is_open = false;
     if (highlight_label) PushStyleColor(ImGuiCol_Text, fg::style.FlowGrid.Colors[FlowGridCol_HighlightText]);
     if (value == nullptr) {
@@ -177,20 +188,16 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     return is_open;
 }
 
+void Component::TreePop() { ImGui::TreePop(); }
+void Component::TextUnformatted(string_view text) { ImGui::TextUnformatted(string(text).c_str()); }
+
 void Component::RenderValueTree(bool annotate, bool auto_select) const {
     if (Children.empty()) {
         TextUnformatted(Name.c_str());
         return;
     }
 
-    if (auto_select) {
-        const bool is_changed = IsChanged();
-        SetNextItemOpen(is_changed);
-        // Scroll to the current tree node row:
-        if (is_changed && IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
-    }
-
-    if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel)) {
+    if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel, false, nullptr, false, auto_select)) {
         for (const auto *child : Children) {
             child->RenderValueTree(annotate, auto_select);
         }

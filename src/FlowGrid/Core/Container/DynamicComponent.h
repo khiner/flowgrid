@@ -3,8 +3,6 @@
 #include "Core/Field/Field.h"
 #include "Core/Primitive/Bool.h"
 
-#include "imgui_internal.h"
-
 /*
 A component that is created/destroyed dynamically.
 Think of it like a store-backed `std::unique_ptr<ComponentType>`.
@@ -48,16 +46,14 @@ template<typename ComponentType> struct DynamicComponent : Field {
 
     void RenderValueTree(bool annotate, bool auto_select) const override {
         if (!Value) {
-            if (auto_select && IsChanged() && ImGui::IsItemVisible()) {
-                ImGui::ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
-            }
-            ImGui::TextUnformatted(std::format("{} (empty)", Name).c_str());
+            if (auto_select) ScrollToChanged();
+            TextUnformatted(std::format("{} (empty)", Name));
             return;
         }
 
         if (TreeNode(Name)) {
             Value->RenderValueTree(annotate, auto_select);
-            ImGui::TreePop();
+            TreePop();
         }
     }
 

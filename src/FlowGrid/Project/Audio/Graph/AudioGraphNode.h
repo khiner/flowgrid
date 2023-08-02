@@ -102,24 +102,29 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
         void OnFieldChanged() override;
 
-        ma_gainer_node *GetSmoother();
+        ma_gainer_node *Get();
 
         void SetSampleRate(u32 sample_rate);
 
         Prop_(Bool, Muted, "?This does not affect CPU load.", false);
         Prop(Float, Level, 1.0);
         Prop(Bool, Smooth, true);
-        float SmoothTimeMs = 15;
+        float SmoothTimeMs = 25;
         // Prop(Float, SmoothTimeMs, 15, 0, 50);
 
     private:
         void Render() const override;
 
         void UpdateLevel();
-        void UpdateSmoother();
+
+        // When `Smooth` is toggled, we need to reset the `Gainer` node, since MA doesn't support dynamically changing smooth time.
+        // We may be able to get around this by using `ma_gainer_set_master_volume` instead of `set_gain` when smoothing is disabled.
+        // But even then, we would need to re-init when changing the smooth time via sample rate changes.
+        void Init();
+        void Uninit();
 
         AudioGraphNode *Node;
-        std::unique_ptr<ma_gainer_node> Smoother;
+        std::unique_ptr<ma_gainer_node> Gainer;
         u32 SampleRate;
     };
 
@@ -156,8 +161,8 @@ protected:
     void Render() const override;
 
     const DynamicComponent<GainerNode> &GetGainer(IO) const;
-    ma_gainer_node *GetGainSmoother(IO) const;
-    MonitorNode *GetMonitor(IO) const;
+    GainerNode *GetGainerNode(IO) const;
+    MonitorNode *GetMonitorNode(IO) const;
 
     void CreateMonitor(IO);
     void UpdateGainer();

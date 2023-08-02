@@ -44,7 +44,7 @@ template<typename ComponentType> struct DynamicComponent : Field {
             return;
         }
 
-        if (TreeNode(Name)) {
+        if (Value->TreeNode(Name)) {
             Value->RenderValueTree(annotate, auto_select);
             TreePop();
         }

@@ -2,10 +2,11 @@
 
 #include "../ma_helper.h"
 
-ma_gainer_node_config ma_gainer_node_config_init(ma_uint32 channels, ma_uint32 smooth_time_frames) {
+ma_gainer_node_config ma_gainer_node_config_init(ma_uint32 channels, float gain, ma_uint32 smooth_time_frames) {
     ma_gainer_node_config config;
     config.node_config = ma_node_config_init();
     config.gainer_config = ma_gainer_config_init(channels, smooth_time_frames);
+    config.gain = gain;
 
     return config;
 }
@@ -32,7 +33,9 @@ ma_result ma_gainer_node_init(ma_node_graph *node_graph, const ma_gainer_node_co
     base_config.pInputChannels = &config->gainer_config.channels;
     base_config.pOutputChannels = &config->gainer_config.channels;
 
-    return ma_node_init(node_graph, &base_config, allocation_callbacks, gainer_node);
+    result = ma_node_init(node_graph, &base_config, allocation_callbacks, gainer_node);
+    ma_gainer_set_gain(&gainer_node->gainer, gainer_node->config.gain);
+    return result;
 }
 
 void ma_gainer_node_uninit(ma_gainer_node *gainer_node, const ma_allocation_callbacks *allocation_callbacks) {
@@ -46,19 +49,4 @@ ma_result ma_gainer_node_set_gain(ma_gainer_node *gainer_node, float gain) {
     if (gainer_node == nullptr) return MA_INVALID_ARGS;
 
     return ma_gainer_set_gain(&gainer_node->gainer, gain);
-}
-
-// Not exposed by miniaudio header.
-static void ma_gainer_reset_smoothing_time(ma_gainer *gainer) {
-    // No smoothing required for initial gains setting.
-    gainer->t = gainer->t == ma_uint32(-1) ? gainer->config.smoothTimeInFrames : 0;
-    // gainer->t = gainer->config.smoothTimeInFrames;
-}
-
-ma_result ma_gainer_node_set_smooth_time_frames(ma_gainer_node *gainer_node, ma_uint32 smooth_time_frames) {
-    if (gainer_node == nullptr) return MA_INVALID_ARGS;
-
-    gainer_node->config.gainer_config.smoothTimeInFrames = smooth_time_frames;
-    ma_gainer_reset_smoothing_time(&gainer_node->gainer);
-    return MA_SUCCESS;
 }

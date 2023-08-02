@@ -314,17 +314,20 @@ void AudioGraphNode::UpdateAll() {
 }
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
+    if (auto *to_input_monitor = to.GetMonitor(IO_In)) {
+        ma_node_attach_output_bus(to_input_monitor, 0, to.Node, 0);
+    }
     if (auto *to_input_smoother = to.GetGainSmoother(IO_In)) {
-        // Monitor input after applying gain smoothing.
-        if (auto *to_input_monitor = to.GetMonitor(IO_In)) ma_node_attach_output_bus(to_input_smoother, 0, to_input_monitor->Get(), 0);
+        // Monitor after applying gain smoothing.
+        if (auto *to_input_monitor = to.GetMonitor(IO_In)) ma_node_attach_output_bus(to_input_smoother, 0, to_input_monitor, 0);
         else ma_node_attach_output_bus(to_input_smoother, 0, to.Node, 0);
-    } else if (auto *to_input_monitor = to.GetMonitor(IO_In)) {
-        ma_node_attach_output_bus(to_input_monitor->Get(), 0, to.Node, 0);
     }
 
-    if (auto *output_smoother = GetGainSmoother(IO_Out)) ma_node_attach_output_bus(Node, 0, output_smoother, 0);
+    if (auto *output_smoother = GetGainSmoother(IO_Out)) {
+        ma_node_attach_output_bus(Node, 0, output_smoother, 0);
+    }
     if (auto *output_monitor = GetMonitor(IO_Out)) {
-        // Monitor output after applying gain smoothing.
+        // Monitor after applying gain smoothing.
         if (auto *output_smoother = GetGainSmoother(IO_Out)) ma_node_attach_output_bus(output_smoother, 0, output_monitor, 0);
         else ma_node_attach_output_bus(Node, 0, output_monitor, 0);
     }
@@ -402,7 +405,7 @@ void AudioGraphNode::Render() const {
             const std::string label = is_io_node ? std::format("{} level", StringHelper::Capitalize(to_string(io))) : "Level";
             if (TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                 const auto &gainer = GetGainer(io);
-                bool bypass = bool(gainer);
+                bool bypass = !gainer;
                 if (Checkbox("Bypass", &bypass)) gainer.IssueToggle();
                 if (gainer) gainer->Draw();
                 TreePop();

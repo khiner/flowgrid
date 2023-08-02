@@ -38,7 +38,7 @@ void Field::FindAndMarkChanged(const Patch &patch) {
         const auto path = patch.BasePath / partial_path;
         Field *affected_field;
         if ((op.Op == PatchOp::Add || op.Op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
-            affected_field = FindComponentContainerFieldByPath(path); // Look for the nearest ancestor component container field. todo auxiliary PathPairs field instead.
+            affected_field = FindComponentContainerFieldByPath(path); // Look for the nearest ancestor component container field.
             // This add/remove could be within a non-component container.
             // E.g. `AdjacencyList` is a container that stores its children directly under it, not under index subpaths.
             if (affected_field == nullptr) affected_field = FindByPath(path);
@@ -72,8 +72,9 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
         auto *changed_field = FieldById.at(changed_field_id);
         changed_field->Refresh();
         if (ComponentContainerAuxiliaryFields.contains(changed_field_id)) {
-            changed_field->Parent->Refresh(); // Refresh the parent component container field after updating its auxiliary field.
-            // We consider the parent component container field to be the changed field.
+            // Refresh the parent component container field after refreshing its auxiliary field.
+            changed_field->Parent->Refresh();
+            // We consider the parent component container field to be the changed field when auxiliary fields are changed.
             const auto &listeners = ChangeListenersByFieldId[changed_field->Parent->Id];
             affected_listeners.insert(listeners.begin(), listeners.end());
         } else {

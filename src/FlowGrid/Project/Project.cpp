@@ -316,14 +316,13 @@ json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(f
 void Project::OpenStateFormatProject(const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
     // First, refresh all component container fields to ensure the dynamically managed component instances match the JSON.
-    // todo replace with auxiliary `PathPairs` field
-    for (const auto container_field_id : Field::ComponentContainerFields) {
-        auto *container_field = Component::ById.at(container_field_id);
-        container_field->RefreshFromJson(j.at(container_field->JsonPointer()));
-    }
-    for (const auto container_auxiliary_field_id : Field::ComponentContainerAuxiliaryFields) {
-        auto *container_auxiliary_field = Field::ById.at(container_auxiliary_field_id);
-        container_auxiliary_field->RefreshFromJson(j.at(container_auxiliary_field->JsonPointer().parent_pointer()));
+    for (const ID auxiliary_field_id : Field::ComponentContainerAuxiliaryFields) {
+        auto *auxiliary_field = Field::ById.at(auxiliary_field_id);
+        if (j.contains(auxiliary_field->JsonPointer())) {
+            auxiliary_field->SetJson(std::move(j.at(auxiliary_field->JsonPointer())));
+            auxiliary_field->Refresh();
+            auxiliary_field->Parent->Refresh();
+        }
     }
 
     // Now, every flattened JSON pointer is 1:1 with a field instance path.
@@ -331,7 +330,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
 
     // We could do `Field::RefreshChanged(RootStore.CheckedCommit())`, and only refresh the changed fields,
     // but this gets tricky with component container fields, since the store patch will contain added/removed paths
-    // that have already been accounted for in the `RefreshFromJson` calls above.
+    // that have already been accounted for above.
     RootStore.Commit();
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
@@ -739,6 +738,7 @@ DefineQ(PrimitiveVector<bool>::SetAt);
 DefineQ(PrimitiveVector<int>::SetAt);
 DefineQ(PrimitiveVector<u32>::SetAt);
 DefineQ(PrimitiveVector<float>::SetAt);
+DefineQ(PrimitiveVector<std::string>::SetAt);
 DefineQ(PrimitiveVector2D<bool>::Set);
 DefineQ(PrimitiveVector2D<int>::Set);
 DefineQ(PrimitiveVector2D<u32>::Set);

@@ -88,8 +88,6 @@ struct Component : Drawable {
         return json::json_pointer(Path.string()); // Implicit `json_pointer` constructor is disabled.
     }
 
-    virtual void RefreshFromJson(const json &) {} // xxx only component containers implement this.
-
     // Refresh the component's cached value(s) based on the main store.
     // Should be called for each affected field after a state change to avoid stale values.
     // This is overriden by `Field`s to update their `Value` members after a state change.

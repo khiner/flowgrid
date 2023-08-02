@@ -1,10 +1,10 @@
 #pragma once
 
+#include "Core/Container/DynamicComponent.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/UInt.h"
-#include "Core/Container/DynamicComponent.h"
 #include "Project/Audio/AudioIO.h"
 
 using ma_node = void;
@@ -118,6 +118,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         u32 SampleRate;
     };
 
+    const AudioGraph *Graph;
+
     Prop_(Bool, Muted, "?Mute the node. This does not affect CPU load.", false);
     Prop(Float, OutputLevel, 1.0);
     Prop(DynamicComponent<GainerNode>, OutputGainer);
@@ -158,7 +160,6 @@ protected:
     void UpdateMonitorWindowFunction(IO);
     void UpdateMonitorWindowLength(IO);
 
-    const AudioGraph *Graph;
     ma_node *Node;
     std::unordered_set<Listener *> Listeners{};
 };

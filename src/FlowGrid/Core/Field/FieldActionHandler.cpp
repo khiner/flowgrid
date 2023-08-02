@@ -37,6 +37,7 @@ void FieldActionHandler::Apply(const ActionType &action) const {
         [&field](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(field)->Apply(a); },
         [&field](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(field)->Apply(a); },
         [&field](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(field)->Apply(a); },
+        [&field](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(field)->Apply(a); },
         [&field](const PrimitiveVector2D<bool>::ActionType &a) { static_cast<const PrimitiveVector2D<bool> *>(field)->Apply(a); },
         [&field](const PrimitiveVector2D<int>::ActionType &a) { static_cast<const PrimitiveVector2D<int> *>(field)->Apply(a); },
         [&field](const PrimitiveVector2D<u32>::ActionType &a) { static_cast<const PrimitiveVector2D<u32> *>(field)->Apply(a); },

@@ -29,7 +29,7 @@ The path prefix strategy is as follows:
 * If a child is added with a path segment different from any existing children, it gets a prefix of '0'.
 * If a child is added with a path segment equal to an existing child, it gets a prefix equal to the minimum available prefix between '0' and max existing prefix + 1.
 
-Child order is tracked with a separate ID vector.
+Child order is tracked with a separate `ChildPrefixes` vector.
 We need to store this in an auxiliary store member since child component members are stored in a persistent map without key ordering.
 */
 template<HasId ChildType> struct Vector : Field {
@@ -38,8 +38,10 @@ template<HasId ChildType> struct Vector : Field {
     Vector(ComponentArgs &&args, CreatorFunction creator)
         : Field(std::move(args)), Creator(std::move(creator)) {
         ComponentContainerFields.insert(Id);
+        ComponentContainerAuxiliaryFields.insert(ChildPrefixes.Id);
     }
     ~Vector() {
+        ComponentContainerAuxiliaryFields.erase(ChildPrefixes.Id);
         ComponentContainerFields.erase(Id);
     }
 
@@ -50,6 +52,14 @@ template<HasId ChildType> struct Vector : Field {
         const auto path_prefix = *it;
         const auto path_segment = *std::next(it);
         return {path_prefix.string(), path_segment.string()};
+    }
+
+    inline StorePath GetChildPrefix(const ChildType *child) const noexcept {
+        if (child == nullptr) return {};
+
+        const auto path = child->Path.lexically_relative(Path);
+        auto it = path.begin();
+        return *it / *std::next(it);
     }
 
     std::string GenerateNextPrefix(string_view path_segment) const {
@@ -74,7 +84,7 @@ template<HasId ChildType> struct Vector : Field {
 
     void EmplaceBack(string_view path_segment) {
         Value.emplace_back(Creator(this, GenerateNextPrefix(path_segment), path_segment));
-        Ids.PushBack_(Value.back()->Id);
+        ChildPrefixes.PushBack_(GetChildPrefix(Value.back().get()));
     }
 
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
@@ -91,36 +101,35 @@ template<HasId ChildType> struct Vector : Field {
     ChildType *back() const { return Value.back().get(); }
     ChildType *operator[](u32 i) const { return Value[i].get(); }
 
+    inline ChildType *Find(ID id) const {
+        const auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
+        return it == Value.end() ? nullptr : it->get();
+    }
+    inline auto FindIt(const StorePath &child_prefix) const {
+        return std::find_if(Value.begin(), Value.end(), [this, &child_prefix](const auto &child) {
+            return GetChildPrefix(child.get()) == child_prefix;
+        });
+    }
+
     u32 Size() const { return Value.size(); }
 
     void Refresh() override;
 
     void EraseId(ID id) const {
-        Ids.Erase(id);
-        const auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
-        if (it != Value.end()) {
-            it->get()->Erase();
-        }
+        auto *child = Find(id);
+        if (!child) return;
+
+        ChildPrefixes.Erase(GetChildPrefix(child));
+        child->Erase();
     }
 
-    void RefreshFromJson(const json &) override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
 private:
-    void RefreshFromChangedPathPairs(const std::unordered_set<StorePath, PathHash> &);
-
-    // Returns an iterator.
-    auto FindByPathPair(const StorePath &path_pair) {
-        const auto &vector_path = Path;
-        return std::find_if(Value.begin(), Value.end(), [&path_pair, &vector_path](const auto &child) {
-            const auto &child_path = child->Path;
-            const auto relative_path = child_path.lexically_relative(vector_path);
-            return GetPathPrefixAndSegment(relative_path) == GetPathPrefixAndSegment(path_pair);
-        });
-    }
+    // Keep track of child ordering.
+    // Each prefix contains two segments: The child's unique prefix and its `PathSegment`.
+    Prop(PrimitiveVector<std::string>, ChildPrefixes);
 
     CreatorFunction Creator;
     std::vector<std::unique_ptr<ChildType>> Value;
-
-    Prop(PrimitiveVector<ID>, Ids); // Keep track of child ordering.
 };

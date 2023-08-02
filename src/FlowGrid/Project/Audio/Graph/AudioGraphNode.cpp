@@ -138,8 +138,7 @@ private:
 };
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)) {
-    Graph = static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent); // The graph is itself a graph node.
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent)) {
     const Field::References listened_fields = {Graph->SampleRate, Muted, OutputLevel, OutputGainer, Monitor, MonitorWindowLength, MonitorWindowType};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
@@ -290,7 +289,7 @@ void AudioGraphNode::UpdateMonitor(IO io) {
 void AudioGraphNode::UpdateAll() {
     // Update nodes from earliest to latest in the signal path.
     UpdateMonitor(IO_In);
-    // UpdateGainer();
+    OutputGainer.Refresh();
     UpdateMonitor(IO_Out);
 
     UpdateOutputLevel();

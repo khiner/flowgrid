@@ -15,8 +15,8 @@ template<typename ComponentType> struct DynamicComponent : Field {
         ComponentContainerAuxiliaryFields.insert(HasValue.Id);
     }
     ~DynamicComponent() {
-        ComponentContainerFields.erase(Id);
         ComponentContainerAuxiliaryFields.erase(HasValue.Id);
+        ComponentContainerFields.erase(Id);
     }
 
     operator bool() const { return bool(Value); }
@@ -33,35 +33,13 @@ template<typename ComponentType> struct DynamicComponent : Field {
         else Create();
     }
 
-    // Gets called when its `HasValue` field is changed.
     void Refresh() override {
-        // if (ChangedPaths.contains(Id) && !ChangedPaths.at(Id).second.empty()) Toggle();
-        if (IsChanged()) {
-            if (HasValue) Create();
-            else Reset();
-        }
+        if (HasValue && !Value) Create();
+        else if (!HasValue && Value) Reset();
     }
 
     void Erase() const override {
         if (Value) Value->Erase();
-    }
-
-    void RefreshFromJson(const json &j) override {
-        auto &&flattened = std::move(j).flatten();
-        for (auto &&[key, value] : flattened.items()) {
-            const StorePath path = key; // Already relative.
-            auto it = path.begin();
-            it++; // First segment is just a "/".
-            if (it->string() == HasValue.PathSegment) {
-                HasValue.SetJson(std::move(value));
-                HasValue.Refresh();
-            } else if (!Value) {
-                Create(); // At least one non-auxiliary descendent field is set, so create the component.
-                return;
-            }
-        }
-
-        if (Value) Reset(); // No non-auxiliary descendent fields are set, so destroy the component.
     }
 
     void Render() const override {

@@ -36,8 +36,16 @@ DefineTemplatedActionType(
     using Any = ActionVariant<SetAt>;
 );
 
+DefineTemplatedActionType(
+    PrimitiveVector, String, std::string,
+    DefineFieldAction(SetAt, "", u32 i; std::string value;);
+
+    using Any = ActionVariant<SetAt>;
+);
+
 Json(PrimitiveVector<bool>::SetAt, path, i, value);
 Json(PrimitiveVector<int>::SetAt, path, i, value);
 Json(PrimitiveVector<u32>::SetAt, path, i, value);
 Json(PrimitiveVector<float>::SetAt, path, i, value);
+Json(PrimitiveVector<std::string>::SetAt, path, i, value);
 } // namespace Action

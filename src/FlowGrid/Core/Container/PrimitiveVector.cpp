@@ -95,3 +95,4 @@ template struct PrimitiveVector<bool>;
 template struct PrimitiveVector<int>;
 template struct PrimitiveVector<u32>;
 template struct PrimitiveVector<float>;
+template struct PrimitiveVector<std::string>;

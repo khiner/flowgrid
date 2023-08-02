@@ -1,70 +1,21 @@
 #include "Vector.h"
 
 #include "Core/Store/Store.h"
-#include "Helper/Hex.h"
 
 #include "imgui_internal.h"
+#include <range/v3/range/conversion.hpp>
 
-template<HasId ChildType> void Vector<ChildType>::RefreshFromChangedPathPairs(const std::unordered_set<StorePath, PathHash> &changed_path_pairs) {
-    for (const StorePath &path_pair : changed_path_pairs) {
-        const auto child_it = FindByPathPair(path_pair);
-        if (child_it != Value.end()) {
-            Value.erase(child_it);
-        } else {
-            const auto &[path_prefix, path_segment] = GetPathPrefixAndSegment(path_pair);
+template<HasId ChildType> void Vector<ChildType>::Refresh() {
+    for (const StorePath prefix : ChildPrefixes) {
+        const auto child_it = FindIt(prefix);
+        if (child_it == Value.end()) {
+            const auto &[path_prefix, path_segment] = GetPathPrefixAndSegment(prefix);
             auto new_child = Creator(this, path_prefix, path_segment);
-            u32 index = Ids.IndexOf(new_child->Id);
+            u32 index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));
             Value.insert(Value.begin() + index, std::move(new_child));
         }
     }
-}
-
-template<HasId ChildType> void Vector<ChildType>::Refresh() {
-    if (!ChangedPaths.contains(Id)) return;
-
-    // xxx this is redundant but need to ensure it's run first.
-    //  Can we change `Field::RefreshChanged` to guarantee that children will be refreshed before parents?
-    Ids.Refresh();
-
-    // Find all unique prefix-ids in the changed paths.
-    const auto &changed_paths = ChangedPaths.at(Id).second;
-    std::unordered_set<StorePath, PathHash> changed_path_prefixes;
-    for (const auto &path : changed_paths) {
-        // Path is already relative to this vector's path.
-        auto it = path.begin();
-        changed_path_prefixes.insert(*it / *std::next(it));
-    }
-
-    RefreshFromChangedPathPairs(changed_path_prefixes);
-}
-
-template<HasId ChildType> void Vector<ChildType>::RefreshFromJson(const json &j) {
-    auto &&flattened = std::move(j).flatten();
-
-    // Get all changed path prefixes.
-    std::unordered_set<StorePath, PathHash> json_path_pairs;
-    for (auto &&[key, value] : flattened.items()) {
-        const StorePath path = key; // Already relative.
-        auto it = path.begin();
-        it++; // First segment is just a "/".
-        if (it->string() == Ids.PathSegment) {
-            Ids.SetJson(std::move(value));
-            Ids.Refresh();
-        } else {
-            json_path_pairs.insert(*it / *std::next(it));
-        }
-    }
-
-    std::unordered_set<StorePath, PathHash> changed_path_pairs = json_path_pairs;
-    for (const auto &child : Value) {
-        const auto path = child->Path.lexically_relative(Path);
-        auto it = path.begin();
-        const StorePath path_pair = *it / *std::next(it);
-        if (changed_path_pairs.contains(path_pair)) changed_path_pairs.erase(path_pair);
-        else changed_path_pairs.insert(path_pair);
-    }
-
-    RefreshFromChangedPathPairs(changed_path_pairs);
+    std::erase_if(Value, [this](const auto &child) { return !ChildPrefixes.Contains(GetChildPrefix(child.get())); });
 }
 
 using namespace ImGui;

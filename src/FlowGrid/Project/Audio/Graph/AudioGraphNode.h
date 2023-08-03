@@ -88,7 +88,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     // The graph is responsible for calling this method whenever the topology of the graph changes.
     // When this node is connected to the graph endpoing node (directly or indirectly), it is considered active.
-    // As a special case, the graph endpoint node is always considered active.
+    // As a special case, the graph endpoint node is always considered active, since it is always "connected" to itself.
     inline void SetActive(bool is_active) noexcept {
         IsActive = IsGraphEndpoint() || is_active;
     }
@@ -180,8 +180,9 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     struct SplitterNode;
     std::vector<std::unique_ptr<SplitterNode>> Splitters;
 
-    // These fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
-    bool IsActive{false}; // `true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
+    // `IsActive` is derived from graph connections and is updated via `AudioGraph::UpdateConnections()`.
+    // `IsActive == true` means there is a connection path from this node to the graph endpoint node (`OutputNode`).
+    bool IsActive{false};
 
 protected:
     virtual void UpdateAll(); // Call corresponding MA setters for all fields.

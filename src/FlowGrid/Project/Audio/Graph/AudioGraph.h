@@ -70,8 +70,14 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     std::unique_ptr<MaGraph> Graph;
     dsp *FaustDsp = nullptr;
 
+    struct Connections : AdjacencyList {
+        using AdjacencyList::AdjacencyList;
+
+        void Render() const override;
+    };
+
     Prop(Vector<AudioGraphNode>, Nodes, CreateNode);
-    Prop(AdjacencyList, Connections);
+    Prop_(Connections, Connections, "Audio connections");
 
     // We initialize with a sample rate of 0, which is the default sample rate. See `GetDefaultSampleRate` for details.
     Prop_(
@@ -86,7 +92,6 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
 
 private:
     void Render() const override;
-    void RenderConnections() const;
 
     void UpdateConnections();
 

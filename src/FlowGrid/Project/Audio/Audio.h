@@ -14,9 +14,13 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    Prop(AudioGraph, Graph);
-    Prop(Faust, Faust);
+    struct Style : Component {
+        using Component::Component;
 
-protected:
-    void Render() const override;
+        void Render() const override;
+    };
+
+    Prop_(AudioGraph, Graph, "Audio graph");
+    Prop(Faust, Faust);
+    Prop_(Style, Style, "Audio style");
 };

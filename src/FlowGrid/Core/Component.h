@@ -197,7 +197,7 @@ todo Try out replacing semicolon separators by e.g. commas.
       - Optional, available with a `_` suffix.
       - Overrides the label displayed in the UI for this property.
       - Anything after a '?' is interpretted as a help string
-        - E.g. `Prop(Bool, TestAThing, "Test-a-thing?A state member for testing things")` overrides the default "Test a thing" label with a hyphenation.
+        - E.g. `Prop_(Bool, TestAThing, "Test-a-thing?A state member for testing things")` overrides the default "Test a thing" label with a hyphenation.
         - Or, provide nothing before the '?' to add a help string without overriding the default `PropName`-derived label.
           - E.g. "?A state member for testing things."
 **/

@@ -83,7 +83,9 @@ void Project::SetHistoryIndex(u32 index) const {
 
 Project::Project(Store &store) : Component(store) {
     Windows.SetWindowComponents({
-        Audio,
+        Audio.Graph,
+        Audio.Graph.Connections,
+        Audio.Style,
         Settings,
         Audio.Faust.Code,
         Audio.Faust.Code.Debug,
@@ -192,18 +194,20 @@ void Project::Render() const {
     auto dockspace_id = DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;
     if (frame_count == 1) {
-        auto settings_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);
-        auto utilities_node_id = DockBuilderSplitNode(settings_node_id, ImGuiDir_Down, 0.5f, nullptr, &settings_node_id);
+        auto audio_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);
+        auto utilities_node_id = DockBuilderSplitNode(audio_node_id, ImGuiDir_Down, 0.5f, nullptr, &audio_node_id);
 
         auto debug_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.3f, nullptr, &dockspace_id);
         auto metrics_node_id = DockBuilderSplitNode(debug_node_id, ImGuiDir_Right, 0.35f, nullptr, &debug_node_id);
 
         auto info_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.2f, nullptr, &dockspace_id);
+        auto settings_node_id = DockBuilderSplitNode(info_node_id, ImGuiDir_Down, 0.25f, nullptr, &info_node_id);
         auto faust_tools_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.5f, nullptr, &dockspace_id);
         auto faust_editor_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.7f, nullptr, &dockspace_id);
 
-        Audio.Dock(settings_node_id);
-        Settings.Dock(settings_node_id);
+        Audio.Graph.Dock(audio_node_id);
+        Audio.Graph.Connections.Dock(audio_node_id);
+        Audio.Style.Dock(audio_node_id);
 
         Audio.Faust.Code.Dock(faust_editor_node_id);
         Audio.Faust.Code.Debug.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
@@ -223,10 +227,11 @@ void Project::Render() const {
         Demo.Dock(utilities_node_id);
 
         Info.Dock(info_node_id);
+        Settings.Dock(settings_node_id);
     } else if (frame_count == 2) {
         // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
         Style.SelectTab();
-        Audio.SelectTab();
+        Audio.Graph.SelectTab();
         Audio.Faust.Graph.SelectTab();
         Debug.SelectTab(); // not visible by default anymore
     }
@@ -551,6 +556,12 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         const bool no_history = History.Empty();
         if (no_history) BeginDisabled();
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", History.Size() - 1, History.Index)) {
+            if (!no_history) {
+                int edited_history_index = int(History.Index);
+                if (SliderInt("History index", &edited_history_index, 0, int(History.Size() - 1))) {
+                    Action::Project::SetHistoryIndex{edited_history_index}.q();
+                }
+            }
             for (u32 i = 1; i < History.Size(); i++) {
                 // todo button to navitate to this history index.
                 if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {

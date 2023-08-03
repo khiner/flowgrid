@@ -396,33 +396,35 @@ void AudioGraph::UpdateConnections() {
 
 using namespace ImGui;
 
-void AudioGraph::RenderConnections() const {
-    // Calculate the maximum I/O label widths.
-    ImVec2 max_label_w_no_padding{0, 0}; // I/O vec: in (left), out (top)
-    for (const auto *node : Nodes) {
+void AudioGraph::Connections::Render() const {
+    const auto &graph = *static_cast<const AudioGraph *>(Parent);
+    using IoVec = ImVec2; // A 2D vector representing floats corresponding to input/output, rather than an x/y position.
+
+    const auto &style = graph.Style.Matrix;
+
+    // Calculate max I/O label widths.
+    IoVec max_label_w_no_padding{0, 0};
+    for (const auto *node : graph.Nodes) {
         const float label_w = CalcTextSize(node->Name.c_str()).x;
         if (node->CanConnectInput()) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
         if (node->CanConnectOutput()) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
     }
 
     const ImVec2 label_padding = ImVec2{ImGui::GetStyle().ItemInnerSpacing.x, 0} + ImGui::GetStyle().FramePadding;
-
-    const auto &style = Style.Matrix;
     const float max_allowed_label_w = style.MaxLabelSpace * GetTextLineHeight();
-    const ImVec2 node_label_w_no_padding = {std::min(max_allowed_label_w, max_label_w_no_padding.x), std::min(max_allowed_label_w, max_label_w_no_padding.y)};
-    const ImVec2 node_label_w = node_label_w_no_padding + label_padding.x * 2; // I/O vec
+    const IoVec node_label_w_no_padding = {std::min(max_allowed_label_w, max_label_w_no_padding.x), std::min(max_allowed_label_w, max_label_w_no_padding.y)};
+    const IoVec node_label_w = node_label_w_no_padding + label_padding.x * 2;
     const float fhws = GetFrameHeightWithSpacing();
     const auto og_cursor_pos = GetCursorScreenPos();
     const ImVec2 grid_top_left = og_cursor_pos + node_label_w + fhws; // Last line-height is for the I/O header labels.
 
     BeginGroup();
 
-    static const string InputsLabel = "Inputs";
-    static const string OutputsLabel = "Outputs";
     // I/O header frames + labels on the left/top, respectively.
-    const ImVec2 io_header_w_no_padding = ImVec2{CalcTextSize(InputsLabel).x, CalcTextSize(OutputsLabel).x}; // I/O vec
-    const ImVec2 io_header_w = io_header_w_no_padding + label_padding.x * 2; // I/O vec
-    ImVec2 io_frame_w = GetContentRegionAvail() - (node_label_w + fhws); // I/O vec
+    static const string InputsLabel = "Inputs", OutputsLabel = "Outputs";
+    const IoVec io_header_w_no_padding = ImVec2{CalcTextSize(InputsLabel).x, CalcTextSize(OutputsLabel).x};
+    const IoVec io_header_w = io_header_w_no_padding + label_padding.x * 2;
+    IoVec io_frame_w = GetContentRegionAvail() - (node_label_w + fhws);
     io_frame_w = ImVec2{std::max(io_frame_w.x, io_header_w.x), std::max(io_frame_w.y, io_header_w.y)};
 
     SetCursorScreenPos({grid_top_left.x, og_cursor_pos.y});
@@ -450,7 +452,7 @@ void AudioGraph::RenderConnections() const {
 
     // Output channel labels.
     u32 out_count = 0;
-    for (const auto *out_node : Nodes) {
+    for (const auto *out_node : graph.Nodes) {
         if (!out_node->CanConnectOutput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
@@ -467,14 +469,18 @@ void AudioGraph::RenderConnections() const {
         );
         if (!is_active) EndDisabled();
 
-        const bool text_clipped = ellipsified_label.find("...") != string::npos;
+        const bool text_clipped = ellipsified_label.ends_with("...");
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
+        if (label_interaction_flags & InteractionFlags_Clicked) {
+            // Navigate to the node.
+            // Nodes tab -> Graph tree node -> Node tree node.
+        }
         out_count++;
     }
 
     // Input channel labels and mixer cells.
     u32 in_i = 0;
-    for (const auto *in_node : Nodes) {
+    for (const auto *in_node : graph.Nodes) {
         if (!in_node->CanConnectInput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
@@ -493,7 +499,7 @@ void AudioGraph::RenderConnections() const {
         if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
 
         u32 out_i = 0;
-        for (const auto *out_node : Nodes) {
+        for (const auto *out_node : graph.Nodes) {
             if (!out_node->CanConnectOutput()) continue;
 
             PushID(in_i * out_count + out_i);
@@ -504,10 +510,10 @@ void AudioGraph::RenderConnections() const {
 
             const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (flags & InteractionFlags_Clicked) {
-                Action::AdjacencyList::ToggleConnection{Connections.Path, out_node->Id, in_node->Id}.q();
+                Action::AdjacencyList::ToggleConnection{Path, out_node->Id, in_node->Id}.q();
             }
 
-            const bool is_connected = Connections.IsConnected(out_node->Id, in_node->Id);
+            const bool is_connected = IsConnected(out_node->Id, in_node->Id);
             const auto fill_color =
                 flags & InteractionFlags_Held ?
                 ImGuiCol_ButtonActive :
@@ -534,24 +540,16 @@ void AudioGraph::Style::Matrix::Render() const {
 }
 
 void AudioGraph::Render() const {
-    if (BeginTabItem("Nodes")) {
-        if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            AudioGraphNode::Render();
+    SampleRate.Render(AudioDevice::PrioritizedSampleRates);
+    AudioGraphNode::Render();
 
-            SampleRate.Render(AudioDevice::PrioritizedSampleRates);
-
-            for (const auto *node : Nodes) {
-                if (TreeNodeEx(node->ImGuiLabel.c_str())) {
-                    node->Draw();
-                    TreePop();
-                }
+    if (TreeNode(Nodes.ImGuiLabel.c_str())) {
+        for (const auto *node : Nodes) {
+            if (TreeNode(node->ImGuiLabel.c_str())) {
+                node->Draw();
+                TreePop();
             }
-            EndTabItem();
         }
-        EndTabItem();
-    }
-    if (BeginTabItem(Connections.ImGuiLabel.c_str())) {
-        RenderConnections();
-        EndTabItem();
+        TreePop();
     }
 }

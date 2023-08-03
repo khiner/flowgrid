@@ -25,27 +25,19 @@ bool Audio::CanApply(const ActionType &) const { return true; }
 
 using namespace ImGui;
 
-void Audio::Render() const {
-    Faust.Draw();
-
+void Audio::Style::Render() const {
+    const auto &audio = static_cast<const Audio &>(*Parent);
     if (BeginTabBar("")) {
-        Graph.Draw();
-        if (BeginTabItem("Style")) {
-            if (BeginTabBar("")) {
-                if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
-                    Graph.Style.Matrix.Draw();
-                    EndTabItem();
-                }
-                if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
-                    Faust.Graph.Style.Draw();
-                    EndTabItem();
-                }
-                if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-                    Faust.Params.Style.Draw();
-                    EndTabItem();
-                }
-                EndTabBar();
-            }
+        if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            audio.Graph.Style.Matrix.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            audio.Faust.Graph.Style.Draw();
+            EndTabItem();
+        }
+        if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
+            audio.Faust.Params.Style.Draw();
             EndTabItem();
         }
         EndTabBar();

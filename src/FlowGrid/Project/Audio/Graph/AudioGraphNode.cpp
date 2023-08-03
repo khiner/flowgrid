@@ -237,7 +237,7 @@ private:
 };
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent)) {
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)) {
     Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, InputMonitor, OutputMonitor};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
@@ -370,20 +370,18 @@ std::string NodesToString(const std::unordered_set<AudioGraphNode *> &nodes, boo
 
 void AudioGraphNode::Render() const {
     if (!IsGraphEndpoint()) {
-        if (Button("X")) {
-            Action::AudioGraph::DeleteNode{Id}.q();
-        }
+        // Graph endpoint node is not deletable and is always active (since it's always "connected" to itself).
+        if (Button("X")) Action::AudioGraph::DeleteNode{Id}.q();
         SameLine();
+        if (IsActive) {
+            PushStyleColor(ImGuiCol_Text, {0.0f, 1.0f, 0.0f, 1.0f});
+            TextUnformatted("Active");
+        } else {
+            PushStyleColor(ImGuiCol_Text, {1.0f, 0.0f, 0.0f, 1.0f});
+            TextUnformatted("Inactive");
+        }
+        PopStyleColor();
     }
-
-    if (IsActive) {
-        PushStyleColor(ImGuiCol_Text, {0.0f, 1.0f, 0.0f, 1.0f});
-        TextUnformatted("Active");
-    } else {
-        PushStyleColor(ImGuiCol_Text, {1.0f, 0.0f, 0.0f, 1.0f});
-        TextUnformatted("Inactive");
-    }
-    PopStyleColor();
 
     if (TreeNode("Connections")) {
         auto source_nodes = Graph->GetSourceNodes(this);

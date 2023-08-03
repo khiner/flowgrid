@@ -57,7 +57,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
                 Float, MaxLabelSpace,
                 "?The matrix is placed to make room for the longest input/output node label, up to this limit (as a multiple of line height), at which point the labels will be ellipsified.\n"
                 "(Use Style->ImGui->InnerItemSpacing->X for spacing between labels and cells.)",
-                8, 4, 16
+                8, 3, 16
             );
 
         protected:
@@ -89,6 +89,8 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
         [this](u32 sr) { return GetSampleRateName(sr); }
     );
     Prop(Style, Style);
+
+    mutable ID SelectedNodeId{0}; // `Used for programatically navigating to nodes in the graph view.
 
 private:
     void Render() const override;

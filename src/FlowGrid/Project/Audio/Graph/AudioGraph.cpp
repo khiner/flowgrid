@@ -396,6 +396,41 @@ void AudioGraph::UpdateConnections() {
 
 using namespace ImGui;
 
+static void RenderConnectionsLabelFrame(InteractionFlags interaction_flags) {
+    const auto fill_color =
+        interaction_flags & InteractionFlags_Held ?
+        ImGuiCol_ButtonActive :
+        interaction_flags & InteractionFlags_Hovered ?
+        ImGuiCol_ButtonHovered :
+        ImGuiCol_WindowBg;
+    RenderFrame(GetItemRectMin(), GetItemRectMax(), GetColorU32(fill_color));
+}
+
+// todo move more label logic into this method.
+static void RenderConnectionsLabel(IO io, const AudioGraphNode *node, const string &ellipsified_label, InteractionFlags interaction_flags) {
+    const auto *graph = node->Graph;
+    const bool is_active = node->IsActive;
+    if (!is_active) BeginDisabled();
+    RenderConnectionsLabelFrame(interaction_flags);
+    if (io == IO_Out) {
+        ImPlot::AddTextVertical(
+            GetWindowDrawList(),
+            GetCursorScreenPos() + ImVec2{(GetItemRectSize().x - GetTextLineHeight()) / 2, GetItemRectSize().y - ImGui::GetStyle().FramePadding.y},
+            GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
+        );
+    } else {
+        TextUnformatted(ellipsified_label.c_str());
+    }
+    if (!is_active) EndDisabled();
+
+    const bool text_clipped = ellipsified_label.ends_with("...");
+
+    if (text_clipped && (interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", node->Name.c_str());
+    if (interaction_flags & InteractionFlags_Clicked) {
+        if (graph->Focus()) graph->SelectedNodeId = node->Id;
+    }
+}
+
 void AudioGraph::Connections::Render() const {
     const auto &graph = *static_cast<const AudioGraph *>(Parent);
     using IoVec = ImVec2; // A 2D vector representing floats corresponding to input/output, rather than an x/y position.
@@ -456,25 +491,10 @@ void AudioGraph::Connections::Render() const {
         if (!out_node->CanConnectOutput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, out_node->ImGuiLabel.c_str());
-
+        const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, std::format("{}:{}", out_node->ImGuiLabel, to_string(IO_Out)).c_str());
         const string label = out_node->Name;
         const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.y);
-        const bool is_active = out_node->IsActive;
-        if (!is_active) BeginDisabled();
-        ImPlot::AddTextVertical(
-            GetWindowDrawList(),
-            grid_top_left + ImVec2{(cell_size + cell_gap) * out_count + (cell_size - GetTextLineHeight()) / 2, -label_padding.y},
-            GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
-        );
-        if (!is_active) EndDisabled();
-
-        const bool text_clipped = ellipsified_label.ends_with("...");
-        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
-        if (label_interaction_flags & InteractionFlags_Clicked) {
-            // Navigate to the node.
-            // Nodes tab -> Graph tree node -> Node tree node.
-        }
+        RenderConnectionsLabel(IO_Out, out_node, ellipsified_label, label_interaction_flags);
         out_count++;
     }
 
@@ -484,19 +504,11 @@ void AudioGraph::Connections::Render() const {
         if (!in_node->CanConnectInput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
-        const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, in_node->ImGuiLabel.c_str());
-
+        const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, std::format("{}:{}", in_node->ImGuiLabel, to_string(IO_In)).c_str());
         const string label = in_node->Name;
         const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.x);
         SetCursorPos(GetCursorPos() + ImVec2{node_label_w.x - CalcTextSize(ellipsified_label.c_str()).x - label_padding.y, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
-
-        const bool is_active = in_node->IsActive;
-        if (!is_active) BeginDisabled();
-        TextUnformatted(ellipsified_label.c_str());
-        if (!is_active) EndDisabled();
-
-        const bool text_clipped = ellipsified_label.find("...") != string::npos;
-        if (text_clipped && (label_interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", label.c_str());
+        RenderConnectionsLabel(IO_In, in_node, ellipsified_label, label_interaction_flags);
 
         u32 out_i = 0;
         for (const auto *out_node : graph.Nodes) {
@@ -508,16 +520,16 @@ void AudioGraph::Connections::Render() const {
             const bool disabled = out_node->Id == in_node->Id;
             if (disabled) BeginDisabled();
 
-            const auto flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
-            if (flags & InteractionFlags_Clicked) {
+            const auto cell_interaction_flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
+            if (cell_interaction_flags & InteractionFlags_Clicked) {
                 Action::AdjacencyList::ToggleConnection{Path, out_node->Id, in_node->Id}.q();
             }
 
             const bool is_connected = IsConnected(out_node->Id, in_node->Id);
             const auto fill_color =
-                flags & InteractionFlags_Held ?
+                cell_interaction_flags & InteractionFlags_Held ?
                 ImGuiCol_ButtonActive :
-                (flags & InteractionFlags_Hovered ?
+                (cell_interaction_flags & InteractionFlags_Hovered ?
                      ImGuiCol_ButtonHovered :
                      (is_connected ? ImGuiCol_FrameBgActive : ImGuiCol_FrameBg)
                 );
@@ -543,8 +555,18 @@ void AudioGraph::Render() const {
     SampleRate.Render(AudioDevice::PrioritizedSampleRates);
     AudioGraphNode::Render();
 
+    if (SelectedNodeId != 0) {
+        SetNextItemOpen(true);
+        if (IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
+    }
+
     if (TreeNode(Nodes.ImGuiLabel.c_str())) {
         for (const auto *node : Nodes) {
+            if (SelectedNodeId != 0) {
+                const bool is_node_selected = SelectedNodeId == node->Id;
+                SetNextItemOpen(is_node_selected);
+                if (is_node_selected && IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
+            }
             if (TreeNode(node->ImGuiLabel.c_str())) {
                 node->Draw();
                 TreePop();
@@ -552,4 +574,6 @@ void AudioGraph::Render() const {
         }
         TreePop();
     }
+
+    SelectedNodeId = 0;
 }

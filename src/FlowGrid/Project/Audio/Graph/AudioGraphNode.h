@@ -180,8 +180,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     struct SplitterNode;
     std::vector<std::unique_ptr<SplitterNode>> Splitters;
 
-    // `IsActive` is derived from graph connections and is updated via `AudioGraph::UpdateConnections()`.
     // `IsActive == true` means there is a connection path from this node to the graph endpoint node (`OutputNode`).
+    // Updated in `AudioGraph::UpdateConnections()`.
     bool IsActive{false};
 
 protected:

@@ -14,8 +14,6 @@ typedef float real;
 // The periodic choice works as if a window with (size + 1) elements is calculated, after which the last element is dropped.
 // A symmetric window is preferred in FIR filter design, while a periodic window is preferred in spectral analysis.
 
-using WindowFunctionType = void (*)(float *, unsigned);
-
 // Generic cosine window
 void cosine_window(real *w, unsigned n, const real *coeff, unsigned ncoeff, bool sflag);
 

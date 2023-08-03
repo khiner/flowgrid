@@ -16,9 +16,10 @@
 using namespace ImGui;
 
 AudioGraphNode::GainerNode::GainerNode(ComponentArgs &&args)
-    : Component(std::move(args)), Node(static_cast<AudioGraphNode *>(Parent->Parent)), SampleRate(Node->Graph->SampleRate) {
+    : Component(std::move(args)), ParentNode(static_cast<AudioGraphNode *>(Parent->Parent)), SampleRate(ParentNode->Graph->SampleRate) {
     Field::References listened_fields = {Muted, Level, Smooth};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+
     Gainer = std::make_unique<ma_gainer_node>();
     Init();
 }
@@ -29,20 +30,20 @@ AudioGraphNode::GainerNode::~GainerNode() {
 
 void AudioGraphNode::GainerNode::Init() {
     const u32 smooth_time_frames = Smooth ? (float(SmoothTimeMs) * float(SampleRate) / 1000.f) : 0;
-    auto config = ma_gainer_node_config_init(Node->OutputChannelCount(0), Muted ? 0.f : float(Level), smooth_time_frames);
-    ma_result result = ma_gainer_node_init(Node->Graph->Get(), &config, nullptr, Get());
+    auto config = ma_gainer_node_config_init(ParentNode->OutputChannelCount(0), Muted ? 0.f : float(Level), smooth_time_frames);
+    ma_result result = ma_gainer_node_init(ParentNode->Graph->Get(), &config, nullptr, Get());
     if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize gainer node: {}", int(result))); }
 }
 
 void AudioGraphNode::GainerNode::Uninit() {
-    if (auto *node = Get()) ma_gainer_node_uninit(node, nullptr);
+    ma_gainer_node_uninit(Get(), nullptr);
 }
 
 void AudioGraphNode::GainerNode::OnFieldChanged() {
     if (Smooth.IsChanged()) {
         Uninit();
         Init();
-        Node->NotifyConnectionsChanged();
+        ParentNode->NotifyConnectionsChanged();
     }
     if (Muted.IsChanged() || Level.IsChanged()) UpdateLevel();
 }
@@ -58,7 +59,7 @@ void AudioGraphNode::GainerNode::SetSampleRate(u32 sample_rate) {
         SampleRate = sample_rate;
         Uninit();
         Init();
-        Node->NotifyConnectionsChanged();
+        ParentNode->NotifyConnectionsChanged();
     }
 }
 
@@ -69,143 +70,7 @@ void AudioGraphNode::GainerNode::Render() const {
     // SmoothTimeMs.Draw();
 }
 
-struct AudioGraphNode::SplitterNode {
-    SplitterNode(ma_node_graph *ma_graph, u32 channels) {
-        auto config = ma_splitter_node_config_init(channels);
-        ma_result result = ma_splitter_node_init(ma_graph, &config, nullptr, &Splitter);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", int(result)));
-    }
-    ~SplitterNode() {
-        ma_splitter_node_uninit(&Splitter, nullptr);
-    }
-
-    inline ma_splitter_node *Get() noexcept { return &Splitter; }
-
-private:
-    ma_splitter_node Splitter;
-};
-
-struct AudioGraphNode::MonitorNode {
-    MonitorNode(ma_node_graph *ma_graph, u32 channels, u32 buffer_frames) {
-        auto config = ma_monitor_node_config_init(channels, buffer_frames);
-        ma_result result = ma_monitor_node_init(ma_graph, &config, nullptr, &Monitor);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize monitor node: {}", int(result)));
-    }
-    ~MonitorNode() {
-        ma_monitor_node_uninit(&Monitor, nullptr);
-    }
-
-    inline ma_monitor_node *Get() noexcept { return &Monitor; }
-
-    void ApplyWindowFunction(WindowFunctionType window_function) {
-        ma_monitor_apply_window_function(&Monitor, window_function);
-    }
-
-    void RenderWaveform(bool is_active) const {
-        if (ImPlot::BeginPlot("Waveform", {-1, 160})) {
-            const auto N = Monitor.config.buffer_frames;
-            ImPlot::SetupAxes("Frame", "Value");
-            ImPlot::SetupAxisLimits(ImAxis_X1, 0, N, ImGuiCond_Always);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
-            if (is_active) {
-                for (u32 channel_index = 0; channel_index < Monitor.config.channels; channel_index++) {
-                    const std::string channel_name = std::format("Channel {}", channel_index);
-                    ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
-                    ImPlot::PlotLine(channel_name.c_str(), Monitor.buffer, N);
-                    ImPlot::PopStyleVar();
-                }
-            }
-            ImPlot::EndPlot();
-        }
-    }
-
-    void RenderMagnitudeSpectrum(bool is_active, u32 sample_rate) const {
-        if (ImPlot::BeginPlot("Magnitude spectrum", {-1, 160})) {
-            static const float MIN_DB = -100;
-            const fft_data *fft = Monitor.fft;
-            const u32 N = Monitor.config.buffer_frames;
-            const u32 N_2 = N / 2;
-            const float fs = sample_rate;
-            const float fs_n = fs / float(N);
-
-            static std::vector<float> frequency(N_2);
-            static std::vector<float> magnitude(N_2);
-            frequency.resize(N_2);
-            magnitude.resize(N_2);
-
-            const auto *data = fft->data; // Complex values.
-            for (u32 i = 0; i < N_2; i++) {
-                frequency[i] = fs_n * float(i);
-                const float mag_linear = sqrtf(data[i][0] * data[i][0] + data[i][1] * data[i][1]) / float(N_2);
-                magnitude[i] = ma_volume_linear_to_db(mag_linear);
-            }
-
-            ImPlot::SetupAxes("Frequency bin", "Magnitude (dB)");
-            ImPlot::SetupAxisLimits(ImAxis_X1, 0, fs / 2, ImGuiCond_Always);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, MIN_DB, 0, ImGuiCond_Always);
-            if (is_active) {
-                ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
-                // ImPlot::PushStyleColor(ImPlotCol_Fill, {1.f, 0.f, 0.f, 1.f});
-                // todo per-channel
-                ImPlot::PlotShaded("1", frequency.data(), magnitude.data(), N_2, MIN_DB);
-                // ImPlot::PopStyleColor();
-                ImPlot::PopStyleVar();
-            }
-            ImPlot::EndPlot();
-        }
-    }
-
-private:
-    ma_monitor_node Monitor;
-};
-
-AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent)) {
-    Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, Monitor, MonitorWindowLength, MonitorWindowType};
-    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-}
-
-AudioGraphNode::~AudioGraphNode() {
-    Splitters.clear();
-    InputGainer.Reset();
-    InputMonitor.reset();
-    OutputGainer.Reset();
-    OutputMonitor.reset();
-    if (Node != nullptr) {
-        ma_node_uninit(Node, nullptr);
-        Node = nullptr;
-    }
-    Listeners.clear();
-    Field::UnregisterChangeListener(this);
-}
-
-ma_node *AudioGraphNode::InputNode() const {
-    if (InputGainer) return InputGainer->Get();
-    if (InputMonitor) return InputMonitor->Get();
-    return Node;
-}
-ma_node *AudioGraphNode::OutputNode() const {
-    if (OutputMonitor) return OutputMonitor->Get();
-    if (OutputGainer) return OutputGainer->Get();
-    return Node;
-}
-
-const DynamicComponent<AudioGraphNode::GainerNode> &AudioGraphNode::GetGainer(IO io) const {
-    return io == IO_In ? InputGainer : OutputGainer;
-}
-
-AudioGraphNode::GainerNode *AudioGraphNode::GetGainerNode(IO io) const {
-    const auto &gainer = GetGainer(io);
-    return gainer ? gainer.Get() : nullptr;
-}
-
-AudioGraphNode::MonitorNode *AudioGraphNode::GetMonitorNode(IO io) const {
-    if (io == IO_In) return InputMonitor.get();
-    if (io == IO_Out) return OutputMonitor.get();
-    return nullptr;
-}
-
-WindowFunctionType GetWindowFunction(WindowType type) {
+static WindowFunctionType GetWindowFunction(WindowType type) {
     switch (type) {
         case WindowType_Rectangular:
             return rectwin;
@@ -236,6 +101,189 @@ WindowFunctionType GetWindowFunction(WindowType type) {
     }
 }
 
+AudioGraphNode::MonitorNode::MonitorNode(ComponentArgs &&args)
+    : Component(std::move(args)), ParentNode(static_cast<AudioGraphNode *>(Parent->Parent)),
+      Type(PathSegment.starts_with(to_string(IO_In)) ? IO_In : IO_Out) {
+    Field::References listened_fields = {WindowType, WindowLength};
+    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+
+    Monitor = std::make_unique<ma_monitor_node>();
+    Init();
+}
+
+AudioGraphNode::MonitorNode::~MonitorNode() {
+    Uninit();
+}
+
+void AudioGraphNode::MonitorNode::Init() {
+    auto config = ma_monitor_node_config_init(ParentNode->ChannelCount(Type, 0), WindowLength);
+    ma_result result = ma_monitor_node_init(ParentNode->Graph->Get(), &config, nullptr, Get());
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize monitor node: {}", int(result)));
+
+    UpdateWindowType();
+}
+
+void AudioGraphNode::MonitorNode::Uninit() {
+    ma_monitor_node_uninit(Get(), nullptr);
+}
+
+void AudioGraphNode::MonitorNode::OnFieldChanged() {
+    if (WindowType.IsChanged()) UpdateWindowType();
+    if (WindowLength.IsChanged()) UpdateWindowLength();
+}
+
+void AudioGraphNode::MonitorNode::UpdateWindowType() {
+    auto window_function = GetWindowFunction(WindowType);
+    if (window_function == nullptr) throw std::runtime_error(std::format("Failed to get window function for window type {}.", int(WindowType)));
+
+    ApplyWindowFunction(std::move(window_function));
+}
+
+void AudioGraphNode::MonitorNode::UpdateWindowLength() {
+    // Recreate the monitor node to update the buffer size.
+    Uninit();
+    Init();
+    ParentNode->NotifyConnectionsChanged();
+}
+
+ma_monitor_node *AudioGraphNode::MonitorNode::Get() { return Monitor.get(); }
+
+std::string AudioGraphNode::MonitorNode::GetWindowLengthName(u32 window_length_frames) const {
+    return std::format("{} ({:.2f} ms)", window_length_frames, float(window_length_frames * 1000) / float(ParentNode->Graph->SampleRate));
+}
+
+void AudioGraphNode::MonitorNode::ApplyWindowFunction(WindowFunctionType window_function) {
+    ma_monitor_apply_window_function(Get(), window_function);
+}
+
+void AudioGraphNode::MonitorNode::RenderWaveform() const {
+    if (ImPlot::BeginPlot("Waveform", {-1, 160})) {
+        const auto N = Monitor->config.buffer_frames;
+        ImPlot::SetupAxes("Frame", "Value");
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, N, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, -1.1, 1.1, ImGuiCond_Always);
+        if (ParentNode->IsActive) {
+            for (u32 channel_index = 0; channel_index < Monitor->config.channels; channel_index++) {
+                const std::string channel_name = std::format("Channel {}", channel_index);
+                ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
+                ImPlot::PlotLine(channel_name.c_str(), Monitor->buffer, N);
+                ImPlot::PopStyleVar();
+            }
+        }
+        ImPlot::EndPlot();
+    }
+}
+
+void AudioGraphNode::MonitorNode::RenderMagnitudeSpectrum() const {
+    if (ImPlot::BeginPlot("Magnitude spectrum", {-1, 160})) {
+        static const float MIN_DB = -100;
+        const fft_data *fft = Monitor->fft;
+        const u32 N = Monitor->config.buffer_frames;
+        const u32 N_2 = N / 2;
+        const float fs = ParentNode->Graph->SampleRate;
+        const float fs_n = fs / float(N);
+
+        static std::vector<float> frequency(N_2);
+        static std::vector<float> magnitude(N_2);
+        frequency.resize(N_2);
+        magnitude.resize(N_2);
+
+        const auto *data = fft->data; // Complex values.
+        for (u32 i = 0; i < N_2; i++) {
+            frequency[i] = fs_n * float(i);
+            const float mag_linear = sqrtf(data[i][0] * data[i][0] + data[i][1] * data[i][1]) / float(N_2);
+            magnitude[i] = ma_volume_linear_to_db(mag_linear);
+        }
+
+        ImPlot::SetupAxes("Frequency bin", "Magnitude (dB)");
+        ImPlot::SetupAxisLimits(ImAxis_X1, 0, fs / 2, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, MIN_DB, 0, ImGuiCond_Always);
+        if (ParentNode->IsActive) {
+            ImPlot::PushStyleVar(ImPlotStyleVar_Marker, ImPlotMarker_None);
+            // ImPlot::PushStyleColor(ImPlotCol_Fill, {1.f, 0.f, 0.f, 1.f});
+            // todo per-channel
+            ImPlot::PlotShaded("1", frequency.data(), magnitude.data(), N_2, MIN_DB);
+            // ImPlot::PopStyleColor();
+            ImPlot::PopStyleVar();
+        }
+        ImPlot::EndPlot();
+    }
+}
+
+void AudioGraphNode::MonitorNode::Render() const {
+    static const std::vector<u32> WindowLengthOptions = {256, 512, 1024, 2048, 4096, 8192, 16384};
+    SetNextItemWidth(GetFontSize() * 9);
+    WindowLength.Render(WindowLengthOptions);
+    SetNextItemWidth(GetFontSize() * 9);
+    WindowType.Draw();
+    RenderWaveform();
+    RenderMagnitudeSpectrum();
+}
+
+struct AudioGraphNode::SplitterNode {
+    SplitterNode(ma_node_graph *ma_graph, u32 channels) {
+        auto config = ma_splitter_node_config_init(channels);
+        ma_result result = ma_splitter_node_init(ma_graph, &config, nullptr, &Splitter);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", int(result)));
+    }
+    ~SplitterNode() {
+        ma_splitter_node_uninit(&Splitter, nullptr);
+    }
+
+    inline ma_splitter_node *Get() noexcept { return &Splitter; }
+
+private:
+    ma_splitter_node Splitter;
+};
+
+AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
+    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Name == "Graph" ? this : Parent->Parent)) {
+    Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, InputMonitor, OutputMonitor};
+    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+}
+
+AudioGraphNode::~AudioGraphNode() {
+    Splitters.clear();
+    InputGainer.Reset();
+    InputMonitor.Reset();
+    OutputGainer.Reset();
+    OutputMonitor.Reset();
+    if (Node != nullptr) {
+        ma_node_uninit(Node, nullptr);
+        Node = nullptr;
+    }
+    Listeners.clear();
+    Field::UnregisterChangeListener(this);
+}
+
+ma_node *AudioGraphNode::InputNode() const {
+    if (InputGainer) return InputGainer->Get();
+    if (InputMonitor) return InputMonitor->Get();
+    return Node;
+}
+ma_node *AudioGraphNode::OutputNode() const {
+    if (OutputMonitor) return OutputMonitor->Get();
+    if (OutputGainer) return OutputGainer->Get();
+    return Node;
+}
+
+const DynamicComponent<AudioGraphNode::GainerNode> &AudioGraphNode::GetGainer(IO io) const {
+    return io == IO_In ? InputGainer : OutputGainer;
+}
+const DynamicComponent<AudioGraphNode::MonitorNode> &AudioGraphNode::GetMonitor(IO io) const {
+    return io == IO_In ? InputMonitor : OutputMonitor;
+}
+
+AudioGraphNode::GainerNode *AudioGraphNode::GetGainerNode(IO io) const {
+    const auto &gainer = GetGainer(io);
+    return gainer ? gainer.Get() : nullptr;
+}
+
+AudioGraphNode::MonitorNode *AudioGraphNode::GetMonitorNode(IO io) const {
+    const auto &monitor = GetMonitor(io);
+    return monitor ? monitor.Get() : nullptr;
+}
+
 void AudioGraphNode::OnSampleRateChanged() {
     if (InputGainer) InputGainer->SetSampleRate(Graph->SampleRate);
     if (OutputGainer) OutputGainer->SetSampleRate(Graph->SampleRate);
@@ -243,17 +291,8 @@ void AudioGraphNode::OnSampleRateChanged() {
 
 void AudioGraphNode::OnFieldChanged() {
     if (Graph->SampleRate.IsChanged()) OnSampleRateChanged();
-    if (Monitor.IsChanged()) {
-        for (const IO io : IO_All) UpdateMonitor(io);
-    }
-    if (MonitorWindowLength.IsChanged()) {
-        for (const IO io : IO_All) UpdateMonitorWindowLength(io);
-    }
-    if (MonitorWindowType.IsChanged()) {
-        for (const IO io : IO_All) UpdateMonitorWindowFunction(io);
-    }
     // Notify on field changes that can result in connection changes.
-    if (InputGainer.IsChanged() || OutputGainer.IsChanged() || Monitor.IsChanged() || MonitorWindowLength.IsChanged()) {
+    if (InputGainer.IsChanged() || OutputGainer.IsChanged() || InputMonitor.IsChanged() || OutputMonitor.IsChanged()) {
         NotifyConnectionsChanged();
     }
 }
@@ -268,44 +307,12 @@ u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_n
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Node, bus); }
 u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
 
-void AudioGraphNode::CreateMonitor(IO io) {
-    auto monitor = std::make_unique<MonitorNode>(Graph->Get(), ChannelCount(io, 0), MonitorWindowLength);
-    if (io == IO_In) InputMonitor = std::move(monitor);
-    else OutputMonitor = std::move(monitor);
-
-    UpdateMonitorWindowFunction(io);
-}
-
-void AudioGraphNode::UpdateMonitorWindowLength(IO io) {
-    if (GetMonitorNode(io)) CreateMonitor(io); // Recreate the monitor node to update the buffer size.
-}
-
-void AudioGraphNode::UpdateMonitorWindowFunction(IO io) {
-    if (auto *monitor = GetMonitorNode(io)) {
-        auto window_function = GetWindowFunction(MonitorWindowType);
-        if (window_function == nullptr) throw std::runtime_error(std::format("Failed to get window function for window type {}.", int(MonitorWindowType)));
-
-        monitor->ApplyWindowFunction(std::move(window_function));
-    }
-}
-
-void AudioGraphNode::UpdateMonitor(IO io) {
-    auto *monitor = GetMonitorNode(io);
-    auto bus_count = BusCount(io);
-    if (!monitor && Monitor && bus_count > 0) {
-        CreateMonitor(io);
-    } else if (monitor && (!Monitor || bus_count == 0)) {
-        if (io == IO_In) InputMonitor.reset();
-        else OutputMonitor.reset();
-    }
-}
-
 void AudioGraphNode::UpdateAll() {
     // Update nodes from earliest to latest in the signal path.
     InputGainer.Refresh();
-    UpdateMonitor(IO_In);
+    InputMonitor.Refresh();
     OutputGainer.Refresh();
-    UpdateMonitor(IO_Out);
+    OutputMonitor.Refresh();
 }
 
 void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
@@ -344,10 +351,6 @@ void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
 void AudioGraphNode::DisconnectAll() {
     ma_node_detach_output_bus(OutputNode(), 0);
     Splitters.clear();
-}
-
-std::string AudioGraphNode::GetWindowLengthName(u32 window_length_frames) const {
-    return std::format("{} ({:.2f} ms)", window_length_frames, float(window_length_frames * 1000) / float(Graph->SampleRate));
 }
 
 std::string NodesToString(const std::unordered_set<AudioGraphNode *> &nodes, bool is_input) {
@@ -409,21 +412,14 @@ void AudioGraphNode::Render() const {
     }
 
     Spacing();
-    Monitor.Draw();
-    if (Monitor) {
-        static const std::vector<u32> WindowLengthOptions = {256, 512, 1024, 2048, 4096, 8192, 16384};
-        SetNextItemWidth(GetFontSize() * 9);
-        MonitorWindowLength.Render(WindowLengthOptions);
-        SetNextItemWidth(GetFontSize() * 9);
-        MonitorWindowType.Draw();
-        for (const IO io : IO_All) {
-            if (GetMonitorNode(io) == nullptr) continue;
-
-            if (TreeNodeEx(to_string(io).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s buffer", StringHelper::Capitalize(to_string(io)).c_str())) {
-                if (const auto *monitor = GetMonitorNode(io)) {
-                    monitor->RenderWaveform(IsActive);
-                    monitor->RenderMagnitudeSpectrum(IsActive, Graph->SampleRate);
-                }
+    for (IO io : IO_All) {
+        if (BusCount(io) > 0) {
+            const std::string label = is_io_node ? std::format("{} monitor", StringHelper::Capitalize(to_string(io))) : "Monitor";
+            if (TreeNode(label.c_str())) {
+                const auto &monitor = GetMonitor(io);
+                bool has_monitor = monitor;
+                if (Checkbox("Monitor", &has_monitor)) monitor.IssueToggle();
+                if (monitor) monitor->Draw();
                 TreePop();
             }
         }

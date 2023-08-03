@@ -13,6 +13,9 @@ struct AudioGraph;
 
 struct ma_node_graph;
 struct ma_gainer_node;
+struct ma_monitor_node;
+
+using WindowFunctionType = void (*)(float *, unsigned);
 
 enum WindowType_ {
     WindowType_Rectangular,
@@ -94,8 +97,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         if (OutputGainer) OutputGainer->Muted.Set_(muted);
     }
 
-    std::string GetWindowLengthName(u32 frames) const;
-
     struct GainerNode : Component, Field::ChangeListener {
         GainerNode(ComponentArgs &&);
         ~GainerNode();
@@ -123,34 +124,61 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         void Init();
         void Uninit();
 
-        AudioGraphNode *Node;
+        AudioGraphNode *ParentNode;
         std::unique_ptr<ma_gainer_node> Gainer;
         u32 SampleRate;
+    };
+
+    struct MonitorNode : Component, Field::ChangeListener {
+        MonitorNode(ComponentArgs &&);
+        ~MonitorNode();
+
+        void OnFieldChanged() override;
+
+        ma_monitor_node *Get();
+
+        std::string GetWindowLengthName(u32 frames) const;
+
+        void UpdateWindowType();
+        void UpdateWindowLength();
+
+        void ApplyWindowFunction(WindowFunctionType);
+
+        void RenderWaveform() const;
+        void RenderMagnitudeSpectrum() const;
+
+        Prop_(
+            UInt, WindowLength,
+            "?The number of most-recently processed frames stored for display in the waveform and magnitude spectrum views.",
+            [this](u32 frames) { return GetWindowLengthName(frames); },
+            1024
+        );
+        Prop_(
+            Enum, WindowType, "?The window type used for the magnitude spectrum FFT.",
+            {"Rectangular", "Hann", "Hamming", "Blackman", "Blackman-Harris", "Nuttall", "Flat-Top", "Triangular", "Bartlett", "Bartlett-Hann", "Bohman", "Parzen"},
+            WindowType_BlackmanHarris
+        );
+
+    private:
+        void Render() const override;
+
+        void Init();
+        void Uninit();
+
+        AudioGraphNode *ParentNode;
+        IO Type;
+        std::unique_ptr<ma_monitor_node> Monitor;
     };
 
     const AudioGraph *Graph;
 
     Prop(DynamicComponent<GainerNode>, InputGainer);
     Prop(DynamicComponent<GainerNode>, OutputGainer);
-
-    Prop_(Bool, Monitor, "?Plot the node's most recent input/output buffer(s).", false);
-    Prop_(
-        UInt, MonitorWindowLength,
-        "?The number of most-recently processed frames stored for display in the waveform and magnitude spectrum views.",
-        [this](u32 frames) { return GetWindowLengthName(frames); },
-        1024
-    );
-    Prop_(
-        Enum, MonitorWindowType, "?The window type used for the magnitude spectrum FFT.",
-        {"Rectangular", "Hann", "Hamming", "Blackman", "Blackman-Harris", "Nuttall", "Flat-Top", "Triangular", "Bartlett", "Bartlett-Hann", "Bohman", "Parzen"},
-        WindowType_BlackmanHarris
-    );
+    Prop(DynamicComponent<MonitorNode>, InputMonitor);
+    Prop(DynamicComponent<MonitorNode>, OutputMonitor);
 
     struct SplitterNode;
     std::vector<std::unique_ptr<SplitterNode>> Splitters;
-
-    struct MonitorNode;
-    std::unique_ptr<MonitorNode> InputMonitor, OutputMonitor;
 
     // These fields are derived from graph connections and are updated via `AudioGraph::UpdateConnections()`.
     bool IsActive{false}; // `true` means the audio device is on and there is a connection path from this node to the graph endpoint node (`OutputNode`).
@@ -161,14 +189,9 @@ protected:
     void Render() const override;
 
     const DynamicComponent<GainerNode> &GetGainer(IO) const;
+    const DynamicComponent<MonitorNode> &GetMonitor(IO) const;
     GainerNode *GetGainerNode(IO) const;
     MonitorNode *GetMonitorNode(IO) const;
-
-    void CreateMonitor(IO);
-    void UpdateGainer();
-    void UpdateMonitor(IO);
-    void UpdateMonitorWindowFunction(IO);
-    void UpdateMonitorWindowLength(IO);
 
     void NotifyConnectionsChanged() {
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);

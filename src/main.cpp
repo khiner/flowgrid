@@ -52,7 +52,6 @@ int main() {
         Tick(); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
         Tick(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        Tick(); // Another one seems to be needed to update selected tabs? (I think this happens when changes during initilization change scroll position or somesuch.)
         RunQueuedActions(store, true);
     }
 

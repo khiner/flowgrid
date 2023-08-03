@@ -228,20 +228,21 @@ void Project::Render() const {
 
         Info.Dock(info_node_id);
         Settings.Dock(settings_node_id);
-    } else if (frame_count == 2) {
-        // Doesn't work on the first draw: https://github.com/ocornut/imgui/issues/2304
-        Style.SelectTab();
-        Audio.Graph.SelectTab();
-        Audio.Faust.Graph.SelectTab();
-        Debug.SelectTab(); // not visible by default anymore
     }
-
     // Draw non-window children.
     for (const auto *child : Children) {
         if (child == &Windows) continue;
         if (!Windows.IsWindow(child->Id)) child->Draw();
     }
     Windows.Draw();
+
+    if (frame_count == 1) {
+        // Default focused windows.
+        Style.Focus();
+        Audio.Graph.Focus();
+        Audio.Faust.Graph.Focus();
+        Debug.Focus(); // not visible by default anymore
+    }
 
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {

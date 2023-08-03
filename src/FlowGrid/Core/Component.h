@@ -120,9 +120,9 @@ struct Component : Drawable {
     const ID Id;
 
     // todo this should be separated after current window refactor.
-    ImGuiWindow &FindImGuiWindow() const;
+    ImGuiWindow *FindImGuiWindow() const;
     void Dock(ID node_id) const;
-    void SelectTab() const; // If this window is tabbed, select it.
+    bool Focus() const;
     const Menu WindowMenu{{}};
 
     ImGuiWindowFlags WindowFlags{WindowFlags_None};

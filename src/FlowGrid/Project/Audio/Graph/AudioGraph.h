@@ -11,8 +11,8 @@
 struct ma_node_graph;
 
 struct MaGraph;
-struct DeviceInputNode;
-struct DeviceOutputNode;
+struct InputDeviceNode;
+struct OutputDeviceNode;
 
 struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDspChangeListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
@@ -20,7 +20,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
 
     // Node overrides.
     // The graph is also a graph endpoint node.
-    // The graph enforces that the only input to the graph endpoint node is the "Master" `DeviceOutputNode`.
+    // The graph enforces that the only input to the graph endpoint node is the "Master" `OutputDeviceNode`.
     // The graph endpoint MA node is allocated and managed by the MA graph, unlike other node types whose MA counterparts are explicitly managed.
     bool AllowInputConnectionChange() const override { return false; }
     bool AllowOutputConnectionChange() const override { return false; }
@@ -98,6 +98,6 @@ private:
     void UpdateConnections();
 
     AudioGraphNode *FindByPathSegment(string_view) const;
-    DeviceInputNode *GetDeviceInputNode() const;
-    DeviceOutputNode *GetDeviceOutputNode() const;
+    InputDeviceNode *GetInputDeviceNode() const;
+    OutputDeviceNode *GetOutputDeviceNode() const;
 };

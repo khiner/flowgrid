@@ -3,8 +3,6 @@
 #include "imgui.h"
 #include "miniaudio.h"
 
-#include "Helper/String.h"
-
 // Copied from `miniaudio.c::g_maStandardSampleRatePriorities`.
 const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
     ma_standard_sample_rate_48000,
@@ -250,16 +248,17 @@ using namespace ImGui;
 
 void AudioDevice::Render() const {
     if (!IsStarted()) {
-        TextUnformatted("Audio device is not started.");
+        TextUnformatted("Device is not started.");
         return;
     }
 
-    TextUnformatted(StringHelper::Capitalize(to_string(Type)).c_str());
+    SetNextItemWidth(GetFontSize() * 14);
     Name.Render(DeviceNames[Type]);
+    SetNextItemWidth(GetFontSize() * 8);
     NativeSampleRate.Render(NativeSampleRates[Type]);
     // Format.Render(PrioritizedFormats); // todo choose (format, sample rate) pairs, since these are actually what's considered a "native format" by MA.
 
-    if (TreeNode("Info")) {
+    if (TreeNode("Device info")) {
         static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
         auto *device = Device.get();
         ma_device_get_name(device, Type == IO_In ? ma_device_type_capture : ma_device_type_playback, name, sizeof(name), nullptr);

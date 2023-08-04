@@ -3,9 +3,9 @@
 #include "imgui.h"
 #include "implot.h"
 
-#include "AudioGraphAction.h"
 #include "Helper/String.h"
 #include "Project/Audio/AudioDevice.h"
+#include "UI/HelpMarker.h"
 
 // Custom nodes.
 #include "ma_gainer_node/ma_gainer_node.h"
@@ -369,32 +369,6 @@ std::string NodesToString(const std::unordered_set<AudioGraphNode *> &nodes, boo
 }
 
 void AudioGraphNode::Render() const {
-    if (!IsGraphEndpoint()) {
-        // Graph endpoint node is not deletable and is always active (since it's always "connected" to itself).
-        if (Button("X")) Action::AudioGraph::DeleteNode{Id}.q();
-        SameLine();
-        if (IsActive) {
-            PushStyleColor(ImGuiCol_Text, {0.0f, 1.0f, 0.0f, 1.0f});
-            TextUnformatted("Active");
-        } else {
-            PushStyleColor(ImGuiCol_Text, {1.0f, 0.0f, 0.0f, 1.0f});
-            TextUnformatted("Inactive");
-        }
-        PopStyleColor();
-    }
-
-    if (TreeNode("Connections")) {
-        auto source_nodes = Graph->GetSourceNodes(this);
-        auto destination_nodes = Graph->GetDestinationNodes(this);
-        if (!source_nodes.empty() || !destination_nodes.empty()) {
-            Text("%s%s%s", NodesToString(source_nodes, true).c_str(), Name.c_str(), NodesToString(destination_nodes, false).c_str());
-        } else {
-            TextUnformatted("No connections");
-        }
-        TreePop();
-    }
-
-    Spacing();
     const bool is_io_node = InputBusCount() > 0 && OutputBusCount() > 0;
     for (IO io : IO_All) {
         if (BusCount(io) > 0) {
@@ -408,8 +382,6 @@ void AudioGraphNode::Render() const {
             }
         }
     }
-
-    Spacing();
     for (IO io : IO_All) {
         if (BusCount(io) > 0) {
             const std::string label = is_io_node ? std::format("{} monitor", StringHelper::Capitalize(to_string(io))) : "Monitor";
@@ -421,5 +393,40 @@ void AudioGraphNode::Render() const {
                 TreePop();
             }
         }
+    }
+    if (TreeNode("Node info")) {
+        TextUnformatted(std::format("Active: {}", bool(IsActive)).c_str());
+        SameLine();
+        fg::HelpMarker(
+            "A node is considered active if there is a connection path from it to the graph endpoint node.\n"
+            "Inactive nodes are not processed by the audio graph, and thus do not contribute to CPU load."
+        );
+        SeparatorText("Buses");
+        for (const IO io : IO_All) {
+            Text("%s buses (%u)", StringHelper::Capitalize(to_string(io)).c_str(), BusCount(io));
+            for (u32 bus = 0; bus < BusCount(io); bus++) {
+                const u32 channels = ChannelCount(io, bus);
+                BulletText("Bus %u: %u channel%s", bus, channels, channels == 1 ? "" : "s");
+            }
+        }
+        SeparatorText("Connections");
+        auto source_nodes = Graph->GetSourceNodes(this);
+        auto destination_nodes = Graph->GetDestinationNodes(this);
+        if (!source_nodes.empty() || !destination_nodes.empty()) {
+            Text("%s%s%s", NodesToString(source_nodes, true).c_str(), Name.c_str(), NodesToString(destination_nodes, false).c_str());
+        } else {
+            TextUnformatted("No connections");
+        }
+        SeparatorText("Internal nodes");
+        for (const IO io : IO_All) {
+            if (BusCount(io) > 0) {
+                const string io_label = StringHelper::Capitalize(to_string(io));
+                BulletText("%s", std::format("{} gainer: {}", io_label, bool(GetGainer(io))).c_str());
+                BulletText("%s", std::format("{} monitor: {}", io_label, bool(GetMonitor(io))).c_str());
+                // This will turn into a single splitter soon, so only showing the first atm.
+                if (io == IO_Out) BulletText("%s", std::format("{} splitter: {}", io_label, !Splitters.empty()).c_str());
+            }
+        }
+        TreePop();
     }
 }

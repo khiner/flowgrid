@@ -80,8 +80,8 @@ protected:
 
 // A `ma_data_source_node` whose `ma_data_source` is a `ma_duplex_rb`.
 // A source node that owns an input device and copies the device callback input buffer to a ring buffer.
-struct DeviceInputNode : AudioGraphNode {
-    DeviceInputNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+struct InputDeviceNode : AudioGraphNode {
+    InputDeviceNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, Graph->SampleRate, AudioInputCallback, this);
 
         ma_device *device = Device->Get();
@@ -101,7 +101,7 @@ struct DeviceInputNode : AudioGraphNode {
         UpdateAll();
     }
 
-    ~DeviceInputNode() {
+    ~InputDeviceNode() {
         ma_duplex_rb_uninit(&DuplexRb);
         ma_data_source_node_uninit(&SourceNode, nullptr);
         Node = nullptr;
@@ -109,7 +109,7 @@ struct DeviceInputNode : AudioGraphNode {
 
     // Adapted from `ma_device__handle_duplex_callback_capture`.
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-        auto *self = reinterpret_cast<DeviceInputNode *>(device->pUserData);
+        auto *self = reinterpret_cast<InputDeviceNode *>(device->pUserData);
         ma_duplex_rb *duplex_rb = &self->DuplexRb;
 
         ma_uint32 total_frames_processed = 0;
@@ -152,10 +152,9 @@ struct DeviceInputNode : AudioGraphNode {
 
 private:
     void Render() const override {
-        AudioGraphNode::Render();
-
-        ImGui::Spacing();
         Device->Draw();
+        ImGui::Spacing();
+        AudioGraphNode::Render();
     }
 };
 
@@ -185,19 +184,19 @@ private:
 
 // A passthrough node that owns an output device.
 // Must always be connected directly to the graph endpoint node.
-// todo There must be a single "Master" `DeviceOutputNode`, which calls `ma_node_graph_read_pcm_frames`.
-// Each remaining `DeviceOutputNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
-struct DeviceOutputNode : PassthroughBufferNode {
-    DeviceOutputNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
+// todo There must be a single "Master" `OutputDeviceNode`, which calls `ma_node_graph_read_pcm_frames`.
+// Each remaining `OutputDeviceNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
+struct OutputDeviceNode : PassthroughBufferNode {
+    OutputDeviceNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
         UpdateAll();
     }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-        auto *self = reinterpret_cast<DeviceOutputNode *>(device->pUserData);
-        // This is what we want the "Master" `DeviceOutputNode` to do.
+        auto *self = reinterpret_cast<OutputDeviceNode *>(device->pUserData);
+        // This is what we want the "Master" `OutputDeviceNode` to do.
         if (self->Graph) ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
-        // This is what we want the remaining `DeviceOutputNode`s to do.
+        // This is what we want the remaining `OutputDeviceNode`s to do.
         // self->ReadBufferData(output, frame_count);
 
         (void)device;
@@ -216,15 +215,14 @@ struct DeviceOutputNode : PassthroughBufferNode {
 
 private:
     void Render() const override {
-        AudioGraphNode::Render();
-
-        ImGui::Spacing();
         Device->Draw();
+        ImGui::Spacing();
+        AudioGraphNode::Render();
     }
 };
 
-static const string DeviceInputPathSegment = "Input";
-static const string DeviceOutputPathSegment = "Output";
+static const string InputDevicePathSegment = "Input";
+static const string OutputDevicePathSegment = "Output";
 static const string WaveformPathSegment = "Waveform";
 static const string FaustPathSegment = "Faust";
 
@@ -235,9 +233,9 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     UpdateAll();
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 
-    Nodes.EmplaceBack(DeviceInputPathSegment);
+    Nodes.EmplaceBack(InputDevicePathSegment);
     Nodes.back()->SetMuted(true); // External input is muted by default.
-    Nodes.EmplaceBack(DeviceOutputPathSegment);
+    Nodes.EmplaceBack(OutputDevicePathSegment);
 
     if (SampleRate == 0u) SampleRate.Set_(GetDefaultSampleRate());
     Nodes.EmplaceBack(WaveformPathSegment);
@@ -247,7 +245,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
 
     // Set up default connections.
     // Note that the device output -> graph endpoint node connection is handled during device output node initialization.
-    Connections.Connect(GetDeviceInputNode()->Id, GetDeviceOutputNode()->Id);
+    Connections.Connect(GetInputDeviceNode()->Id, GetOutputDeviceNode()->Id);
 }
 
 AudioGraph::~AudioGraph() {
@@ -259,7 +257,7 @@ template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType>
 static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Component::ComponentArgs &&args) {
     auto node = std::make_unique<AudioGraphNodeSubType>(std::move(args));
     node->RegisterListener(graph);
-    if (const auto *device_output_node = dynamic_cast<DeviceOutputNode *>(node.get())) {
+    if (const auto *device_output_node = dynamic_cast<OutputDeviceNode *>(node.get())) {
         graph->Connections.Connect(device_output_node->Id, graph->Id);
     }
     return node;
@@ -268,8 +266,8 @@ static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Comp
 std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     ComponentArgs args{parent, path_segment, "", path_prefix_segment};
     auto *graph = static_cast<AudioGraph *>(parent->Parent);
-    if (path_segment == DeviceInputPathSegment) return CreateNode<DeviceInputNode>(graph, std::move(args));
-    if (path_segment == DeviceOutputPathSegment) return CreateNode<DeviceOutputNode>(graph, std::move(args));
+    if (path_segment == InputDevicePathSegment) return CreateNode<InputDeviceNode>(graph, std::move(args));
+    if (path_segment == OutputDevicePathSegment) return CreateNode<OutputDeviceNode>(graph, std::move(args));
     if (path_segment == WaveformPathSegment) return CreateNode<WaveformNode>(graph, std::move(args));
     if (path_segment == FaustPathSegment) return CreateNode<FaustNode>(graph, std::move(args));
 
@@ -294,16 +292,16 @@ AudioGraphNode *AudioGraph::FindByPathSegment(string_view path_segment) const {
     return node_it != Nodes.end() ? node_it->get() : nullptr;
 }
 
-DeviceInputNode *AudioGraph::GetDeviceInputNode() const { return static_cast<DeviceInputNode *>(FindByPathSegment(DeviceInputPathSegment)); }
-DeviceOutputNode *AudioGraph::GetDeviceOutputNode() const { return static_cast<DeviceOutputNode *>(FindByPathSegment(DeviceOutputPathSegment)); }
+InputDeviceNode *AudioGraph::GetInputDeviceNode() const { return static_cast<InputDeviceNode *>(FindByPathSegment(InputDevicePathSegment)); }
+OutputDeviceNode *AudioGraph::GetOutputDeviceNode() const { return static_cast<OutputDeviceNode *>(FindByPathSegment(OutputDevicePathSegment)); }
 
 // A sample rate is considered "native" by the graph (and suffixed with an asterix)
 // if it is native to all device nodes within the graph (or if there are no device nodes in the graph).
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
-    if (auto *device_node = GetDeviceInputNode()) {
+    if (auto *device_node = GetInputDeviceNode()) {
         if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
     }
-    if (auto *device_node = GetDeviceOutputNode()) {
+    if (auto *device_node = GetOutputDeviceNode()) {
         if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
     }
     return true;
@@ -317,10 +315,10 @@ u32 AudioGraph::GetDefaultSampleRate() const {
     }
     for (const u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
         // Favor doing sample rate conversion on input rather than output.
-        if (auto *device_node = GetDeviceOutputNode()) {
+        if (auto *device_node = GetOutputDeviceNode()) {
             if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
         }
-        if (auto *device_node = GetDeviceInputNode()) {
+        if (auto *device_node = GetInputDeviceNode()) {
             if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
         }
     }
@@ -381,7 +379,7 @@ void AudioGraph::UpdateConnections() {
     }
 
     // The graph does not keep itself in its `Nodes` list, so we must connect it manually.
-    if (auto *device_output_node = GetDeviceOutputNode()) device_output_node->ConnectTo(*this);
+    if (auto *device_output_node = GetOutputDeviceNode()) device_output_node->ConnectTo(*this);
 
     for (auto *out_node : Nodes) {
         for (auto *in_node : Nodes) {
@@ -567,7 +565,13 @@ void AudioGraph::Render() const {
                 SetNextItemOpen(is_node_selected);
                 if (is_node_selected && IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
             }
-            if (TreeNode(node->ImGuiLabel.c_str())) {
+            const bool node_active = node->IsActive;
+            // Similar to `ImGuiCol_TextDisabled`, but a bit lighter.
+            if (!node_active) PushStyleColor(ImGuiCol_Text, {0.7f, 0.7f, 0.7f, 1.0f});
+            const bool node_open = TreeNode(node->ImGuiLabel.c_str());
+            if (!node_active) PopStyleColor();
+            if (node_open) {
+                if (Button("Delete")) Action::AudioGraph::DeleteNode{node->Id}.q();
                 node->Draw();
                 TreePop();
             }

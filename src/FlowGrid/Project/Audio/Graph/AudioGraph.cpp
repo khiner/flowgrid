@@ -9,7 +9,7 @@
 #include "miniaudio.h"
 
 #include "Core/Container/AdjacencyListAction.h"
-#include "Project/Audio/AudioDevice.h"
+#include "Project/Audio/Device/AudioDevice.h"
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
@@ -109,7 +109,8 @@ struct InputDeviceNode : AudioGraphNode {
 
     // Adapted from `ma_device__handle_duplex_callback_capture`.
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-        auto *self = reinterpret_cast<InputDeviceNode *>(device->pUserData);
+        auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
+        auto *self = reinterpret_cast<InputDeviceNode *>(user_data->User);
         ma_duplex_rb *duplex_rb = &self->DuplexRb;
 
         ma_uint32 total_frames_processed = 0;
@@ -193,7 +194,8 @@ struct OutputDeviceNode : PassthroughBufferNode {
     }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
-        auto *self = reinterpret_cast<OutputDeviceNode *>(device->pUserData);
+        auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
+        auto *self = reinterpret_cast<OutputDeviceNode *>(user_data->User);
         // This is what we want the "Master" `OutputDeviceNode` to do.
         if (self->Graph) ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
         // This is what we want the remaining `OutputDeviceNode`s to do.
@@ -280,6 +282,13 @@ void AudioGraph::Apply(const ActionType &action) const {
         [this](const Action::AudioGraph::DeleteNode &a) {
             Nodes.EraseId(a.id);
             Connections.DisconnectAll(a.id);
+        },
+        [](const Action::AudioGraph::SetDeviceDataFormat &a) {
+            if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device with id {} exists.", a.id));
+            auto *data_format = static_cast<const AudioDevice::DataFormat *>(Component::ById.at(a.id));
+            data_format->SampleFormat.Set(a.sample_format);
+            data_format->SampleRate.Set(a.sample_rate);
+            data_format->Channels.Set(a.channels);
         },
     );
 }

@@ -11,7 +11,7 @@
 struct Patch;
 
 // A `Field` is a component that wraps around a value backed by the owning project's `Store`.
-// Fields are always leafs in a component tree, and leafs are always fields.
+// Leafs in a component tree are always fields, but fields may have nested components/fields.
 struct Field : Component {
     using References = std::vector<std::reference_wrapper<const Field>>;
 

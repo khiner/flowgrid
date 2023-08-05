@@ -4,9 +4,11 @@
 
 DefineActionType(
     AudioGraph,
-    DefineAction(DeleteNode, NoMerge, "", u32 id;);
+    DefineAction(DeleteNode, NoMerge, "", ID id;);
+    DefineAction(SetDeviceDataFormat, Merge, "", ID id; int sample_format; u32 channels; u32 sample_rate;);
 
     Json(DeleteNode, id);
+    Json(SetDeviceDataFormat, id, sample_format, channels, sample_rate);
 
-    using Any = ActionVariant<DeleteNode>;
+    using Any = ActionVariant<DeleteNode, SetDeviceDataFormat>;
 );

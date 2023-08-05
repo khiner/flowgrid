@@ -93,6 +93,9 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     mutable ID SelectedNodeId{0}; // `Used for programatically navigating to nodes in the graph view.
 
 private:
+    // Returns the chosen node type-id, or `std::nullopt` if no node type was chosen.
+    std::optional<std::string> RenderNodeCreateSelector() const;
+
     void Render() const override;
 
     void UpdateConnections();

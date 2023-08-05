@@ -75,7 +75,11 @@ template<typename ChildType> struct Vector : Field {
         return U32ToHex(prefix_id);
     }
 
-    void EmplaceBack(string_view path_segment) {
+    void EmplaceBack(string_view path_segment) const {
+        ChildPrefixes.PushBack(StorePath(GenerateNextPrefix(path_segment)) / path_segment);
+    }
+
+    void EmplaceBack_(string_view path_segment) {
         Value.emplace_back(Creator(this, GenerateNextPrefix(path_segment), path_segment));
         ChildPrefixes.PushBack_(GetChildPrefix(Value.back().get()));
     }

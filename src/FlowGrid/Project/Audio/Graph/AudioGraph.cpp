@@ -227,10 +227,10 @@ private:
     }
 };
 
-static const string InputDevicePathSegment = "Input";
-static const string OutputDevicePathSegment = "Output";
-static const string WaveformPathSegment = "Waveform";
-static const string FaustPathSegment = "Faust";
+static const string InputDeviceNodeTypeId = "Input";
+static const string OutputDeviceNodeTypeId = "Output";
+static const string WaveformNodeTypeId = "Waveform";
+static const string FaustNodeTypeId = "Faust";
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
@@ -239,12 +239,12 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     UpdateAll();
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 
-    Nodes.EmplaceBack(InputDevicePathSegment);
+    Nodes.EmplaceBack_(InputDeviceNodeTypeId);
     Nodes.back()->SetMuted(true); // External input is muted by default.
-    Nodes.EmplaceBack(OutputDevicePathSegment);
+    Nodes.EmplaceBack_(OutputDeviceNodeTypeId);
 
     if (SampleRate == 0u) SampleRate.Set_(GetDefaultSampleRate());
-    Nodes.EmplaceBack(WaveformPathSegment);
+    Nodes.EmplaceBack_(WaveformNodeTypeId);
 
     const Field::References listened_fields = {Nodes, Connections};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
@@ -272,10 +272,10 @@ static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Comp
 std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     ComponentArgs args{parent, path_segment, "", path_prefix_segment};
     auto *graph = static_cast<AudioGraph *>(parent->Parent);
-    if (path_segment == InputDevicePathSegment) return CreateNode<InputDeviceNode>(graph, std::move(args));
-    if (path_segment == OutputDevicePathSegment) return CreateNode<OutputDeviceNode>(graph, std::move(args));
-    if (path_segment == WaveformPathSegment) return CreateNode<WaveformNode>(graph, std::move(args));
-    if (path_segment == FaustPathSegment) return CreateNode<FaustNode>(graph, std::move(args));
+    if (path_segment == InputDeviceNodeTypeId) return CreateNode<InputDeviceNode>(graph, std::move(args));
+    if (path_segment == OutputDeviceNodeTypeId) return CreateNode<OutputDeviceNode>(graph, std::move(args));
+    if (path_segment == WaveformNodeTypeId) return CreateNode<WaveformNode>(graph, std::move(args));
+    if (path_segment == FaustNodeTypeId) return CreateNode<FaustNode>(graph, std::move(args));
 
     return nullptr;
 }
@@ -283,12 +283,16 @@ std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string
 void AudioGraph::Apply(const ActionType &action) const {
     Visit(
         action,
+        [this](const Action::AudioGraph::CreateNode &a) {
+            Nodes.EmplaceBack(a.node_type_id);
+        },
         [this](const Action::AudioGraph::DeleteNode &a) {
             Nodes.EraseId(a.id);
             Connections.DisconnectAll(a.id);
         },
         [](const Action::AudioGraph::SetDeviceDataFormat &a) {
             if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device with id {} exists.", a.id));
+
             auto *data_format = static_cast<const AudioDevice::DataFormat *>(Component::ById.at(a.id));
             data_format->SampleFormat.Set(a.sample_format);
             data_format->SampleRate.Set(a.sample_rate);
@@ -305,8 +309,8 @@ AudioGraphNode *AudioGraph::FindByPathSegment(string_view path_segment) const {
     return node_it != Nodes.end() ? node_it->get() : nullptr;
 }
 
-InputDeviceNode *AudioGraph::GetInputDeviceNode() const { return static_cast<InputDeviceNode *>(FindByPathSegment(InputDevicePathSegment)); }
-OutputDeviceNode *AudioGraph::GetOutputDeviceNode() const { return static_cast<OutputDeviceNode *>(FindByPathSegment(OutputDevicePathSegment)); }
+InputDeviceNode *AudioGraph::GetInputDeviceNode() const { return static_cast<InputDeviceNode *>(FindByPathSegment(InputDeviceNodeTypeId)); }
+OutputDeviceNode *AudioGraph::GetOutputDeviceNode() const { return static_cast<OutputDeviceNode *>(FindByPathSegment(OutputDeviceNodeTypeId)); }
 
 // A sample rate is considered "native" by the graph (and suffixed with an asterix)
 // if it is native to all device nodes within the graph (or if there are no device nodes in the graph).
@@ -343,13 +347,13 @@ std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
 }
 
 void AudioGraph::OnFaustDspChanged(dsp *dsp) {
-    const auto *faust_node = FindByPathSegment(FaustPathSegment);
+    const auto *faust_node = FindByPathSegment(FaustNodeTypeId);
     FaustDsp = dsp;
     if (!dsp && faust_node) {
         Nodes.EraseId(faust_node->Id);
     } else if (dsp) {
         if (faust_node) Nodes.EraseId(faust_node->Id);
-        Nodes.EmplaceBack(FaustPathSegment);
+        Nodes.EmplaceBack_(FaustNodeTypeId);
     }
     UpdateConnections(); // todo only update connections if the dsp change caused a change in the number of channels.
 }
@@ -562,6 +566,33 @@ void AudioGraph::Style::Matrix::Render() const {
     MaxLabelSpace.Draw();
 }
 
+std::optional<string> AudioGraph::RenderNodeCreateSelector() const {
+    std::optional<string> node_type_id;
+    if (ImGui::TreeNode("Create")) {
+        if (ImGui::TreeNode("Device")) {
+            if (Button(InputDeviceNodeTypeId.c_str())) node_type_id = InputDeviceNodeTypeId;
+            SameLine();
+            if (Button(OutputDeviceNodeTypeId.c_str())) node_type_id = OutputDeviceNodeTypeId;
+            TreePop();
+        }
+        if (ImGui::TreeNode("Generator")) {
+            if (Button(WaveformNodeTypeId.c_str())) node_type_id = WaveformNodeTypeId;
+            TreePop();
+        }
+        // todo miniaudio effects
+        // if (ImGui::TreeNode("Effect")) {
+        //     TreePop();
+        // }
+        // More work is needed before we can handle multiple Faust nodes.
+        // if (ImGui::TreeNode(FaustNodeTypeId.c_str())) {
+        //     if (Button("Custom")) node_type_id = FaustNodeTypeId;
+        //     TreePop();
+        // }
+        TreePop();
+    }
+    return node_type_id;
+}
+
 void AudioGraph::Render() const {
     SampleRate.Render(AudioDevice::PrioritizedSampleRates);
     AudioGraphNode::Render();
@@ -572,6 +603,10 @@ void AudioGraph::Render() const {
     }
 
     if (ImGui::TreeNode(Nodes.ImGuiLabel.c_str())) {
+        if (const auto new_node_type_id = RenderNodeCreateSelector()) {
+            Action::AudioGraph::CreateNode{*new_node_type_id}.q();
+        }
+
         for (const auto *node : Nodes) {
             if (SelectedNodeId != 0) {
                 const bool is_node_selected = SelectedNodeId == node->Id;

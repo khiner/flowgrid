@@ -45,7 +45,7 @@ struct AudioDevice : Component, Field::ChangeListener {
         void Render() const override; // Rendered as a dropdown.
     };
 
-    Prop(String, Name); // When this is either empty or a device name that does not exist, the default device is used.
+    Prop_(String, Name, "?An asterisk (*) indicates the default device."); // When this is either empty or a device name that does not exist, the default device is used.
     Prop_(
         DataFormat, Format,
         "?The native device data format.\n"

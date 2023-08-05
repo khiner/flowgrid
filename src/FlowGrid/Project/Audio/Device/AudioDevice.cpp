@@ -48,7 +48,7 @@ struct Context {
     static string GetDeviceDisplayName(const ma_device_info *info) {
         if (!info) return "None";
 
-        return string(info->name) + (info->isDefault ? " (default)" : "");
+        return string(info->name) + (info->isDefault ? "*" : "");
     }
 
     static string GetDeviceName(const ma_device_info *info) {
@@ -343,6 +343,9 @@ void AudioDevice::Render() const {
         TextUnformatted("Device is not started.");
         return;
     }
+
+    SameLine(); // Assumes 'Delete' button is rendered by the graph immediately before this.
+    if (Button("Rescan")) AudioContext->ScanDevices();
 
     SetNextItemWidth(GetFontSize() * 14);
     const auto *device_info = AudioContext->GetDeviceInfo(Type, Name);

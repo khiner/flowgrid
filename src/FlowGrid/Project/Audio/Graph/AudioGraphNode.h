@@ -70,6 +70,9 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     // At the very least, each node updates any active IO monitors based on the new sample rate.
     virtual void OnSampleRateChanged();
 
+    // Override to return a more detailed name to display in the graph tree view.
+    virtual std::string GetTreeLabel() const { return Name; }
+
     u32 InputBusCount() const;
     u32 OutputBusCount() const;
     inline u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }

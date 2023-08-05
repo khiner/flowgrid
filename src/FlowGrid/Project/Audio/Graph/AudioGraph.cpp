@@ -107,6 +107,8 @@ struct InputDeviceNode : AudioGraphNode {
         Node = nullptr;
     }
 
+    string GetTreeLabel() const override { return Device->GetFullLabel(); }
+
     // Adapted from `ma_device__handle_duplex_callback_capture`.
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
@@ -192,6 +194,8 @@ struct OutputDeviceNode : PassthroughBufferNode {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
         UpdateAll();
     }
+
+    string GetTreeLabel() const override { return Device->GetFullLabel(); }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
@@ -567,7 +571,7 @@ void AudioGraph::Render() const {
         if (IsItemVisible()) ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
     }
 
-    if (TreeNode(Nodes.ImGuiLabel.c_str())) {
+    if (ImGui::TreeNode(Nodes.ImGuiLabel.c_str())) {
         for (const auto *node : Nodes) {
             if (SelectedNodeId != 0) {
                 const bool is_node_selected = SelectedNodeId == node->Id;
@@ -577,7 +581,7 @@ void AudioGraph::Render() const {
             const bool node_active = node->IsActive;
             // Similar to `ImGuiCol_TextDisabled`, but a bit lighter.
             if (!node_active) PushStyleColor(ImGuiCol_Text, {0.7f, 0.7f, 0.7f, 1.0f});
-            const bool node_open = TreeNode(node->ImGuiLabel.c_str());
+            const bool node_open = ImGui::TreeNode(node->ImGuiLabel.c_str(), "%s", node->GetTreeLabel().c_str());
             if (!node_active) PopStyleColor();
             if (node_open) {
                 if (Button("Delete")) Action::AudioGraph::DeleteNode{node->Id}.q();

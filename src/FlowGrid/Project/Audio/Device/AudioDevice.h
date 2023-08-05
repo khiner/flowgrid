@@ -25,9 +25,10 @@ struct AudioDevice : Component, Field::ChangeListener {
     void OnFieldChanged() override;
 
     ma_device *Get() const { return Device.get(); }
+    std::string GetFullLabel() const;
     bool IsStarted() const;
-
     bool IsNativeSampleRate(u32) const;
+
     void SetClientSampleRate(u32); // The graph sample rate.
 
     // Mirrors `DeviceDataFormat`.
@@ -62,8 +63,6 @@ private:
     u32 ClientSampleRate{0};
     IO Type;
     AudioCallback Callback;
-
     UserData _UserData;
-
     std::unique_ptr<ma_device> Device;
 };

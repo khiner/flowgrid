@@ -2,6 +2,7 @@
 
 #include "DeviceDataFormat.h"
 #include "Project/Audio/Graph/AudioGraphAction.h"
+#include "Helper/String.h"
 
 #include "imgui.h"
 
@@ -38,21 +39,14 @@ struct Context {
         ma_context_uninit(&MaContext);
     }
 
-    const ma_device_info *GetDeviceInfo(IO type, string name) const {
+    static string GetDeviceName(const ma_device_info *info) { return !info || info->isDefault ? "" : info->name; }
+    static string GetDeviceDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
+
+    const ma_device_info *GetDeviceInfo(IO type, string_view name) const {
         for (const auto *info : DeviceInfos[type]) {
             if ((name.empty() && info->isDefault) || info->name == name) return info;
         }
         return nullptr;
-    }
-
-    static string GetDeviceDisplayName(const ma_device_info *info) {
-        if (!info) return "None";
-
-        return string(info->name) + (info->isDefault ? "*" : "");
-    }
-
-    static string GetDeviceName(const ma_device_info *info) {
-        return !info || info->isDefault ? "" : info->name;
     }
 
     bool IsNativeSampleRate(IO type, u32 sample_rate) const {
@@ -176,18 +170,16 @@ void AudioDevice::Init(u32 client_sample_rate) {
     ma_result result = ma_device_init(nullptr, &config, Device.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), int(result)));
 
-    ma_device_info info;
-    ma_device_get_info(Device.get(), Device->type, &info);
-
     // The device may have a different configuration than what we requested.
     // Update the fields to reflect the actual device configuration.
+    const ma_device_info *info = AudioContext->GetDeviceInfo(Type, Name);
     if (Type == IO_Out) {
-        if (Device->playback.name != Name) Name.Set_(Context::GetDeviceName(&info));
+        if (Device->playback.name != Name) Name.Set_(Context::GetDeviceName(info));
         if (Device->playback.format != Format.SampleFormat) Format.SampleFormat.Set_(Device->playback.format);
         if (Device->playback.channels != Format.Channels) Format.Channels.Set_(Device->playback.channels);
         if (Device->playback.internalSampleRate != Format.SampleRate) Format.SampleRate.Set_(Device->playback.internalSampleRate);
     } else {
-        if (Device->capture.name != Name) Name.Set_(Context::GetDeviceName(&info));
+        if (Device->capture.name != Name) Name.Set_(Context::GetDeviceName(info));
         if (Device->capture.format != Format.SampleFormat) Format.SampleFormat.Set_(Device->capture.format);
         if (Device->capture.channels != Format.Channels) Format.Channels.Set_(Device->capture.channels);
         if (Device->capture.internalSampleRate != Format.SampleRate) Format.SampleRate.Set_(Device->capture.internalSampleRate);
@@ -271,9 +263,12 @@ void AudioDevice::OnFieldChanged() {
     }
 }
 
-bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const {
-    return AudioContext->IsNativeSampleRate(Type, sample_rate);
+string AudioDevice::GetFullLabel() const {
+    const auto *info = AudioContext->GetDeviceInfo(Type, Name);
+    return std::format("{} device: {}", StringHelper::Capitalize(to_string(Type)), info ? info->name : "None");
 }
+
+bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const { return AudioContext->IsNativeSampleRate(Type, sample_rate); }
 
 void AudioDevice::SetClientSampleRate(u32 client_sample_rate) {
     if (client_sample_rate == ClientSampleRate) return;

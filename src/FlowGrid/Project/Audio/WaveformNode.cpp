@@ -50,9 +50,8 @@ void WaveformNode::OnSampleRateChanged() {
 }
 
 void WaveformNode::Render() const {
-    AudioGraphNode::Render();
-
-    ImGui::Spacing();
     Frequency.Draw();
     Type.Draw();
+    ImGui::Spacing();
+    AudioGraphNode::Render();
 }

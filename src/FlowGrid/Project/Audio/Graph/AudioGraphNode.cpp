@@ -54,6 +54,11 @@ void AudioGraphNode::GainerNode::UpdateLevel() {
     ma_gainer_node_set_gain(Get(), Muted ? 0.f : float(Level));
 }
 
+void AudioGraphNode::GainerNode::SetMuted(bool muted) {
+    Muted.Set_(muted);
+    UpdateLevel();
+}
+
 void AudioGraphNode::GainerNode::SetSampleRate(u32 sample_rate) {
     if (SampleRate != sample_rate) {
         SampleRate = sample_rate;

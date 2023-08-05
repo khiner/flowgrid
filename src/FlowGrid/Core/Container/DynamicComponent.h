@@ -26,6 +26,11 @@ template<typename ComponentType> struct DynamicComponent : Field {
         else if (!HasValue && Value) Reset();
     }
 
+    inline void Toggle_() {
+        HasValue.Toggle_();
+        Refresh();
+    }
+
     inline void IssueToggle() const {
         HasValue.IssueToggle();
     }

@@ -94,7 +94,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     }
 
     void SetMuted(bool muted) {
-        if (OutputGainer) OutputGainer->Muted.Set_(muted);
+        if (!OutputGainer) OutputGainer.Toggle_(); // Create the output gainer if it doesn't exist.
+        OutputGainer->SetMuted(muted);
     }
 
     struct GainerNode : Component, Field::ChangeListener {
@@ -105,6 +106,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
         ma_gainer_node *Get();
 
+        void SetMuted(bool muted);
         void SetSampleRate(u32 sample_rate);
 
         Prop_(Bool, Muted, "?This does not affect CPU load.", false);

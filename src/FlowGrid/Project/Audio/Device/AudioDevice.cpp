@@ -38,6 +38,23 @@ struct Context {
         ma_context_uninit(&MaContext);
     }
 
+    const ma_device_info *GetDeviceInfo(IO type, string name) const {
+        for (const auto *info : DeviceInfos[type]) {
+            if ((name.empty() && info->isDefault) || info->name == name) return info;
+        }
+        return nullptr;
+    }
+
+    static string GetDeviceDisplayName(const ma_device_info *info) {
+        if (!info) return "None";
+
+        return string(info->name) + (info->isDefault ? " (default)" : "");
+    }
+
+    static string GetDeviceName(const ma_device_info *info) {
+        return !info || info->isDefault ? "" : info->name;
+    }
+
     bool IsNativeSampleRate(IO type, u32 sample_rate) const {
         const auto &native_data_formats = NativeDataFormats[type];
         return std::any_of(native_data_formats.begin(), native_data_formats.end(), [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
@@ -74,15 +91,8 @@ struct Context {
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio devices: {}", int(result)));
 
         for (IO io : IO_All) DeviceInfos[io].clear();
-        for (IO io : IO_All) DeviceNames[io].clear();
-        for (u32 i = 0; i < CaptureDeviceCount; i++) {
-            DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
-            DeviceNames[IO_In].push_back(CaptureDeviceInfos[i].name);
-        }
-        for (u32 i = 0; i < PlaybackDeviceCount; i++) {
-            DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
-            DeviceNames[IO_Out].push_back(PlaybackDeviceInfos[i].name);
-        }
+        for (u32 i = 0; i < CaptureDeviceCount; i++) DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
+        for (u32 i = 0; i < PlaybackDeviceCount; i++) DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
 
         for (const IO io : IO_All) {
             NativeDataFormats[io].clear();
@@ -100,7 +110,6 @@ struct Context {
 
     ma_context MaContext;
     std::vector<ma_device_info *> DeviceInfos[IO_Count];
-    std::vector<string> DeviceNames[IO_Count];
     std::vector<DeviceDataFormat> NativeDataFormats[IO_Count];
 };
 
@@ -126,9 +135,8 @@ void AudioDevice::Init(u32 client_sample_rate) {
     Device = std::make_unique<ma_device>();
 
     const ma_device_id *device_id = nullptr;
-    // todo only use name for explicit user device selection.
     for (const ma_device_info *info : AudioContext->DeviceInfos[Type]) {
-        if (info->name == Name) {
+        if (!info->isDefault && info->name == Name) {
             device_id = &(info->id);
             break;
         }
@@ -168,15 +176,18 @@ void AudioDevice::Init(u32 client_sample_rate) {
     ma_result result = ma_device_init(nullptr, &config, Device.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), int(result)));
 
+    ma_device_info info;
+    ma_device_get_info(Device.get(), Device->type, &info);
+
     // The device may have a different configuration than what we requested.
     // Update the fields to reflect the actual device configuration.
     if (Type == IO_Out) {
-        if (Device->playback.name != Name) Name.Set_(Device->playback.name);
+        if (Device->playback.name != Name) Name.Set_(Context::GetDeviceName(&info));
         if (Device->playback.format != Format.SampleFormat) Format.SampleFormat.Set_(Device->playback.format);
         if (Device->playback.channels != Format.Channels) Format.Channels.Set_(Device->playback.channels);
         if (Device->playback.internalSampleRate != Format.SampleRate) Format.SampleRate.Set_(Device->playback.internalSampleRate);
     } else {
-        if (Device->capture.name != Name) Name.Set_(Device->capture.name);
+        if (Device->capture.name != Name) Name.Set_(Context::GetDeviceName(&info));
         if (Device->capture.format != Format.SampleFormat) Format.SampleFormat.Set_(Device->capture.format);
         if (Device->capture.channels != Format.Channels) Format.Channels.Set_(Device->capture.channels);
         if (Device->capture.internalSampleRate != Format.SampleRate) Format.SampleRate.Set_(Device->capture.internalSampleRate);
@@ -189,13 +200,11 @@ void AudioDevice::Init(u32 client_sample_rate) {
             case ma_device_notification_type_stopped:
                 break;
             case ma_device_notification_type_rerouted:
-                // Can happen e.g. the default device is changed.
+                // Can happen the default device is changed, which happens when we initialize a default MA device,
+                // and e.g. a new audio device is plugged in.
+                // Note that we don't change the device name here, since this is only triggered for the default device,
+                // and we set `Name` to an empty string for _any_ default device.
                 AudioContext->ScanDevices();
-                {
-                    const auto *user_data = reinterpret_cast<const UserData *>(notification->pDevice->pUserData);
-                    const auto *self = user_data->FlowGridDevice;
-                    self->Name.IssueSet(self->Type == IO_Out ? notification->pDevice->playback.name : notification->pDevice->capture.name);
-                }
                 break;
             case ma_device_notification_type_interruption_began:
                 break;
@@ -336,7 +345,17 @@ void AudioDevice::Render() const {
     }
 
     SetNextItemWidth(GetFontSize() * 14);
-    Name.Render(AudioContext->DeviceNames[Type]);
+    const auto *device_info = AudioContext->GetDeviceInfo(Type, Name);
+    if (BeginCombo(Name.ImGuiLabel.c_str(), Context::GetDeviceDisplayName(device_info).c_str())) {
+        for (const auto *other_device_info : AudioContext->DeviceInfos[Type]) {
+            const bool is_selected = device_info == other_device_info;
+            if (Selectable(Context::GetDeviceDisplayName(other_device_info).c_str(), is_selected)) Name.IssueSet(Context::GetDeviceName(other_device_info));
+            if (is_selected) SetItemDefaultFocus();
+        }
+        EndCombo();
+    }
+    Name.HelpMarker();
+
     SetNextItemWidth(GetFontSize() * 14);
     Format.Draw();
 

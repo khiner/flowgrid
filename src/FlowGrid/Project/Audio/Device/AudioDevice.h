@@ -31,13 +31,13 @@ struct AudioDevice : Component, Field::ChangeListener {
     void SetClientSampleRate(u32); // The graph sample rate.
 
     // Mirrors `DeviceDataFormat`.
-    // A `SampleRate` of 0 indicates we have not initialized yet, and we choose the default device data format.
+    // When `SampleRate == 0`, we choose the default device data format.
     struct DataFormat : Component {
         using Component::Component;
 
         static std::string GetFormatName(int);
 
-        Prop(Enum, SampleFormat, GetFormatName); // If set to ma_format_unknown, all sample formats are supported. */
+        Prop(Enum, SampleFormat, GetFormatName);
         Prop(UInt, Channels);
         Prop(UInt, SampleRate);
 
@@ -45,10 +45,10 @@ struct AudioDevice : Component, Field::ChangeListener {
         void Render() const override; // Rendered as a dropdown.
     };
 
-    Prop(String, Name); // todo only use name for explicit user device selection.
+    Prop(String, Name); // When this is either empty or a device name that does not exist, the default device is used.
     Prop_(
         DataFormat, Format,
-        "?The native device data format .\n"
+        "?The native device data format.\n"
         "All data formats natively supported by the audio device are allowed.\n"
         "If this format is different from that of the audio graph, the audio will be converted to/from this native format."
     );

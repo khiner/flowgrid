@@ -137,11 +137,12 @@ struct Component : Drawable {
     static void TreePop();
     static void TextUnformatted(string_view);
 
+    // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
+    void HelpMarker(bool after = true) const;
+
 protected:
     virtual void Render() const override {} // By default, components don't render anything.
 
-    // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
-    void HelpMarker(bool after = true) const;
     void ScrollToChanged() const; // Scroll to this item if changed.
 
 private:

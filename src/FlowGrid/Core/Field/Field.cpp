@@ -69,6 +69,8 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     FindAndMarkChanged(patch);
     static std::unordered_set<ChangeListener *> affected_listeners;
     for (const auto &[changed_field_id, _] : ChangedPaths) {
+        if (!FieldById.contains(changed_field_id)) continue; // The field was deleted.
+
         auto *changed_field = FieldById.at(changed_field_id);
         changed_field->Refresh();
         if (ComponentContainerAuxiliaryFields.contains(changed_field_id)) {

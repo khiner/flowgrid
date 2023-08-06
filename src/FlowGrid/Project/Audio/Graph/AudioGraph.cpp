@@ -160,7 +160,9 @@ Whenever there is at least one output device node, there is a single "primary" o
 The primary output device node passes the graph endpoint node's output buffer to the device callback output buffer.
 Each remaining output device node populates its device callback output buffer with its buffer data (`ReadBufferData`).
 
-It is up to the owning graph to ensure that _each_ of its output device nodes is always connected directly to the graph endpoint node.
+The owning graph ensures the primary output device nodes is always connected directly to the graph endpoint node,
+and each secondary node is connected to the graph endpoint node if it has at least one input node.
+(This allows for checking `IsActive` state to silence the callback output instead of writing out an inactive buffer.)
 */
 struct OutputDeviceNode : DeviceNode {
     inline static std::vector<OutputDeviceNode *> All; // The 'Primary' output device node is the first element.
@@ -168,8 +170,9 @@ struct OutputDeviceNode : DeviceNode {
     OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args)) {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
 
-        InitBuffer(Device->Format.Channels);
-        auto config = ma_data_passthrough_node_config_init(_BufferRef->Get());
+        const bool is_primary = All.empty();
+        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, Device->Format.Channels);
+        auto config = ma_data_passthrough_node_config_init(Device->Format.Channels, Buffer ? Buffer->Get() : nullptr);
         ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
         Node = &PassthroughNode;
@@ -183,19 +186,23 @@ struct OutputDeviceNode : DeviceNode {
         Node = nullptr;
     }
 
+    // todo `SetPrimary(bool)`.
+    // Switching from secondary to primary deletes the buffer and resets the node.
+    // Switching from primary to secondary creates a buffer and resets the node.
+    bool IsPrimary() const { return this == All.front(); }
+
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
         auto *self = reinterpret_cast<OutputDeviceNode *>(user_data->User);
-        if (self == All.front() && self->Graph) {
+        if (self->IsPrimary() && self->Graph) {
             ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
-        } else {
-            // Every output device node is connected directly into the graph endpoint node.
+        } else if (self->IsActive) {
             // After the primary output device node has pulled from the graph endpoint node,
-            // This secondary output device node will have its input busses mixed and copied into its passthrough buffer.
+            // This secondary output device node will have its input buses mixed and copied into its passthrough buffer.
             // Here, we forward these buffer frames to this device node's owned output audio device.
-            // todo audio graph should only connect the primary device always, and only connect each secondary devices to the graph endpoint
-            // when it has any input nodes. Currently, we get the last recorded frame looped to the owned output device.
             self->ReadBufferData(output, frame_count);
+        } else {
+            ma_silence_pcm_frames(output, frame_count, device->playback.internalFormat, device->playback.channels);
         }
 
         (void)device;
@@ -206,17 +213,15 @@ struct OutputDeviceNode : DeviceNode {
     bool AllowOutputConnectionChange() const override { return false; }
 
 private:
-    inline void InitBuffer(u32 channels) { _BufferRef = std::make_unique<BufferRef>(ma_format_f32, channels); }
-
     void ReadBufferData(void *output, u32 frame_count) const noexcept {
-        if (_BufferRef) _BufferRef->ReadData(output, frame_count);
+        if (Buffer) Buffer->ReadData(output, frame_count);
     }
 
     inline void SetBufferData(const void *input, u32 frame_count) const {
-        if (_BufferRef) _BufferRef->SetData(input, frame_count);
+        if (Buffer) Buffer->SetData(input, frame_count);
     }
 
-    std::unique_ptr<BufferRef> _BufferRef;
+    std::unique_ptr<BufferRef> Buffer;
     ma_data_passthrough_node PassthroughNode;
 };
 
@@ -238,7 +243,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 
     // Set up default connections.
-    // Note that the device output -> graph endpoint node connection is handled during device output node initialization.
+    // The device output -> graph endpoint node connection is handled in `UpdateConnections`.
     Connections.Connect(GetInputDeviceNodes().front()->Id, GetOutputDeviceNodes().front()->Id);
 }
 
@@ -251,9 +256,6 @@ template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType>
 static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Component::ComponentArgs &&args) {
     auto node = std::make_unique<AudioGraphNodeSubType>(std::move(args));
     node->RegisterListener(graph);
-    if (const auto *device_output_node = dynamic_cast<OutputDeviceNode *>(node.get())) {
-        graph->Connections.Connect(device_output_node->Id, graph->Id);
-    }
     return node;
 }
 
@@ -371,6 +373,16 @@ std::unordered_set<AudioGraphNode *> AudioGraph::GetDestinationNodes(const Audio
 }
 
 void AudioGraph::UpdateConnections() {
+    // Always connect the primary device to the graph endpoint, and connect secondary devices with at least one input node.
+    // This is the only section in the method that modifies `Connections`.
+    for (auto *output_device_node : GetOutputDeviceNodes()) {
+        if (output_device_node->IsPrimary() || Connections.SourceCount(output_device_node->Id) > 0) {
+            Connections.Connect(output_device_node->Id, Id);
+        } else {
+            Connections.Disconnect(output_device_node->Id, Id);
+        }
+    }
+
     for (auto *node : Nodes) {
         node->SetActive(Connections.HasPath(node->Id, Id));
         node->DisconnectOutput();
@@ -403,17 +415,18 @@ void AudioGraph::UpdateConnections() {
     }
 
     // The graph does not keep itself in its `Nodes` list.
-    // This should be a `ranges::concat` instead of making a whole but I couldn't get it to work.
-    auto nodes = Nodes.View() | std::views::transform([](const auto &node) { return node.get(); }) | ranges::to<std::vector>();
-    nodes.emplace_back(this);
-    for (auto *source_node : nodes) {
+    // This should be a `ranges::concat` instead of making a new vector, but I couldn't get it to work.
+    auto destination_nodes = Nodes.View() | std::views::transform([](const auto &node) { return node.get(); }) | ranges::to<std::vector>();
+    destination_nodes.emplace_back(this);
+
+    for (auto *source_node : Nodes) {
         if (!source_node->IsActive || source_node->OutputBusCount() == 0) continue;
 
         u32 destination_count = Connections.DestinationCount(source_node->Id);
         if (destination_count == 0) continue; // Should never hit this, since this would imply the node is inactive.
 
         if (destination_count == 1) {
-            for (auto *destination_node : nodes) {
+            for (auto *destination_node : destination_nodes) {
                 if (Connections.IsConnected(source_node->Id, destination_node->Id)) {
                     ma_node_attach_output_bus(source_node->OutputNode(), 0, destination_node->InputNode(), 0);
                 }
@@ -424,7 +437,7 @@ void AudioGraph::UpdateConnections() {
             ma_node_attach_output_bus(source_node->OutputNode(), 0, splitter, 0);
 
             u32 splitter_bus = 0;
-            for (auto *destination_node : nodes) {
+            for (auto *destination_node : destination_nodes) {
                 if (Connections.IsConnected(source_node->Id, destination_node->Id)) {
                     ma_node_attach_output_bus(splitter, splitter_bus++, destination_node->InputNode(), 0);
                 }
@@ -594,11 +607,9 @@ std::optional<string> AudioGraph::RenderNodeCreateSelector() const {
     std::optional<string> node_type_id;
     if (ImGui::TreeNode("Create")) {
         if (ImGui::TreeNode("Device")) {
-            // Multiple input/output devices nodes should work in principle, but it's tricky to get right,
-            // and let's be honest - it's a niche use case anyway.
             if (Button(InputDeviceNodeTypeId.c_str())) node_type_id = InputDeviceNodeTypeId;
-            // SameLine();
-            // if (Button(OutputDeviceNodeTypeId.c_str())) node_type_id = OutputDeviceNodeTypeId;
+            SameLine();
+            if (Button(OutputDeviceNodeTypeId.c_str())) node_type_id = OutputDeviceNodeTypeId;
             TreePop();
         }
         if (ImGui::TreeNode("Generator")) {

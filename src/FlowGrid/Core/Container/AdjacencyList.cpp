@@ -69,6 +69,14 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     return false;
 }
 
+u32 AdjacencyList::SourceCount(ID destination) const {
+    u32 count = 0;
+    for (const auto &[source_id, destination_id] : Get()) {
+        if (destination_id == destination) count++;
+    }
+    return count;
+}
+
 u32 AdjacencyList::DestinationCount(ID source) const {
     u32 count = 0;
     for (const auto &[source_id, destination_id] : Get()) {

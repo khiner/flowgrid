@@ -35,5 +35,6 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
 
     bool IsConnected(ID source, ID destination) const;
     bool HasPath(ID source, ID destination) const;
+    u32 SourceCount(ID destination) const;
     u32 DestinationCount(ID source) const;
 };

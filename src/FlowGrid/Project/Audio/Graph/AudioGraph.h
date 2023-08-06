@@ -14,6 +14,11 @@ struct MaGraph;
 struct InputDeviceNode;
 struct OutputDeviceNode;
 
+inline static const std::string InputDeviceNodeTypeId = "Input";
+inline static const std::string OutputDeviceNodeTypeId = "Output";
+inline static const std::string WaveformNodeTypeId = "Waveform";
+inline static const std::string FaustNodeTypeId = "Faust";
+
 struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDspChangeListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
@@ -100,7 +105,21 @@ private:
 
     void UpdateConnections();
 
-    AudioGraphNode *FindByPathSegment(string_view) const;
-    InputDeviceNode *GetInputDeviceNode() const;
-    OutputDeviceNode *GetOutputDeviceNode() const;
+    AudioGraphNode *FindByPathSegment(string_view path_segment) const {
+        auto node_it = std::find_if(Nodes.begin(), Nodes.end(), [path_segment](const auto *node) { return node->PathSegment == path_segment; });
+        return node_it != Nodes.end() ? node_it->get() : nullptr;
+    }
+    auto FindAllByPathSegment(string_view path_segment) const {
+        return Nodes.View() | std::views::filter([path_segment](const auto &node) { return node->PathSegment == path_segment; });
+    }
+
+    // We don't support creating multiple input/output nodes yet, so in reality there will be at most one of each for now.
+    auto GetInputDeviceNodes() const {
+        return FindAllByPathSegment(InputDeviceNodeTypeId) |
+            std::views::transform([](const auto &node) { return reinterpret_cast<InputDeviceNode *>(node.get()); });
+    }
+    auto GetOutputDeviceNodes() const {
+        return FindAllByPathSegment(OutputDeviceNodeTypeId) |
+            std::views::transform([](const auto &node) { return reinterpret_cast<OutputDeviceNode *>(node.get()); });
+    }
 };

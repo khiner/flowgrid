@@ -1,6 +1,7 @@
 #include "AudioGraph.h"
 
 #include <concepts>
+#include <set>
 
 #include "imgui.h"
 #include "implot.h"
@@ -185,14 +186,29 @@ private:
     ma_data_passthrough_node PassthroughNode;
 };
 
-// A passthrough node that owns an output device.
-// Must always be connected directly to the graph endpoint node.
-// todo There must be a single "Master" `OutputDeviceNode`, which calls `ma_node_graph_read_pcm_frames`.
-// Each remaining `OutputDeviceNode` will populate the device callback output buffer with its buffer data (`ReadBufferData`).
+/*
+`OutputDeviceNode` is a passthrough node that owns an output device.
+Whenever there is at least one output device node, there is a single "primary" output device node.
+The primary output device node passes the graph endpoint node's output buffer to the device callback output buffer.
+Each remaining output device node populates its device callback output buffer with its buffer data (`ReadBufferData`).
+
+It is up to the owning graph to ensure that _each_ of its output device nodes is always connected directly to the graph endpoint node.
+*/
 struct OutputDeviceNode : PassthroughBufferNode {
+    inline static OutputDeviceNode *Primary;
+    inline static std::set<OutputDeviceNode *> All;
+
     OutputDeviceNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
         UpdateAll();
+        if (!Primary) Primary = this;
+        All.insert(this);
+    }
+    ~OutputDeviceNode() {
+        All.erase(this);
+        if (Primary == this) {
+            Primary = All.empty() ? nullptr : *All.begin();
+        }
     }
 
     string GetTreeLabel() const override { return Device->GetFullLabel(); }
@@ -200,10 +216,8 @@ struct OutputDeviceNode : PassthroughBufferNode {
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
         auto *self = reinterpret_cast<OutputDeviceNode *>(user_data->User);
-        // This is what we want the "Master" `OutputDeviceNode` to do.
-        if (self->Graph) ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
-        // This is what we want the remaining `OutputDeviceNode`s to do.
-        // self->ReadBufferData(output, frame_count);
+        if (self == Primary && self->Graph) ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
+        else self->ReadBufferData(output, frame_count);
 
         (void)device;
         (void)input;
@@ -227,11 +241,6 @@ private:
     }
 };
 
-static const string InputDeviceNodeTypeId = "Input";
-static const string OutputDeviceNodeTypeId = "Output";
-static const string WaveformNodeTypeId = "Waveform";
-static const string FaustNodeTypeId = "Faust";
-
 AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
     Graph = std::make_unique<MaGraph>(1);
     Node = ma_node_graph_get_endpoint(Graph->Get());
@@ -251,7 +260,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
 
     // Set up default connections.
     // Note that the device output -> graph endpoint node connection is handled during device output node initialization.
-    Connections.Connect(GetInputDeviceNode()->Id, GetOutputDeviceNode()->Id);
+    Connections.Connect(GetInputDeviceNodes().front()->Id, GetOutputDeviceNodes().front()->Id);
 }
 
 AudioGraph::~AudioGraph() {
@@ -304,21 +313,13 @@ void AudioGraph::Apply(const ActionType &action) const {
 ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
 dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
 
-AudioGraphNode *AudioGraph::FindByPathSegment(string_view path_segment) const {
-    auto node_it = std::find_if(Nodes.begin(), Nodes.end(), [path_segment](const auto *node) { return node->PathSegment == path_segment; });
-    return node_it != Nodes.end() ? node_it->get() : nullptr;
-}
-
-InputDeviceNode *AudioGraph::GetInputDeviceNode() const { return static_cast<InputDeviceNode *>(FindByPathSegment(InputDeviceNodeTypeId)); }
-OutputDeviceNode *AudioGraph::GetOutputDeviceNode() const { return static_cast<OutputDeviceNode *>(FindByPathSegment(OutputDeviceNodeTypeId)); }
-
 // A sample rate is considered "native" by the graph (and suffixed with an asterix)
 // if it is native to all device nodes within the graph (or if there are no device nodes in the graph).
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
-    if (auto *device_node = GetInputDeviceNode()) {
+    for (const auto *device_node : GetInputDeviceNodes()) {
         if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
     }
-    if (auto *device_node = GetOutputDeviceNode()) {
+    for (const auto *device_node : GetOutputDeviceNodes()) {
         if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
     }
     return true;
@@ -332,10 +333,10 @@ u32 AudioGraph::GetDefaultSampleRate() const {
     }
     for (const u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
         // Favor doing sample rate conversion on input rather than output.
-        if (auto *device_node = GetOutputDeviceNode()) {
+        for (const auto *device_node : GetOutputDeviceNodes()) {
             if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
         }
-        if (auto *device_node = GetInputDeviceNode()) {
+        for (const auto *device_node : GetInputDeviceNodes()) {
             if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
         }
     }
@@ -396,7 +397,9 @@ void AudioGraph::UpdateConnections() {
     }
 
     // The graph does not keep itself in its `Nodes` list, so we must connect it manually.
-    if (auto *device_output_node = GetOutputDeviceNode()) device_output_node->ConnectTo(*this);
+    for (auto *device_output_node : GetOutputDeviceNodes()) {
+        device_output_node->ConnectTo(*this);
+    }
 
     for (auto *out_node : Nodes) {
         for (auto *in_node : Nodes) {
@@ -570,9 +573,11 @@ std::optional<string> AudioGraph::RenderNodeCreateSelector() const {
     std::optional<string> node_type_id;
     if (ImGui::TreeNode("Create")) {
         if (ImGui::TreeNode("Device")) {
+            // Multiple input/output devices nodes should work in principle, but it's tricky to get right,
+            // and let's be honest - it's a niche use case anyway.
             if (Button(InputDeviceNodeTypeId.c_str())) node_type_id = InputDeviceNodeTypeId;
-            SameLine();
-            if (Button(OutputDeviceNodeTypeId.c_str())) node_type_id = OutputDeviceNodeTypeId;
+            // SameLine();
+            // if (Button(OutputDeviceNodeTypeId.c_str())) node_type_id = OutputDeviceNodeTypeId;
             TreePop();
         }
         if (ImGui::TreeNode("Generator")) {

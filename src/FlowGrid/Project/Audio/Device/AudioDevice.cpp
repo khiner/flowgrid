@@ -1,8 +1,8 @@
 #include "AudioDevice.h"
 
 #include "DeviceDataFormat.h"
-#include "Project/Audio/Graph/AudioGraphAction.h"
 #include "Helper/String.h"
+#include "Project/Audio/Graph/AudioGraphAction.h"
 
 #include "imgui.h"
 
@@ -115,17 +115,21 @@ AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 client_sample_rate, 
     : Component(std::move(args)), Type(type), Callback(callback), _UserData({this, client_user_data}) {
     const Field::References listened_fields{Name, Format.SampleFormat, Format.Channels, Format.SampleRate};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+
+    if (!AudioContext) AudioContext = std::make_unique<Context>();
     Init(client_sample_rate);
+    DeviceInstanceCount++;
 }
 
 AudioDevice::~AudioDevice() {
     Uninit();
     Field::UnregisterChangeListener(this);
+
+    DeviceInstanceCount--;
+    if (DeviceInstanceCount == 0) AudioContext.reset();
 }
 
 void AudioDevice::Init(u32 client_sample_rate) {
-    if (!AudioContext) AudioContext = std::make_unique<Context>();
-
     Device = std::make_unique<ma_device>();
 
     const ma_device_id *device_id = nullptr;
@@ -208,8 +212,6 @@ void AudioDevice::Init(u32 client_sample_rate) {
     result = ma_device_start(Device.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio {} device: {}", to_string(Type), int(result)));
 
-    DeviceInstanceCount++;
-
     // todo option to change dither mode, only present when used
     // config.capture.format = ToAudioFormat(InFormat);
     // config.playback.format = ToAudioFormat(OutFormat);
@@ -245,15 +247,9 @@ void AudioDevice::Init(u32 client_sample_rate) {
 }
 
 void AudioDevice::Uninit() {
-    if (DeviceInstanceCount == 0) throw std::runtime_error("Audio device instance count is already zero.");
-
-    DeviceInstanceCount--;
-
     if (IsStarted()) ma_device_stop(Device.get());
     ma_device_uninit(Device.get());
     Device.reset();
-
-    if (DeviceInstanceCount == 0) AudioContext.reset();
 }
 
 void AudioDevice::OnFieldChanged() {

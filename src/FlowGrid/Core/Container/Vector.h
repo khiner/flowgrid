@@ -94,6 +94,7 @@ template<typename ChildType> struct Vector : Field {
 
     Iterator begin() const { return Value.cbegin(); }
     Iterator end() const { return Value.cend(); }
+    auto View() const { return std::views::all(Value); }
 
     ChildType *back() const { return Value.back().get(); }
     ChildType *operator[](u32 i) const { return Value[i].get(); }

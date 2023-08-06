@@ -166,7 +166,7 @@ private:
 // Copies the input buffer in each callback to its internal `Buffer`.
 struct PassthroughBufferNode : BufferRefNode {
     PassthroughBufferNode(ComponentArgs &&args) : BufferRefNode(std::move(args)) {
-        InitBuffer(1);
+        InitBuffer(1); // todo inline `PassthroughBufferNode` into `OutputDeviceNode` and initialize the buffer _after_ the device to get its channel count.
         auto config = ma_data_passthrough_node_config_init(_BufferRef->Get());
         ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
@@ -216,8 +216,17 @@ struct OutputDeviceNode : PassthroughBufferNode {
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
         auto *self = reinterpret_cast<OutputDeviceNode *>(user_data->User);
-        if (self == Primary && self->Graph) ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
-        else self->ReadBufferData(output, frame_count);
+        if (self == Primary && self->Graph) {
+            ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
+        } else {
+            // Every output device node is connected directly into the graph endpoint node.
+            // After the primary output device node has pulled from the graph endpoint node,
+            // This secondary output device node will have its input busses mixed and copied into its passthrough buffer.
+            // Here, we forward these buffer frames to this device node's owned output audio device.
+            // todo audio graph should only connect the primary device always, and only connect each secondary devices to the graph endpoint
+            // when it has any input nodes. Currently, we get the last recorded frame looped to the owned output device.
+            self->ReadBufferData(output, frame_count);
+        }
 
         (void)device;
         (void)input;

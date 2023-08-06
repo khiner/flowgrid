@@ -146,9 +146,15 @@ void AudioDevice::Init(u32 client_sample_rate) {
         config.capture.format = ma_format_f32;
         // config.capture.channels = Format.Channels;
         config.capture.channels = 1; // todo handle > 1 channels
-        // `noFixedSizedCallback` is more efficient, and seems to be ok.
-        // Also seems fine for the output device, but only using it for the input device for now.
-        config.noFixedSizedCallback = true;
+        // `noFixedSizedCallback` is more efficient, but don't be tempted.
+        // It works fine until a manual input device change, which breaks things in inconsistent ways until we
+        // disconnect and reconnect the input device node.
+        // One way out of this would be to do just that - have device nodes listen for device re-inits and
+        // send an `OnNodeConnectionsChanged` to the parent graph.
+        // I think this would work fine, but the fact that it works smoothly without any connection resets seems
+        // better for this stage (favoring stability over performance in general).
+        // Also, enabling this flag this seems to work fine for the output device as well, with the same caveats.
+        // config.noFixedSizedCallback = true;
     } else {
         config.playback.pDeviceID = device_id;
         config.playback.format = ma_format_f32;

@@ -29,6 +29,7 @@ struct AudioDevice : Component, Field::ChangeListener {
     bool IsStarted() const;
     bool IsNativeSampleRate(u32) const;
 
+    u32 GetClientSampleRate() const { return ClientSampleRate; }
     void SetClientSampleRate(u32); // The graph sample rate.
 
     // Mirrors `DeviceDataFormat`.

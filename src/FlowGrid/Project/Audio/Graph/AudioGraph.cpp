@@ -66,30 +66,35 @@ private:
     ma_audio_buffer_ref Ref;
 };
 
-struct BufferRefNode : AudioGraphNode {
+struct DeviceNode : AudioGraphNode {
     using AudioGraphNode::AudioGraphNode;
 
-    inline void InitBuffer(u32 channels) { _BufferRef = std::make_unique<BufferRef>(ma_format_f32, channels); }
+    string GetTreeLabel() const override { return Device->GetFullLabel(); }
 
-protected:
-    inline void SetBufferData(const void *input, u32 frame_count) const {
-        if (_BufferRef) _BufferRef->SetData(input, frame_count);
+    void OnSampleRateChanged() override {
+        AudioGraphNode::OnSampleRateChanged();
+        Device->SetClientSampleRate(Graph->SampleRate);
     }
 
-    std::unique_ptr<BufferRef> _BufferRef;
+    void Render() const override {
+        Device->Draw();
+        ImGui::Spacing();
+        AudioGraphNode::Render();
+    }
+
+    std::unique_ptr<AudioDevice> Device;
 };
 
 // A `ma_data_source_node` whose `ma_data_source` is a `ma_duplex_rb`.
 // A source node that owns an input device and copies the device callback input buffer to a ring buffer.
-struct InputDeviceNode : AudioGraphNode {
-    InputDeviceNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
+struct InputDeviceNode : DeviceNode {
+    InputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args)) {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, Graph->SampleRate, AudioInputCallback, this);
-
-        ma_device *device = Device->Get();
 
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
-        const auto [sr_min, sr_max] = std::minmax(device->capture.internalSampleRate, device->sampleRate);
+        const auto [sr_min, sr_max] = std::minmax(u32(Device->Format.SampleRate), u32(Device->GetClientSampleRate()));
+        const ma_device *device = Device->Get();
         ma_result result = ma_duplex_rb_init(device->capture.format, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize ring buffer: ", int(result)));
 
@@ -107,8 +112,6 @@ struct InputDeviceNode : AudioGraphNode {
         ma_data_source_node_uninit(&SourceNode, nullptr);
         Node = nullptr;
     }
-
-    string GetTreeLabel() const override { return Device->GetFullLabel(); }
 
     // Adapted from `ma_device__handle_duplex_callback_capture`.
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
@@ -145,62 +148,34 @@ struct InputDeviceNode : AudioGraphNode {
         (void)output;
     }
 
-    void OnSampleRateChanged() override {
-        AudioGraphNode::OnSampleRateChanged();
-        Device->SetClientSampleRate(Graph->SampleRate);
-    }
-
-    std::unique_ptr<AudioDevice> Device;
     ma_duplex_rb DuplexRb;
     ma_data_source_node SourceNode;
-
-private:
-    void Render() const override {
-        Device->Draw();
-        ImGui::Spacing();
-        AudioGraphNode::Render();
-    }
-};
-
-// Wraps around (custom) `ma_data_passthrough_node`.
-// Copies the input buffer in each callback to its internal `Buffer`.
-struct PassthroughBufferNode : BufferRefNode {
-    PassthroughBufferNode(ComponentArgs &&args) : BufferRefNode(std::move(args)) {
-        InitBuffer(1); // todo inline `PassthroughBufferNode` into `OutputDeviceNode` and initialize the buffer _after_ the device to get its channel count.
-        auto config = ma_data_passthrough_node_config_init(_BufferRef->Get());
-        ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
-        Node = &PassthroughNode;
-    }
-
-    ~PassthroughBufferNode() {
-        ma_data_passthrough_node_uninit((ma_data_passthrough_node *)Node, nullptr);
-        Node = nullptr;
-    }
-
-    void ReadBufferData(void *output, u32 frame_count) const noexcept {
-        if (_BufferRef) _BufferRef->ReadData(output, frame_count);
-    }
-
-private:
-    ma_data_passthrough_node PassthroughNode;
 };
 
 /*
 `OutputDeviceNode` is a passthrough node that owns an output device.
+It wraps around (custom) `ma_data_passthrough_node`, copying the input buffer in each callback to its internal `Buffer`.
+
 Whenever there is at least one output device node, there is a single "primary" output device node.
 The primary output device node passes the graph endpoint node's output buffer to the device callback output buffer.
 Each remaining output device node populates its device callback output buffer with its buffer data (`ReadBufferData`).
 
 It is up to the owning graph to ensure that _each_ of its output device nodes is always connected directly to the graph endpoint node.
 */
-struct OutputDeviceNode : PassthroughBufferNode {
+struct OutputDeviceNode : DeviceNode {
     inline static OutputDeviceNode *Primary;
     inline static std::set<OutputDeviceNode *> All;
 
-    OutputDeviceNode(ComponentArgs &&args) : PassthroughBufferNode(std::move(args)) {
+    OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args)) {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
+
+        InitBuffer(Device->Format.Channels);
+        auto config = ma_data_passthrough_node_config_init(_BufferRef->Get());
+        ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
+        Node = &PassthroughNode;
         UpdateAll();
+
         if (!Primary) Primary = this;
         All.insert(this);
     }
@@ -209,9 +184,9 @@ struct OutputDeviceNode : PassthroughBufferNode {
         if (Primary == this) {
             Primary = All.empty() ? nullptr : *All.begin();
         }
+        ma_data_passthrough_node_uninit((ma_data_passthrough_node *)Node, nullptr);
+        Node = nullptr;
     }
-
-    string GetTreeLabel() const override { return Device->GetFullLabel(); }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
@@ -235,19 +210,19 @@ struct OutputDeviceNode : PassthroughBufferNode {
     // Always connects directly/only to the graph endpoint node.
     bool AllowOutputConnectionChange() const override { return false; }
 
-    void OnSampleRateChanged() override {
-        PassthroughBufferNode::OnSampleRateChanged();
-        Device->SetClientSampleRate(Graph->SampleRate);
-    }
-
-    std::unique_ptr<AudioDevice> Device;
-
 private:
-    void Render() const override {
-        Device->Draw();
-        ImGui::Spacing();
-        AudioGraphNode::Render();
+    inline void InitBuffer(u32 channels) { _BufferRef = std::make_unique<BufferRef>(ma_format_f32, channels); }
+
+    void ReadBufferData(void *output, u32 frame_count) const noexcept {
+        if (_BufferRef) _BufferRef->ReadData(output, frame_count);
     }
+
+    inline void SetBufferData(const void *input, u32 frame_count) const {
+        if (_BufferRef) _BufferRef->SetData(input, frame_count);
+    }
+
+    std::unique_ptr<BufferRef> _BufferRef;
+    ma_data_passthrough_node PassthroughNode;
 };
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {

@@ -73,6 +73,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     // Override to return a more detailed name to display in the graph tree view.
     virtual std::string GetTreeLabel() const { return Name; }
 
+    inline ma_node *Get() const { return Node; }
+
     u32 InputBusCount() const;
     u32 OutputBusCount() const;
     inline u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
@@ -86,8 +88,8 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     ma_node *InputNode() const;
     ma_node *OutputNode() const;
 
-    void ConnectTo(AudioGraphNode &);
-    void DisconnectAll();
+    void DisconnectOutput();
+    ma_node *CreateSplitter(u32 destination_count);
 
     // The graph is responsible for calling this method whenever the topology of the graph changes.
     // When this node is connected to the graph endpoing node (directly or indirectly), it is considered active.
@@ -182,26 +184,26 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     Prop(DynamicComponent<MonitorNode>, InputMonitor);
     Prop(DynamicComponent<MonitorNode>, OutputMonitor);
 
-    struct SplitterNode;
-    std::vector<std::unique_ptr<SplitterNode>> Splitters;
-
-    // `IsActive == true` means there is a connection path from this node to the graph endpoint node (`OutputNode`).
+    // `IsActive == true` means there is a connection path from this node to the graph endpoint node `OutputNode`.
     // Updated in `AudioGraph::UpdateConnections()`.
     bool IsActive{false};
-
-protected:
-    virtual void UpdateAll(); // Call corresponding MA setters for all fields.
-
-    void Render() const override;
 
     const DynamicComponent<GainerNode> &GetGainer(IO) const;
     const DynamicComponent<MonitorNode> &GetMonitor(IO) const;
     GainerNode *GetGainerNode(IO) const;
     MonitorNode *GetMonitorNode(IO) const;
 
+protected:
+    virtual void UpdateAll(); // Call corresponding MA setters for all fields.
+
+    void Render() const override;
+
     void NotifyConnectionsChanged() {
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
     }
+
+    struct SplitterNode;
+    std::unique_ptr<SplitterNode> Splitter;
 
     ma_node *Node;
     std::unordered_set<Listener *> Listeners{};

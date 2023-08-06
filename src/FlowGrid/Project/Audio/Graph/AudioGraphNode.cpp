@@ -226,8 +226,9 @@ void AudioGraphNode::MonitorNode::Render() const {
 }
 
 struct AudioGraphNode::SplitterNode {
-    SplitterNode(ma_node_graph *ma_graph, u32 channels) {
+    SplitterNode(ma_node_graph *ma_graph, u32 buses, u32 channels) {
         auto config = ma_splitter_node_config_init(channels);
+        config.outputBusCount = buses;
         ma_result result = ma_splitter_node_init(ma_graph, &config, nullptr, &Splitter);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize splitter node: {}", int(result)));
     }
@@ -248,7 +249,7 @@ AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
 }
 
 AudioGraphNode::~AudioGraphNode() {
-    Splitters.clear();
+    Splitter.reset();
     InputGainer.Reset();
     InputMonitor.Reset();
     OutputGainer.Reset();
@@ -320,42 +321,14 @@ void AudioGraphNode::UpdateAll() {
     OutputMonitor.Refresh();
 }
 
-void AudioGraphNode::ConnectTo(AudioGraphNode &to) {
-    if (auto *to_input_monitor = to.GetMonitorNode(IO_In)) {
-        ma_node_attach_output_bus(to_input_monitor->Get(), 0, to.Node, 0);
-    }
-    if (auto *to_input_gainer = to.GetGainerNode(IO_In)) {
-        // Monitor after applying gain.
-        if (auto *to_input_monitor = to.GetMonitorNode(IO_In)) ma_node_attach_output_bus(to_input_gainer->Get(), 0, to_input_monitor->Get(), 0);
-        else ma_node_attach_output_bus(to_input_gainer->Get(), 0, to.Node, 0);
-    }
-
-    if (auto *output_gainer = GetGainerNode(IO_Out)) {
-        ma_node_attach_output_bus(Node, 0, output_gainer->Get(), 0);
-    }
-    if (auto *output_monitor = GetMonitorNode(IO_Out)) {
-        // Monitor after applying gain.
-        if (auto *output_gainer = GetGainerNode(IO_Out)) ma_node_attach_output_bus(output_gainer->Get(), 0, output_monitor->Get(), 0);
-        else ma_node_attach_output_bus(Node, 0, output_monitor->Get(), 0);
-    }
-
-    auto *output_node = OutputNode();
-    if (auto *currently_connected_to = ((ma_node_base *)output_node)->pOutputBuses[0].pInputNode) {
-        // Connecting a single source to multiple destinations requires a splitter node.
-        // We chain splitters together to support any number of destinations.
-        Splitters.emplace_back(std::make_unique<SplitterNode>(Graph->Get(), OutputChannelCount(0)));
-        auto *splitter = Splitters.back()->Get();
-        ma_node_attach_output_bus(splitter, 0, currently_connected_to, 0);
-        ma_node_attach_output_bus(splitter, 1, to.InputNode(), 0);
-        ma_node_attach_output_bus(OutputNode(), 0, splitter, 0);
-    } else {
-        ma_node_attach_output_bus(OutputNode(), 0, to.InputNode(), 0);
-    }
+void AudioGraphNode::DisconnectOutput() {
+    ma_node_detach_output_bus(OutputNode(), 0);
+    Splitter.reset();
 }
 
-void AudioGraphNode::DisconnectAll() {
-    ma_node_detach_output_bus(OutputNode(), 0);
-    Splitters.clear();
+ma_node *AudioGraphNode::CreateSplitter(u32 destination_count) {
+    Splitter = std::make_unique<SplitterNode>(Graph->Get(), destination_count, OutputChannelCount(0));
+    return Splitter->Get();
 }
 
 std::string NodesToString(const std::unordered_set<AudioGraphNode *> &nodes, bool is_input) {
@@ -399,7 +372,7 @@ void AudioGraphNode::Render() const {
             }
         }
     }
-    if (TreeNode("Node info")) {
+    if (ImGui::TreeNode("Node info")) {
         TextUnformatted(std::format("Active: {}", bool(IsActive)).c_str());
         SameLine();
         fg::HelpMarker(
@@ -428,8 +401,7 @@ void AudioGraphNode::Render() const {
                 const string io_label = StringHelper::Capitalize(to_string(io));
                 BulletText("%s", std::format("{} gainer: {}", io_label, bool(GetGainer(io))).c_str());
                 BulletText("%s", std::format("{} monitor: {}", io_label, bool(GetMonitor(io))).c_str());
-                // This will turn into a single splitter soon, so only showing the first atm.
-                if (io == IO_Out) BulletText("%s", std::format("{} splitter: {}", io_label, !Splitters.empty()).c_str());
+                if (io == IO_Out) BulletText("%s", std::format("{} splitter: {}", io_label, bool(Splitter)).c_str());
             }
         }
         TreePop();

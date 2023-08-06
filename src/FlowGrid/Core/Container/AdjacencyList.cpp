@@ -29,7 +29,7 @@ void AdjacencyList::ToggleConnection(ID source, ID destination) const {
     else Connect(source, destination);
 }
 
-void AdjacencyList::DisconnectAll(ID id) const {
+void AdjacencyList::DisconnectOutput(ID id) const {
     const auto id_pairs = Get();
     for (const auto &[source_id, destination_id] : id_pairs) {
         if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);
@@ -67,6 +67,14 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     }
 
     return false;
+}
+
+u32 AdjacencyList::DestinationCount(ID source) const {
+    u32 count = 0;
+    for (const auto &[source_id, destination_id] : Get()) {
+        if (source_id == source) count++;
+    }
+    return count;
 }
 
 using namespace ImGui;

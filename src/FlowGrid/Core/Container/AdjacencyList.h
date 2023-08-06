@@ -30,9 +30,10 @@ struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
     void Connect(ID source, ID destination) const;
     void Disconnect(ID source, ID destination) const;
     void ToggleConnection(ID source, ID destination) const;
-    void DisconnectAll(ID id) const;
+    void DisconnectOutput(ID id) const;
     void Erase() const override;
 
     bool IsConnected(ID source, ID destination) const;
     bool HasPath(ID source, ID destination) const;
+    u32 DestinationCount(ID source) const;
 };

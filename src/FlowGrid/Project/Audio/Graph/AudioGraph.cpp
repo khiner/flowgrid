@@ -1,6 +1,6 @@
 #include "AudioGraph.h"
 
-#include <concepts>
+#include <range/v3/range/conversion.hpp>
 #include <set>
 
 #include "imgui.h"
@@ -163,8 +163,7 @@ Each remaining output device node populates its device callback output buffer wi
 It is up to the owning graph to ensure that _each_ of its output device nodes is always connected directly to the graph endpoint node.
 */
 struct OutputDeviceNode : DeviceNode {
-    inline static OutputDeviceNode *Primary;
-    inline static std::set<OutputDeviceNode *> All;
+    inline static std::vector<OutputDeviceNode *> All; // The 'Primary' output device node is the first element.
 
     OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args)) {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
@@ -176,14 +175,10 @@ struct OutputDeviceNode : DeviceNode {
         Node = &PassthroughNode;
         UpdateAll();
 
-        if (!Primary) Primary = this;
-        All.insert(this);
+        All.emplace_back(this);
     }
     ~OutputDeviceNode() {
-        All.erase(this);
-        if (Primary == this) {
-            Primary = All.empty() ? nullptr : *All.begin();
-        }
+        std::erase_if(All, [this](auto *node) { return node == this; });
         ma_data_passthrough_node_uninit((ma_data_passthrough_node *)Node, nullptr);
         Node = nullptr;
     }
@@ -191,7 +186,7 @@ struct OutputDeviceNode : DeviceNode {
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
         auto *self = reinterpret_cast<OutputDeviceNode *>(user_data->User);
-        if (self == Primary && self->Graph) {
+        if (self == All.front() && self->Graph) {
             ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
         } else {
             // Every output device node is connected directly into the graph endpoint node.
@@ -281,7 +276,7 @@ void AudioGraph::Apply(const ActionType &action) const {
         },
         [this](const Action::AudioGraph::DeleteNode &a) {
             Nodes.EraseId(a.id);
-            Connections.DisconnectAll(a.id);
+            Connections.DisconnectOutput(a.id);
         },
         [](const Action::AudioGraph::SetDeviceDataFormat &a) {
             if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device with id {} exists.", a.id));
@@ -377,23 +372,65 @@ std::unordered_set<AudioGraphNode *> AudioGraph::GetDestinationNodes(const Audio
 
 void AudioGraph::UpdateConnections() {
     for (auto *node : Nodes) {
-        node->DisconnectAll();
+        node->SetActive(Connections.HasPath(node->Id, Id));
+        node->DisconnectOutput();
     }
 
-    // The graph does not keep itself in its `Nodes` list, so we must connect it manually.
-    for (auto *device_output_node : GetOutputDeviceNodes()) {
-        device_output_node->ConnectTo(*this);
-    }
+    // Set up internal node connections.
+    for (auto *node : Nodes) {
+        if (!node->IsActive) continue;
 
-    for (auto *out_node : Nodes) {
-        for (auto *in_node : Nodes) {
-            if (Connections.IsConnected(out_node->Id, in_node->Id)) {
-                out_node->ConnectTo(*in_node);
+        if (node->InputBusCount() > 0) {
+            if (auto *in_monitor = node->GetMonitorNode(IO_In)) {
+                ma_node_attach_output_bus(in_monitor->Get(), 0, node->Get(), 0);
+            }
+            if (auto *in_gainer = node->GetGainerNode(IO_In)) {
+                // Monitor after applying gain.
+                if (auto *in_monitor = node->GetMonitorNode(IO_In)) ma_node_attach_output_bus(in_gainer->Get(), 0, in_monitor->Get(), 0);
+                else ma_node_attach_output_bus(in_gainer->Get(), 0, node->Get(), 0);
+            }
+        }
+        if (node->OutputBusCount() > 0) {
+            if (auto *out_gainer = node->GetGainerNode(IO_Out)) {
+                ma_node_attach_output_bus(node->Get(), 0, out_gainer->Get(), 0);
+            }
+            if (auto *out_monitor = node->GetMonitorNode(IO_Out)) {
+                // Monitor after applying gain.
+                if (auto *out_gainer = node->GetGainerNode(IO_Out)) ma_node_attach_output_bus(out_gainer->Get(), 0, out_monitor->Get(), 0);
+                else ma_node_attach_output_bus(node->Get(), 0, out_monitor->Get(), 0);
             }
         }
     }
 
-    for (auto *node : Nodes) node->SetActive(Connections.HasPath(node->Id, Id));
+    // The graph does not keep itself in its `Nodes` list.
+    // This should be a `ranges::concat` instead of making a whole but I couldn't get it to work.
+    auto nodes = Nodes.View() | std::views::transform([](const auto &node) { return node.get(); }) | ranges::to<std::vector>();
+    nodes.emplace_back(this);
+    for (auto *source_node : nodes) {
+        if (!source_node->IsActive || source_node->OutputBusCount() == 0) continue;
+
+        u32 destination_count = Connections.DestinationCount(source_node->Id);
+        if (destination_count == 0) continue; // Should never hit this, since this would imply the node is inactive.
+
+        if (destination_count == 1) {
+            for (auto *destination_node : nodes) {
+                if (Connections.IsConnected(source_node->Id, destination_node->Id)) {
+                    ma_node_attach_output_bus(source_node->OutputNode(), 0, destination_node->InputNode(), 0);
+                }
+            }
+        } else {
+            // Connecting a single source to multiple destinations requires a splitter node.
+            auto *splitter = source_node->CreateSplitter(destination_count);
+            ma_node_attach_output_bus(source_node->OutputNode(), 0, splitter, 0);
+
+            u32 splitter_bus = 0;
+            for (auto *destination_node : nodes) {
+                if (Connections.IsConnected(source_node->Id, destination_node->Id)) {
+                    ma_node_attach_output_bus(splitter, splitter_bus++, destination_node->InputNode(), 0);
+                }
+            }
+        }
+    }
 }
 
 using namespace ImGui;

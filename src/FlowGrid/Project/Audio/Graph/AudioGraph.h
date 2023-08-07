@@ -43,7 +43,12 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     ma_node_graph *Get() const;
     dsp *GetFaustDsp() const;
 
+    // A sample rate is considered "native" by the graph (and suffixed with an asterix)
+    // if it is native to all device nodes within the graph (or if there are no device nodes in the graph).
     bool IsNativeSampleRate(u32) const;
+
+    // Returns the highest-priority sample rate (see `AudioDevice::PrioritizedSampleRates`) natively supported by all device nodes in this graph,
+    // or the highest-priority sample rate supported by any device node if none are natively supported by all device nodes.
     u32 GetDefaultSampleRate() const;
     std::string GetSampleRateName(u32) const;
 
@@ -84,14 +89,21 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     Prop(Vector<AudioGraphNode>, Nodes, CreateNode);
     Prop_(Connections, Connections, "Audio connections");
 
-    // We initialize with a sample rate of 0, which is the default sample rate. See `GetDefaultSampleRate` for details.
+    // We initialize with a sample rate of zero, which is the default sample rate. (See `GetDefaultSampleRate` for details.)
+    // All device nodes with a default format (for which the user has not explicitly selected the format
+    // from the device's format dropdown) "follow" their owning graph's sample rate.
+    // When a graph's sample rate is changed, each of its device nodes is updated to select the native format with the
+    // sample rate nearest to the graph's.
+    // Device nodes which have had their format explicitly chosen by the user are considered "locked in", and are not
+    // automatically updated when its owning graph's sample rate changes - even if it has a native format with a matching sample rate.
     Prop_(
         UInt, SampleRate,
         "?The audio graph sample rate.\n"
         "This is the rate at which the graph and all of the its nodes internally process audio.\n"
         "An asterisk (*) indicates the sample rate is natively supported by all audio device nodes within the graph.\n"
         "Each audio device I/O node within the graph converts to/from this rate if necessary.",
-        [this](u32 sr) { return GetSampleRateName(sr); }
+        [this](u32 sr) {
+        return GetSampleRateName(sr); }
     );
     Prop(Style, Style);
 

@@ -93,7 +93,7 @@ struct InputDeviceNode : DeviceNode {
 
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
-        const auto [sr_min, sr_max] = std::minmax(u32(Device->Format.SampleRate), u32(Device->GetClientSampleRate()));
+        const auto [sr_min, sr_max] = std::minmax(u32(Device->GetNativeSampleRate()), u32(Device->GetClientSampleRate()));
         const ma_device *device = Device->Get();
         ma_result result = ma_duplex_rb_init(device->capture.format, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize ring buffer: ", int(result)));
@@ -171,8 +171,8 @@ struct OutputDeviceNode : DeviceNode {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
 
         const bool is_primary = All.empty();
-        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, Device->Format.Channels);
-        auto config = ma_data_passthrough_node_config_init(Device->Format.Channels, Buffer ? Buffer->Get() : nullptr);
+        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, Device->GetChannels());
+        auto config = ma_data_passthrough_node_config_init(Device->GetChannels(), Buffer ? Buffer->Get() : nullptr);
         ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
 
@@ -252,6 +252,14 @@ AudioGraph::~AudioGraph() {
     Field::UnregisterChangeListener(this);
 }
 
+void AudioGraph::OnFieldChanged() {
+    AudioGraphNode::OnFieldChanged();
+
+    if (Nodes.IsChanged() || Connections.IsChanged()) {
+        UpdateConnections();
+    }
+}
+
 template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType>
 static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Component::ComponentArgs &&args) {
     auto node = std::make_unique<AudioGraphNodeSubType>(std::move(args));
@@ -294,8 +302,6 @@ void AudioGraph::Apply(const ActionType &action) const {
 ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
 dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
 
-// A sample rate is considered "native" by the graph (and suffixed with an asterix)
-// if it is native to all device nodes within the graph (or if there are no device nodes in the graph).
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
     for (const auto *device_node : GetInputDeviceNodes()) {
         if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
@@ -306,8 +312,6 @@ bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
     return true;
 }
 
-// Returns the highest-priority sample rate (see `AudioDevice::PrioritizedSampleRates`) natively supported by all device nodes in this graph,
-// or the highest-priority sample rate supported by any device node if none are natively supported by all device nodes.
 u32 AudioGraph::GetDefaultSampleRate() const {
     for (const u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
         if (IsNativeSampleRate(sample_rate)) return sample_rate;
@@ -341,14 +345,6 @@ void AudioGraph::OnFaustDspChanged(dsp *dsp) {
 }
 
 void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(); }
-
-void AudioGraph::OnFieldChanged() {
-    AudioGraphNode::OnFieldChanged();
-
-    if (Nodes.IsChanged() || Connections.IsChanged()) {
-        UpdateConnections();
-    }
-}
 
 std::unordered_set<AudioGraphNode *> AudioGraph::GetSourceNodes(const AudioGraphNode *node) const {
     std::unordered_set<AudioGraphNode *> nodes;

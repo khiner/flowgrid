@@ -125,7 +125,7 @@ static u32 DeviceInstanceCount = 0; // Reference count for the audio context. Wh
 
 AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 client_sample_rate, AudioDevice::AudioCallback callback, void *client_user_data)
     : Component(std::move(args)), Type(type), Callback(callback), _UserData({this, client_user_data}) {
-    const Field::References listened_fields{Name, Format.SampleFormat, Format.Channels, Format.SampleRate};
+    const Field::References listened_fields{Name, Format};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 
     if (!AudioContext) AudioContext = std::make_unique<Context>();
@@ -139,6 +139,13 @@ AudioDevice::~AudioDevice() {
 
     DeviceInstanceCount--;
     if (DeviceInstanceCount == 0) AudioContext.reset();
+}
+
+void AudioDevice::OnFieldChanged() {
+    if (Name.IsChanged() || Format.IsChanged()) {
+        Uninit();
+        Init(ClientSampleRate);
+    }
 }
 
 void AudioDevice::Init(u32 client_sample_rate) {
@@ -177,7 +184,8 @@ void AudioDevice::Init(u32 client_sample_rate) {
     config.dataCallback = Callback;
     config.pUserData = &_UserData;
 
-    u32 native_sample_rate = AudioContext->GetHighestPriorityNativeSampleRate(Type, client_sample_rate);
+    u32 target_sample_rate = Format ? Format->SampleRate : client_sample_rate; // Favor the user-selected format.
+    u32 native_sample_rate = AudioContext->GetHighestPriorityNativeSampleRate(Type, target_sample_rate);
     ClientSampleRate = client_sample_rate == 0 ? native_sample_rate : client_sample_rate;
 
     u32 from_sample_rate = Type == IO_In ? native_sample_rate : ClientSampleRate;
@@ -193,18 +201,20 @@ void AudioDevice::Init(u32 client_sample_rate) {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), int(result)));
 
     // The device may have a different configuration than what we requested.
-    // Update the fields to reflect the actual device configuration.
-    const ma_device_info *info = AudioContext->GetDeviceInfo(Type, Name);
-    if (Type == IO_Out) {
-        if (Device->playback.name != Name) Name.Set_(Context::GetDeviceName(info));
-        if (Device->playback.format != Format.SampleFormat) Format.SampleFormat.Set_(Device->playback.format);
-        if (Device->playback.channels != Format.Channels) Format.Channels.Set_(Device->playback.channels);
-        if (Device->playback.internalSampleRate != Format.SampleRate) Format.SampleRate.Set_(Device->playback.internalSampleRate);
-    } else {
-        if (Device->capture.name != Name) Name.Set_(Context::GetDeviceName(info));
-        if (Device->capture.format != Format.SampleFormat) Format.SampleFormat.Set_(Device->capture.format);
-        if (Device->capture.channels != Format.Channels) Format.Channels.Set_(Device->capture.channels);
-        if (Device->capture.internalSampleRate != Format.SampleRate) Format.SampleRate.Set_(Device->capture.internalSampleRate);
+    // If this device's `Format` is set (if it has been explicitly chosen by the user), update its fields to reflect the actual device config.
+    if (Format) {
+        const ma_device_info *info = AudioContext->GetDeviceInfo(Type, Name);
+        if (Type == IO_Out) {
+            if (Device->playback.name != Name) Name.Set_(Context::GetDeviceName(info));
+            if (Device->playback.format != Format->SampleFormat) Format->SampleFormat.Set_(Device->playback.format);
+            if (Device->playback.channels != Format->Channels) Format->Channels.Set_(Device->playback.channels);
+            if (Device->playback.internalSampleRate != Format->SampleRate) Format->SampleRate.Set_(Device->playback.internalSampleRate);
+        } else {
+            if (Device->capture.name != Name) Name.Set_(Context::GetDeviceName(info));
+            if (Device->capture.format != Format->SampleFormat) Format->SampleFormat.Set_(Device->capture.format);
+            if (Device->capture.channels != Format->Channels) Format->Channels.Set_(Device->capture.channels);
+            if (Device->capture.internalSampleRate != Format->SampleRate) Format->SampleRate.Set_(Device->capture.internalSampleRate);
+        }
     }
 
     Device->onNotification = [](const ma_device_notification *notification) {
@@ -214,7 +224,7 @@ void AudioDevice::Init(u32 client_sample_rate) {
             case ma_device_notification_type_stopped:
                 break;
             case ma_device_notification_type_rerouted:
-                // Can happen the default device is changed, which happens when we initialize a default MA device,
+                // A reroute happens when the default device is changed, which happens when we initialize a default MA device,
                 // and e.g. a new audio device is plugged in.
                 // Note that we don't change the device name here, since this is only triggered for the default device,
                 // and we set `Name` to an empty string for _any_ default device.
@@ -270,16 +280,23 @@ void AudioDevice::Uninit() {
     Device.reset();
 }
 
-void AudioDevice::OnFieldChanged() {
-    if (Name.IsChanged() || Format.IsChanged()) {
-        Uninit();
-        Init(ClientSampleRate);
-    }
-}
-
 string AudioDevice::GetName() const {
     const auto *info = AudioContext->GetDeviceInfo(Type, Name);
     return info ? info->name : "";
+}
+
+u32 AudioDevice::GetNativeSampleRate() const {
+    if (Format) return Format->SampleRate; // User-selected format.
+    if (!Device) return 0;
+    if (Type == IO_In) return Device->capture.internalSampleRate;
+    return Device->playback.internalSampleRate;
+}
+
+u32 AudioDevice::GetChannels() const {
+    if (Format) return Format->Channels; // User-selected format.
+    if (!Device) return 0;
+    if (Type == IO_In) return Device->capture.internalChannels;
+    return Device->playback.internalChannels;
 }
 
 bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const { return AudioContext->IsNativeSampleRate(Type, sample_rate); }
@@ -346,9 +363,16 @@ void AudioDevice::Render() const {
     Name.HelpMarker();
 
     SetNextItemWidth(GetFontSize() * 14);
-    Format.Draw();
+    bool is_default_format = !Format;
+    if (Checkbox("Default Format", &is_default_format)) Format.IssueToggle(); // todo need to initialize `Format` to the current value.
+    if (Format) {
+        Format->Draw();
+    } else {
+        auto sample_format = Type == IO_In ? Device->capture.internalFormat : Device->playback.internalFormat;
+        TextUnformatted(DeviceDataFormat{sample_format, GetChannels(), GetNativeSampleRate()}.ToString().c_str());
+    }
 
-    if (TreeNode("Device info")) {
+    if (ImGui::TreeNode("Device info")) {
         static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
         auto *device = Device.get();
         ma_device_get_name(device, Type == IO_In ? ma_device_type_capture : ma_device_type_playback, name, sizeof(name), nullptr);

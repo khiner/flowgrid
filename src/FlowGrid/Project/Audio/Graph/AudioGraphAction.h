@@ -4,8 +4,8 @@
 
 DefineActionType(
     AudioGraph,
-    DefineAction(CreateNode, NoMerge, "", std::string node_type_id;);
-    DefineAction(DeleteNode, NoMerge, "", ID id;);
+    DefineUnmergableAction(CreateNode, std::string node_type_id;);
+    DefineUnmergableAction(DeleteNode, ID id;);
     DefineAction(SetDeviceDataFormat, Merge, "", ID id; int sample_format; u32 channels; u32 sample_rate;);
 
     Json(CreateNode, node_type_id);

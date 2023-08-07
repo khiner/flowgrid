@@ -44,12 +44,22 @@ template<class...> constexpr bool always_false_v = false;
 #define DefineAction(ActionType, merge_type, meta_str, ...) \
     DefineActionInternal(ActionType, 1, merge_type, meta_str, __VA_ARGS__)
 
+#define DefineUnmergableAction(ActionType, ...)                    \
+    DefineActionInternal(ActionType, 1, NoMerge, "", __VA_ARGS__)
+
 #define DefineUnsavedAction(ActionType, merge_type, meta_str, ...) \
     DefineActionInternal(ActionType, 0, merge_type, meta_str, __VA_ARGS__)
 
 #define DefineFieldAction(ActionType, meta_str, ...)               \
     DefineActionInternal(                                          \
         ActionType, 1, SamePathMerge, meta_str,                    \
+        fs::path path;                                             \
+        fs::path GetFieldPath() const { return path; } __VA_ARGS__ \
+    )
+
+#define DefineUnmergableFieldAction(ActionType, ...)               \
+    DefineActionInternal(                                          \
+        ActionType, 1, NoMerge, "",                                \
         fs::path path;                                             \
         fs::path GetFieldPath() const { return path; } __VA_ARGS__ \
     )

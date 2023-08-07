@@ -106,6 +106,9 @@ struct Component : Drawable {
     virtual void RenderValueTree(bool annotate, bool auto_select) const;
     virtual void RenderDebug() const {}
 
+    // Override to return additional details to append to label in contexts with lots of horizontal room.
+    virtual std::string GetLabelDetailSuffix() const { return ""; }
+
     const Component *Child(u32 i) const noexcept { return Children[i]; }
     inline u32 ChildCount() const noexcept { return Children.size(); }
 

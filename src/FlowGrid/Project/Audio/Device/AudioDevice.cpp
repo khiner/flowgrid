@@ -1,7 +1,6 @@
 #include "AudioDevice.h"
 
 #include "DeviceDataFormat.h"
-#include "Helper/String.h"
 #include "Project/Audio/Graph/AudioGraphAction.h"
 
 #include "imgui.h"
@@ -265,9 +264,9 @@ void AudioDevice::OnFieldChanged() {
     }
 }
 
-string AudioDevice::GetFullLabel() const {
+string AudioDevice::GetName() const {
     const auto *info = AudioContext->GetDeviceInfo(Type, Name);
-    return std::format("{} device: {}", StringHelper::Capitalize(to_string(Type)), info ? info->name : "None");
+    return info ? info->name : "";
 }
 
 bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const { return AudioContext->IsNativeSampleRate(Type, sample_rate); }

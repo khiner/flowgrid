@@ -64,16 +64,12 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     inline bool CanConnectInput() const { return AllowInputConnectionChange() && InputBusCount() > 0; }
     inline bool CanConnectOutput() const { return AllowOutputConnectionChange() && OutputBusCount() > 0; }
 
-    inline bool IsGraphEndpoint() const { return this == (void *)Graph; }
-
     // Called whenever the graph's sample rate changes.
     // At the very least, each node updates any active IO monitors based on the new sample rate.
     virtual void OnSampleRateChanged();
 
-    // Override to return a more detailed name to display in the graph tree view.
-    virtual std::string GetTreeLabel() const { return Name; }
-
     inline ma_node *Get() const { return Node; }
+    inline bool IsGraphEndpoint() const { return this == (void *)Graph; }
 
     u32 InputBusCount() const;
     u32 OutputBusCount() const;

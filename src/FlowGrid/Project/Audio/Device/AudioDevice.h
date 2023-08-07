@@ -25,7 +25,8 @@ struct AudioDevice : Component, Field::ChangeListener {
     void OnFieldChanged() override;
 
     ma_device *Get() const { return Device.get(); }
-    std::string GetFullLabel() const;
+
+    std::string GetName() const; // `Name` can be empty if the device is the default device. This returns the actual device name.
     bool IsStarted() const;
     bool IsNativeSampleRate(u32) const;
 

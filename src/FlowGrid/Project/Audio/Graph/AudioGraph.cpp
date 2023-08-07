@@ -69,7 +69,7 @@ private:
 struct DeviceNode : AudioGraphNode {
     using AudioGraphNode::AudioGraphNode;
 
-    string GetTreeLabel() const override { return Device->GetFullLabel(); }
+    string GetLabelDetailSuffix() const override { return Device->GetName(); }
 
     void OnSampleRateChanged() override {
         AudioGraphNode::OnSampleRateChanged();
@@ -492,7 +492,8 @@ void AudioGraph::Connections::Render() const {
     // Calculate max I/O label widths.
     IoVec max_label_w_no_padding{0, 0};
     for (const auto *node : graph.Nodes) {
-        const float label_w = CalcTextSize(node->Name.c_str()).x;
+        const string label = graph.Nodes.GetChildLabel(node);
+        const float label_w = CalcTextSize(label.c_str()).x;
         if (node->CanConnectInput()) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
         if (node->CanConnectOutput()) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
     }
@@ -543,8 +544,9 @@ void AudioGraph::Connections::Render() const {
         if (!out_node->CanConnectOutput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, std::format("{}:{}", out_node->ImGuiLabel, to_string(IO_Out)).c_str());
-        const string label = out_node->Name;
+
+        const string label = graph.Nodes.GetChildLabel(out_node);
+        const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, std::format("{}:{}", label, to_string(IO_Out)).c_str());
         const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.y);
         RenderConnectionsLabel(IO_Out, out_node, ellipsified_label, label_interaction_flags);
         out_count++;
@@ -556,8 +558,8 @@ void AudioGraph::Connections::Render() const {
         if (!in_node->CanConnectInput()) continue;
 
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
-        const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, std::format("{}:{}", in_node->ImGuiLabel, to_string(IO_In)).c_str());
-        const string label = in_node->Name;
+        const string label = graph.Nodes.GetChildLabel(in_node);
+        const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, std::format("{}:{}", label, to_string(IO_In)).c_str());
         const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.x);
         SetCursorPos(GetCursorPos() + ImVec2{node_label_w.x - CalcTextSize(ellipsified_label.c_str()).x - label_padding.y, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
         RenderConnectionsLabel(IO_In, in_node, ellipsified_label, label_interaction_flags);
@@ -653,7 +655,7 @@ void AudioGraph::Render() const {
             const bool node_active = node->IsActive;
             // Similar to `ImGuiCol_TextDisabled`, but a bit lighter.
             if (!node_active) PushStyleColor(ImGuiCol_Text, {0.7f, 0.7f, 0.7f, 1.0f});
-            const bool node_open = ImGui::TreeNode(node->ImGuiLabel.c_str(), "%s", node->GetTreeLabel().c_str());
+            const bool node_open = ImGui::TreeNode(node->ImGuiLabel.c_str(), "%s", Nodes.GetChildLabel(node, true).c_str());
             if (!node_active) PopStyleColor();
             if (node_open) {
                 if (Button("Delete")) Action::AudioGraph::DeleteNode{node->Id}.q();

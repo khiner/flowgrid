@@ -55,12 +55,23 @@ template<typename ChildType> struct Vector : Field {
         return *it / *std::next(it);
     }
 
+    inline std::string GetChildLabel(const ChildType *child, bool detailed = false) const noexcept {
+        if (child == nullptr) return "";
+
+        const std::string path_prefix = child->Path.parent_path().filename();
+        const auto prefix_id = HexToU32(path_prefix);
+        return std::format(
+            "{}{}{}",
+            child->Name,
+            prefix_id == 0 ? "" : std::format(" {}", prefix_id),
+            detailed && !child->GetLabelDetailSuffix().empty() ? std::format(" ({})", child->GetLabelDetailSuffix()) : ""
+        );
+    }
+
     std::string GenerateNextPrefix(string_view path_segment) const {
         std::vector<u32> existing_prefix_ids;
         for (const auto &child : Value) {
-            const auto &child_path = child->Path;
-            const auto relative_path = child_path.lexically_relative(Path);
-            const auto &[child_path_prefix, child_path_segment] = GetPathPrefixAndSegment(relative_path);
+            const auto &[child_path_prefix, child_path_segment] = GetPathPrefixAndSegment(child->Path.lexically_relative(Path));
             if (path_segment == child_path_segment) {
                 existing_prefix_ids.push_back(HexToU32(child_path_prefix));
             }

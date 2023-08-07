@@ -175,9 +175,9 @@ struct OutputDeviceNode : DeviceNode {
         auto config = ma_data_passthrough_node_config_init(Device->Format.Channels, Buffer ? Buffer->Get() : nullptr);
         ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
+
         Node = &PassthroughNode;
         UpdateAll();
-
         All.emplace_back(this);
     }
     ~OutputDeviceNode() {

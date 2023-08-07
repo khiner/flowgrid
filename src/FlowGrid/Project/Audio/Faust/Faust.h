@@ -18,7 +18,7 @@ struct Faust : Component, Actionable<Action::Faust>, Field::ChangeListener {
 
     void OnFieldChanged() override;
 
-    Prop(TextBuffer, Code, R"#(import("stdfaust.lib");
+    Prop_(TextBuffer, Code, "Faust code", R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
    vslider("window (samples)", 1000, 50, 10000, 1),
    vslider("xfade (samples)", 10, 1, 10000, 1),
@@ -132,8 +132,8 @@ process = _ : pitchshifter;)#");
         void Render() const override;
     };
 
-    Prop(FaustGraph, Graph);
-    Prop(FaustParams, Params);
+    Prop_(FaustGraph, Graph, "Faust graph");
+    Prop_(FaustParams, Params, "Faust params");
     Prop_(FaustLog, Log, "Faust log", FaustDsp.ErrorMessage);
 
 protected:

@@ -203,6 +203,7 @@ void Project::Render() const {
         auto info_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.2f, nullptr, &dockspace_id);
         auto settings_node_id = DockBuilderSplitNode(info_node_id, ImGuiDir_Down, 0.25f, nullptr, &info_node_id);
         auto faust_tools_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.5f, nullptr, &dockspace_id);
+        auto faust_graph_node_id = DockBuilderSplitNode(faust_tools_node_id, ImGuiDir_Left, 0.5f, nullptr, &faust_tools_node_id);
         auto faust_editor_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.7f, nullptr, &dockspace_id);
 
         Audio.Graph.Dock(audio_node_id);
@@ -211,9 +212,9 @@ void Project::Render() const {
 
         Audio.Faust.Code.Dock(faust_editor_node_id);
         Audio.Faust.Code.Debug.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
-        Audio.Faust.Log.Dock(faust_tools_node_id);
-        Audio.Faust.Graph.Dock(faust_tools_node_id);
+        Audio.Faust.Graph.Dock(faust_graph_node_id);
         Audio.Faust.Params.Dock(faust_tools_node_id);
+        Audio.Faust.Log.Dock(faust_tools_node_id);
 
         Debug.Dock(debug_node_id);
         Debug.ProjectPreview.Dock(debug_node_id);
@@ -241,6 +242,7 @@ void Project::Render() const {
         Style.Focus();
         Audio.Graph.Focus();
         Audio.Faust.Graph.Focus();
+        Audio.Faust.Params.Focus();
         Debug.Focus(); // not visible by default anymore
     }
 

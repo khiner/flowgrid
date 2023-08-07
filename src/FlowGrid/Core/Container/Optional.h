@@ -7,12 +7,12 @@
 A component that is created/destroyed dynamically.
 Think of it like a store-backed `std::unique_ptr<ComponentType>`.
 */
-template<typename ComponentType> struct DynamicComponent : Field {
-    DynamicComponent(ComponentArgs &&args) : Field(std::move(args)) {
+template<typename ComponentType> struct Optional : Field {
+    Optional(ComponentArgs &&args) : Field(std::move(args)) {
         ComponentContainerFields.insert(Id);
         ComponentContainerAuxiliaryFields.insert(HasValue.Id);
     }
-    ~DynamicComponent() {
+    ~Optional() {
         ComponentContainerAuxiliaryFields.erase(HasValue.Id);
         ComponentContainerFields.erase(Id);
     }

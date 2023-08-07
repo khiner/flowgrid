@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Container/DynamicComponent.h"
+#include "Core/Container/Optional.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
@@ -175,17 +175,17 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
     const AudioGraph *Graph;
 
-    Prop(DynamicComponent<GainerNode>, InputGainer);
-    Prop(DynamicComponent<GainerNode>, OutputGainer);
-    Prop(DynamicComponent<MonitorNode>, InputMonitor);
-    Prop(DynamicComponent<MonitorNode>, OutputMonitor);
+    Prop(Optional<GainerNode>, InputGainer);
+    Prop(Optional<GainerNode>, OutputGainer);
+    Prop(Optional<MonitorNode>, InputMonitor);
+    Prop(Optional<MonitorNode>, OutputMonitor);
 
     // `IsActive == true` means there is a connection path from this node to the graph endpoint node `OutputNode`.
     // Updated in `AudioGraph::UpdateConnections()`.
     bool IsActive{false};
 
-    const DynamicComponent<GainerNode> &GetGainer(IO) const;
-    const DynamicComponent<MonitorNode> &GetMonitor(IO) const;
+    const Optional<GainerNode> &GetGainer(IO) const;
+    const Optional<MonitorNode> &GetMonitor(IO) const;
     GainerNode *GetGainerNode(IO) const;
     MonitorNode *GetMonitorNode(IO) const;
 

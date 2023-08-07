@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Container/DynamicComponent.h"
+#include "Core/Container/Optional.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
@@ -59,7 +59,7 @@ struct AudioDevice : Component, Field::ChangeListener {
     // When a format is set to the default, it follows the owning graph's sample rate.
     // When the graph's sample rate changes, each device node is updated to select the native format with the sample rate nearest to the graph's.
     Prop_(
-        DynamicComponent<DataFormat>, Format,
+        Optional<DataFormat>, Format,
         "?The native device data format.\n"
         "All data formats natively supported by the audio device are allowed.\n"
         "If this format is different from that of the device's owning audio graph, the audio will be converted to/from this native format.\n"

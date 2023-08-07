@@ -273,10 +273,10 @@ ma_node *AudioGraphNode::OutputNode() const {
     return Node;
 }
 
-const DynamicComponent<AudioGraphNode::GainerNode> &AudioGraphNode::GetGainer(IO io) const {
+const Optional<AudioGraphNode::GainerNode> &AudioGraphNode::GetGainer(IO io) const {
     return io == IO_In ? InputGainer : OutputGainer;
 }
-const DynamicComponent<AudioGraphNode::MonitorNode> &AudioGraphNode::GetMonitor(IO io) const {
+const Optional<AudioGraphNode::MonitorNode> &AudioGraphNode::GetMonitor(IO io) const {
     return io == IO_In ? InputMonitor : OutputMonitor;
 }
 

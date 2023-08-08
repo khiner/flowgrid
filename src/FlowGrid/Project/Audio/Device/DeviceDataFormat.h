@@ -2,15 +2,17 @@
 
 #include <string>
 
-#include "miniaudio.h"
+#include <Core/Primitive/Scalar.h>
 
 // Mirrors the anonymous struct in `ma_device_info::nativeDataFormats`, excluding `flags`.
 struct DeviceDataFormat {
     // Like `ma_get_format_name(ma_format)`, but less verbose.
-    static const char *GetFormatName(ma_format);
+    static const char *GetFormatName(int format); // Convert to `ma_format`.
     std::string ToString() const;
 
-    ma_format SampleFormat;
-    ma_uint32 Channels;
-    ma_uint32 SampleRate;
+    bool operator==(const DeviceDataFormat &other) const = default;
+
+    int SampleFormat; // Convert to `ma_format`.
+    u32 Channels;
+    u32 SampleRate;
 };

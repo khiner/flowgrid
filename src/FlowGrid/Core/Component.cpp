@@ -90,7 +90,7 @@ void Component::HelpMarker(const bool after) const {
     if (Help.empty()) return;
 
     if (after) ImGui::SameLine();
-    fg::HelpMarker(Help.c_str());
+    fg::HelpMarker(Help);
     if (!after) ImGui::SameLine();
 }
 

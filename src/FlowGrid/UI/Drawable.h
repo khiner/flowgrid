@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 struct Drawable {
     virtual void Draw() const; // Wraps around the internal `Render` function.
 

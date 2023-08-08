@@ -48,7 +48,7 @@ void Flags::MenuItem() const {
             const int option_mask = 1 << i;
             const bool is_selected = option_mask & value;
             if (!item.Help.empty()) {
-                fg::HelpMarker(item.Help.c_str());
+                fg::HelpMarker(item.Help);
                 SameLine();
             }
             if (ImGui::MenuItem(item.Name.c_str(), nullptr, is_selected)) Action::Primitive::Flags::Set{Path, value ^ option_mask}.q(); // Toggle bit

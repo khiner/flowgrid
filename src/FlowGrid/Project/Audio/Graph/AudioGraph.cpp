@@ -93,6 +93,7 @@ struct InputDeviceNode : DeviceNode {
 
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
+        // todo need to update the ring buffer when the sample rate changes.
         const auto [sr_min, sr_max] = std::minmax(u32(Device->GetNativeSampleRate()), u32(Device->GetClientSampleRate()));
         const ma_device *device = Device->Get();
         ma_result result = ma_duplex_rb_init(device->capture.format, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
@@ -171,8 +172,9 @@ struct OutputDeviceNode : DeviceNode {
         Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
 
         const bool is_primary = All.empty();
-        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, Device->GetChannels());
-        auto config = ma_data_passthrough_node_config_init(Device->GetChannels(), Buffer ? Buffer->Get() : nullptr);
+        const u32 device_channels = 1; // Device->GetNativeChannels(); // todo use native device channels
+        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels); 
+        auto config = ma_data_passthrough_node_config_init(device_channels, Buffer ? Buffer->Get() : nullptr);
         ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
 
@@ -289,12 +291,10 @@ void AudioGraph::Apply(const ActionType &action) const {
             Connections.DisconnectOutput(a.id);
         },
         [](const Action::AudioGraph::SetDeviceDataFormat &a) {
-            if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device with id {} exists.", a.id));
+            if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device data format with id {} exists.", a.id));
 
-            auto *data_format = static_cast<const AudioDevice::DataFormat *>(Component::ById.at(a.id));
-            data_format->SampleFormat.Set(a.sample_format);
-            data_format->SampleRate.Set(a.sample_rate);
-            data_format->Channels.Set(a.channels);
+            auto *format = static_cast<const AudioDevice::DataFormat *>(Component::ById.at(a.id));
+            format->Set({a.sample_format, a.channels, a.sample_rate});
         },
     );
 }

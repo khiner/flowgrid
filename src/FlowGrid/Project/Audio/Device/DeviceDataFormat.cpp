@@ -2,7 +2,9 @@
 
 #include <format>
 
-const char *DeviceDataFormat::GetFormatName(ma_format format) {
+#include "miniaudio.h"
+
+const char *DeviceDataFormat::GetFormatName(int format) {
     switch (format) {
         case ma_format_unknown: return "Unknown";
         case ma_format_u8: return "8-bit Unsigned Int";

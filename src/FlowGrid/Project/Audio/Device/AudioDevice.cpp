@@ -144,18 +144,14 @@ AudioDevice::~AudioDevice() {
 }
 
 void AudioDevice::OnFieldChanged() {
-    if (Format.IsChanged() && Format.HasValue.IsChanged()) {
-        if (Format) {
-            // Format was just toggle on. If it has never been set, set its values to the current device format.
-            // This does not require a restart, since the format has not changed.
-            if (Format->SampleRate == 0u) UpdateFormat();
-            // xxx very crappy. We need a component listener, not just a field listener.
-            // All ancestor components of changed fields get marked as changed, but we can't listen to changed components yet, only fields.
-            const Field::References listened_fields{Format->SampleFormat, Format->Channels, Format->SampleRate};
-            for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-        }
+    if (Format.IsChanged()) {
+        // If format was just toggled on and has never been set, set its values to the current device format.
+        // This does not require a restart, since the format has not changed.
+        if (Format && Format->SampleRate == 0u) UpdateFormat();
     }
-    if (Name.IsChanged() || (Format.IsChanged() && !Format) || (Format && DeviceDataFormat(Format) != GetNativeFormat())) {
+    // todo when toggled off but the new followed format is the same as the previous user-specified format, we also don't need to restart.
+    //   Implement something like a `GetFollowedFormat` that returns the format that will result from the restart, and use this in `Init` as well.
+    if (Name.IsChanged() || (Format.IsChanged() && !Format) || (Format && Format->ToDeviceDataFormat() != GetNativeFormat())) {
         Uninit();
         Init(ClientSampleRate);
     }

@@ -22,6 +22,8 @@ template<typename ComponentType> struct Optional : Field {
     inline auto Get() const { return Value.get(); }
 
     void Refresh() override {
+        HasValue.Refresh();
+
         if (HasValue && !Value) Value = std::make_unique<ComponentType>(ComponentArgs{this, "Value"});
         else if (!HasValue && Value) Reset();
     }

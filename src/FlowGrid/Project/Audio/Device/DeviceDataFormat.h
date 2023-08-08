@@ -10,7 +10,9 @@ struct DeviceDataFormat {
     static const char *GetFormatName(int format); // Convert to `ma_format`.
     std::string ToString() const;
 
-    bool operator==(const DeviceDataFormat &other) const = default;
+    bool operator==(const DeviceDataFormat &other) const {
+        return SampleFormat == other.SampleFormat && Channels == other.Channels && SampleRate == other.SampleRate;
+    };
 
     int SampleFormat; // Convert to `ma_format`.
     u32 Channels;

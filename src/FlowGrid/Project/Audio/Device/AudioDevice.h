@@ -52,7 +52,7 @@ struct AudioDevice : Component, Field::ChangeListener {
         static std::string GetFormatName(int);
 
         void Set(DeviceDataFormat &&) const;
-        operator DeviceDataFormat() const { return {SampleFormat, Channels, SampleRate}; }
+        DeviceDataFormat ToDeviceDataFormat() const { return {SampleFormat, Channels, SampleRate}; }
 
         Prop(Enum, SampleFormat, GetFormatName);
         Prop(UInt, Channels);

@@ -10,6 +10,7 @@
 #include "miniaudio.h"
 
 #include "Core/Container/AdjacencyListAction.h"
+#include "Helper/String.h"
 #include "Project/Audio/Device/AudioDevice.h"
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
@@ -67,6 +68,12 @@ private:
 };
 
 struct DeviceNode : AudioGraphNode {
+    DeviceNode(ComponentArgs &&args, IO type, AudioDevice::AudioCallback &&callback)
+        : AudioGraphNode(std::move(args)),
+          Device(std::make_unique<AudioDevice>(ComponentArgs{this, std::format("{}Device", StringHelper::Capitalize(to_string(type)))}, type, Graph->SampleRate, std::move(callback), this)) {
+        Device->Format.RegisterChangeListener(this);
+        UpdateAll();
+    }
     using AudioGraphNode::AudioGraphNode;
 
     string GetLabelDetailSuffix() const override { return Device->GetName(); }
@@ -88,15 +95,36 @@ struct DeviceNode : AudioGraphNode {
 // A `ma_data_source_node` whose `ma_data_source` is a `ma_duplex_rb`.
 // A source node that owns an input device and copies the device callback input buffer to a ring buffer.
 struct InputDeviceNode : DeviceNode {
-    InputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args)) {
-        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "InputDevice"}, IO_In, Graph->SampleRate, AudioInputCallback, this);
+    InputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), IO_In, AudioInputCallback) {
+        Reset();
+        UpdateAll();
+    }
+
+    ~InputDeviceNode() {
+        ma_data_source_node_uninit(&SourceNode, nullptr);
+        Node = nullptr;
+        ma_duplex_rb_uninit(&DuplexRb);
+    }
+
+    void OnFieldChanged() override {
+        DeviceNode::OnFieldChanged();
+        if (Device->Format.IsDescendentChanged()) {
+            Reset();
+            NotifyConnectionsChanged();
+        }
+    }
+
+    void Reset() {
+        DisconnectOutput();
+        ma_data_source_node_uninit(&SourceNode, nullptr);
+        Node = nullptr;
+        ma_duplex_rb_uninit(&DuplexRb);
 
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
-        // todo need to update the ring buffer when the sample rate changes.
-        const auto [sr_min, sr_max] = std::minmax(u32(Device->GetNativeSampleRate()), u32(Device->GetClientSampleRate()));
+        const auto [sr_min, sr_max] = std::minmax(Device->GetNativeSampleRate(), Device->GetClientSampleRate());
         const ma_device *device = Device->Get();
-        ma_result result = ma_duplex_rb_init(device->capture.format, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
+        ma_result result = ma_duplex_rb_init(ma_format_f32, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize ring buffer: ", int(result)));
 
         auto config = ma_data_source_node_config_init(&DuplexRb);
@@ -104,20 +132,22 @@ struct InputDeviceNode : DeviceNode {
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data source node: ", int(result)));
 
         Node = &SourceNode;
-
-        UpdateAll();
     }
 
-    ~InputDeviceNode() {
-        ma_duplex_rb_uninit(&DuplexRb);
-        ma_data_source_node_uninit(&SourceNode, nullptr);
-        Node = nullptr;
+    void OnSampleRateChanged() override {
+        DeviceNode::OnSampleRateChanged();
+        Reset();
+        NotifyConnectionsChanged();
     }
 
     // Adapted from `ma_device__handle_duplex_callback_capture`.
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
         auto *self = reinterpret_cast<InputDeviceNode *>(user_data->User);
+        if (self->Node == nullptr) {
+            ma_silence_pcm_frames(output, frame_count, device->capture.internalFormat, device->capture.channels);
+            return;
+        }
         ma_duplex_rb *duplex_rb = &self->DuplexRb;
 
         ma_uint32 total_frames_processed = 0;
@@ -168,12 +198,10 @@ and each secondary node is connected to the graph endpoint node if it has at lea
 struct OutputDeviceNode : DeviceNode {
     inline static std::vector<OutputDeviceNode *> All; // The 'Primary' output device node is the first element.
 
-    OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args)) {
-        Device = std::make_unique<AudioDevice>(ComponentArgs{this, "OutputDevice"}, IO_Out, Graph->SampleRate, AudioOutputCallback, this);
-
+    OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), IO_Out, AudioOutputCallback) {
         const bool is_primary = All.empty();
         const u32 device_channels = 1; // Device->GetNativeChannels(); // todo use native device channels
-        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels); 
+        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels);
         auto config = ma_data_passthrough_node_config_init(device_channels, Buffer ? Buffer->Get() : nullptr);
         ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));

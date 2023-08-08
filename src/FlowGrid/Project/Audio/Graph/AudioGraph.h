@@ -98,12 +98,11 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     // automatically updated when its owning graph's sample rate changes - even if it has a native format with a matching sample rate.
     Prop_(
         UInt, SampleRate,
-        "?The audio graph sample rate.\n"
-        "This is the rate at which the graph and all of the its nodes internally process audio.\n"
+        "?The rate at which the graph and all of the its nodes internally process audio.\n"
         "An asterisk (*) indicates the sample rate is natively supported by all audio device nodes within the graph.\n"
         "Each audio device I/O node within the graph converts to/from this rate if necessary.",
-        [this](u32 sr) {
-        return GetSampleRateName(sr); }
+        [this](u32 sr) { return GetSampleRateName(sr); },
+        176400
     );
     Prop(Style, Style);
 

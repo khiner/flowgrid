@@ -123,6 +123,8 @@ template<typename ChildType> struct Vector : Field {
     u32 Size() const { return Value.size(); }
 
     void Refresh() override {
+        ChildPrefixes.Refresh();
+
         for (const StorePath prefix : ChildPrefixes) {
             const auto child_it = FindIt(prefix);
             if (child_it == Value.end()) {

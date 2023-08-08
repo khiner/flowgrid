@@ -90,6 +90,7 @@ struct Field : Component {
     inline static void ClearChanged() noexcept {
         ChangedPaths.clear();
         ChangedComponentIds.clear();
+        ChangedAncestorComponentIds.clear();
     }
 
     // Refresh the cached values of all fields.

@@ -68,7 +68,9 @@ struct Component : Drawable {
     };
 
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
-    // Components with at least one descendent field (including itself) updated during the latest action pass.
+    // Components with at least one descendent field (excluding itself) updated during the latest action pass.
+    inline static std::unordered_set<ID> ChangedAncestorComponentIds;
+    // Field components that have changed directly.
     inline static std::unordered_set<ID> ChangedComponentIds;
 
     Component(Store &);
@@ -113,6 +115,7 @@ struct Component : Drawable {
     inline u32 ChildCount() const noexcept { return Children.size(); }
 
     inline bool IsChanged() const noexcept { return ChangedComponentIds.contains(Id); }
+    inline bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
 
     Store &RootStore; // Reference to the store at the root of this component's tree.
     Component *Parent; // Only null for the root component.

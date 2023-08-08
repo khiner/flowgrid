@@ -44,6 +44,10 @@ void Field::FindAndMarkChanged(const Patch &patch) {
             if (affected_field == nullptr) affected_field = FindByPath(path);
         } else {
             affected_field = FindByPath(path);
+            if (affected_field && ComponentContainerAuxiliaryFields.contains(affected_field->Id)) {
+                // When a container's auxiliary field is changed, mark the container as changed instead.
+                affected_field = static_cast<Field *>(affected_field->Parent);
+            }
         }
         if (affected_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 
@@ -52,10 +56,11 @@ void Field::FindAndMarkChanged(const Patch &patch) {
         paths_moment.first = change_time;
         paths_moment.second.insert(relative_path);
 
-        // Mark the affected field all its ancestor components as changed.
-        const Component *ancestor = affected_field;
+        ChangedComponentIds.insert(affected_field->Id);
+        // Mark all ancestor components of the affected field as changed.
+        const Component *ancestor = affected_field->Parent;
         while (ancestor != nullptr) {
-            ChangedComponentIds.insert(ancestor->Id);
+            ChangedAncestorComponentIds.insert(ancestor->Id);
             ancestor = ancestor->Parent;
         }
     }
@@ -68,25 +73,27 @@ void Field::FindAndMarkChanged(const Patch &patch) {
 void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     FindAndMarkChanged(patch);
     static std::unordered_set<ChangeListener *> affected_listeners;
-    for (const auto &[changed_field_id, _] : ChangedPaths) {
-        if (!FieldById.contains(changed_field_id)) continue; // The field was deleted.
+    for (const auto changed_id : ChangedComponentIds) {
+        if (!FieldById.contains(changed_id)) continue; // The field was deleted.
 
-        auto *changed_field = FieldById.at(changed_field_id);
+        auto *changed_field = FieldById.at(changed_id);
         changed_field->Refresh();
-        if (ComponentContainerAuxiliaryFields.contains(changed_field_id)) {
-            // Refresh the parent component container field after refreshing its auxiliary field.
-            changed_field->Parent->Refresh();
-            // We consider the parent component container field to be the changed field when auxiliary fields are changed.
-            const auto &listeners = ChangeListenersByFieldId[changed_field->Parent->Id];
-            affected_listeners.insert(listeners.begin(), listeners.end());
-        } else {
-            const auto &listeners = ChangeListenersByFieldId[changed_field_id];
-            affected_listeners.insert(listeners.begin(), listeners.end());
-        }
+
+        const auto &listeners = ChangeListenersByFieldId[changed_id];
+        affected_listeners.insert(listeners.begin(), listeners.end());
+    }
+
+    // Notify ancestors. (Listeners can disambiguate by checking `IsChanged()` vs `IsDescendentChanged()`.)
+    for (const auto changed_id : ChangedAncestorComponentIds) {
+        if (!ById.contains(changed_id)) continue; // The component was deleted.
+
+        const auto &listeners = ChangeListenersByFieldId[changed_id];
+        affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
     for (auto *listener : affected_listeners) listener->OnFieldChanged();
     affected_listeners.clear();
+
     if (add_to_gesture) {
         for (const auto &[field_id, paths_moment] : ChangedPaths) {
             GestureChangedPaths[field_id].push_back(paths_moment);

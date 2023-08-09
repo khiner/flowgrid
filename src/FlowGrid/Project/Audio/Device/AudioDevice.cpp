@@ -1,13 +1,13 @@
 #include "AudioDevice.h"
 
+#include <format>
 #include <range/v3/range/conversion.hpp>
-
-#include "Project/Audio/Graph/AudioGraphAction.h"
-#include "UI/HelpMarker.h"
-
-#include "miniaudio.h"
+#include <ranges>
 
 #include "imgui.h"
+
+using std::string;
+using std::string_view;
 
 // Copied from `miniaudio.c::g_maStandardSampleRatePriorities`.
 const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
@@ -42,9 +42,6 @@ struct Context {
         ma_context_uninit(&MaContext);
     }
 
-    static string GetDeviceName(const ma_device_info *info) { return !info || info->isDefault ? "" : info->name; }
-    static string GetDeviceDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
-
     const ma_device_info *GetDeviceInfo(IO type, string_view name) const {
         for (const auto *info : DeviceInfos[type]) {
             if ((name.empty() && info->isDefault) || info->name == name) return info;
@@ -52,45 +49,50 @@ struct Context {
         return nullptr;
     }
 
+    std::optional<DeviceDataFormat> FindFormatWithNativeSampleRate(IO type, u32 sample_rate) const {
+        const auto &native_data_formats = NativeDataFormats[type];
+        auto it = std::find_if(native_data_formats.begin(), native_data_formats.end(), [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
+        if (it != native_data_formats.end()) return *it;
+
+        return {};
+    }
+
     bool IsNativeSampleRate(IO type, u32 sample_rate) const {
         const auto &native_data_formats = NativeDataFormats[type];
         return std::any_of(native_data_formats.begin(), native_data_formats.end(), [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
     }
 
-    u32 FindNearestNativeSampleRate(IO type, u32 target) {
+    DeviceDataFormat FindNativeFormatWithNearestSampleRate(IO type, u32 target) {
         if (NativeDataFormats[type].empty()) throw std::runtime_error(std::format("No native audio {} formats found.", to_string(type)));
 
-        // `min_element` requires a forward iterator, so we need to convert the range to a vector.
-        const auto all_sample_rates = NativeDataFormats[type] | std::views::transform([](const auto &df) { return df.SampleRate; }) | ranges::to<std::vector<u32>>;
-        // Find the nearest sample rate, favoring higher sample rates if there is a tie.
-        return *std::min_element(all_sample_rates.begin(), all_sample_rates.end(), [target](u32 a, u32 b) {
-            auto diff_a = std::abs(s64(a) - target);
-            auto diff_b = std::abs(s64(b) - target);
-            return diff_a < diff_b || (diff_a == diff_b && a > b);
+        return *std::min_element(NativeDataFormats[type].begin(), NativeDataFormats[type].end(), [target](const DeviceDataFormat a, const DeviceDataFormat b) {
+            auto diff_a = std::abs(s64(a.SampleRate) - target);
+            auto diff_b = std::abs(s64(b.SampleRate) - target);
+            return diff_a < diff_b || (diff_a == diff_b && a.SampleRate > b.SampleRate); // Favor higher sample rates if there is a tie.
         });
     }
 
-    // If `sample_rate_target == 0`, returns the the highest-priority sample rate that is also native to the device,
-    // If `sample_rate_target != 0`, returns the provided `sample_rate_target` if it is natively supported, or the nearest native sample rate otherwise.
-    u32 GetHighestPriorityNativeSampleRate(IO type, u32 sample_rate_target) {
+    // If no target format is provided, returns the the native format with the highest-priority sample rate.
+    // Otherwise, returns the target format if it is natively supported, or the native format with the nearest native sample rate otherwise.
+    // todo channels
+    DeviceDataFormat GetHighestPriorityNativeFormat(IO type, std::optional<DeviceDataFormat> native_format_target) {
         if (NativeDataFormats[type].empty()) throw std::runtime_error(std::format("No native audio {} formats found.", to_string(type)));
 
-        const auto &native_data_formats = NativeDataFormats[type];
-        if (sample_rate_target == 0) { // Default.
-            // By default, we want to choose the highest-priority sample rate that is native to the device.
+        if (!native_format_target || native_format_target->SampleRate == 0) {
+            // No target requested. Choose the native format with the highest-priority sample rate.
             for (u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
-                if (IsNativeSampleRate(type, sample_rate)) return sample_rate;
+                if (auto format = FindFormatWithNativeSampleRate(type, sample_rate)) return *format;
             }
-            // The device doesn't natively support any of the prioritized sample rates. Return the first native sample rate.
-            return native_data_formats[0].SampleRate;
-        } else {
-            // Specific sample rate requested.
-            if (IsNativeSampleRate(type, sample_rate_target)) return sample_rate_target;
+
+            // The device doesn't natively support any of the prioritized sample rates. Return the first native format.
+            return NativeDataFormats[type][0];
         }
 
-        // A specific (non-default) sample rate is configured that's not natively supported.
-        // Return the nearest native sample rate.
-        return FindNearestNativeSampleRate(type, sample_rate_target);
+        // Specific sample rate requested.
+        if (IsNativeSampleRate(type, native_format_target->SampleRate)) return *native_format_target;
+
+        // A specific sample rate was requested that's not natively supported. Return the native format with the nearest sample rate.
+        return FindNativeFormatWithNearestSampleRate(type, native_format_target->SampleRate);
     }
 
     void ScanDevices() {
@@ -106,74 +108,56 @@ struct Context {
         for (const IO io : IO_All) {
             NativeDataFormats[io].clear();
 
-            ma_device_info DeviceInfo;
-            result = ma_context_get_device_info(&MaContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &DeviceInfo);
+            ma_device_info device_info;
+            result = ma_context_get_device_info(&MaContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &device_info);
             if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), int(result)));
 
-            for (u32 i = 0; i < DeviceInfo.nativeDataFormatCount; i++) {
-                const auto &df = DeviceInfo.nativeDataFormats[i];
+            for (u32 i = 0; i < device_info.nativeDataFormatCount; i++) {
+                const auto &df = device_info.nativeDataFormats[i];
                 NativeDataFormats[io].emplace_back(df.format, df.channels, df.sampleRate);
             }
         }
     }
 
     ma_context MaContext;
-    std::vector<ma_device_info *> DeviceInfos[IO_Count];
+    std::vector<const ma_device_info *> DeviceInfos[IO_Count];
     std::vector<DeviceDataFormat> NativeDataFormats[IO_Count];
 };
 
 static std::unique_ptr<Context> AudioContext;
 static u32 DeviceInstanceCount = 0; // Reference count for the audio context. When this goes from nonzero to zero, the context is destroyed.
 
-AudioDevice::AudioDevice(ComponentArgs &&args, IO type, u32 client_sample_rate, AudioDevice::AudioCallback callback, void *client_user_data)
-    : Component(std::move(args)), Type(type), Callback(callback), _UserData({this, client_user_data}) {
-    const Field::References listened_fields{Name, Format};
-    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
-
+AudioDevice::AudioDevice(IO type, AudioDevice::AudioCallback callback, std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target, string_view device_name_target, void *client_user_data)
+    : Type(type), Callback(callback), _UserData({this, client_user_data}) {
     if (!AudioContext) AudioContext = std::make_unique<Context>();
-    Init(client_sample_rate);
+    Init(std::move(client_format), std::move(native_format_target), device_name_target);
     DeviceInstanceCount++;
 }
 
 AudioDevice::~AudioDevice() {
     Uninit();
-    Field::UnregisterChangeListener(this);
 
     DeviceInstanceCount--;
     if (DeviceInstanceCount == 0) AudioContext.reset();
 }
 
-void AudioDevice::OnFieldChanged() {
-    if (Format.IsChanged()) {
-        // If format was just toggled on and has never been set, set its values to the current device format.
-        // This does not require a restart, since the format has not changed.
-        if (Format && Format->SampleRate == 0u) UpdateFormat();
-    }
-    // todo when toggled off but the new followed format is the same as the previous user-specified format, we also don't need to restart.
-    //   Implement something like a `GetFollowedFormat` that returns the format that will result from the restart, and use this in `Init` as well.
-    if (Name.IsChanged() || (Format.IsChanged() && !Format) || (Format && Format->ToDeviceDataFormat() != GetNativeFormat())) {
-        Uninit();
-        Init(ClientSampleRate);
-    }
-}
-
-void AudioDevice::Init(u32 client_sample_rate) {
+void AudioDevice::Init(std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target, string_view device_name_target) {
     Device = std::make_unique<ma_device>();
 
     const ma_device_id *device_id = nullptr;
     for (const ma_device_info *info : AudioContext->DeviceInfos[Type]) {
-        if (!info->isDefault && info->name == Name) {
+        if (!device_name_target.empty() && !info->isDefault && info->name == device_name_target) {
             device_id = &(info->id);
             break;
         }
     }
 
-    ma_device_config config = ma_device_config_init(IsInput() ? ma_device_type_capture : ma_device_type_playback);
+    const ma_device_type ma_type = IsInput() ? ma_device_type_capture : ma_device_type_playback;
+    ma_device_config config = ma_device_config_init(ma_type);
     if (IsInput()) {
         config.capture.pDeviceID = device_id;
         config.capture.format = ma_format_f32;
-        // config.capture.channels = Format.Channels;
-        config.capture.channels = 1; // todo handle > 1 channels
+        config.capture.channels = client_format ? client_format->Channels : 0;
         // `noFixedSizedCallback` is more efficient, but don't be tempted.
         // It works fine until a manual input device change, which breaks things in inconsistent ways until we
         // disconnect and reconnect the input device node.
@@ -186,22 +170,26 @@ void AudioDevice::Init(u32 client_sample_rate) {
     } else {
         config.playback.pDeviceID = device_id;
         config.playback.format = ma_format_f32;
-        // config.playback.channels = Format.Channels;
-        config.playback.channels = 1; // todo handle > 1 channels
+        config.playback.channels = client_format ? client_format->Channels : 0;
     }
 
     config.dataCallback = Callback;
     config.pUserData = &_UserData;
 
-    u32 target_sample_rate = Format ? Format->SampleRate : client_sample_rate; // Favor the user-selected format.
-    u32 native_sample_rate = AudioContext->GetHighestPriorityNativeSampleRate(Type, target_sample_rate);
-    ClientSampleRate = client_sample_rate == 0 ? native_sample_rate : client_sample_rate;
+    const auto native_format = AudioContext->GetHighestPriorityNativeFormat(Type, native_format_target ? native_format_target : client_format);
 
-    u32 from_sample_rate = IsInput() ? native_sample_rate : ClientSampleRate;
-    u32 to_sample_rate = IsInput() ? ClientSampleRate : native_sample_rate;
+    // Store the fully-specified client format the device will be converting to/from.
+    ClientFormat = {
+        client_format && client_format->SampleFormat != ma_format_unknown ? client_format->SampleFormat : native_format.SampleFormat,
+        client_format && client_format->Channels != 0 ? client_format->Channels : native_format.Channels,
+        client_format && client_format->SampleRate != 0 ? client_format->SampleRate : native_format.SampleRate,
+    };
 
-    config.sampleRate = ClientSampleRate;
-    // Format/channels don't matter here.
+    const u32 from_sample_rate = IsInput() ? native_format.SampleRate : ClientFormat.SampleRate;
+    const u32 to_sample_rate = IsInput() ? ClientFormat.SampleRate : native_format.SampleRate;
+
+    config.sampleRate = ClientFormat.SampleRate;
+    // Resampler format/channels aren't used.
     config.resampling = ma_resampler_config_init(ma_format_unknown, 0, from_sample_rate, to_sample_rate, ma_resample_algorithm_linear);
     config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer writes to every output frame.
     config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.
@@ -209,9 +197,8 @@ void AudioDevice::Init(u32 client_sample_rate) {
     ma_result result = ma_device_init(nullptr, &config, Device.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), int(result)));
 
-    // The device may have a different configuration than what we requested. Update the fields to reflect.
-    Name.Set_(Context::GetDeviceName(AudioContext->GetDeviceInfo(Type, Name)));
-    UpdateFormat();
+    result = ma_device_get_info(Device.get(), ma_type, &Info);
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting device info: {}", int(result)));
 
     Device->onNotification = [](const ma_device_notification *notification) {
         switch (notification->type) {
@@ -237,9 +224,6 @@ void AudioDevice::Init(u32 client_sample_rate) {
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error starting audio {} device: {}", to_string(Type), int(result)));
 
     // todo option to change dither mode, only present when used
-    // config.capture.format = ToAudioFormat(InFormat);
-    // config.playback.format = ToAudioFormat(OutFormat);
-
     // todo implement for r8brain resampler
     // static ma_resampler_config ResamplerConfig;
     // static ma_resampler Resampler;
@@ -276,10 +260,12 @@ void AudioDevice::Uninit() {
     Device.reset();
 }
 
-string AudioDevice::GetName() const {
-    const auto *info = AudioContext->GetDeviceInfo(Type, Name);
-    return info ? info->name : "";
-}
+void AudioDevice::ScanDevices() { AudioContext->ScanDevices(); }
+std::string AudioDevice::GetName() const { return Info.name; }
+bool AudioDevice::IsDefault() const { return Info.isDefault; }
+
+const std::vector<DeviceDataFormat> &AudioDevice::GetNativeFormats() const { return AudioContext->NativeDataFormats[Type]; }
+const std::vector<const ma_device_info *> &AudioDevice::GetAllInfos() const { return AudioContext->DeviceInfos[Type]; }
 
 u32 AudioDevice::GetNativeSampleRate() const {
     if (!Device) return 0;
@@ -299,153 +285,59 @@ int AudioDevice::GetNativeSampleFormat() const {
     return Device->playback.internalFormat;
 }
 
+DeviceDataFormat AudioDevice::GetNativeFormat() const { return {GetNativeSampleFormat(), GetNativeChannels(), GetNativeSampleRate()}; }
+
 bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const { return AudioContext->IsNativeSampleRate(Type, sample_rate); }
-
-void AudioDevice::SetClientSampleRate(u32 client_sample_rate) {
-    if (client_sample_rate == ClientSampleRate) return;
-
-    // For now at least, just restart the device even if there is a resampler, since the device data converter is not intended
-    // to be adjusted like this, and it leaves other internal fields out of sync.
-    // I'm pretty sure we could just manually update the `internalSampleRate` in addition to this, but other things may be needed.
-    // Also, it seems performant enough to just always restart the device.
-    // if (IsInput()) {
-    //     if (Device->capture.converter.hasResampler) {
-    //         ma_data_converter_set_rate(&Device->capture.converter, Device->capture.converter.resampler.sampleRateIn, sample_rate);
-    //     }
-    // } else {
-    //     if (Device->playback.converter.hasResampler) {
-    //         ma_data_converter_set_rate(&Device->playback.converter, sample_rate, Device->playback.converter.resampler.sampleRateOut);
-    //     }
-    // }
-
-    Uninit();
-    Init(client_sample_rate);
-}
 
 bool AudioDevice::IsStarted() const { return ma_device_is_started(Device.get()); }
 
 using namespace ImGui;
 
-string AudioDevice::DataFormat::GetFormatName(int format) { return DeviceDataFormat::GetFormatName(format); }
+void AudioDevice::RenderInfo() const {
+    auto *device = Device.get();
+    Text("%s (%s)", GetName().c_str(), IsInput() ? "Capture" : "Playback");
+    Text("Backend: %s", ma_get_backend_name(device->pContext->backend));
+    if (IsInput()) {
+        Text("Format: %s -> %s", DeviceDataFormat::GetFormatName(device->capture.internalFormat), DeviceDataFormat::GetFormatName(device->capture.format));
+        Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
+        Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
+        Text("Buffer Size: %d*%d (%d)\n", device->capture.internalPeriodSizeInFrames, device->capture.internalPeriods, (device->capture.internalPeriodSizeInFrames * device->capture.internalPeriods));
+        if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
+            Text("Pre Format Conversion: %s\n", device->capture.converter.hasPreFormatConversion ? "YES" : "NO");
+            Text("Post Format Conversion: %s\n", device->capture.converter.hasPostFormatConversion ? "YES" : "NO");
+            Text("Channel Routing: %s\n", device->capture.converter.hasChannelConverter ? "YES" : "NO");
+            Text("Resampling: %s\n", device->capture.converter.hasResampler ? "YES" : "NO");
+            Text("Passthrough: %s\n", device->capture.converter.isPassthrough ? "YES" : "NO");
+            {
+                char channel_map[1024];
+                ma_channel_map_to_string(device->capture.internalChannelMap, device->capture.internalChannels, channel_map, sizeof(channel_map));
+                Text("Channel Map In: {%s}\n", channel_map);
 
-void AudioDevice::DataFormat::Set(DeviceDataFormat &&format) const {
-    SampleFormat.Set(format.SampleFormat);
-    Channels.Set(format.Channels);
-    SampleRate.Set(format.SampleRate);
-}
-
-DeviceDataFormat AudioDevice::GetNativeFormat() const { return {GetNativeSampleFormat(), GetNativeChannels(), GetNativeSampleRate()}; }
-
-void AudioDevice::UpdateFormat() {
-    if (!Format) return;
-
-    const auto native_format = GetNativeFormat();
-    Format->SampleFormat.Set_(native_format.SampleFormat);
-    Format->Channels.Set_(native_format.Channels);
-    Format->SampleRate.Set_(native_format.SampleRate);
-}
-
-void AudioDevice::DataFormat::Render() const {
-    const auto *device = static_cast<const AudioDevice *>(Parent->Parent);
-    if (BeginCombo(ImGuiLabel.c_str(), DeviceDataFormat{SampleFormat, Channels, SampleRate}.ToString().c_str())) {
-        for (const auto &df : AudioContext->NativeDataFormats[device->Type]) {
-            const bool is_selected = SampleFormat == df.SampleFormat && Channels == df.Channels && SampleRate == df.SampleRate;
-            if (Selectable(df.ToString().c_str(), is_selected)) Action::AudioGraph::SetDeviceDataFormat{Id, df.SampleFormat, df.Channels, df.SampleRate}.q();
-            if (is_selected) SetItemDefaultFocus();
+                ma_channel_map_to_string(device->capture.channelMap, device->capture.channels, channel_map, sizeof(channel_map));
+                Text("Channel Map Out: {%s}\n", channel_map);
+            }
+            TreePop();
         }
-        EndCombo();
-    }
-    HelpMarker();
-}
-
-void AudioDevice::Render() const {
-    if (!AudioContext || !IsStarted()) {
-        TextUnformatted("Device is not started.");
-        return;
-    }
-
-    SameLine(); // Assumes 'Delete' button is rendered by the graph immediately before this.
-    if (Button("Rescan")) AudioContext->ScanDevices();
-
-    SetNextItemWidth(GetFontSize() * 14);
-    const auto *device_info = AudioContext->GetDeviceInfo(Type, Name);
-    if (BeginCombo(Name.ImGuiLabel.c_str(), Context::GetDeviceDisplayName(device_info).c_str())) {
-        for (const auto *other_device_info : AudioContext->DeviceInfos[Type]) {
-            const bool is_selected = device_info == other_device_info;
-            if (Selectable(Context::GetDeviceDisplayName(other_device_info).c_str(), is_selected)) Name.IssueSet(Context::GetDeviceName(other_device_info));
-            if (is_selected) SetItemDefaultFocus();
-        }
-        EndCombo();
-    }
-    Name.HelpMarker();
-
-    SetNextItemWidth(GetFontSize() * 14);
-    bool follow_graph_format = !Format;
-    if (Checkbox("Follow graph format", &follow_graph_format)) Format.IssueToggle();
-    SameLine();
-    fg::HelpMarker(std::format(
-        "When checked, this {0} device automatically follows the owning graph's sample rate and format. "
-        "When the graph's sample rate changes, the device will be updated to use the native sample rate nearest to the graph's.\n\n"
-        "When unchecked, this {0} device will be pinned to the selected native format, and will convert from the {1} format to the {2} format.\n"
-        "See 'Device info' section for details on the device's current format conversion configuration.",
-        to_string(Type), IsInput() ? "device" : "graph", IsInput() ? "graph" : "device"
-    ));
-
-    if (Format) {
-        Format->Draw();
     } else {
-        TextUnformatted(GetNativeFormat().ToString().c_str());
-    }
+        Text("Format: %s -> %s", DeviceDataFormat::GetFormatName(device->playback.format), DeviceDataFormat::GetFormatName(device->playback.internalFormat));
+        Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
+        Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
+        Text("Buffer Size: %d*%d (%d)", device->playback.internalPeriodSizeInFrames, device->playback.internalPeriods, (device->playback.internalPeriodSizeInFrames * device->playback.internalPeriods));
+        if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
+            Text("Pre Format Conversion:  %s", device->playback.converter.hasPreFormatConversion ? "YES" : "NO");
+            Text("Post Format Conversion: %s", device->playback.converter.hasPostFormatConversion ? "YES" : "NO");
+            Text("Channel Routing: %s", device->playback.converter.hasChannelConverter ? "YES" : "NO");
+            Text("Resampling: %s", device->playback.converter.hasResampler ? "YES" : "NO");
+            Text("Passthrough: %s", device->playback.converter.isPassthrough ? "YES" : "NO");
+            {
+                char channel_map[1024];
+                ma_channel_map_to_string(device->playback.channelMap, device->playback.channels, channel_map, sizeof(channel_map));
+                Text("Channel Map In: {%s}", channel_map);
 
-    if (ImGui::TreeNode("Device info")) {
-        static char name[MA_MAX_DEVICE_NAME_LENGTH + 1];
-        auto *device = Device.get();
-        ma_device_get_name(device, IsInput() ? ma_device_type_capture : ma_device_type_playback, name, sizeof(name), nullptr);
-        Text("%s (%s)", name, IsInput() ? "Capture" : "Playback");
-        Text("Backend: %s", ma_get_backend_name(device->pContext->backend));
-        if (IsInput()) {
-            Text("Format: %s -> %s", DeviceDataFormat::GetFormatName(device->capture.internalFormat), DeviceDataFormat::GetFormatName(device->capture.format));
-            Text("Channels: %d -> %d", device->capture.internalChannels, device->capture.channels);
-            Text("Sample Rate: %d -> %d", device->capture.internalSampleRate, device->sampleRate);
-            Text("Buffer Size: %d*%d (%d)\n", device->capture.internalPeriodSizeInFrames, device->capture.internalPeriods, (device->capture.internalPeriodSizeInFrames * device->capture.internalPeriods));
-            if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
-                Text("Pre Format Conversion: %s\n", device->capture.converter.hasPreFormatConversion ? "YES" : "NO");
-                Text("Post Format Conversion: %s\n", device->capture.converter.hasPostFormatConversion ? "YES" : "NO");
-                Text("Channel Routing: %s\n", device->capture.converter.hasChannelConverter ? "YES" : "NO");
-                Text("Resampling: %s\n", device->capture.converter.hasResampler ? "YES" : "NO");
-                Text("Passthrough: %s\n", device->capture.converter.isPassthrough ? "YES" : "NO");
-                {
-                    char channel_map[1024];
-                    ma_channel_map_to_string(device->capture.internalChannelMap, device->capture.internalChannels, channel_map, sizeof(channel_map));
-                    Text("Channel Map In: {%s}\n", channel_map);
-
-                    ma_channel_map_to_string(device->capture.channelMap, device->capture.channels, channel_map, sizeof(channel_map));
-                    Text("Channel Map Out: {%s}\n", channel_map);
-                }
-                TreePop();
+                ma_channel_map_to_string(device->playback.internalChannelMap, device->playback.internalChannels, channel_map, sizeof(channel_map));
+                Text("Channel Map Out: {%s}", channel_map);
             }
-        } else {
-            Text("Format: %s -> %s", DeviceDataFormat::GetFormatName(device->playback.format), DeviceDataFormat::GetFormatName(device->playback.internalFormat));
-            Text("Channels: %d -> %d", device->playback.channels, device->playback.internalChannels);
-            Text("Sample Rate: %d -> %d", device->sampleRate, device->playback.internalSampleRate);
-            Text("Buffer Size: %d*%d (%d)", device->playback.internalPeriodSizeInFrames, device->playback.internalPeriods, (device->playback.internalPeriodSizeInFrames * device->playback.internalPeriods));
-            if (TreeNodeEx("Conversion", ImGuiTreeNodeFlags_DefaultOpen)) {
-                Text("Pre Format Conversion:  %s", device->playback.converter.hasPreFormatConversion ? "YES" : "NO");
-                Text("Post Format Conversion: %s", device->playback.converter.hasPostFormatConversion ? "YES" : "NO");
-                Text("Channel Routing: %s", device->playback.converter.hasChannelConverter ? "YES" : "NO");
-                Text("Resampling: %s", device->playback.converter.hasResampler ? "YES" : "NO");
-                Text("Passthrough: %s", device->playback.converter.isPassthrough ? "YES" : "NO");
-                {
-                    char channel_map[1024];
-                    ma_channel_map_to_string(device->playback.channelMap, device->playback.channels, channel_map, sizeof(channel_map));
-                    Text("Channel Map In: {%s}", channel_map);
-
-                    ma_channel_map_to_string(device->playback.internalChannelMap, device->playback.internalChannels, channel_map, sizeof(channel_map));
-                    Text("Channel Map Out: {%s}", channel_map);
-                }
-                TreePop();
-            }
+            TreePop();
         }
-        TreePop();
     }
 }

@@ -7,8 +7,6 @@
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "miniaudio.h"
-
 #include "Core/Container/AdjacencyListAction.h"
 #include "Helper/String.h"
 #include "Project/Audio/Device/AudioDevice.h"
@@ -19,9 +17,18 @@
 #include "Project/Audio/Faust/FaustNode.h"
 #include "Project/Audio/WaveformNode.h"
 
+#include "Core/Container/Optional.h"
+#include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Enum.h"
+#include "Core/Primitive/Float.h"
+#include "Core/Primitive/String.h"
+#include "Core/Primitive/UInt.h"
+
 #include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
 #define ma_offset_ptr(p, offset) (((ma_uint8 *)(p)) + (offset))
+
+using namespace ImGui;
 
 // Wraps around `ma_node_graph`.
 struct MaGraph {
@@ -69,27 +76,158 @@ private:
 
 struct DeviceNode : AudioGraphNode {
     DeviceNode(ComponentArgs &&args, IO type, AudioDevice::AudioCallback &&callback)
-        : AudioGraphNode(std::move(args)),
-          Device(std::make_unique<AudioDevice>(ComponentArgs{this, std::format("{}Device", StringHelper::Capitalize(to_string(type)))}, type, Graph->SampleRate, std::move(callback), this)) {
-        Device->Format.RegisterChangeListener(this);
-        UpdateAll();
-    }
-    using AudioGraphNode::AudioGraphNode;
+        : AudioGraphNode(std::move(args)), Device(type, std::move(callback), Graph->GetFormat(), GetNativeFormatTarget(), Name, this) {
+        // The device may have a different configuration than what we requested. Update the fields to reflect.
+        Name.Set_(GetConfigName(Device.GetInfo()));
+        UpdateFormat();
 
-    string GetLabelDetailSuffix() const override { return Device->GetName(); }
+        const Field::References listened_fields{Name, Format};
+        for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+    }
+
+    virtual ~DeviceNode() = default;
+
+    inline static string GetDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
+    inline static string GetConfigName(const ma_device_info *info) { return info->isDefault ? "" : info->name; }
+
+    string GetLabelDetailSuffix() const override { return Device.GetName(); }
+
+    std::optional<DeviceDataFormat> GetNativeFormatTarget() {
+        if (Format) return Format->ToDeviceDataFormat();
+        return {};
+    }
 
     void OnSampleRateChanged() override {
         AudioGraphNode::OnSampleRateChanged();
-        Device->SetClientSampleRate(Graph->SampleRate);
+        auto new_client_format = Graph->GetFormat();
+        if (Device.GetClientFormat() != new_client_format) {
+            Device.Uninit();
+            Device.Init(new_client_format, GetNativeFormatTarget(), Name);
+            UpdateFormat();
+        }
+    }
+
+    void OnFieldChanged() override {
+        AudioGraphNode::OnFieldChanged();
+        if (Format.IsChanged()) {
+            // If format was just toggled on and has never been set, set its values to the current device format.
+            // This does not require a restart, since the format has not changed.
+            if (Format && Format->SampleRate == 0u) UpdateFormat();
+        }
+        // todo when toggled off but the new followed format is the same as the previous user-specified format, we also don't need to restart.
+        if (Name.IsChanged() || (Format.IsChanged() && !Format) || (Format && Format->ToDeviceDataFormat() != Device.GetNativeFormat())) {
+            Device.Uninit();
+            Device.Init(Graph->GetFormat(), GetNativeFormatTarget(), Name);
+            UpdateFormat();
+        }
+    }
+
+    // If `Format` is set (if the native device format has been explicitly chosen by the user),
+    // update its fields to reflect the current native device config.
+    void UpdateFormat() {
+        if (Format) Format->Set_(Device.GetNativeFormat());
     }
 
     void Render() const override {
-        Device->Draw();
-        ImGui::Spacing();
+        RenderDevice();
+        Spacing();
         AudioGraphNode::Render();
     }
 
-    std::unique_ptr<AudioDevice> Device;
+    // Mirrors `DeviceDataFormat`, as a component.
+    struct DataFormat : Component {
+        using Component::Component;
+
+        static string GetFormatName(int format) { return DeviceDataFormat::GetFormatName(format); }
+
+        void Set(DeviceDataFormat &&format) const {
+            SampleFormat.Set(format.SampleFormat);
+            Channels.Set(format.Channels);
+            SampleRate.Set(format.SampleRate);
+        }
+
+        void Set_(DeviceDataFormat &&format) {
+            SampleFormat.Set_(format.SampleFormat);
+            Channels.Set_(format.Channels);
+            SampleRate.Set_(format.SampleRate);
+        }
+
+        DeviceDataFormat ToDeviceDataFormat() const { return {SampleFormat, Channels, SampleRate}; }
+
+        Prop(Enum, SampleFormat, GetFormatName);
+        Prop(UInt, Channels);
+        Prop(UInt, SampleRate);
+
+    private:
+        void Render() const override {
+            const auto *device = static_cast<const DeviceNode *>(Parent->Parent);
+            const auto device_data_format = ToDeviceDataFormat();
+            if (BeginCombo(ImGuiLabel.c_str(), device_data_format.ToString().c_str())) {
+                for (const auto &df : device->Device.GetNativeFormats()) {
+                    const bool is_selected = device_data_format == df;
+                    if (Selectable(df.ToString().c_str(), is_selected)) Action::AudioGraph::SetDeviceDataFormat{Id, df.SampleFormat, df.Channels, df.SampleRate}.q();
+                    if (is_selected) SetItemDefaultFocus();
+                }
+                EndCombo();
+            }
+            HelpMarker();
+        }
+    };
+
+    // When this is either empty or a device name that does not exist, the default device is used.
+    Prop_(String, Name, "?An asterisk (*) indicates the default device.");
+
+    // This is a native format target. If it is not set, the native format will follow the graph format.
+    Prop(Optional<DataFormat>, Format);
+
+    AudioDevice Device;
+
+    void RenderDevice() const {
+        if (!Device.IsStarted()) {
+            TextUnformatted("Device is not started.");
+            return;
+        }
+
+        SameLine(); // Assumes 'Delete' button is rendered by the graph immediately before this.
+        if (Button("Rescan")) Device.ScanDevices();
+
+        SetNextItemWidth(GetFontSize() * 14);
+        const auto *device_info = Device.GetInfo();
+        if (BeginCombo(Name.ImGuiLabel.c_str(), GetDisplayName(device_info).c_str())) {
+            for (const auto *other_device_info : Device.GetAllInfos()) {
+                const bool is_selected = device_info == other_device_info;
+                if (Selectable(GetDisplayName(other_device_info).c_str(), is_selected)) {
+                    Name.IssueSet(GetConfigName(other_device_info));
+                }
+                if (is_selected) SetItemDefaultFocus();
+            }
+            EndCombo();
+        }
+        Name.HelpMarker();
+
+        SetNextItemWidth(GetFontSize() * 14);
+        bool follow_graph_format = !Format;
+        if (Checkbox("Follow graph format", &follow_graph_format)) Format.IssueToggle();
+        SameLine();
+        fg::HelpMarker(std::format(
+            "When checked, this {0} device automatically follows the owning graph's sample rate and format. "
+            "When the graph's sample rate changes, the device will be updated to use the native sample rate nearest to the graph's.\n\n"
+            "When unchecked, this {0} device will be pinned to the selected native format, and will convert from the {1} format to the {2} format.\n"
+            "See 'Device info' section for details on the device's current format conversion configuration.",
+            to_string(Device.Type), Device.IsInput() ? "device" : "graph", Device.IsInput() ? "graph" : "device"
+        ));
+
+        if (Format) {
+            Format->Draw();
+        } else {
+            TextUnformatted(Device.GetNativeFormat().ToString().c_str());
+        }
+
+        if (ImGui::TreeNode("Device info")) {
+            Device.RenderInfo();
+            TreePop();
+        }
+    }
 };
 
 // A `ma_data_source_node` whose `ma_data_source` is a `ma_duplex_rb`.
@@ -108,7 +246,7 @@ struct InputDeviceNode : DeviceNode {
 
     void OnFieldChanged() override {
         DeviceNode::OnFieldChanged();
-        if (Device->Format.IsDescendentChanged()) {
+        if (Format.IsDescendentChanged()) {
             Reset();
             NotifyConnectionsChanged();
         }
@@ -122,8 +260,8 @@ struct InputDeviceNode : DeviceNode {
 
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
-        const auto [sr_min, sr_max] = std::minmax(Device->GetNativeSampleRate(), Device->GetClientSampleRate());
-        const ma_device *device = Device->Get();
+        const auto [sr_min, sr_max] = std::minmax(Device.GetNativeSampleRate(), Device.GetClientFormat().SampleRate);
+        const ma_device *device = Device.Get();
         ma_result result = ma_duplex_rb_init(ma_format_f32, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize ring buffer: ", int(result)));
 
@@ -200,7 +338,7 @@ struct OutputDeviceNode : DeviceNode {
 
     OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), IO_Out, AudioOutputCallback) {
         const bool is_primary = All.empty();
-        const u32 device_channels = 1; // Device->GetNativeChannels(); // todo use native device channels
+        const u32 device_channels = 1; // Device.GetNativeChannels(); // todo use native device channels
         if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels);
         auto config = ma_data_passthrough_node_config_init(device_channels, Buffer ? Buffer->Get() : nullptr);
         ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
@@ -321,7 +459,7 @@ void AudioGraph::Apply(const ActionType &action) const {
         [](const Action::AudioGraph::SetDeviceDataFormat &a) {
             if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device data format with id {} exists.", a.id));
 
-            auto *format = static_cast<const AudioDevice::DataFormat *>(Component::ById.at(a.id));
+            auto *format = static_cast<const DeviceNode::DataFormat *>(Component::ById.at(a.id));
             format->Set({a.sample_format, a.channels, a.sample_rate});
         },
     );
@@ -329,13 +467,14 @@ void AudioGraph::Apply(const ActionType &action) const {
 
 ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
 dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
+DeviceDataFormat AudioGraph::GetFormat() const { return {int(ma_format_f32), 1, SampleRate}; }
 
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
     for (const auto *device_node : GetInputDeviceNodes()) {
-        if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
+        if (!device_node->Device.IsNativeSampleRate(sample_rate)) return false;
     }
     for (const auto *device_node : GetOutputDeviceNodes()) {
-        if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
+        if (!device_node->Device.IsNativeSampleRate(sample_rate)) return false;
     }
     return true;
 }
@@ -347,10 +486,10 @@ u32 AudioGraph::GetDefaultSampleRate() const {
     for (const u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
         // Favor doing sample rate conversion on input rather than output.
         for (const auto *device_node : GetOutputDeviceNodes()) {
-            if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
+            if (device_node->Device.IsNativeSampleRate(sample_rate)) return sample_rate;
         }
         for (const auto *device_node : GetInputDeviceNodes()) {
-            if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
+            if (device_node->Device.IsNativeSampleRate(sample_rate)) return sample_rate;
         }
     }
     return AudioDevice::PrioritizedSampleRates.front();
@@ -469,8 +608,6 @@ void AudioGraph::UpdateConnections() {
         }
     }
 }
-
-using namespace ImGui;
 
 static void RenderConnectionsLabelFrame(InteractionFlags interaction_flags) {
     const auto fill_color =

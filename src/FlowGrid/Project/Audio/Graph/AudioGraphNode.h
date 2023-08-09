@@ -201,6 +201,6 @@ protected:
     struct SplitterNode;
     std::unique_ptr<SplitterNode> Splitter;
 
-    ma_node *Node;
+    ma_node *Node{nullptr};
     std::unordered_set<Listener *> Listeners{};
 };

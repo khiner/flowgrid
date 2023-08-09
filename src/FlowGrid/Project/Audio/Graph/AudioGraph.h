@@ -4,6 +4,7 @@
 #include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Faust/FaustDspChangeListener.h"
+#include "Project/Audio/Device/DeviceDataFormat.h"
 
 #include "Core/Container/Vector.h"
 #include "Core/Primitive/UInt.h"
@@ -51,6 +52,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     // or the highest-priority sample rate supported by any device node if none are natively supported by all device nodes.
     u32 GetDefaultSampleRate() const;
     std::string GetSampleRateName(u32) const;
+    DeviceDataFormat GetFormat() const;
 
     std::unordered_set<AudioGraphNode *> GetSourceNodes(const AudioGraphNode *) const;
     std::unordered_set<AudioGraphNode *> GetDestinationNodes(const AudioGraphNode *) const;

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core/Primitive/Enum.h"
 #include "Project/Audio/Graph/AudioGraphNode.h"
 
 struct ma_waveform_node;

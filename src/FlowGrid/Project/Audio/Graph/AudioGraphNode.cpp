@@ -76,32 +76,19 @@ void AudioGraphNode::GainerNode::Render() const {
 
 static WindowFunctionType GetWindowFunction(WindowType type) {
     switch (type) {
-        case WindowType_Rectangular:
-            return rectwin;
-        case WindowType_Hann:
-            return hann_periodic;
-        case WindowType_Hamming:
-            return hamming_periodic;
-        case WindowType_Blackman:
-            return blackman_periodic;
-        case WindowType_BlackmanHarris:
-            return blackmanharris_periodic;
-        case WindowType_Nuttall:
-            return nuttallwin_periodic;
-        case WindowType_FlatTop:
-            return flattopwin_periodic;
-        case WindowType_Triangular:
-            return triang;
-        case WindowType_Bartlett:
-            return bartlett;
-        case WindowType_BartlettHann:
-            return barthannwin;
-        case WindowType_Bohman:
-            return bohmanwin;
-        case WindowType_Parzen:
-            return parzenwin;
-        default:
-            return nullptr;
+        case WindowType_Rectangular: return rectwin;
+        case WindowType_Hann: return hann_periodic;
+        case WindowType_Hamming: return hamming_periodic;
+        case WindowType_Blackman: return blackman_periodic;
+        case WindowType_BlackmanHarris: return blackmanharris_periodic;
+        case WindowType_Nuttall: return nuttallwin_periodic;
+        case WindowType_FlatTop: return flattopwin_periodic;
+        case WindowType_Triangular: return triang;
+        case WindowType_Bartlett: return bartlett;
+        case WindowType_BartlettHann: return barthannwin;
+        case WindowType_Bohman: return bohmanwin;
+        case WindowType_Parzen: return parzenwin;
+        default: return nullptr;
     }
 }
 
@@ -242,7 +229,7 @@ private:
 };
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<const AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)) {
+    : Component(std::move(args)), Graph(static_cast<AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)) {
     Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, InputMonitor, OutputMonitor};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
@@ -253,8 +240,8 @@ AudioGraphNode::~AudioGraphNode() {
     InputMonitor.Reset();
     OutputGainer.Reset();
     OutputMonitor.Reset();
-    if (Node != nullptr) {
-        ma_node_uninit(Node, nullptr);
+    if (Get()) {
+        ma_node_uninit(Get(), nullptr);
         Node = nullptr;
     }
     Listeners.clear();
@@ -264,12 +251,12 @@ AudioGraphNode::~AudioGraphNode() {
 ma_node *AudioGraphNode::InputNode() const {
     if (InputGainer) return InputGainer->Get();
     if (InputMonitor) return InputMonitor->Get();
-    return Node;
+    return Get();
 }
 ma_node *AudioGraphNode::OutputNode() const {
     if (OutputMonitor) return OutputMonitor->Get();
     if (OutputGainer) return OutputGainer->Get();
-    return Node;
+    return Get();
 }
 
 const Optional<AudioGraphNode::GainerNode> &AudioGraphNode::GetGainer(IO io) const {
@@ -302,15 +289,15 @@ void AudioGraphNode::OnFieldChanged() {
     }
 }
 
-u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Node); }
+u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(Get()); }
 
 // Technically, the graph endpoint node has an output bus, but it's handled specially by miniaudio.
 // Most importantly, it is not possible to attach the graph endpoint's node into any other node.
 // Thus, we treat it strictly as a sink and hide the fact that it technically has an output bus, since it functionally does not.
-u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_node_get_output_bus_count(Node); }
+u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_node_get_output_bus_count(Get()); }
 
-u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Node, bus); }
-u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Node, bus); }
+u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Get(), bus); }
+u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Get(), bus); }
 
 void AudioGraphNode::UpdateAll() {
     // Update nodes from earliest to latest in the signal path.

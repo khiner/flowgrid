@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Container/Optional.h"
-#include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/UInt.h"
@@ -173,12 +172,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         std::unique_ptr<ma_monitor_node> Monitor;
     };
 
-    const AudioGraph *Graph;
-
-    Prop(Optional<GainerNode>, InputGainer);
-    Prop(Optional<GainerNode>, OutputGainer);
-    Prop(Optional<MonitorNode>, InputMonitor);
-    Prop(Optional<MonitorNode>, OutputMonitor);
+    AudioGraph *Graph;
 
     // `IsActive == true` means there is a connection path from this node to the graph endpoint node `OutputNode`.
     // Updated in `AudioGraph::UpdateConnections()`.
@@ -198,9 +192,15 @@ protected:
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
     }
 
+    ma_node *Node{nullptr};
+
+    Prop(Optional<GainerNode>, InputGainer);
+    Prop(Optional<GainerNode>, OutputGainer);
+    Prop(Optional<MonitorNode>, InputMonitor);
+    Prop(Optional<MonitorNode>, OutputMonitor);
+
     struct SplitterNode;
     std::unique_ptr<SplitterNode> Splitter;
 
-    ma_node *Node{nullptr};
     std::unordered_set<Listener *> Listeners{};
 };

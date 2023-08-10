@@ -1,53 +1,25 @@
 #include "AudioGraph.h"
 
 #include <range/v3/range/conversion.hpp>
-#include <set>
-
-#include "imgui.h"
-#include "implot.h"
-#include "implot_internal.h"
 
 #include "Core/Container/AdjacencyListAction.h"
+#include "Core/Primitive/String.h"
 #include "Helper/String.h"
 #include "Project/Audio/Device/AudioDevice.h"
+#include "Project/Audio/Faust/FaustNode.h"
+#include "Project/Audio/WaveformNode.h"
 #include "UI/HelpMarker.h"
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
-#include "Project/Audio/Faust/FaustNode.h"
-#include "Project/Audio/WaveformNode.h"
-
-#include "Core/Container/Optional.h"
-#include "Core/Primitive/Bool.h"
-#include "Core/Primitive/Enum.h"
-#include "Core/Primitive/Float.h"
-#include "Core/Primitive/String.h"
-#include "Core/Primitive/UInt.h"
-
+#include "imgui.h"
+#include "implot.h"
+#include "implot_internal.h"
 #include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
 #define ma_offset_ptr(p, offset) (((ma_uint8 *)(p)) + (offset))
 
 using namespace ImGui;
-
-// Wraps around `ma_node_graph`.
-struct MaGraph {
-    MaGraph(u32 channels) {
-        auto config = ma_node_graph_config_init(channels);
-        _Graph = std::make_unique<ma_node_graph>();
-        ma_result result = ma_node_graph_init(&config, nullptr, _Graph.get());
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
-    }
-    ~MaGraph() {
-        ma_node_graph_uninit(_Graph.get(), nullptr);
-        _Graph.reset();
-    }
-
-    inline ma_node_graph *Get() const noexcept { return _Graph.get(); }
-
-private:
-    std::unique_ptr<ma_node_graph> _Graph;
-};
 
 struct BufferRef {
     BufferRef(ma_format format, u32 channels) {
@@ -234,14 +206,12 @@ struct DeviceNode : AudioGraphNode {
 // A source node that owns an input device and copies the device callback input buffer to a ring buffer.
 struct InputDeviceNode : DeviceNode {
     InputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), IO_In, AudioInputCallback) {
-        Reset();
+        Init();
         UpdateAll();
     }
 
     ~InputDeviceNode() {
-        ma_data_source_node_uninit(&SourceNode, nullptr);
-        Node = nullptr;
-        ma_duplex_rb_uninit(&DuplexRb);
+        Uninit();
     }
 
     void OnFieldChanged() override {
@@ -252,12 +222,7 @@ struct InputDeviceNode : DeviceNode {
         }
     }
 
-    void Reset() {
-        DisconnectOutput();
-        ma_data_source_node_uninit(&SourceNode, nullptr);
-        Node = nullptr;
-        ma_duplex_rb_uninit(&DuplexRb);
-
+    void Init() {
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
         const auto [sr_min, sr_max] = std::minmax(Device.GetNativeSampleRate(), Device.GetClientFormat().SampleRate);
@@ -271,6 +236,15 @@ struct InputDeviceNode : DeviceNode {
 
         Node = &SourceNode;
     }
+    void Uninit() {
+        ma_data_source_node_uninit(&SourceNode, nullptr);
+        Node = nullptr;
+        ma_duplex_rb_uninit(&DuplexRb);
+    }
+    void Reset() {
+        Uninit();
+        Init();
+    }
 
     void OnSampleRateChanged() override {
         DeviceNode::OnSampleRateChanged();
@@ -282,7 +256,7 @@ struct InputDeviceNode : DeviceNode {
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
         auto *self = reinterpret_cast<InputDeviceNode *>(user_data->User);
-        if (self->Node == nullptr) {
+        if (self->Get() == nullptr) {
             ma_silence_pcm_frames(output, frame_count, device->capture.internalFormat, device->capture.channels);
             return;
         }
@@ -394,10 +368,15 @@ private:
 };
 
 AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-    Graph = std::make_unique<MaGraph>(1);
-    Node = ma_node_graph_get_endpoint(Graph->Get());
-    IsActive = true; // The graph is always active, since it is always connected to itself.
+    _Graph = std::make_unique<ma_node_graph>();
+    auto config = ma_node_graph_config_init(1);
+    ma_result result = ma_node_graph_init(&config, nullptr, _Graph.get());
+    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
+
+    Node = ma_node_graph_get_endpoint(_Graph.get());
     UpdateAll();
+
+    IsActive = true; // The graph is always active, since it is always connected to itself.
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 
     Nodes.EmplaceBack_(InputDeviceNodeTypeId);
@@ -417,7 +396,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
 
 AudioGraph::~AudioGraph() {
     Nodes.Clear();
-    Field::UnregisterChangeListener(this);
+    ma_node_graph_uninit(_Graph.get(), nullptr);
 }
 
 void AudioGraph::OnFieldChanged() {
@@ -465,7 +444,7 @@ void AudioGraph::Apply(const ActionType &action) const {
     );
 }
 
-ma_node_graph *AudioGraph::Get() const { return Graph->Get(); }
+ma_node_graph *AudioGraph::Get() { return _Graph.get(); }
 dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
 DeviceDataFormat AudioGraph::GetFormat() const { return {int(ma_format_f32), 1, SampleRate}; }
 

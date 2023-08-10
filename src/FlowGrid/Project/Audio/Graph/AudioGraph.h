@@ -7,11 +7,9 @@
 #include "Project/Audio/Device/DeviceDataFormat.h"
 
 #include "Core/Container/Vector.h"
-#include "Core/Primitive/UInt.h"
 
 struct ma_node_graph;
 
-struct MaGraph;
 struct InputDeviceNode;
 struct OutputDeviceNode;
 
@@ -41,7 +39,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
 
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
-    ma_node_graph *Get() const;
+    ma_node_graph *Get();
     dsp *GetFaustDsp() const;
 
     // A sample rate is considered "native" by the graph (and suffixed with an asterix)
@@ -79,7 +77,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
         Prop(Matrix, Matrix);
     };
 
-    std::unique_ptr<MaGraph> Graph;
+    std::unique_ptr<ma_node_graph> _Graph;
     dsp *FaustDsp = nullptr;
 
     struct Connections : AdjacencyList {

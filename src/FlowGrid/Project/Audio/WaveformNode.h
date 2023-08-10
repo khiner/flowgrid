@@ -2,11 +2,8 @@
 
 #include "Project/Audio/Graph/AudioGraphNode.h"
 
-struct ma_waveform_node;
-
 struct WaveformNode : AudioGraphNode {
     WaveformNode(ComponentArgs &&);
-    ~WaveformNode();
 
     void OnFieldChanged() override;
     void OnSampleRateChanged() override;
@@ -16,10 +13,9 @@ struct WaveformNode : AudioGraphNode {
     // Amplitude is controlled by node output level.
 
 private:
-    std::unique_ptr<ma_waveform_node> _Node;
+    std::unique_ptr<MaNode> CreateNode() const;
 
     void Render() const override;
-    void UpdateAll() override;
 
     void UpdateFrequency();
     void UpdateType();

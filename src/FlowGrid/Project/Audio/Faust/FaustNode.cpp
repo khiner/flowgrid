@@ -6,24 +6,28 @@
 
 #include "Project/Audio/Graph/ma_faust_node/ma_faust_node.h"
 
+struct FaustMaNode : MaNode {
+    FaustMaNode(ma_node_graph *graph, dsp *dsp, u32 sample_rate) {
+        auto config = ma_faust_node_config_init(dsp, sample_rate);
+        ma_result result = ma_faust_node_init(graph, &config, nullptr, &_Node);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", int(result)));
+        Node = &_Node;
+    }
+    ~FaustMaNode() {
+        ma_faust_node_uninit(&_Node, nullptr);
+    }
+
+    ma_faust_node _Node;
+};
+
 // todo destroy node when dsp is null
-FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-    auto *dsp = Graph->GetFaustDsp();
-    auto config = ma_faust_node_config_init(dsp, Graph->SampleRate);
-    _Node = std::make_unique<ma_faust_node>();
-    ma_result result = ma_faust_node_init(Graph->Get(), &config, nullptr, _Node.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", int(result)));
-    Node = _Node.get();
+FaustNode::FaustNode(ComponentArgs &&args) : AudioGraphNode(std::move(args), [this] { return CreateNode(); }) {}
 
-    UpdateAll();
-}
-
-FaustNode::~FaustNode() {
-    ma_faust_node_uninit(_Node.get(), nullptr);
-    Node = nullptr;
+std::unique_ptr<MaNode> FaustNode::CreateNode() const {
+    return std::make_unique<FaustMaNode>(Graph->Get(), Graph->GetFaustDsp(), Graph->SampleRate);
 }
 
 void FaustNode::OnSampleRateChanged() {
     AudioGraphNode::OnSampleRateChanged();
-    ma_faust_node_set_sample_rate(_Node.get(), Graph->SampleRate);
+    ma_faust_node_set_sample_rate((ma_faust_node *)Get(), Graph->SampleRate);
 }

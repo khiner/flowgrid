@@ -135,6 +135,7 @@ template<typename ChildType> struct Vector : Field {
             }
         }
         std::erase_if(Value, [this](const auto &child) { return !ChildPrefixes.Contains(GetChildPrefix(child.get())); });
+        for (auto &child : Value) child->Refresh();
     }
 
     void EraseId(ID id) const {

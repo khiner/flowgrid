@@ -46,11 +46,37 @@ private:
     ma_audio_buffer_ref Ref;
 };
 
+struct DeviceMaNode : MaNode {
+    DeviceMaNode(
+        IO type,
+        AudioDevice::AudioCallback &&callback,
+        std::optional<DeviceDataFormat> &&client_format,
+        std::optional<DeviceDataFormat> &&native_format_target,
+        std::string_view device_name_target,
+        const void *client_user_data = nullptr
+    ) : Device(type, std::move(callback), std::move(client_format), std::move(native_format_target), device_name_target, client_user_data) {}
+    virtual ~DeviceMaNode() {}
+
+    inline void ResetDevice(std::optional<DeviceDataFormat> &&client_format, std::optional<DeviceDataFormat> &&native_format_target, string_view device_name_target) {
+        Device.Uninit();
+        Device.Init(std::move(client_format), std::move(native_format_target), device_name_target);
+    }
+
+    AudioDevice Device;
+};
+
 struct DeviceNode : AudioGraphNode {
-    DeviceNode(ComponentArgs &&args, IO type, AudioDevice::AudioCallback &&callback)
-        : AudioGraphNode(std::move(args)), Device(type, std::move(callback), Graph->GetFormat(), GetNativeFormatTarget(), Name, this) {
-        // The device may have a different configuration than what we requested. Update the fields to reflect.
-        Name.Set_(GetConfigName(Device.GetInfo()));
+    DeviceNode(ComponentArgs &&args, CreateNodeFunction &&create_node) : AudioGraphNode(std::move(args), std::move(create_node)) {
+        Device = &GetDeviceMaNode()->Device;
+    
+        // During initial `DeviceMaNode` creation, we don't use the device props (`Name`/`Format`), since the `DeviceNode`
+        // instance members are not fully initialized at the point of `AudioGraphNode` construction.
+        // At this point, they are initialized, so we need to change the device configuration appropriately.
+        // (It is unfortunate that this technicality leads to potentially restarting the device after its creation.)
+        OnFieldChanged();
+
+        // The device may have a different configuration than what we requested. Update fields to reflect the actual device config.
+        Name.Set_(GetConfigName(Device->GetInfo()));
         UpdateFormat();
 
         const Field::References listened_fields{Name, Format};
@@ -59,12 +85,19 @@ struct DeviceNode : AudioGraphNode {
 
     virtual ~DeviceNode() = default;
 
+    inline DeviceMaNode *GetDeviceMaNode() const { return static_cast<DeviceMaNode *>(Node.get()); }
+
+    inline void ResetDevice() {
+        GetDeviceMaNode()->ResetDevice(Graph->GetFormat(), GetNativeFormatTarget(), Name);
+        UpdateFormat();
+    }
+
     inline static string GetDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
     inline static string GetConfigName(const ma_device_info *info) { return info->isDefault ? "" : info->name; }
 
-    string GetLabelDetailSuffix() const override { return Device.GetName(); }
+    string GetLabelDetailSuffix() const override { return Device->GetName(); }
 
-    std::optional<DeviceDataFormat> GetNativeFormatTarget() {
+    std::optional<DeviceDataFormat> GetNativeFormatTarget() const {
         if (Format) return Format->ToDeviceDataFormat();
         return {};
     }
@@ -72,10 +105,8 @@ struct DeviceNode : AudioGraphNode {
     void OnSampleRateChanged() override {
         AudioGraphNode::OnSampleRateChanged();
         auto new_client_format = Graph->GetFormat();
-        if (Device.GetClientFormat() != new_client_format) {
-            Device.Uninit();
-            Device.Init(new_client_format, GetNativeFormatTarget(), Name);
-            UpdateFormat();
+        if (Device->GetClientFormat() != new_client_format) {
+            ResetDevice();
         }
     }
 
@@ -87,17 +118,15 @@ struct DeviceNode : AudioGraphNode {
             if (Format && Format->SampleRate == 0u) UpdateFormat();
         }
         // todo when toggled off but the new followed format is the same as the previous user-specified format, we also don't need to restart.
-        if (Name.IsChanged() || (Format.IsChanged() && !Format) || (Format && Format->ToDeviceDataFormat() != Device.GetNativeFormat())) {
-            Device.Uninit();
-            Device.Init(Graph->GetFormat(), GetNativeFormatTarget(), Name);
-            UpdateFormat();
+        if (Name.IsChanged() || (Format.IsChanged() && !Format) || (Format && Format->ToDeviceDataFormat() != Device->GetNativeFormat())) {
+            ResetDevice();
         }
     }
 
     // If `Format` is set (if the native device format has been explicitly chosen by the user),
     // update its fields to reflect the current native device config.
     void UpdateFormat() {
-        if (Format) Format->Set_(Device.GetNativeFormat());
+        if (Format) Format->Set_(Device->GetNativeFormat());
     }
 
     void Render() const override {
@@ -135,7 +164,7 @@ struct DeviceNode : AudioGraphNode {
             const auto *device = static_cast<const DeviceNode *>(Parent->Parent);
             const auto device_data_format = ToDeviceDataFormat();
             if (BeginCombo(ImGuiLabel.c_str(), device_data_format.ToString().c_str())) {
-                for (const auto &df : device->Device.GetNativeFormats()) {
+                for (const auto &df : device->Device->GetNativeFormats()) {
                     const bool is_selected = device_data_format == df;
                     if (Selectable(df.ToString().c_str(), is_selected)) Action::AudioGraph::SetDeviceDataFormat{Id, df.SampleFormat, df.Channels, df.SampleRate}.q();
                     if (is_selected) SetItemDefaultFocus();
@@ -152,21 +181,21 @@ struct DeviceNode : AudioGraphNode {
     // This is a native format target. If it is not set, the native format will follow the graph format.
     Prop(Optional<DataFormat>, Format);
 
-    AudioDevice Device;
+    AudioDevice *Device;
 
     void RenderDevice() const {
-        if (!Device.IsStarted()) {
+        if (!Device->IsStarted()) {
             TextUnformatted("Device is not started.");
             return;
         }
 
         SameLine(); // Assumes 'Delete' button is rendered by the graph immediately before this.
-        if (Button("Rescan")) Device.ScanDevices();
+        if (Button("Rescan")) Device->ScanDevices();
 
         SetNextItemWidth(GetFontSize() * 14);
-        const auto *device_info = Device.GetInfo();
+        const auto *device_info = Device->GetInfo();
         if (BeginCombo(Name.ImGuiLabel.c_str(), GetDisplayName(device_info).c_str())) {
-            for (const auto *other_device_info : Device.GetAllInfos()) {
+            for (const auto *other_device_info : Device->GetAllInfos()) {
                 const bool is_selected = device_info == other_device_info;
                 if (Selectable(GetDisplayName(other_device_info).c_str(), is_selected)) {
                     Name.IssueSet(GetConfigName(other_device_info));
@@ -186,43 +215,31 @@ struct DeviceNode : AudioGraphNode {
             "When the graph's sample rate changes, the device will be updated to use the native sample rate nearest to the graph's.\n\n"
             "When unchecked, this {0} device will be pinned to the selected native format, and will convert from the {1} format to the {2} format.\n"
             "See 'Device info' section for details on the device's current format conversion configuration.",
-            to_string(Device.Type), Device.IsInput() ? "device" : "graph", Device.IsInput() ? "graph" : "device"
+            to_string(Device->Type), Device->IsInput() ? "device" : "graph", Device->IsInput() ? "graph" : "device"
         ));
 
         if (Format) {
             Format->Draw();
         } else {
-            TextUnformatted(Device.GetNativeFormat().ToString().c_str());
+            TextUnformatted(Device->GetNativeFormat().ToString().c_str());
         }
 
         if (ImGui::TreeNode("Device info")) {
-            Device.RenderInfo();
+            Device->RenderInfo();
             TreePop();
         }
     }
 };
 
-// A `ma_data_source_node` whose `ma_data_source` is a `ma_duplex_rb`.
-// A source node that owns an input device and copies the device callback input buffer to a ring buffer.
-struct InputDeviceNode : DeviceNode {
-    InputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), IO_In, AudioInputCallback) {
-        Init();
-        UpdateAll();
-    }
-
-    ~InputDeviceNode() {
-        Uninit();
-    }
-
-    void OnFieldChanged() override {
-        DeviceNode::OnFieldChanged();
-        if (Format.IsDescendentChanged()) {
-            Reset();
-            NotifyConnectionsChanged();
-        }
-    }
-
-    void Init() {
+struct InputDeviceMaNode : DeviceMaNode {
+    InputDeviceMaNode(
+        ma_node_graph *graph,
+        AudioDevice::AudioCallback &&callback,
+        std::optional<DeviceDataFormat> &&client_format,
+        std::optional<DeviceDataFormat> &&native_format_target,
+        std::string_view device_name_target,
+        const void *client_user_data = nullptr
+    ) : DeviceMaNode(IO_In, std::move(callback), std::move(client_format), std::move(native_format_target), device_name_target, client_user_data) {
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
         const auto [sr_min, sr_max] = std::minmax(Device.GetNativeSampleRate(), Device.GetClientFormat().SampleRate);
@@ -231,36 +248,41 @@ struct InputDeviceNode : DeviceNode {
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize ring buffer: ", int(result)));
 
         auto config = ma_data_source_node_config_init(&DuplexRb);
-        result = ma_data_source_node_init(Graph->Get(), &config, nullptr, &SourceNode);
+        result = ma_data_source_node_init(graph, &config, nullptr, &SourceNode);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data source node: ", int(result)));
 
         Node = &SourceNode;
     }
-    void Uninit() {
-        ma_data_source_node_uninit(&SourceNode, nullptr);
-        Node = nullptr;
+    ~InputDeviceMaNode() {
+        Device.Stop();
         ma_duplex_rb_uninit(&DuplexRb);
-    }
-    void Reset() {
-        Uninit();
-        Init();
+        ma_data_source_node_uninit(&SourceNode, nullptr);
     }
 
-    void OnSampleRateChanged() override {
-        DeviceNode::OnSampleRateChanged();
-        Reset();
-        NotifyConnectionsChanged();
+    ma_duplex_rb DuplexRb;
+    ma_data_source_node SourceNode;
+};
+
+// A `ma_data_source_node` whose `ma_data_source` is a `ma_duplex_rb`.
+// A source node that owns an input device and copies the device callback input buffer to a ring buffer.
+struct InputDeviceNode : DeviceNode {
+    InputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), [this] { return CreateNode(); }) {
+        DuplexRb = &static_cast<InputDeviceMaNode *>(Node.get())->DuplexRb;
+    }
+
+    std::unique_ptr<MaNode> CreateNode() const {
+        return std::make_unique<InputDeviceMaNode>(Graph->Get(), AudioInputCallback, Graph->GetFormat(), std::nullopt, "", this);
     }
 
     // Adapted from `ma_device__handle_duplex_callback_capture`.
     static void AudioInputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
-        auto *self = reinterpret_cast<InputDeviceNode *>(user_data->User);
+        const auto *self = reinterpret_cast<const InputDeviceNode *>(user_data->User);
         if (self->Get() == nullptr) {
             ma_silence_pcm_frames(output, frame_count, device->capture.internalFormat, device->capture.channels);
             return;
         }
-        ma_duplex_rb *duplex_rb = &self->DuplexRb;
+        ma_duplex_rb *duplex_rb = self->DuplexRb;
 
         ma_uint32 total_frames_processed = 0;
         const void *running_frames = input;
@@ -291,8 +313,34 @@ struct InputDeviceNode : DeviceNode {
         (void)output;
     }
 
-    ma_duplex_rb DuplexRb;
-    ma_data_source_node SourceNode;
+    ma_duplex_rb *DuplexRb;
+};
+
+struct OutputDeviceMaNode : DeviceMaNode {
+    OutputDeviceMaNode(
+        ma_node_graph *graph,
+        bool is_primary,
+        AudioDevice::AudioCallback &&callback,
+        std::optional<DeviceDataFormat> &&client_format,
+        std::optional<DeviceDataFormat> &&native_format_target,
+        std::string_view device_name_target,
+        const void *client_user_data = nullptr
+    ) : DeviceMaNode(IO_Out, std::move(callback), std::move(client_format), std::move(native_format_target), device_name_target, client_user_data) {
+        const u32 device_channels = 1; // Device->GetNativeChannels(); // todo use native device channels
+        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels);
+        auto config = ma_data_passthrough_node_config_init(device_channels, Buffer ? Buffer->Get() : nullptr);
+        ma_result result = ma_data_passthrough_node_init(graph, &config, nullptr, &PassthroughNode);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
+
+        Node = &PassthroughNode;
+    }
+    ~OutputDeviceMaNode() {
+        Device.Stop();
+        ma_data_passthrough_node_uninit(&PassthroughNode, nullptr);
+    }
+
+    std::unique_ptr<BufferRef> Buffer;
+    ma_data_passthrough_node PassthroughNode;
 };
 
 /*
@@ -310,22 +358,15 @@ and each secondary node is connected to the graph endpoint node if it has at lea
 struct OutputDeviceNode : DeviceNode {
     inline static std::vector<OutputDeviceNode *> All; // The 'Primary' output device node is the first element.
 
-    OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), IO_Out, AudioOutputCallback) {
-        const bool is_primary = All.empty();
-        const u32 device_channels = 1; // Device.GetNativeChannels(); // todo use native device channels
-        if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels);
-        auto config = ma_data_passthrough_node_config_init(device_channels, Buffer ? Buffer->Get() : nullptr);
-        ma_result result = ma_data_passthrough_node_init(Graph->Get(), &config, nullptr, &PassthroughNode);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
-
-        Node = &PassthroughNode;
-        UpdateAll();
+    OutputDeviceNode(ComponentArgs &&args) : DeviceNode(std::move(args), [this] { return CreateNode(); }) {
         All.emplace_back(this);
     }
     ~OutputDeviceNode() {
         std::erase_if(All, [this](auto *node) { return node == this; });
-        ma_data_passthrough_node_uninit((ma_data_passthrough_node *)Node, nullptr);
-        Node = nullptr;
+    }
+
+    std::unique_ptr<MaNode> CreateNode() const {
+        return std::make_unique<OutputDeviceMaNode>(Graph->Get(), All.empty(), AudioOutputCallback, Graph->GetFormat(), std::nullopt, "", this);
     }
 
     // todo `SetPrimary(bool)`.
@@ -335,7 +376,7 @@ struct OutputDeviceNode : DeviceNode {
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);
-        auto *self = reinterpret_cast<OutputDeviceNode *>(user_data->User);
+        const auto *self = reinterpret_cast<const OutputDeviceNode *>(user_data->User);
         if (self->IsPrimary() && self->Graph) {
             ma_node_graph_read_pcm_frames(self->Graph->Get(), output, frame_count, nullptr);
         } else if (self->IsActive) {
@@ -356,26 +397,31 @@ struct OutputDeviceNode : DeviceNode {
 
 private:
     void ReadBufferData(void *output, u32 frame_count) const noexcept {
-        if (Buffer) Buffer->ReadData(output, frame_count);
+        auto &buffer = static_cast<OutputDeviceMaNode *>(Node.get())->Buffer;
+        if (buffer) buffer->ReadData(output, frame_count);
     }
 
     inline void SetBufferData(const void *input, u32 frame_count) const {
-        if (Buffer) Buffer->SetData(input, frame_count);
+        auto &buffer = static_cast<OutputDeviceMaNode *>(Node.get())->Buffer;
+        if (buffer) buffer->SetData(input, frame_count);
     }
-
-    std::unique_ptr<BufferRef> Buffer;
-    ma_data_passthrough_node PassthroughNode;
 };
 
-AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-    _Graph = std::make_unique<ma_node_graph>();
-    auto config = ma_node_graph_config_init(1);
-    ma_result result = ma_node_graph_init(&config, nullptr, _Graph.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
+struct GraphMaNode : MaNode {
+    GraphMaNode(u32 channels) {
+        auto config = ma_node_graph_config_init(channels);
+        ma_result result = ma_node_graph_init(&config, nullptr, &_Graph);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
+        Node = ma_node_graph_get_endpoint(&_Graph);
+    }
+    ~GraphMaNode() {
+        ma_node_graph_uninit(&_Graph, nullptr);
+    }
 
-    Node = ma_node_graph_get_endpoint(_Graph.get());
-    UpdateAll();
+    ma_node_graph _Graph;
+};
 
+AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args),  [this] { return CreateNode(); }) {
     IsActive = true; // The graph is always active, since it is always connected to itself.
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 
@@ -396,8 +442,9 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
 
 AudioGraph::~AudioGraph() {
     Nodes.Clear();
-    ma_node_graph_uninit(_Graph.get(), nullptr);
 }
+
+std::unique_ptr<MaNode> AudioGraph::CreateNode() const { return std::make_unique<GraphMaNode>(1); }
 
 void AudioGraph::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
@@ -408,19 +455,19 @@ void AudioGraph::OnFieldChanged() {
 }
 
 template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType>
-static std::unique_ptr<AudioGraphNodeSubType> CreateNode(AudioGraph *graph, Component::ComponentArgs &&args) {
+static std::unique_ptr<AudioGraphNodeSubType> CreateAudioGraphNode(AudioGraph *graph, Component::ComponentArgs &&args) {
     auto node = std::make_unique<AudioGraphNodeSubType>(std::move(args));
     node->RegisterListener(graph);
     return node;
 }
 
-std::unique_ptr<AudioGraphNode> AudioGraph::CreateNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
+std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     ComponentArgs args{parent, path_segment, "", path_prefix_segment};
     auto *graph = static_cast<AudioGraph *>(parent->Parent);
-    if (path_segment == InputDeviceNodeTypeId) return CreateNode<InputDeviceNode>(graph, std::move(args));
-    if (path_segment == OutputDeviceNodeTypeId) return CreateNode<OutputDeviceNode>(graph, std::move(args));
-    if (path_segment == WaveformNodeTypeId) return CreateNode<WaveformNode>(graph, std::move(args));
-    if (path_segment == FaustNodeTypeId) return CreateNode<FaustNode>(graph, std::move(args));
+    if (path_segment == InputDeviceNodeTypeId) return CreateAudioGraphNode<InputDeviceNode>(graph, std::move(args));
+    if (path_segment == OutputDeviceNodeTypeId) return CreateAudioGraphNode<OutputDeviceNode>(graph, std::move(args));
+    if (path_segment == WaveformNodeTypeId) return CreateAudioGraphNode<WaveformNode>(graph, std::move(args));
+    if (path_segment == FaustNodeTypeId) return CreateAudioGraphNode<FaustNode>(graph, std::move(args));
 
     return nullptr;
 }
@@ -444,16 +491,16 @@ void AudioGraph::Apply(const ActionType &action) const {
     );
 }
 
-ma_node_graph *AudioGraph::Get() { return _Graph.get(); }
+ma_node_graph *AudioGraph::Get() { return &reinterpret_cast<GraphMaNode *>(Node.get())->_Graph; }
 dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
 DeviceDataFormat AudioGraph::GetFormat() const { return {int(ma_format_f32), 1, SampleRate}; }
 
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
     for (const auto *device_node : GetInputDeviceNodes()) {
-        if (!device_node->Device.IsNativeSampleRate(sample_rate)) return false;
+        if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
     }
     for (const auto *device_node : GetOutputDeviceNodes()) {
-        if (!device_node->Device.IsNativeSampleRate(sample_rate)) return false;
+        if (!device_node->Device->IsNativeSampleRate(sample_rate)) return false;
     }
     return true;
 }
@@ -465,10 +512,10 @@ u32 AudioGraph::GetDefaultSampleRate() const {
     for (const u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
         // Favor doing sample rate conversion on input rather than output.
         for (const auto *device_node : GetOutputDeviceNodes()) {
-            if (device_node->Device.IsNativeSampleRate(sample_rate)) return sample_rate;
+            if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
         }
         for (const auto *device_node : GetInputDeviceNodes()) {
-            if (device_node->Device.IsNativeSampleRate(sample_rate)) return sample_rate;
+            if (device_node->Device->IsNativeSampleRate(sample_rate)) return sample_rate;
         }
     }
     return AudioDevice::PrioritizedSampleRates.front();

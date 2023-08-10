@@ -29,7 +29,9 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     bool AllowInputConnectionChange() const override { return false; }
     bool AllowOutputConnectionChange() const override { return false; }
 
-    static std::unique_ptr<AudioGraphNode> CreateNode(Component *, string_view path_prefix_segment, string_view path_segment);
+    static std::unique_ptr<AudioGraphNode> CreateAudioGraphNode(Component *, string_view path_prefix_segment, string_view path_segment);
+
+    std::unique_ptr<MaNode> CreateNode() const;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
@@ -77,7 +79,6 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
         Prop(Matrix, Matrix);
     };
 
-    std::unique_ptr<ma_node_graph> _Graph;
     dsp *FaustDsp = nullptr;
 
     struct Connections : AdjacencyList {
@@ -86,7 +87,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
         void Render() const override;
     };
 
-    Prop(Vector<AudioGraphNode>, Nodes, CreateNode);
+    Prop(Vector<AudioGraphNode>, Nodes, CreateAudioGraphNode);
     Prop_(Connections, Connections, "Audio connections");
 
     // We initialize with a sample rate of zero, which is the default sample rate. (See `GetDefaultSampleRate` for details.)

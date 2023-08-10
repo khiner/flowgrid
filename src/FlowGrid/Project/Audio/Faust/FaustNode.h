@@ -4,16 +4,11 @@
 
 #include "Project/Audio/Graph/AudioGraphNode.h"
 
-class dsp;
-
-struct ma_faust_node;
-
 struct FaustNode : AudioGraphNode {
     FaustNode(ComponentArgs &&);
-    ~FaustNode();
 
     void OnSampleRateChanged() override;
 
 private:
-    std::unique_ptr<ma_faust_node> _Node;
+    std::unique_ptr<MaNode> CreateNode() const;
 };

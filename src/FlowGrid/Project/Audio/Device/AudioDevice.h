@@ -10,10 +10,10 @@ struct AudioDevice {
 
     struct UserData {
         AudioDevice *FlowGridDevice; // The FlowGrid device is added to the user data for every device.
-        void *User; // Arbitrary user data.
+        const void *User; // Arbitrary user data.
     };
 
-    AudioDevice(IO, AudioCallback, std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target = {}, std::string_view device_name_target = "", void *client_user_data = nullptr);
+    AudioDevice(IO, AudioCallback, std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target = {}, std::string_view device_name_target = "", const void *client_user_data = nullptr);
     virtual ~AudioDevice();
 
     static const std::vector<u32> PrioritizedSampleRates;
@@ -43,6 +43,7 @@ struct AudioDevice {
 
     void Init(std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target = {}, std::string_view device_name_target = "");
     void Uninit();
+    void Stop();
 
     IO Type;
     AudioCallback Callback;

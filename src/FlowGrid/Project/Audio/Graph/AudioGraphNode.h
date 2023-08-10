@@ -41,10 +41,19 @@ enum WindowType_ {
 
 using WindowType = int;
 
+struct MaNode {
+    MaNode(ma_node *node = nullptr) : Node(node) {}
+    virtual ~MaNode() { Node = nullptr; }
+
+    ma_node *Node{nullptr};
+};
+
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
 struct AudioGraphNode : Component, Field::ChangeListener {
-    AudioGraphNode(ComponentArgs &&);
+    using CreateNodeFunction = std::function<std::unique_ptr<MaNode>()>;
+
+    AudioGraphNode(ComponentArgs &&, CreateNodeFunction);
     virtual ~AudioGraphNode();
 
     struct Listener {
@@ -67,7 +76,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     // At the very least, each node updates any active IO monitors based on the new sample rate.
     virtual void OnSampleRateChanged();
 
-    inline ma_node *Get() const { return Node; }
+    inline ma_node *Get() const { return Node ? Node->Node : nullptr; }
     inline bool IsGraphEndpoint() const { return this == (void *)Graph; }
 
     u32 InputBusCount() const;
@@ -184,15 +193,13 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     MonitorNode *GetMonitorNode(IO) const;
 
 protected:
-    virtual void UpdateAll(); // Call corresponding MA setters for all fields.
-
     void Render() const override;
 
     void NotifyConnectionsChanged() {
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
     }
 
-    ma_node *Node{nullptr};
+    std::unique_ptr<MaNode> Node;
 
     Prop(Optional<GainerNode>, InputGainer);
     Prop(Optional<GainerNode>, OutputGainer);

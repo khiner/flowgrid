@@ -39,15 +39,14 @@ void Field::FindAndMarkChanged(const Patch &patch) {
         Field *affected_field;
         if ((op.Op == PatchOp::Add || op.Op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
             affected_field = FindComponentContainerFieldByPath(path); // Look for the nearest ancestor component container field.
+            if (affected_field) continue; // The auxiliary field accounts for
             // This add/remove could be within a non-component container.
             // E.g. `AdjacencyList` is a container that stores its children directly under it, not under index subpaths.
-            if (affected_field == nullptr) affected_field = FindByPath(path);
-        } else {
-            affected_field = FindByPath(path);
-            if (affected_field && ComponentContainerAuxiliaryFields.contains(affected_field->Id)) {
-                // When a container's auxiliary field is changed, mark the container as changed instead.
-                affected_field = static_cast<Field *>(affected_field->Parent);
-            }
+        }
+        affected_field = FindByPath(path);
+        if (affected_field && ComponentContainerAuxiliaryFields.contains(affected_field->Id)) {
+            // When a container's auxiliary field is changed, mark the container as changed instead.
+            affected_field = static_cast<Field *>(affected_field->Parent);
         }
         if (affected_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
 

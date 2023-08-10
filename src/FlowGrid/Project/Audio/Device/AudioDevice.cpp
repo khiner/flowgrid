@@ -127,7 +127,7 @@ struct Context {
 static std::unique_ptr<Context> AudioContext;
 static u32 DeviceInstanceCount = 0; // Reference count for the audio context. When this goes from nonzero to zero, the context is destroyed.
 
-AudioDevice::AudioDevice(IO type, AudioDevice::AudioCallback callback, std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target, string_view device_name_target, void *client_user_data)
+AudioDevice::AudioDevice(IO type, AudioDevice::AudioCallback callback, std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target, string_view device_name_target, const void *client_user_data)
     : Type(type), Callback(callback), _UserData({this, client_user_data}) {
     if (!AudioContext) AudioContext = std::make_unique<Context>();
     Init(std::move(client_format), std::move(native_format_target), device_name_target);
@@ -255,9 +255,13 @@ void AudioDevice::Init(std::optional<DeviceDataFormat> client_format, std::optio
 }
 
 void AudioDevice::Uninit() {
-    if (IsStarted()) ma_device_stop(Device.get());
+    Stop();
     ma_device_uninit(Device.get());
     Device.reset();
+}
+
+void AudioDevice::Stop() {
+    if (IsStarted()) ma_device_stop(Device.get());
 }
 
 void AudioDevice::ScanDevices() { AudioContext->ScanDevices(); }

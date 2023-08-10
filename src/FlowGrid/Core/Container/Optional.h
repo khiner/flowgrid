@@ -11,6 +11,7 @@ template<typename ComponentType> struct Optional : Field {
     Optional(ComponentArgs &&args) : Field(std::move(args)) {
         ComponentContainerFields.insert(Id);
         ComponentContainerAuxiliaryFields.insert(HasValue.Id);
+        Refresh();
     }
     ~Optional() {
         ComponentContainerAuxiliaryFields.erase(HasValue.Id);
@@ -24,7 +25,10 @@ template<typename ComponentType> struct Optional : Field {
     void Refresh() override {
         HasValue.Refresh();
 
-        if (HasValue && !Value) Value = std::make_unique<ComponentType>(ComponentArgs{this, "Value"});
+        if (HasValue && !Value) {
+            Value = std::make_unique<ComponentType>(ComponentArgs{this, "Value"});
+            Value->Refresh();
+        }
         else if (!HasValue && Value) Reset();
     }
 

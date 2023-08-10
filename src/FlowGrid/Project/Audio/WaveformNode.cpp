@@ -6,35 +6,37 @@
 
 #include "imgui.h"
 
-WaveformNode::WaveformNode(ComponentArgs &&args) : AudioGraphNode(std::move(args)) {
-    Frequency.RegisterChangeListener(this);
-    Type.RegisterChangeListener(this);
+struct WaveformMaNode : MaNode {
+    WaveformMaNode(ma_node_graph *graph, u32 sample_rate, ma_waveform_type type, float frequency) {
+        auto config = ma_waveform_node_config_init(sample_rate, type, frequency);
+        ma_result result = ma_waveform_node_init(graph, &config, nullptr, &_Node);
+        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the waveform node: {}", int(result)));
+        Node = &_Node;
+    }
+    ~WaveformMaNode() {
+        ma_waveform_node_uninit(&_Node, nullptr);
+    }
 
-    auto config = ma_waveform_node_config_init(Graph->SampleRate, ma_waveform_type(int(Type)), Frequency);
-    _Node = std::make_unique<ma_waveform_node>();
-    ma_result result = ma_waveform_node_init(Graph->Get(), &config, nullptr, _Node.get());
-    if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the waveform node: {}", int(result)));
-    Node = _Node.get();
+    ma_waveform_node _Node;
+};
 
-    UpdateAll();
-}
-
-WaveformNode::~WaveformNode() {
-    ma_waveform_node_uninit(_Node.get(), nullptr);
-}
-
-void WaveformNode::UpdateAll() {
-    AudioGraphNode::UpdateAll();
+WaveformNode::WaveformNode(ComponentArgs &&args) : AudioGraphNode(std::move(args), [this] { return CreateNode(); }) {
     UpdateFrequency();
     UpdateType();
+    Frequency.RegisterChangeListener(this);
+    Type.RegisterChangeListener(this);
+}
+
+std::unique_ptr<MaNode> WaveformNode::CreateNode() const {
+    return std::make_unique<WaveformMaNode>(Graph->Get(), Graph->SampleRate, ma_waveform_type(int(Type)), Frequency);
 }
 
 void WaveformNode::UpdateFrequency() {
-    ma_waveform_set_frequency(&_Node.get()->waveform, Frequency);
+    ma_waveform_set_frequency(&((ma_waveform_node *)Get())->waveform, Frequency);
 }
 
 void WaveformNode::UpdateType() {
-    ma_waveform_set_type(&_Node.get()->waveform, ma_waveform_type(int(Type)));
+    ma_waveform_set_type(&((ma_waveform_node *)Get())->waveform, ma_waveform_type(int(Type)));
 }
 
 void WaveformNode::OnFieldChanged() {
@@ -46,7 +48,7 @@ void WaveformNode::OnFieldChanged() {
 
 void WaveformNode::OnSampleRateChanged() {
     AudioGraphNode::OnSampleRateChanged();
-    ma_waveform_node_set_sample_rate(_Node.get(), Graph->SampleRate);
+    ma_waveform_node_set_sample_rate(((ma_waveform_node *)Get()), Graph->SampleRate);
 }
 
 void WaveformNode::Render() const {

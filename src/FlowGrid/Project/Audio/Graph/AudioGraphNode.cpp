@@ -228,22 +228,20 @@ private:
     ma_splitter_node Splitter;
 };
 
-AudioGraphNode::AudioGraphNode(ComponentArgs &&args)
-    : Component(std::move(args)), Graph(static_cast<AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)) {
+AudioGraphNode::AudioGraphNode(ComponentArgs &&args, CreateNodeFunction create_node)
+    : Component(std::move(args)), Graph(static_cast<AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)), Node(create_node()) {
     Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, InputMonitor, OutputMonitor};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 
 AudioGraphNode::~AudioGraphNode() {
+    DisconnectOutput();
     Splitter.reset();
     InputGainer.Reset();
     InputMonitor.Reset();
     OutputGainer.Reset();
     OutputMonitor.Reset();
-    if (Get()) {
-        ma_node_uninit(Get(), nullptr);
-        Node = nullptr;
-    }
+
     Listeners.clear();
     Field::UnregisterChangeListener(this);
 }
@@ -299,16 +297,8 @@ u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_n
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Get(), bus); }
 u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Get(), bus); }
 
-void AudioGraphNode::UpdateAll() {
-    // Update nodes from earliest to latest in the signal path.
-    InputGainer.Refresh();
-    InputMonitor.Refresh();
-    OutputGainer.Refresh();
-    OutputMonitor.Refresh();
-}
-
 void AudioGraphNode::DisconnectOutput() {
-    ma_node_detach_output_bus(OutputNode(), 0);
+    ma_node_detach_all_output_buses(OutputNode());
     Splitter.reset();
 }
 

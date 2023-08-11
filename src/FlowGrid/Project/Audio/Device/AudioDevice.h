@@ -13,8 +13,28 @@ struct AudioDevice {
         const void *User; // Arbitrary user data.
     };
 
-    AudioDevice(IO, AudioCallback, std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target = {}, std::string_view device_name_target = "", const void *client_user_data = nullptr);
+    struct TargetConfig {
+        std::optional<DeviceDataFormat> ClientFormat;
+        std::optional<DeviceDataFormat> NativeFormat;
+        std::string_view DeviceName;
+    };
+
+    struct Config {
+        Config(IO, TargetConfig &&target);
+
+        bool operator==(const Config &other) const {
+            return ClientFormat == other.ClientFormat && NativeFormat == other.NativeFormat && DeviceName == other.DeviceName;
+        }
+
+        DeviceDataFormat ClientFormat;
+        DeviceDataFormat NativeFormat;
+        std::string DeviceName;
+    };
+
+    AudioDevice(IO, AudioCallback, TargetConfig &&target_config = {}, const void *client_user_data = nullptr);
     virtual ~AudioDevice();
+
+    void SetConfig(TargetConfig &&config = {});
 
     static const std::vector<u32> PrioritizedSampleRates;
     static void ScanDevices();
@@ -33,16 +53,15 @@ struct AudioDevice {
     const std::vector<DeviceDataFormat> &GetNativeFormats() const;
     const std::vector<const ma_device_info *> &GetAllInfos() const;
 
+    ma_format GetNativeSampleFormat() const;
     u32 GetNativeChannels() const;
-    int GetNativeSampleFormat() const; // Convert to `ma_format`.
     u32 GetNativeSampleRate() const;
-    const DeviceDataFormat &GetClientFormat() const { return ClientFormat; }
     DeviceDataFormat GetNativeFormat() const;
+
+    const DeviceDataFormat &GetClientFormat() const { return _Config.ClientFormat; }
 
     void RenderInfo() const;
 
-    void Init(std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target = {}, std::string_view device_name_target = "");
-    void Uninit();
     void Stop();
 
     IO Type;
@@ -50,7 +69,12 @@ struct AudioDevice {
     UserData _UserData;
 
 private:
-    DeviceDataFormat ClientFormat{}; // The concrete client format used to instantiate the device. No default values (e.g. `SampleRate != 0`).
+    void Init();
+    void Uninit();
+
+    // The concrete computed config used to instantiate the device.
+    // Should always mirror the MA device, with no default values except an emty name to indicate the devault device
+    Config _Config;
     std::unique_ptr<ma_device> Device;
 
     ma_device_info Info;

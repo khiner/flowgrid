@@ -75,10 +75,10 @@ struct Context {
     // If no target format is provided, returns the the native format with the highest-priority sample rate.
     // Otherwise, returns the target format if it is natively supported, or the native format with the nearest native sample rate otherwise.
     // todo channels
-    DeviceDataFormat GetHighestPriorityNativeFormat(IO type, std::optional<DeviceDataFormat> native_format_target) {
+    DeviceDataFormat GetHighestPriorityNativeFormat(IO type, std::optional<DeviceDataFormat> target_native_format) {
         if (NativeDataFormats[type].empty()) throw std::runtime_error(std::format("No native audio {} formats found.", to_string(type)));
 
-        if (!native_format_target || native_format_target->SampleRate == 0) {
+        if (!target_native_format || target_native_format->SampleRate == 0) {
             // No target requested. Choose the native format with the highest-priority sample rate.
             for (u32 sample_rate : AudioDevice::PrioritizedSampleRates) {
                 if (auto format = FindFormatWithNativeSampleRate(type, sample_rate)) return *format;
@@ -89,10 +89,10 @@ struct Context {
         }
 
         // Specific sample rate requested.
-        if (IsNativeSampleRate(type, native_format_target->SampleRate)) return *native_format_target;
+        if (IsNativeSampleRate(type, target_native_format->SampleRate)) return *target_native_format;
 
         // A specific sample rate was requested that's not natively supported. Return the native format with the nearest sample rate.
-        return FindNativeFormatWithNearestSampleRate(type, native_format_target->SampleRate);
+        return FindNativeFormatWithNearestSampleRate(type, target_native_format->SampleRate);
     }
 
     void ScanDevices() {
@@ -127,10 +127,29 @@ struct Context {
 static std::unique_ptr<Context> AudioContext;
 static u32 DeviceInstanceCount = 0; // Reference count for the audio context. When this goes from nonzero to zero, the context is destroyed.
 
-AudioDevice::AudioDevice(IO type, AudioDevice::AudioCallback callback, std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target, string_view device_name_target, const void *client_user_data)
-    : Type(type), Callback(callback), _UserData({this, client_user_data}) {
+AudioDevice::Config::Config(IO type, TargetConfig &&target) {
     if (!AudioContext) AudioContext = std::make_unique<Context>();
-    Init(std::move(client_format), std::move(native_format_target), device_name_target);
+
+    NativeFormat = AudioContext->GetHighestPriorityNativeFormat(type, target.NativeFormat ? target.NativeFormat : target.ClientFormat);
+
+    ClientFormat = {
+        target.ClientFormat && target.ClientFormat->SampleFormat != ma_format_unknown ? target.ClientFormat->SampleFormat : NativeFormat.SampleFormat,
+        target.ClientFormat && target.ClientFormat->Channels != 0 ? target.ClientFormat->Channels : NativeFormat.Channels,
+        target.ClientFormat && target.ClientFormat->SampleRate != 0 ? target.ClientFormat->SampleRate : NativeFormat.SampleRate,
+    };
+
+    DeviceName = "";
+    for (const ma_device_info *info : AudioContext->DeviceInfos[type]) {
+        if (!target.DeviceName.empty() && !info->isDefault && info->name == target.DeviceName) {
+            DeviceName = info->name;
+            break;
+        }
+    }
+}
+
+AudioDevice::AudioDevice(IO type, AudioDevice::AudioCallback callback, TargetConfig &&target_config, const void *client_user_data)
+    : Type(std::move(type)), Callback(std::move(callback)), _UserData({this, client_user_data}), _Config(Type, std::move(target_config)) {
+    Init();
     DeviceInstanceCount++;
 }
 
@@ -141,23 +160,34 @@ AudioDevice::~AudioDevice() {
     if (DeviceInstanceCount == 0) AudioContext.reset();
 }
 
-void AudioDevice::Init(std::optional<DeviceDataFormat> client_format, std::optional<DeviceDataFormat> native_format_target, string_view device_name_target) {
+void AudioDevice::SetConfig(TargetConfig &&target_config) {
+    // Only reinitialize if the computed config is different than current one.
+    Config new_config{Type, std::move(target_config)};
+    if (new_config == _Config) return;
+
+    _Config = std::move(new_config);
+    if (Device) Uninit();
+    Init();
+}
+
+void AudioDevice::Init() {
     Device = std::make_unique<ma_device>();
+
+    const auto ma_type = IsInput() ? ma_device_type_capture : ma_device_type_playback;
+    auto ma_config = ma_device_config_init(ma_type);
 
     const ma_device_id *device_id = nullptr;
     for (const ma_device_info *info : AudioContext->DeviceInfos[Type]) {
-        if (!device_name_target.empty() && !info->isDefault && info->name == device_name_target) {
+        if (!_Config.DeviceName.empty() && !info->isDefault && info->name == _Config.DeviceName) {
             device_id = &(info->id);
             break;
         }
     }
 
-    const ma_device_type ma_type = IsInput() ? ma_device_type_capture : ma_device_type_playback;
-    ma_device_config config = ma_device_config_init(ma_type);
     if (IsInput()) {
-        config.capture.pDeviceID = device_id;
-        config.capture.format = ma_format_f32;
-        config.capture.channels = client_format ? client_format->Channels : 0;
+        ma_config.capture.pDeviceID = device_id;
+        ma_config.capture.format = ma_format(_Config.ClientFormat.SampleFormat);
+        ma_config.capture.channels = _Config.ClientFormat.Channels;
         // `noFixedSizedCallback` is more efficient, but don't be tempted.
         // It works fine until a manual input device change, which breaks things in inconsistent ways until we
         // disconnect and reconnect the input device node.
@@ -168,33 +198,24 @@ void AudioDevice::Init(std::optional<DeviceDataFormat> client_format, std::optio
         // Also, enabling this flag this seems to work fine for the output device as well, with the same caveats.
         // config.noFixedSizedCallback = true;
     } else {
-        config.playback.pDeviceID = device_id;
-        config.playback.format = ma_format_f32;
-        config.playback.channels = client_format ? client_format->Channels : 0;
+        ma_config.playback.pDeviceID = device_id;
+        ma_config.playback.format = ma_format(_Config.ClientFormat.SampleFormat);
+        ma_config.playback.channels = _Config.ClientFormat.Channels;
     }
 
-    config.dataCallback = Callback;
-    config.pUserData = &_UserData;
+    ma_config.dataCallback = Callback;
+    ma_config.pUserData = &_UserData;
+    ma_config.sampleRate = _Config.ClientFormat.SampleRate;
 
-    const auto native_format = AudioContext->GetHighestPriorityNativeFormat(Type, native_format_target ? native_format_target : client_format);
-
-    // Store the fully-specified client format the device will be converting to/from.
-    ClientFormat = {
-        client_format && client_format->SampleFormat != ma_format_unknown ? client_format->SampleFormat : native_format.SampleFormat,
-        client_format && client_format->Channels != 0 ? client_format->Channels : native_format.Channels,
-        client_format && client_format->SampleRate != 0 ? client_format->SampleRate : native_format.SampleRate,
-    };
-
-    const u32 from_sample_rate = IsInput() ? native_format.SampleRate : ClientFormat.SampleRate;
-    const u32 to_sample_rate = IsInput() ? ClientFormat.SampleRate : native_format.SampleRate;
-
-    config.sampleRate = ClientFormat.SampleRate;
+    const u32 from_sample_rate = IsInput() ? _Config.NativeFormat.SampleRate : _Config.ClientFormat.SampleRate;
+    const u32 to_sample_rate = IsInput() ? _Config.ClientFormat.SampleRate : _Config.NativeFormat.SampleRate;
     // Resampler format/channels aren't used.
-    config.resampling = ma_resampler_config_init(ma_format_unknown, 0, from_sample_rate, to_sample_rate, ma_resample_algorithm_linear);
-    config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer writes to every output frame.
-    config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.
+    ma_config.resampling = ma_resampler_config_init(ma_format_unknown, 0, from_sample_rate, to_sample_rate, ma_resample_algorithm_linear);
 
-    ma_result result = ma_device_init(nullptr, &config, Device.get());
+    ma_config.noPreSilencedOutputBuffer = true; // The audio graph already ensures the output buffer writes to every output frame.
+    ma_config.coreaudio.allowNominalSampleRateChange = true; // On Mac, allow changing the native system sample rate.
+
+    ma_result result = ma_device_init(nullptr, &ma_config, Device.get());
     if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio {} device: {}", to_string(Type), int(result)));
 
     result = ma_device_get_info(Device.get(), ma_type, &Info);
@@ -271,6 +292,12 @@ bool AudioDevice::IsDefault() const { return Info.isDefault; }
 const std::vector<DeviceDataFormat> &AudioDevice::GetNativeFormats() const { return AudioContext->NativeDataFormats[Type]; }
 const std::vector<const ma_device_info *> &AudioDevice::GetAllInfos() const { return AudioContext->DeviceInfos[Type]; }
 
+ma_format AudioDevice::GetNativeSampleFormat() const {
+    if (!Device) return ma_format_f32;
+    if (IsInput()) return Device->capture.internalFormat;
+    return Device->playback.internalFormat;
+}
+
 u32 AudioDevice::GetNativeSampleRate() const {
     if (!Device) return 0;
     if (IsInput()) return Device->capture.internalSampleRate;
@@ -281,12 +308,6 @@ u32 AudioDevice::GetNativeChannels() const {
     if (!Device) return 0;
     if (IsInput()) return Device->capture.internalChannels;
     return Device->playback.internalChannels;
-}
-
-int AudioDevice::GetNativeSampleFormat() const {
-    if (!Device) return ma_format_f32;
-    if (IsInput()) return Device->capture.internalFormat;
-    return Device->playback.internalFormat;
 }
 
 DeviceDataFormat AudioDevice::GetNativeFormat() const { return {GetNativeSampleFormat(), GetNativeChannels(), GetNativeSampleRate()}; }

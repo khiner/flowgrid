@@ -39,9 +39,7 @@ void Field::FindAndMarkChanged(const Patch &patch) {
         Field *affected_field;
         if ((op.Op == PatchOp::Add || op.Op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
             affected_field = FindComponentContainerFieldByPath(path); // Look for the nearest ancestor component container field.
-            if (affected_field) continue; // The auxiliary field accounts for
-            // This add/remove could be within a non-component container.
-            // E.g. `AdjacencyList` is a container that stores its children directly under it, not under index subpaths.
+            if (affected_field) continue; // Any time there is an addition/removal within a container, only its auxiliary field is marked as changed.
         }
         affected_field = FindByPath(path);
         if (affected_field && ComponentContainerAuxiliaryFields.contains(affected_field->Id)) {
@@ -82,7 +80,7 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
-    // Notify ancestors. (Listeners can disambiguate by checking `IsChanged()` vs `IsDescendentChanged()`.)
+    // Notify ancestors. (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
     for (const auto changed_id : ChangedAncestorComponentIds) {
         if (!ById.contains(changed_id)) continue; // The component was deleted.
 

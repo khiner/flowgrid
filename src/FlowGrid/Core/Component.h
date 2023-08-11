@@ -114,8 +114,10 @@ struct Component : Drawable {
     const Component *Child(u32 i) const noexcept { return Children[i]; }
     inline u32 ChildCount() const noexcept { return Children.size(); }
 
-    inline bool IsChanged() const noexcept { return ChangedComponentIds.contains(Id); }
     inline bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
+    inline bool IsChanged(bool include_descendents = false) const noexcept {
+        return ChangedComponentIds.contains(Id) || (include_descendents && IsDescendentChanged());
+    }
 
     Store &RootStore; // Reference to the store at the root of this component's tree.
     Component *Parent; // Only null for the root component.

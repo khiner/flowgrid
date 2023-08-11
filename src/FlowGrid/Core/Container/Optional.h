@@ -28,8 +28,9 @@ template<typename ComponentType> struct Optional : Field {
         if (HasValue && !Value) {
             Value = std::make_unique<ComponentType>(ComponentArgs{this, "Value"});
             Value->Refresh();
+        } else if (!HasValue && Value) {
+            Reset();
         }
-        else if (!HasValue && Value) Reset();
     }
 
     inline void Toggle_() {
@@ -49,14 +50,16 @@ template<typename ComponentType> struct Optional : Field {
     inline void Reset() { Value.reset(); }
 
     void RenderValueTree(bool annotate, bool auto_select) const override {
-        if (!Value) {
+        if (!Value || Value->Children.empty()) {
             if (auto_select) ScrollToChanged();
             TextUnformatted(std::format("{} (empty)", Name));
             return;
         }
 
-        if (Value->TreeNode(Name)) {
-            Value->RenderValueTree(annotate, auto_select);
+        if (TreeNode(Name, false, nullptr, false, auto_select)) {
+            for (const auto *value_child : Value->Children) {
+                value_child->RenderValueTree(annotate, auto_select);
+            }
             TreePop();
         }
     }

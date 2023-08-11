@@ -149,6 +149,7 @@ struct Component : Drawable {
 protected:
     virtual void Render() const override {} // By default, components don't render anything.
 
+    void OpenChanged() const; // Open this item if changed.
     void ScrollToChanged() const; // Scroll to this item if changed.
 
 private:

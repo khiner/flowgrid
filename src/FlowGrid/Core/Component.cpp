@@ -164,6 +164,8 @@ void Component::RenderTreeNodes(ImGuiTreeNodeFlags flags) const {
     }
 }
 
+void Component::OpenChanged() const { SetNextItemOpen(IsChanged(true)); }
+
 void Component::ScrollToChanged() const {
     if (IsChanged(true) && IsItemVisible()) {
         ScrollToItem(ImGuiScrollFlags_AlwaysCenterY);
@@ -172,7 +174,7 @@ void Component::ScrollToChanged() const {
 
 bool Component::TreeNode(std::string_view label_view, bool highlight_label, const char *value, bool highlight_value, bool auto_select) const {
     if (auto_select) {
-        SetNextItemOpen(IsChanged(true));
+        OpenChanged();
         ScrollToChanged();
     }
 

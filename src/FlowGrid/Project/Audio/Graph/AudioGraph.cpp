@@ -56,7 +56,7 @@ struct DeviceMaNode : MaNode {
 
     virtual ~DeviceMaNode() {}
 
-    inline void ResetDevice(AudioDevice::TargetConfig &&target_config) { Device.SetConfig(std::move(target_config)); }
+    inline void UpdateDeviceConfig(AudioDevice::TargetConfig &&target_config) { Device.SetConfig(std::move(target_config)); }
 
     AudioDevice Device;
 };
@@ -65,11 +65,11 @@ struct DeviceNode : AudioGraphNode {
     DeviceNode(ComponentArgs &&args, CreateNodeFunction &&create_node) : AudioGraphNode(std::move(args), std::move(create_node)) {
         Device = &GetDeviceMaNode()->Device;
 
-        // During initial `DeviceMaNode` creation, we don't use the device props (`Name`/`Format`), since the `DeviceNode`
-        // instance members are not fully initialized at the point of `AudioGraphNode` construction.
-        // At this point, they are initialized, so we need to change the device configuration appropriately.
-        // (It is unfortunate that this technicality leads to potentially restarting the device after its creation.)
-        OnFieldChanged();
+        // During initial `DeviceMaNode` creation, we don't use the device props (`Name`/`Format`), since
+        // the `DeviceNode` instance members are not fully initialized at the point of `AudioGraphNode` construction.
+        // At this point, they are initialized, so we need to update the device appropriately.
+        // (It's unfortunate that this technicality leads to potentially restarting the device after its initial creation.)
+        UpdateDeviceConfig();
 
         // The device may have a different configuration than what we requested. Update fields to reflect the actual device config.
         Name.Set_(GetConfigName(Device->GetInfo()));
@@ -83,9 +83,9 @@ struct DeviceNode : AudioGraphNode {
 
     inline DeviceMaNode *GetDeviceMaNode() const { return static_cast<DeviceMaNode *>(Node.get()); }
 
-    inline void ResetDevice() {
+    inline void UpdateDeviceConfig() {
         auto target_native_format = Format ? std::optional<DeviceDataFormat>(Format->ToDeviceDataFormat()) : std::nullopt;
-        GetDeviceMaNode()->ResetDevice({Graph->GetFormat(), std::move(target_native_format), Name});
+        GetDeviceMaNode()->UpdateDeviceConfig({Graph->GetFormat(), std::move(target_native_format), Name});
         UpdateFormat();
     }
 
@@ -98,21 +98,18 @@ struct DeviceNode : AudioGraphNode {
         AudioGraphNode::OnSampleRateChanged();
         auto new_client_format = Graph->GetFormat();
         if (Device->GetClientFormat() != new_client_format) {
-            ResetDevice();
+            UpdateDeviceConfig();
         }
     }
 
     void OnFieldChanged() override {
         AudioGraphNode::OnFieldChanged();
-        if (Format.IsChanged()) {
+        if (Name.IsChanged() || Format.IsChanged(true)) {
             // If format-follow was just toggled on and the format values have never been set,
             // update `Format` to reflect the current native device format.
             // This does not require a device restart, since the format has not changed.
-            if (Format && Format->SampleRate == 0u) UpdateFormat();
-        }
-        // todo when toggled off but the new followed format is the same as the previous user-specified format, we also don't need to restart.
-        if (Name.IsChanged() || (Format.IsChanged() && !Format) || (Format && Format->ToDeviceDataFormat() != Device->GetNativeFormat())) {
-            ResetDevice();
+            if (Format.IsChanged() && Format && Format->SampleRate == 0u) UpdateFormat();
+            else UpdateDeviceConfig();
         }
     }
 

@@ -89,7 +89,7 @@ struct Context {
         }
 
         // Specific sample rate requested.
-        if (IsNativeSampleRate(type, target_native_format->SampleRate)) return *target_native_format;
+        if (auto native_format = FindFormatWithNativeSampleRate(type, target_native_format->SampleRate)) return *native_format;
 
         // A specific sample rate was requested that's not natively supported. Return the native format with the nearest sample rate.
         return FindNativeFormatWithNearestSampleRate(type, target_native_format->SampleRate);

@@ -14,11 +14,11 @@
 #include "Core/Primitive/UInt.h"
 
 void FieldActionHandler::Apply(const ActionType &action) const {
-    const auto *field = Field::FindByPath(action.GetFieldPath());
+    const auto *field = Field::Find(action.GetFieldPath());
     if (field == nullptr) throw std::runtime_error(std::format("Field not found: {}", action.GetFieldPath().string()));
 
     // Note: If/when we support arbitrary json actions, we'll need to check field types.
-    //   Maybe with a separate `FindByPath` for each type?
+    //   Maybe with a separate `Find` for each type?
     //   Could also have each field primitive field type accept an `Action::Field::Any`,
     //   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
     Visit(

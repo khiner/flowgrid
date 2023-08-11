@@ -2,7 +2,6 @@
 
 #include "Core/Container/PrimitiveVector.h"
 #include "Core/Container/PrimitiveVector2D.h"
-#include "Core/Store/Patch/Patch.h"
 
 template<typename T> struct ImChunkStream;
 template<typename T> struct ImVector;

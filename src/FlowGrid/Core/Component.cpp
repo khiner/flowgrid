@@ -52,6 +52,10 @@ Component::~Component() {
     ById.erase(Id);
 }
 
+bool Component::IsChanged(bool include_descendents) const noexcept {
+    return Field::ChangedFieldIds.contains(Id) || (include_descendents && IsDescendentChanged());
+}
+
 // By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,
 // and assigning the leaf's `json_pointer` to its JSON value.
 json Component::ToJson() const {

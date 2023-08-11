@@ -15,7 +15,7 @@ struct PatchOp {
         Replace,
     };
 
-    PatchOp::Type Op{};
+    Type Op{};
     std::optional<Primitive> Value{}; // Present for add/replace
     std::optional<Primitive> Old{}; // Present for remove/replace
 };

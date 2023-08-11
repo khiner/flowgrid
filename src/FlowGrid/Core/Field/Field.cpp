@@ -2,7 +2,6 @@
 
 #include "imgui.h"
 
-#include "Core/Store/Patch/Patch.h"
 #include "Helper/String.h"
 #include "Project/Style/Style.h"
 
@@ -31,34 +30,42 @@ Field *Field::FindComponentContainerFieldByPath(const StorePath &search_path) {
     return nullptr;
 }
 
-void Field::FindAndMarkChanged(const Patch &patch) {
-    ClearChanged();
+Field *Field::FindChanged(const StorePath &path, PatchOp::Type op) {
+    if ((op == PatchOp::Add || op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
+        // Do not mark any fields as added/removed if they are within a component container.
+        // The container's auxiliary field is marked as changed instead (and its path will be in same patch).
+        if (auto *component_container = FindComponentContainerFieldByPath(path)) return nullptr;
+    }
+    auto *field = Find(path);
+    if (field && ComponentContainerAuxiliaryFields.contains(field->Id)) {
+        // When a container's auxiliary field is changed, mark the container as changed instead.
+        return static_cast<Field *>(field->Parent);
+    }
+
+    if (!field) throw std::runtime_error(std::format("Could not find a field to attribute for op: {} at path: {}", to_string(op), path.string()));
+
+    return field;
+}
+
+void Field::MarkAllChanged(const Patch &patch) {
     const auto change_time = Clock::now();
+    ClearChanged();
+
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto path = patch.BasePath / partial_path;
-        Field *affected_field;
-        if ((op.Op == PatchOp::Add || op.Op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
-            affected_field = FindComponentContainerFieldByPath(path); // Look for the nearest ancestor component container field.
-            if (affected_field) continue; // Any time there is an addition/removal within a container, only its auxiliary field is marked as changed.
-        }
-        affected_field = FindByPath(path);
-        if (affected_field && ComponentContainerAuxiliaryFields.contains(affected_field->Id)) {
-            // When a container's auxiliary field is changed, mark the container as changed instead.
-            affected_field = static_cast<Field *>(affected_field->Parent);
-        }
-        if (affected_field == nullptr) throw std::runtime_error(std::format("Patch affects a path belonging to an unknown field: {}", path.string()));
+        if (auto *changed_field = FindChanged(path, op.Op)) {
+            const ID id = changed_field->Id;
+            const StorePath relative_path = path == changed_field->Path ? "" : path.lexically_relative(changed_field->Path);
+            ChangedPaths[id].first = change_time;
+            ChangedPaths[id].second.insert(relative_path);
 
-        const auto relative_path = path == affected_field->Path ? fs::path("") : path.lexically_relative(affected_field->Path);
-        PathsMoment &paths_moment = ChangedPaths[affected_field->Id];
-        paths_moment.first = change_time;
-        paths_moment.second.insert(relative_path);
-
-        ChangedComponentIds.insert(affected_field->Id);
-        // Mark all ancestor components of the affected field as changed.
-        const Component *ancestor = affected_field->Parent;
-        while (ancestor != nullptr) {
-            ChangedAncestorComponentIds.insert(ancestor->Id);
-            ancestor = ancestor->Parent;
+            // Mark the changed field and all its ancestors.
+            ChangedFieldIds.insert(id);
+            const Component *ancestor = changed_field->Parent;
+            while (ancestor != nullptr) {
+                ChangedAncestorComponentIds.insert(ancestor->Id);
+                ancestor = ancestor->Parent;
+            }
         }
     }
 
@@ -68,9 +75,11 @@ void Field::FindAndMarkChanged(const Patch &patch) {
 }
 
 void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
-    FindAndMarkChanged(patch);
+    MarkAllChanged(patch);
     static std::unordered_set<ChangeListener *> affected_listeners;
-    for (const auto changed_id : ChangedComponentIds) {
+
+    // Find field listeners to notify.
+    for (const auto changed_id : ChangedFieldIds) {
         if (!FieldById.contains(changed_id)) continue; // The field was deleted.
 
         auto *changed_field = FieldById.at(changed_id);
@@ -80,7 +89,8 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
-    // Notify ancestors. (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
+    // Find ancestor listeners to notify.
+    // (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
     for (const auto changed_id : ChangedAncestorComponentIds) {
         if (!ById.contains(changed_id)) continue; // The component was deleted.
 
@@ -91,12 +101,14 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     for (auto *listener : affected_listeners) listener->OnFieldChanged();
     affected_listeners.clear();
 
+    // Update gesture paths.
     if (add_to_gesture) {
         for (const auto &[field_id, paths_moment] : ChangedPaths) {
             GestureChangedPaths[field_id].push_back(paths_moment);
         }
     }
 }
+
 void Field::RefreshAll() {
     for (auto &[id, field] : FieldById) field->Refresh();
 }
@@ -104,12 +116,6 @@ void Field::RefreshAll() {
 void Field::UpdateGesturing() {
     if (ImGui::IsItemActivated()) IsGesturing = true;
     if (ImGui::IsItemDeactivated()) IsGesturing = false;
-}
-
-std::optional<TimePoint> Field::LatestUpdateTime(const ID component_id) {
-    if (!LatestChangedPaths.contains(component_id)) return {};
-
-    return LatestChangedPaths.at(component_id).first;
 }
 
 void Field::RenderValueTree(bool annotate, bool auto_select) const {

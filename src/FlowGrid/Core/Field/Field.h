@@ -5,10 +5,9 @@
 
 #include "Core/Action/Actionable.h"
 #include "Core/Component.h"
+#include "Core/Store/Patch/Patch.h"
 #include "FieldActionHandler.h"
 #include "Helper/Paths.h"
-
-struct Patch;
 
 // A `Field` is a component that wraps around a value backed by the owning project's `Store`.
 // Leafs in a component tree are always fields, but fields may have nested components/fields.
@@ -44,7 +43,7 @@ struct Field : Component {
     inline static Field *ByPath(const StorePath &path) noexcept { return FieldById.at(FieldIdByPath.at(path)); }
     inline static Field *ByPath(StorePath &&path) noexcept { return FieldById.at(FieldIdByPath.at(std::move(path))); }
 
-    inline static Field *FindByPath(const StorePath &search_path) noexcept {
+    inline static Field *Find(const StorePath &search_path) noexcept {
         if (FieldIdByPath.contains(search_path)) return ByPath(search_path);
         // Search for container fields.
         if (FieldIdByPath.contains(search_path.parent_path())) return ByPath(search_path.parent_path());
@@ -71,7 +70,7 @@ struct Field : Component {
     // All values are appended to `GestureChangedPaths` if the change occurred during an action batch.
     // This is cleared at the end of each action batch, and can thus be used to determine which fields were affected by the latest action batch.
     // (`LatestChangedPaths` is retained for the lifetime of the application.)
-    // These same key IDs are also stored in the `ChangedComponentIds` set, which also includes IDs for all ancestor component of all changed fields.
+    // These same key IDs are also stored in the `ChangedFieldIds` set, which also includes IDs for all ancestor component of all changed fields.
     inline static std::unordered_map<ID, PathsMoment> ChangedPaths;
 
     // Latest (unique-field-relative-paths, store-commit-time) pair for each field over the lifetime of the application.
@@ -81,7 +80,14 @@ struct Field : Component {
     // Chronological vector of (unique-field-relative-paths, store-commit-time) pairs for each field that has been updated during the current gesture.
     inline static std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPaths{};
 
-    static std::optional<TimePoint> LatestUpdateTime(const ID component_id);
+    // IDs of all fields to which `ChangedPaths` are attributed.
+    // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
+    inline static std::unordered_set<ID> ChangedFieldIds;
+
+    inline static std::optional<TimePoint> LatestUpdateTime(const ID field_id) noexcept {
+        if (!LatestChangedPaths.contains(field_id)) return {};
+        return LatestChangedPaths.at(field_id).first;
+    }
 
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
     // This is always called immediately after a store commit.
@@ -89,7 +95,7 @@ struct Field : Component {
 
     inline static void ClearChanged() noexcept {
         ChangedPaths.clear();
-        ChangedComponentIds.clear();
+        ChangedFieldIds.clear();
         ChangedAncestorComponentIds.clear();
     }
 
@@ -100,7 +106,11 @@ struct Field : Component {
     virtual void RenderValueTree(bool annotate, bool auto_select) const override;
 
 private:
-    // Find and mark fields with values that were made stale during the most recent action pass.
-    // Used internally by `RefreshChanged`.
-    static void FindAndMarkChanged(const Patch &);
+    // Find the field whose `Refresh()` should be called in response to a patch with this path and op type.
+    static Field *FindChanged(const StorePath &, PatchOp::Type);
+
+    // Find and mark fields that are made stale with the provided patch.
+    // If `Refresh()` is called on every field marked in `ChangedFieldIds`, the component tree will be fully refreshed.
+    // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
+    static void MarkAllChanged(const Patch &);
 };

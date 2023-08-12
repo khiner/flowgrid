@@ -87,8 +87,8 @@ Project::Project(Store &store) : Component(store) {
         Audio.Graph.Connections,
         Audio.Style,
         Settings,
-        Audio.Faust.Code,
-        Audio.Faust.Code.Debug,
+        Audio.Faust.FaustDsp.Code,
+        Audio.Faust.FaustDsp.Code.Debug,
         Audio.Faust.Logs,
         Audio.Faust.Graphs,
         Audio.Faust.ParamsUis,
@@ -210,8 +210,8 @@ void Project::Render() const {
         Audio.Graph.Connections.Dock(audio_node_id);
         Audio.Style.Dock(audio_node_id);
 
-        Audio.Faust.Code.Dock(faust_editor_node_id);
-        Audio.Faust.Code.Debug.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
+        Audio.Faust.FaustDsp.Code.Dock(faust_editor_node_id);
+        Audio.Faust.FaustDsp.Code.Debug.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
         Audio.Faust.Graphs.Dock(faust_graph_node_id);
         Audio.Faust.ParamsUis.Dock(faust_tools_node_id);
         Audio.Faust.Logs.Dock(faust_tools_node_id);

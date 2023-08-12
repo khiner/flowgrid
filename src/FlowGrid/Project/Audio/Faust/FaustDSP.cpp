@@ -11,15 +11,21 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-FaustDSP::FaustDSP(std::string_view code) {
-    Init(code);
+FaustDSP::FaustDSP(ComponentArgs &&args) : Component(std::move(args)) {
+    Code.RegisterChangeListener(this);
+    Init();
 }
 FaustDSP::~FaustDSP() {
     Uninit();
+    Field::UnregisterChangeListener(this);
 }
 
-void FaustDSP::Init(std::string_view code) {
-    if (Dsp || code.empty()) return Uninit();
+void FaustDSP::OnFieldChanged() {
+    if (Code.IsChanged()) Update();
+}
+
+void FaustDSP::Init() {
+    if (Dsp || !Code) return Uninit();
 
     createLibContext();
 
@@ -29,7 +35,7 @@ void FaustDSP::Init(std::string_view code) {
 
     const int argc = argv.size();
     static int num_inputs, num_outputs;
-    Box = DSPToBoxes("FlowGrid", string(code), argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
+    Box = DSPToBoxes("FlowGrid", string(Code), argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
     if (!Box) destroyLibContext();
 
     NotifyBoxChangeListeners();
@@ -66,10 +72,10 @@ void FaustDSP::Uninit() {
     ErrorMessage = "";
 }
 
-void FaustDSP::Update(std::string_view code) {
-    if (!Dsp && !code.empty()) return Init(code);
-    if (Dsp && code.empty()) return Uninit();
+void FaustDSP::Update() {
+    if (!Dsp && Code) return Init();
+    if (Dsp && !Code) return Uninit();
 
     Uninit();
-    return Init(code);
+    return Init();
 }

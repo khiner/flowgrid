@@ -3,17 +3,16 @@
 #include <string>
 #include <unordered_set>
 
-#include "Core/Action/Actionable.h"
+#include "Core/Container/TextBuffer.h"
 #include "FaustListener.h"
 
 class dsp;
 
-struct FaustDSP {
-    FaustDSP(std::string_view code);
+struct FaustDSP : Component, Field::ChangeListener {
+    FaustDSP(ComponentArgs &&);
     ~FaustDSP();
 
-    Box Box;
-    dsp *Dsp;
+    void OnFieldChanged() override;
 
     inline void RegisterChangeListener(FaustChangeListener *listener) const noexcept {
         ChangeListeners.insert(listener);
@@ -39,12 +38,23 @@ struct FaustDSP {
         DspChangeListeners.erase(listener);
     }
 
-    void Update(std::string_view code); // Sets `Box`, `Dsp`, and `ErrorMessage` as a side effect.
+    void Update(); // Sets `Box`, `Dsp`, and `ErrorMessage` based on the current `Code`.
 
+    Prop_(TextBuffer, Code, "Faust code", R"#(import("stdfaust.lib");
+pitchshifter = vgroup("Pitch Shifter", ef.transpose(
+   vslider("window (samples)", 1000, 50, 10000, 1),
+   vslider("xfade (samples)", 10, 1, 10000, 1),
+   vslider("shift (semitones)", 0, -24, +24, 0.1)
+ )
+);
+process = _ : pitchshifter;)#");
+
+    Box Box;
+    dsp *Dsp;
     std::string ErrorMessage;
 
 private:
-    void Init(std::string_view code); // Any resulting error message is set in `ErrorMessage`.
+    void Init(); // Any resulting error message is set in `ErrorMessage`.
     void Uninit();
 
     inline void NotifyChangeListeners() const noexcept {

@@ -9,26 +9,20 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-FaustLogs::FaustLogs(ComponentArgs &&args) : Component(std::move(args)) {}
-
 void FaustLogs::OnFaustChanged(const FaustDSP &faust_dsp) {
     ErrorMessages.clear();
     ErrorMessages.emplace_back(faust_dsp.ErrorMessage);
 }
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
-    Code.RegisterChangeListener(this);
     FaustDsp.RegisterDspChangeListener(&ParamsUis);
     FaustDsp.RegisterBoxChangeListener(&Graphs);
     FaustDsp.RegisterChangeListener(&Logs);
 }
 Faust::~Faust() {
+    FaustDsp.UnregisterChangeListener(&Logs);
+    FaustDsp.UnregisterBoxChangeListener(&Graphs);
     FaustDsp.UnregisterDspChangeListener(&ParamsUis);
-    Field::UnregisterChangeListener(this);
-}
-
-void Faust::OnFieldChanged() {
-    if (Code.IsChanged()) FaustDsp.Update(Code);
 }
 
 void Faust::Apply(const ActionType &action) const {
@@ -39,8 +33,8 @@ void Faust::Apply(const ActionType &action) const {
                 a,
                 [](const Action::FaustFile::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
                 [](const Action::FaustFile::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
-                [this](const Action::FaustFile::Open &a) { Code.Set(FileIO::read(a.file_path)); },
-                [this](const Action::FaustFile::Save &a) { FileIO::write(a.file_path, Code); },
+                [this](const Action::FaustFile::Open &a) { FaustDsp.Code.Set(FileIO::read(a.file_path)); },
+                [this](const Action::FaustFile::Save &a) { FileIO::write(a.file_path, FaustDsp.Code); },
             );
         },
         [this](const Action::FaustGraph::Any &a) { Graphs.Apply(a); },

@@ -12,12 +12,14 @@
 #include "FaustParam.h"
 #include "UI/NamesAndValues.h"
 
+struct FaustParamsUIStyle;
+
 // Label, shortname, or complete path (to discriminate between possibly identical labels
 // at different locations in the UI hierarchy) can be used to access any created widget.
 // See Faust's `APIUI` for possible extensions (response curves, gyro, ...).
 class FAUST_API FaustParamsUI : public UI, public MetaDataUI, public PathBuilder {
 public:
-    FaustParamsUI() = default;
+    FaustParamsUI(const FaustParamsUIStyle &style) : Style(style) {};
     ~FaustParamsUI() override = default;
 
     void openHorizontalBox(const char *label) override {
@@ -93,14 +95,27 @@ public:
     FaustParam UiParam{FaustParam::Type_None, ""};
     std::unordered_map<const Real *, NamesAndValues> NamesAndValues;
 
+    void Render() const;
+
 private:
+
     void addUiItem(const FaustParam::Type type, const char *label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
         activeGroup().children.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
         const std::string path = buildPath(label);
         fFullPaths.push_back(path);
     }
 
+    // Param UI calculations.
+    float CalcWidth(const FaustParam &, const bool include_label) const;
+    float CalcHeight(const FaustParam &) const;
+    float CalcLabelHeight(const FaustParam &) const;
+
+    // Param drawing.
+    void DrawUiItem(const FaustParam &, const char *label, const float suggested_height) const;
+
+
     FaustParam &activeGroup() { return Groups.empty() ? UiParam : *Groups.top(); }
 
     std::stack<FaustParam *> Groups{};
+    const FaustParamsUIStyle &Style;
 };

@@ -11,11 +11,11 @@ static const std::string FaustDspFileExtension = ".dsp";
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
     Code.RegisterChangeListener(this);
-    FaustDsp.RegisterDspChangeListener(&Params);
+    FaustDsp.RegisterDspChangeListener(&ParamsUis);
     FaustDsp.RegisterBoxChangeListener(&Graphs);
 }
 Faust::~Faust() {
-    FaustDsp.UnregisterDspChangeListener(&Params);
+    FaustDsp.UnregisterDspChangeListener(&ParamsUis);
     Field::UnregisterChangeListener(this);
 }
 

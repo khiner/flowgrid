@@ -91,7 +91,7 @@ Project::Project(Store &store) : Component(store) {
         Audio.Faust.Code.Debug,
         Audio.Faust.Log,
         Audio.Faust.Graphs,
-        Audio.Faust.Params,
+        Audio.Faust.ParamsUis,
         Debug,
         Debug.ProjectPreview,
         Debug.StorePathUpdateFrequency,
@@ -213,7 +213,7 @@ void Project::Render() const {
         Audio.Faust.Code.Dock(faust_editor_node_id);
         Audio.Faust.Code.Debug.Dock(dockspace_id); // What's remaining of the main dockspace after splitting is used for the editor metrics.
         Audio.Faust.Graphs.Dock(faust_graph_node_id);
-        Audio.Faust.Params.Dock(faust_tools_node_id);
+        Audio.Faust.ParamsUis.Dock(faust_tools_node_id);
         Audio.Faust.Log.Dock(faust_tools_node_id);
 
         Debug.Dock(debug_node_id);
@@ -242,7 +242,7 @@ void Project::Render() const {
         Style.Focus();
         Audio.Graph.Focus();
         Audio.Faust.Graphs.Focus();
-        Audio.Faust.Params.Focus();
+        Audio.Faust.ParamsUis.Focus();
         Debug.Focus(); // not visible by default anymore
     }
 

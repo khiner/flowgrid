@@ -37,7 +37,7 @@ void Audio::Style::Render() const {
             EndTabItem();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.Params.Style.Draw();
+            audio.Faust.ParamsUis.Style.Draw();
             EndTabItem();
         }
         EndTabBar();

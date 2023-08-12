@@ -7,7 +7,7 @@
 
 #include <imgui_internal.h>
 
-#include "FaustParams.h"
+#include "FaustParamsUIs.h"
 #include "UI/Widgets.h"
 
 using namespace ImGui;
@@ -29,7 +29,7 @@ static bool IsLabelSameLine(const FaustParam::Type type) {
 }
 
 // todo config to place labels above horizontal params
-float FaustParams::CalcWidth(const FaustParam &param, const bool include_label) const {
+float FaustParamsUIs::CalcWidth(const FaustParam &param, const bool include_label) const {
     const auto &imgui_style = ImGui::GetStyle();
     const bool has_label = include_label && !param.label.empty();
     const float frame_height = GetFrameHeight();
@@ -62,7 +62,7 @@ float FaustParams::CalcWidth(const FaustParam &param, const bool include_label) 
         default: return GetContentRegionAvail().x;
     }
 }
-float FaustParams::CalcHeight(const FaustParam &param) const {
+float FaustParamsUIs::CalcHeight(const FaustParam &param) const {
     const float frame_height = GetFrameHeight();
     switch (param.type) {
         case Type_VBargraph:
@@ -81,7 +81,7 @@ float FaustParams::CalcHeight(const FaustParam &param) const {
 }
 
 // Returns _additional_ height needed to accommodate a label for the param
-float FaustParams::CalcLabelHeight(const FaustParam &param) const {
+float FaustParamsUIs::CalcLabelHeight(const FaustParam &param) const {
     switch (param.type) {
         case Type_VBargraph:
         case Type_VSlider:
@@ -107,7 +107,7 @@ float FaustParams::CalcLabelHeight(const FaustParam &param) const {
 // (which is relevant for aligning params relative to other params in the same group).
 // Items/groups are allowed to extend beyond this height if needed to fit its contents.
 // It is expected that the cursor position will be set appropriately below the drawn contents.
-void FaustParams::DrawUiItem(const FaustParam &param, const char *label, const float suggested_height) const {
+void FaustParamsUIs::DrawUiItem(const FaustParam &param, const char *label, const float suggested_height) const {
     const auto &imgui_style = ImGui::GetStyle();
     const Justify justify = {Style.AlignmentHorizontal, Style.AlignmentVertical};
     const auto type = param.type;
@@ -255,7 +255,7 @@ void FaustParams::DrawUiItem(const FaustParam &param, const char *label, const f
     }
 }
 
-void FaustParams::Render() const {
+void FaustParamsUIs::Render() const {
     if (!Ui) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?
@@ -273,7 +273,7 @@ void FaustParams::Render() const {
     //    }
 }
 
-void FaustParams::OnFaustDspChanged(dsp *dsp) {
+void FaustParamsUIs::OnFaustDspChanged(dsp *dsp) {
     if (dsp) {
         Ui = std::make_unique<FaustParamsUI>();
         dsp->buildUserInterface(Ui.get());
@@ -282,7 +282,7 @@ void FaustParams::OnFaustDspChanged(dsp *dsp) {
     }
 }
 
-void FaustParams::Style::Render() const {
+void FaustParamsUIs::Style::Render() const {
     HeaderTitles.Draw();
     MinHorizontalItemWidth.Draw();
     MaxHorizontalItemWidth.Draw();

@@ -4,7 +4,7 @@
 #include "FaustBox.h"
 #include "FaustDSP.h"
 #include "FaustGraphs.h"
-#include "FaustParams.h"
+#include "FaustParamsUIs.h"
 
 #include "Core/Action/Actionable.h"
 #include "Core/Container/TextBuffer.h"
@@ -133,7 +133,7 @@ process = _ : pitchshifter;)#");
     };
 
     Prop_(FaustGraphs, Graphs, "Faust graph");
-    Prop_(FaustParams, Params, "Faust params");
+    Prop_(FaustParamsUIs, ParamsUis, "Faust params");
     Prop_(FaustLog, Log, "Faust log", FaustDsp.ErrorMessage);
 
 protected:

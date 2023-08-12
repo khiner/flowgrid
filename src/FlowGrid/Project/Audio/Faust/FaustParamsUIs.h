@@ -65,7 +65,7 @@ using ParamsWidthSizingPolicy = int;
 
 class dsp;
 
-struct FaustParams : Component, FaustDspChangeListener {
+struct FaustParamsUIs : Component, FaustDspChangeListener {
     using Component::Component;
 
     void OnFaustDspChanged(dsp *) override;

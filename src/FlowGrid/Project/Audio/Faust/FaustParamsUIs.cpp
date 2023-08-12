@@ -5,23 +5,22 @@
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
-static std::unique_ptr<FaustParamsUI> Ui;
+static std::vector<FaustParamsUI> Uis;
 
 void FaustParamsUIs::Render() const {
-    if (!Ui) {
+    if (Uis.empty()) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?
         return;
     }
 
-    Ui->Render();
+    Uis.front().Render();
 }
 
 void FaustParamsUIs::OnFaustDspChanged(dsp *dsp) {
+    Uis.clear();
     if (dsp) {
-        Ui = std::make_unique<FaustParamsUI>(Style);
-        dsp->buildUserInterface(Ui.get());
-    } else {
-        Ui = nullptr;
+        Uis.emplace_back(Style);
+        dsp->buildUserInterface(&Uis.front());
     }
 }

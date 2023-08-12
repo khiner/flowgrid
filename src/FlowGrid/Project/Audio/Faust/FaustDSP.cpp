@@ -47,6 +47,8 @@ void FaustDSP::Init(std::string_view code) {
     }
 
     NotifyDspChangeListeners();
+
+    NotifyChangeListeners();
 }
 
 void FaustDSP::Uninit() {

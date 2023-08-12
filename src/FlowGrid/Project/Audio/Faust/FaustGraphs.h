@@ -5,7 +5,7 @@
 #include "FaustGraphAction.h"
 #include "FaustGraphStyle.h"
 
-#include "FaustBoxChangeListener.h"
+#include "FaustListener.h"
 
 struct FaustGraphs : Component, Actionable<Action::FaustGraph::Any>, FaustBoxChangeListener {
     FaustGraphs(ComponentArgs &&args)

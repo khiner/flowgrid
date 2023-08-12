@@ -2,25 +2,29 @@
 
 #include "imgui.h"
 
-#include "FaustDspChangeListener.h"
+#include "FaustListener.h"
 #include "Helper/File.h"
 #include "Project/Audio/AudioIO.h"
 #include "Project/FileDialog/FileDialog.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
 
+FaustLogs::FaustLogs(ComponentArgs &&args) : Component(std::move(args)) {}
+
+void FaustLogs::OnFaustChanged(const FaustDSP &faust_dsp) {
+    ErrorMessages.clear();
+    ErrorMessages.emplace_back(faust_dsp.ErrorMessage);
+}
+
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
     Code.RegisterChangeListener(this);
     FaustDsp.RegisterDspChangeListener(&ParamsUis);
     FaustDsp.RegisterBoxChangeListener(&Graphs);
+    FaustDsp.RegisterChangeListener(&Logs);
 }
 Faust::~Faust() {
     FaustDsp.UnregisterDspChangeListener(&ParamsUis);
     Field::UnregisterChangeListener(this);
-}
-
-Faust::FaustLog::FaustLog(ComponentArgs &&args, std::string_view error_message) : Component(std::move(args)) {
-    ErrorMessage.Set_(string(error_message));
 }
 
 void Faust::OnFieldChanged() {
@@ -80,8 +84,12 @@ void Faust::Render() const {
     }
 }
 
-void Faust::FaustLog::Render() const {
+void FaustLogs::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    ErrorMessage.Draw();
+    for (const auto &error_message : ErrorMessages) {
+        TextUnformatted(error_message);
+    }
     PopStyleColor();
 }
+
+// void FaustLogs::OnFaustChanged(const FaustDsp &faust) {}

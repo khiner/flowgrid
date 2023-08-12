@@ -9,6 +9,17 @@
 #include "Core/Action/Actionable.h"
 #include "Core/Container/TextBuffer.h"
 
+struct FaustLogs : Component, FaustChangeListener {
+    FaustLogs(ComponentArgs &&);
+
+    void OnFaustChanged(const FaustDSP &) override;
+
+    std::vector<std::string> ErrorMessages;
+
+protected:
+    void Render() const override;
+};
+
 struct Faust : Component, Actionable<Action::Faust>, Field::ChangeListener {
     Faust(ComponentArgs &&);
     ~Faust();
@@ -123,18 +134,9 @@ process = _ : pitchshifter;)#");
 
     FaustDSP FaustDsp{Code};
 
-    struct FaustLog : Component {
-        FaustLog(ComponentArgs &&, std::string_view error_message);
-
-        Prop(String, ErrorMessage);
-
-    protected:
-        void Render() const override;
-    };
-
-    Prop_(FaustGraphs, Graphs, "Faust graph");
+    Prop_(FaustGraphs, Graphs, "Faust graphs");
     Prop_(FaustParamsUIs, ParamsUis, "Faust params");
-    Prop_(FaustLog, Log, "Faust log", FaustDsp.ErrorMessage);
+    Prop_(FaustLogs, Logs, "Faust logs");
 
 protected:
     void Render() const override;

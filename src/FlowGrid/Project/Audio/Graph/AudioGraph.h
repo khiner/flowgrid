@@ -3,7 +3,7 @@
 #include "AudioGraphAction.h"
 #include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
-#include "Project/Audio/Faust/FaustDspChangeListener.h"
+#include "Project/Audio/Faust/FaustListener.h"
 #include "Project/Audio/Device/DeviceDataFormat.h"
 
 #include "Core/Container/Vector.h"

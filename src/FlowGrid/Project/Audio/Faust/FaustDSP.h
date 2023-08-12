@@ -1,10 +1,10 @@
 #pragma once
 
+#include <string>
 #include <unordered_set>
 
 #include "Core/Action/Actionable.h"
-#include "FaustBoxChangeListener.h"
-#include "FaustDspChangeListener.h"
+#include "FaustListener.h"
 
 class dsp;
 
@@ -14,6 +14,14 @@ struct FaustDSP {
 
     Box Box;
     dsp *Dsp;
+
+    inline void RegisterChangeListener(FaustChangeListener *listener) const noexcept {
+        ChangeListeners.insert(listener);
+        listener->OnFaustChanged(*this);
+    }
+    inline void UnregisterChangeListener(FaustChangeListener *listener) const noexcept {
+        ChangeListeners.erase(listener);
+    }
 
     inline void RegisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
         BoxChangeListeners.insert(listener);
@@ -39,14 +47,17 @@ private:
     void Init(std::string_view code); // Any resulting error message is set in `ErrorMessage`.
     void Uninit();
 
+    inline void NotifyChangeListeners() const noexcept {
+        for (auto *listener : ChangeListeners) listener->OnFaustChanged(*this);
+    }
     inline void NotifyBoxChangeListeners() const noexcept {
         for (auto *listener : BoxChangeListeners) listener->OnFaustBoxChanged(Box);
     }
-
     inline void NotifyDspChangeListeners() const noexcept {
         for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(Dsp);
     }
 
+    inline static std::unordered_set<FaustChangeListener *> ChangeListeners;
     inline static std::unordered_set<FaustBoxChangeListener *> BoxChangeListeners;
     inline static std::unordered_set<FaustDspChangeListener *> DspChangeListeners;
 };

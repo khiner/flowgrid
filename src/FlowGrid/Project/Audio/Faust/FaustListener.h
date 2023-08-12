@@ -5,7 +5,7 @@
 `Audio.Faust` listens to `Audio.Faust.Code` changes and updates `FaustDSP` instances accordingly.
 
 Components that listen to `FaustDsp` changes:
-- `Audio.Faust.FaustGraph`: A highly configurable, live-updating block diagram of the Faust DSP.
+- `Audio.Faust.FaustGraph`: An extensively configurable, live-updating block diagram of the Faust DSP.
   - By default, `FaustGraph` matches the FlowGrid style (which is ImGui's dark style).
     But it can be configured to exactly match the Faust SVG diagram style.
     `FaustGraph` can also be rendered as an SVG diagram.
@@ -24,8 +24,21 @@ Audio.Faust.Code
 ```
 **/
 
+class CTree;
+typedef CTree *Box;
+
+struct FaustBoxChangeListener {
+    virtual void OnFaustBoxChanged(Box) = 0;
+};
+
 class dsp;
 
 struct FaustDspChangeListener {
     virtual void OnFaustDspChanged(dsp *) = 0;
+};
+
+struct FaustDSP;
+
+struct FaustChangeListener {
+    virtual void OnFaustChanged(const FaustDSP &) = 0;
 };

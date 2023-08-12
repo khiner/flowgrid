@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FaustDspChangeListener.h"
+#include "FaustListener.h"
 #include "FaustParamsUIStyle.h"
 
 class dsp;

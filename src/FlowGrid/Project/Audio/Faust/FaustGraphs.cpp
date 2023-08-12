@@ -1187,7 +1187,9 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
-static std::optional<GroupNode> RootNode{}; // This node is drawn every frame if present.
+// Each root node corresponds to a distinct Faust box.
+// Each box gets its own tab, and drawn every frame.
+static std::vector<GroupNode> RootNodes{};
 static GroupNode CreateRootNode(Tree t) { return {NodeType_Decorate, t, Tree2NodeInner(t)}; }
 
 string GetBoxInfo(u32 id) {
@@ -1199,12 +1201,11 @@ string GetBoxInfo(u32 id) {
 void FaustGraphs::OnFaustBoxChangedInner(Box box) const {
     IsTreePureRouting.clear();
     FocusedNodeStack = {};
+    RootNodes.clear();
     if (box) {
-        RootNode.emplace(CreateRootNode(box));
-        FocusedNodeStack.push(&(*RootNode));
+        RootNodes.emplace_back(CreateRootNode(box));
+        FocusedNodeStack.push(&RootNodes.front());
         Node::ById.clear();
-    } else {
-        RootNode = std::nullopt;
     }
 }
 void FaustGraphs::OnFaustBoxChanged(Box box) {
@@ -1212,12 +1213,12 @@ void FaustGraphs::OnFaustBoxChanged(Box box) {
 }
 
 void SaveBoxSvg(const fs::path &dir_path) {
-    if (!RootNode) return;
+    if (RootNodes.empty()) return;
 
     fs::remove_all(dir_path);
     fs::create_directory(dir_path);
 
-    auto node = CreateRootNode(RootNode->FaustTree); // Create a fresh mutable root node to place and render.
+    auto node = CreateRootNode(RootNodes.front().FaustTree); // Create a fresh mutable root node to place and render.
     node.PlaceSize(DeviceType_SVG);
     node.Place(DeviceType_SVG);
     node.WriteSvg(dir_path);
@@ -1239,7 +1240,7 @@ void FaustGraphs::Apply(const ActionType &action) const {
 bool FaustGraphs::CanApply(const ActionType &) const { return true; }
 
 void FaustGraphs::Render() const {
-    if (!RootNode) {
+    if (RootNodes.empty()) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?
         return;
@@ -1258,7 +1259,7 @@ void FaustGraphs::Render() const {
 
     if (Style.FoldComplexity != FoldComplexity) {
         FoldComplexity = Style.FoldComplexity;
-        OnFaustBoxChangedInner(RootNode->FaustTree);
+        OnFaustBoxChangedInner(RootNodes.front().FaustTree);
     }
 
     {
@@ -1279,7 +1280,7 @@ void FaustGraphs::Render() const {
 
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    if (Node::ById.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
+    if (Node::ById.empty()) RootNodes.front().AddId(GetCurrentWindowRead()->ID);
     GetCurrentWindow()->FontWindowScale = Scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 

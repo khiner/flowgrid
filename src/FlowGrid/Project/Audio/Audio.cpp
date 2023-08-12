@@ -33,7 +33,7 @@ void Audio::Style::Render() const {
             EndTabItem();
         }
         if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.Graph.Style.Draw();
+            audio.Faust.Graphs.Style.Draw();
             EndTabItem();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {

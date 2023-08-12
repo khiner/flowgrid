@@ -1,6 +1,6 @@
 #pragma once
 
-// An audio graph node that uses Faust to generate audio, not to be confused with Faust's own graph node (in `FaustGraph.h`).
+// An audio graph node that uses Faust to generate audio, not to be confused with Faust's graph UI nodes (in `FaustGraphs.h`).
 
 #include "Project/Audio/Graph/AudioGraphNode.h"
 

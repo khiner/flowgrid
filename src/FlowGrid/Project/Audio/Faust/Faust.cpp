@@ -12,7 +12,7 @@ static const std::string FaustDspFileExtension = ".dsp";
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
     Code.RegisterChangeListener(this);
     FaustDsp.RegisterDspChangeListener(&Params);
-    FaustDsp.RegisterBoxChangeListener(&Graph);
+    FaustDsp.RegisterBoxChangeListener(&Graphs);
 }
 Faust::~Faust() {
     FaustDsp.UnregisterDspChangeListener(&Params);
@@ -39,8 +39,8 @@ void Faust::Apply(const ActionType &action) const {
                 [this](const Action::FaustFile::Save &a) { FileIO::write(a.file_path, Code); },
             );
         },
-        [this](const Action::FaustGraph::Any &a) { Graph.Apply(a); },
-        [this](const Action::FaustGraphStyle::Any &a) { Graph.Style.Apply(a); },
+        [this](const Action::FaustGraph::Any &a) { Graphs.Apply(a); },
+        [this](const Action::FaustGraphStyle::Any &a) { Graphs.Style.Apply(a); },
     );
 }
 

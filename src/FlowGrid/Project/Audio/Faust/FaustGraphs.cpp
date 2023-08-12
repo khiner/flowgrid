@@ -1,4 +1,4 @@
-#include "FaustGraph.h"
+#include "FaustGraphs.h"
 
 #include <range/v3/algorithm/contains.hpp>
 #include <range/v3/range/conversion.hpp>
@@ -32,7 +32,7 @@ enum GraphOrientation {
     GraphReverse
 };
 
-static inline auto &Style() { return faust_graph.Style; }
+static inline auto &Style() { return faust_graphs.Style; }
 
 static inline float GetScale();
 static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
@@ -419,7 +419,7 @@ struct Node {
         if (B) B->Draw(device);
 
         if (flags & InteractionFlags_Hovered) {
-            const auto &flags = faust_graph.Settings.HoverFlags;
+            const auto &flags = faust_graphs.Settings.HoverFlags;
             // todo get abs pos by traversing through ancestors
             if (flags & FaustGraphHoverFlags_ShowRect) DrawRect(device);
             if (flags & FaustGraphHoverFlags_ShowType) DrawType(device);
@@ -1196,7 +1196,7 @@ string GetBoxInfo(u32 id) {
     return GetBoxType(node->FaustTree); // Just type for now.
 }
 
-void FaustGraph::OnFaustBoxChangedInner(Box box) const {
+void FaustGraphs::OnFaustBoxChangedInner(Box box) const {
     IsTreePureRouting.clear();
     FocusedNodeStack = {};
     if (box) {
@@ -1207,7 +1207,7 @@ void FaustGraph::OnFaustBoxChangedInner(Box box) const {
         RootNode = std::nullopt;
     }
 }
-void FaustGraph::OnFaustBoxChanged(Box box) {
+void FaustGraphs::OnFaustBoxChanged(Box box) {
     OnFaustBoxChangedInner(box);
 }
 
@@ -1225,7 +1225,7 @@ void SaveBoxSvg(const fs::path &dir_path) {
 
 bool IsBoxHovered(ID imgui_id) { return Node::ById[imgui_id] != nullptr; }
 
-void FaustGraph::Apply(const ActionType &action) const {
+void FaustGraphs::Apply(const ActionType &action) const {
     Visit(
         action,
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
@@ -1236,9 +1236,9 @@ void FaustGraph::Apply(const ActionType &action) const {
     );
 }
 
-bool FaustGraph::CanApply(const ActionType &) const { return true; }
+bool FaustGraphs::CanApply(const ActionType &) const { return true; }
 
-void FaustGraph::Render() const {
+void FaustGraphs::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?

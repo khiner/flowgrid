@@ -3,7 +3,7 @@
 #include "FaustAction.h"
 #include "FaustBox.h"
 #include "FaustDSP.h"
-#include "FaustGraph.h"
+#include "FaustGraphs.h"
 #include "FaustParams.h"
 
 #include "Core/Action/Actionable.h"
@@ -132,7 +132,7 @@ process = _ : pitchshifter;)#");
         void Render() const override;
     };
 
-    Prop_(FaustGraph, Graph, "Faust graph");
+    Prop_(FaustGraphs, Graphs, "Faust graph");
     Prop_(FaustParams, Params, "Faust params");
     Prop_(FaustLog, Log, "Faust log", FaustDsp.ErrorMessage);
 

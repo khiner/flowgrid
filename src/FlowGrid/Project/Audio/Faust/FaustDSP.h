@@ -17,7 +17,7 @@ struct FaustDSP {
 
     inline void RegisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
         BoxChangeListeners.insert(listener);
-        listener->OnFaustBoxChanged(Box); // Notify the listener of the current DSP.
+        listener->OnFaustBoxChanged(Box);
     }
     inline void UnregisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
         BoxChangeListeners.erase(listener);
@@ -25,7 +25,7 @@ struct FaustDSP {
 
     inline void RegisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
         DspChangeListeners.insert(listener);
-        listener->OnFaustDspChanged(Dsp); // Notify the listener of the current DSP.
+        listener->OnFaustDspChanged(Dsp);
     }
     inline void UnregisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
         DspChangeListeners.erase(listener);
@@ -36,7 +36,7 @@ struct FaustDSP {
     std::string ErrorMessage;
 
 private:
-    void Init(std::string_view code); // Returns error message if any.
+    void Init(std::string_view code); // Any resulting error message is set in `ErrorMessage`.
     void Uninit();
 
     inline void NotifyBoxChangeListeners() const noexcept {

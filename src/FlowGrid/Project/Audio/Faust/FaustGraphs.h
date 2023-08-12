@@ -7,8 +7,8 @@
 
 #include "FaustBoxChangeListener.h"
 
-struct FaustGraph : Component, Actionable<Action::FaustGraph::Any>, FaustBoxChangeListener {
-    FaustGraph(ComponentArgs &&args)
+struct FaustGraphs : Component, Actionable<Action::FaustGraph::Any>, FaustBoxChangeListener {
+    FaustGraphs(ComponentArgs &&args)
         : Component(
               std::move(args),
               Menu({
@@ -37,4 +37,4 @@ private:
     void OnFaustBoxChangedInner(Box) const;
 };
 
-extern const FaustGraph &faust_graph;
+extern const FaustGraphs &faust_graphs;

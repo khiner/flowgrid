@@ -13,7 +13,7 @@ Project MainProject{store};
 const Project &project = MainProject;
 const fg::Style &fg::style = project.Style;
 const Faust &faust = project.Audio.Faust;
-const FaustGraph &faust_graph = faust.Graph;
+const FaustGraphs &faust_graphs = faust.Graphs;
 const ImGuiSettings &imgui_settings = project.ImGuiSettings;
 const FileDialog &file_dialog = project.FileDialog;
 const ProjectSettings &project_settings = project.Settings;

@@ -2,19 +2,11 @@
 
 #include "FaustAction.h"
 #include "FaustBox.h"
-#include "FaustDSP.h"
+#include "FaustDSPs.h"
 #include "FaustGraphs.h"
 #include "FaustParamsUIs.h"
 
 #include "Core/Action/Actionable.h"
-#include "Core/Container/Vector.h"
-
-struct FaustDSPs : Vector<FaustDSP> {
-    using Vector<FaustDSP>::Vector;
-
-private:
-    void Render() const override;
-};
 
 struct FaustLogs : Component, FaustChangeListener {
     using Component::Component;

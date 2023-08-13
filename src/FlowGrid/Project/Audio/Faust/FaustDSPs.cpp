@@ -1,4 +1,4 @@
-#include "FaustDSP.h"
+#include "FaustDSPs.h"
 
 #include "Faust.h"
 
@@ -9,9 +9,12 @@
 #include "Project/Audio/AudioIO.h"
 #include "Project/FileDialog/FileDialog.h"
 
+#include "imgui.h"
+
 static const std::string FaustDspFileExtension = ".dsp";
 
-FaustDSP::FaustDSP(ComponentArgs &&args) : Component(std::move(args)) {
+FaustDSP::FaustDSP(ComponentArgs &&args)
+    : Component(std::move(args)), ParentContainer(static_cast<FaustDSPs *>(Parent->Parent)) {
     Code.RegisterChangeListener(this);
     Init();
 }
@@ -37,7 +40,6 @@ void FaustDSP::Init() {
     static int num_inputs, num_outputs;
     Box = DSPToBoxes("FlowGrid", string(Code), argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
     if (!Box) destroyLibContext();
-
     NotifyBoxChangeListeners();
 
     if (Box && ErrorMessage.empty()) {
@@ -51,22 +53,24 @@ void FaustDSP::Init() {
     } else if (!Box && ErrorMessage.empty()) {
         ErrorMessage = "`DSPToBoxes` returned no error but did not produce a result.";
     }
-
     NotifyDspChangeListeners();
 
     NotifyChangeListeners();
 }
 
 void FaustDSP::Uninit() {
-    if (Dsp) {
-        Dsp = nullptr;
-        NotifyDspChangeListeners();
-        delete Dsp;
-        deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
-    }
-    if (Box) {
-        Box = nullptr;
-        NotifyBoxChangeListeners();
+    if (Dsp || Box) {
+        if (Dsp) {
+            Dsp = nullptr;
+            NotifyDspChangeListeners();
+            delete Dsp;
+            deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
+        }
+        if (Box) {
+            Box = nullptr;
+            NotifyBoxChangeListeners();
+        }
+        NotifyChangeListeners();
     }
     destroyLibContext();
     ErrorMessage = "";
@@ -77,9 +81,28 @@ void FaustDSP::Update() {
     if (Dsp && !Code) return Uninit();
 
     Uninit();
-    return Init();
+    Init();
 }
+
+void FaustDSP::NotifyChangeListeners() const { ParentContainer->NotifyChangeListeners(*this); }
+void FaustDSP::NotifyBoxChangeListeners() const { ParentContainer->NotifyBoxChangeListeners(*this); }
+void FaustDSP::NotifyDspChangeListeners() const { ParentContainer->NotifyDspChangeListeners(*this); }
+
+using namespace ImGui;
 
 void FaustDSP::Render() const {
     Code.Draw();
+}
+
+void FaustDSPs::Render() const {
+    if (Empty()) {
+        TextUnformatted("No Faust DSPs created yet.");
+        if (Button("Create Faust DSP")) {
+            // todo
+        }
+        return;
+    }
+    if (Size() == 1) {
+        front()->Draw();
+    }
 }

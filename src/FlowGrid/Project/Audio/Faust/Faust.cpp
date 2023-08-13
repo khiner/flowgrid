@@ -18,18 +18,14 @@ void FaustLogs::OnFaustChanged(ID, const FaustDSP &faust_dsp) {
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
     FaustDsps.WindowFlags |= ImGuiWindowFlags_MenuBar;
     FaustDsps.EmplaceBack_(FaustDspPathSegment);
-    for (auto *faust_dsp : FaustDsps) {
-        faust_dsp->RegisterDspChangeListener(&ParamsUis);
-        faust_dsp->RegisterBoxChangeListener(&Graphs);
-        faust_dsp->RegisterChangeListener(&Logs);
-    }
+    FaustDsps.RegisterDspChangeListener(&ParamsUis);
+    FaustDsps.RegisterBoxChangeListener(&Graphs);
+    FaustDsps.RegisterChangeListener(&Logs);
 }
 Faust::~Faust() {
-    for (auto *faust_dsp : FaustDsps) {
-        faust_dsp->UnregisterChangeListener(&Logs);
-        faust_dsp->UnregisterBoxChangeListener(&Graphs);
-        faust_dsp->UnregisterDspChangeListener(&ParamsUis);
-    }
+    FaustDsps.UnregisterChangeListener(&Logs);
+    FaustDsps.UnregisterBoxChangeListener(&Graphs);
+    FaustDsps.UnregisterDspChangeListener(&ParamsUis);
 }
 
 void Faust::Apply(const ActionType &action) const {
@@ -88,19 +84,6 @@ void Faust::Render() const {
             else Action::FaustFile::Open{selected_path}.q();
         }
         PrevSelectedPath = selected_path;
-    }
-}
-
-void FaustDSPs::Render() const {
-    if (Empty()) {
-        TextUnformatted("No Faust DSPs created yet.");
-        if (Button("Create Faust DSP")) {
-            // todo
-        }
-        return;
-    }
-    if (Size() == 1) {
-        front()->Draw();
     }
 }
 

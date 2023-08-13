@@ -11,6 +11,8 @@ class dsp;
 
 struct FaustDSPs;
 
+// `FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
+// It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
 struct FaustDSP : Component, Field::ChangeListener {
     FaustDSP(ComponentArgs &&);
     ~FaustDSP();
@@ -51,7 +53,7 @@ struct FaustDSPs : Vector<FaustDSP> {
     inline void RegisterChangeListener(FaustChangeListener *listener) const noexcept {
         ChangeListeners.insert(listener);
         for (auto *faust_dsp : *this) {
-            listener->OnFaustChanged(faust_dsp->Id, *faust_dsp);
+            listener->OnFaustAdded(faust_dsp->Id, *faust_dsp);
         }
     }
     inline void UnregisterChangeListener(FaustChangeListener *listener) const noexcept {
@@ -61,7 +63,7 @@ struct FaustDSPs : Vector<FaustDSP> {
     inline void RegisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
         BoxChangeListeners.insert(listener);
         for (auto *faust_dsp : *this) {
-            listener->OnFaustBoxChanged(faust_dsp->Id, faust_dsp->Box);
+            listener->OnFaustBoxAdded(faust_dsp->Id, faust_dsp->Box);
         }
     }
     inline void UnregisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
@@ -71,7 +73,7 @@ struct FaustDSPs : Vector<FaustDSP> {
     inline void RegisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
         DspChangeListeners.insert(listener);
         for (auto *faust_dsp : *this) {
-            listener->OnFaustDspChanged(faust_dsp->Id, faust_dsp->Dsp);
+            listener->OnFaustDspAdded(faust_dsp->Id, faust_dsp->Dsp);
         }
     }
     inline void UnregisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {

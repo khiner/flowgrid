@@ -14,6 +14,12 @@ void FaustLogs::OnFaustChanged(ID, const FaustDSP &faust_dsp) {
     ErrorMessages.clear();
     ErrorMessages.emplace_back(faust_dsp.ErrorMessage);
 }
+void FaustLogs::OnFaustAdded(ID id, const FaustDSP &faust_dsp) {
+    OnFaustChanged(id, faust_dsp);
+}
+void FaustLogs::OnFaustRemoved(ID) {
+    ErrorMessages.clear();
+}
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
     FaustDsps.WindowFlags |= ImGuiWindowFlags_MenuBar;

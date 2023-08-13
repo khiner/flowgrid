@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Primitive/Flags.h"
-#include "FaustBox.h"
 #include "FaustGraphAction.h"
 #include "FaustGraphStyle.h"
 
@@ -21,6 +20,8 @@ struct FaustGraphs : Component, Actionable<Action::FaustGraph::Any>, FaustBoxCha
     bool CanApply(const ActionType &) const override;
 
     void OnFaustBoxChanged(ID, Box) override;
+    void OnFaustBoxAdded(ID, Box) override;
+    void OnFaustBoxRemoved(ID) override;
 
     struct GraphSettings : Component {
         using Component::Component;

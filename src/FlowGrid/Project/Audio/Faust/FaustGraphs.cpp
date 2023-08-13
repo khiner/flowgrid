@@ -11,6 +11,7 @@
 
 #include "imgui_internal.h"
 
+#include "FaustBox.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
@@ -1208,8 +1209,15 @@ void FaustGraphs::OnFaustBoxChangedInner(Box box) const {
         Node::ById.clear();
     }
 }
+
 void FaustGraphs::OnFaustBoxChanged(ID, Box box) {
     OnFaustBoxChangedInner(box);
+}
+void FaustGraphs::OnFaustBoxAdded(ID, Box box) {
+    OnFaustBoxChangedInner(box);
+}
+void FaustGraphs::OnFaustBoxRemoved(ID) {
+    OnFaustBoxChangedInner(nullptr);
 }
 
 void SaveBoxSvg(const fs::path &dir_path) {

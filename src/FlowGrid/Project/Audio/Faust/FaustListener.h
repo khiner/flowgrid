@@ -1,9 +1,6 @@
 #pragma once
 
 /**
-`FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
-It owns a Faust DSP code buffer, and listens to its changes to update its DSP and Box instances.
-
 Components that listen to `FaustDSP` changes:
 - `Audio.Faust.FaustGraphs` (listens to Box): Extensively configurable, live-updating block diagrams for all Faust DSP instances.
   - By default, `FaustGraph` matches the FlowGrid style (which is ImGui's dark style), but it can be configured to exactly match the Faust SVG diagram style.
@@ -29,14 +26,20 @@ class CTree;
 typedef CTree *Box;
 struct FaustBoxChangeListener {
     virtual void OnFaustBoxChanged(ID, Box) = 0;
+    virtual void OnFaustBoxAdded(ID, Box) = 0;
+    virtual void OnFaustBoxRemoved(ID) = 0;
 };
 
 class dsp;
 struct FaustDspChangeListener {
     virtual void OnFaustDspChanged(ID, dsp *) = 0;
+    virtual void OnFaustDspAdded(ID, dsp *) = 0;
+    virtual void OnFaustDspRemoved(ID) = 0;
 };
 
 struct FaustDSP;
 struct FaustChangeListener {
     virtual void OnFaustChanged(ID, const FaustDSP &) = 0;
+    virtual void OnFaustAdded(ID, const FaustDSP &) = 0;
+    virtual void OnFaustRemoved(ID) = 0;
 };

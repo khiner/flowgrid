@@ -1,7 +1,6 @@
 #pragma once
 
 #include "FaustAction.h"
-#include "FaustBox.h"
 #include "FaustDSPs.h"
 #include "FaustGraphs.h"
 #include "FaustParamsUIs.h"
@@ -12,6 +11,8 @@ struct FaustLogs : Component, FaustChangeListener {
     using Component::Component;
 
     void OnFaustChanged(ID, const FaustDSP &) override;
+    void OnFaustAdded(ID, const FaustDSP &) override;
+    void OnFaustRemoved(ID) override;
 
     std::vector<std::string> ErrorMessages;
 

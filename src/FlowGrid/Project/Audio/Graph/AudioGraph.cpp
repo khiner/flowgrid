@@ -523,6 +523,12 @@ void AudioGraph::OnFaustDspChanged(ID, dsp *dsp) {
     }
     UpdateConnections(); // todo only update connections if the dsp change caused a change in the number of channels.
 }
+void AudioGraph::OnFaustDspAdded(ID id, dsp *dsp) {
+    OnFaustDspChanged(id, dsp);
+}
+void AudioGraph::OnFaustDspRemoved(ID id) {
+    OnFaustDspChanged(id, nullptr);
+}
 
 void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(); }
 

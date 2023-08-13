@@ -18,6 +18,7 @@ FaustDSP::FaustDSP(ComponentArgs &&args)
     Code.RegisterChangeListener(this);
     Init();
 }
+
 FaustDSP::~FaustDSP() {
     Uninit();
     Field::UnregisterChangeListener(this);

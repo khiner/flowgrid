@@ -24,3 +24,9 @@ void FaustParamsUIs::OnFaustDspChanged(ID, dsp *dsp) {
         dsp->buildUserInterface(&Uis.front());
     }
 }
+void FaustParamsUIs::OnFaustDspAdded(ID id, dsp *dsp) {
+    OnFaustDspChanged(id, dsp);
+}
+void FaustParamsUIs::OnFaustDspRemoved(ID id) {
+    OnFaustDspChanged(id, nullptr);
+}

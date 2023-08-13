@@ -8,6 +8,7 @@
 #include "Project/FileDialog/FileDialog.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
+static const std::string FaustDspPathSegment = "FaustDSP";
 
 void FaustLogs::OnFaustChanged(const FaustDSP &faust_dsp) {
     ErrorMessages.clear();
@@ -15,14 +16,20 @@ void FaustLogs::OnFaustChanged(const FaustDSP &faust_dsp) {
 }
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
-    FaustDsp.RegisterDspChangeListener(&ParamsUis);
-    FaustDsp.RegisterBoxChangeListener(&Graphs);
-    FaustDsp.RegisterChangeListener(&Logs);
+    FaustDsps.WindowFlags |= ImGuiWindowFlags_MenuBar;
+    FaustDsps.EmplaceBack_(FaustDspPathSegment);
+    for (auto *faust_dsp : FaustDsps) {
+        faust_dsp->RegisterDspChangeListener(&ParamsUis);
+        faust_dsp->RegisterBoxChangeListener(&Graphs);
+        faust_dsp->RegisterChangeListener(&Logs);
+    }
 }
 Faust::~Faust() {
-    FaustDsp.UnregisterChangeListener(&Logs);
-    FaustDsp.UnregisterBoxChangeListener(&Graphs);
-    FaustDsp.UnregisterDspChangeListener(&ParamsUis);
+    for (auto *faust_dsp : FaustDsps) {
+        faust_dsp->UnregisterChangeListener(&Logs);
+        faust_dsp->UnregisterBoxChangeListener(&Graphs);
+        faust_dsp->UnregisterDspChangeListener(&ParamsUis);
+    }
 }
 
 void Faust::Apply(const ActionType &action) const {
@@ -33,8 +40,14 @@ void Faust::Apply(const ActionType &action) const {
                 a,
                 [](const Action::FaustFile::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
                 [](const Action::FaustFile::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
-                [this](const Action::FaustFile::Open &a) { FaustDsp.Code.Set(FileIO::read(a.file_path)); },
-                [this](const Action::FaustFile::Save &a) { FileIO::write(a.file_path, FaustDsp.Code); },
+                [this](const Action::FaustFile::Open &a) {
+                    if (FaustDsps.Empty()) return;
+                    FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
+                },
+                [this](const Action::FaustFile::Save &a) {
+                    if (FaustDsps.Empty()) return;
+                    FileIO::write(a.file_path, FaustDsps.front()->Code);
+                },
             );
         },
         [this](const Action::FaustGraph::Any &a) { Graphs.Apply(a); },
@@ -78,6 +91,19 @@ void Faust::Render() const {
     }
 }
 
+void FaustDSPs::Render() const {
+    if (Empty()) {
+        TextUnformatted("No Faust DSPs created yet.");
+        if (Button("Create Faust DSP")) {
+            // todo
+        }
+        return;
+    }
+    if (Size() == 1) {
+        front()->Draw();
+    }
+}
+
 void FaustLogs::Render() const {
     PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
     for (const auto &error_message : ErrorMessages) {
@@ -85,5 +111,3 @@ void FaustLogs::Render() const {
     }
     PopStyleColor();
 }
-
-// void FaustLogs::OnFaustChanged(const FaustDsp &faust) {}

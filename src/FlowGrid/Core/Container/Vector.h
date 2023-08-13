@@ -28,7 +28,9 @@ We need to store this in an auxiliary store member since child component members
 template<typename ChildType> struct Vector : Field {
     using CreatorFunction = std::function<std::unique_ptr<ChildType>(Component *, string_view path_prefix_segment, string_view path_segment)>;
 
-    Vector(ComponentArgs &&args, CreatorFunction creator)
+    Vector(ComponentArgs &&args, CreatorFunction creator = [](Component *parent, string_view path_prefix_segment, string_view path_segment) {
+        return std::make_unique<ChildType>(ComponentArgs{parent, path_segment, path_prefix_segment});
+    })
         : Field(std::move(args)), Creator(std::move(creator)) {
         ComponentContainerFields.insert(Id);
         ComponentContainerAuxiliaryFields.insert(ChildPrefixes.Id);
@@ -39,6 +41,7 @@ template<typename ChildType> struct Vector : Field {
     }
 
     inline void Clear() { Value.clear(); }
+    bool Empty() const { return Value.empty(); }
 
     inline static std::pair<std::string, std::string> GetPathPrefixAndSegment(StorePath relative_path) {
         auto it = relative_path.begin();
@@ -108,6 +111,7 @@ template<typename ChildType> struct Vector : Field {
     auto View() const { return std::views::all(Value); }
 
     ChildType *back() const { return Value.back().get(); }
+    ChildType *front() const { return Value.front().get(); }
     ChildType *operator[](u32 i) const { return Value[i].get(); }
 
     inline ChildType *Find(ID id) const {

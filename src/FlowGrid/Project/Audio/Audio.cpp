@@ -2,15 +2,16 @@
 
 #include "imgui.h"
 
-// todo support loopback mode? (think of use cases)
-// todo explicit re-scan action.
-
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
-    Faust.FaustDsp.RegisterDspChangeListener(&Graph);
+    for (auto *faust_dsp : Faust.FaustDsps) {
+        faust_dsp->RegisterDspChangeListener(&Graph);
+    }
 }
 
 Audio::~Audio() {
-    Faust.FaustDsp.UnregisterDspChangeListener(&Graph);
+    for (auto *faust_dsp : Faust.FaustDsps) {
+        faust_dsp->UnregisterDspChangeListener(&Graph);
+    }
 }
 
 void Audio::Apply(const ActionType &action) const {

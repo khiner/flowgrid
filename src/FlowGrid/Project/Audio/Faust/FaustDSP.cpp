@@ -79,3 +79,7 @@ void FaustDSP::Update() {
     Uninit();
     return Init();
 }
+
+void FaustDSP::Render() const {
+    Code.Draw();
+}

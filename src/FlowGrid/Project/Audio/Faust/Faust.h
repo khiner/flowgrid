@@ -7,6 +7,14 @@
 #include "FaustParamsUIs.h"
 
 #include "Core/Action/Actionable.h"
+#include "Core/Container/Vector.h"
+
+struct FaustDSPs : Vector<FaustDSP> {
+    using Vector<FaustDSP>::Vector;
+
+private:
+    void Render() const override;
+};
 
 struct FaustLogs : Component, FaustChangeListener {
     using Component::Component;
@@ -15,7 +23,7 @@ struct FaustLogs : Component, FaustChangeListener {
 
     std::vector<std::string> ErrorMessages;
 
-protected:
+private:
     void Render() const override;
 };
 
@@ -26,7 +34,7 @@ struct Faust : Component, Actionable<Action::Faust> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    Prop(FaustDSP, FaustDsp);
+    Prop(FaustDSPs, FaustDsps);
 
     Prop_(FaustGraphs, Graphs, "Faust graphs");
     Prop_(FaustParamsUIs, ParamsUis, "Faust params");

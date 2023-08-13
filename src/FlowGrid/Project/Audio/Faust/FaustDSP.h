@@ -54,6 +54,8 @@ process = _ : pitchshifter;)#");
     std::string ErrorMessage;
 
 private:
+    void Render() const override;
+
     void Init(); // Any resulting error message is set in `ErrorMessage`.
     void Uninit();
 

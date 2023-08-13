@@ -18,4 +18,5 @@ struct TextBuffer : PrimitiveField<string>, Actionable<Action::TextBuffer::Any> 
 
 private:
     void Render() const override;
+    void RenderMenu() const;
 };

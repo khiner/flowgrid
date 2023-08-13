@@ -21,7 +21,7 @@ using namespace ImGui;
 
 static TextEditor editor;
 
-void TextBuffer::Render() const {
+void TextBuffer::RenderMenu() const {
     if (ImGui::BeginMenuBar()) {
         FileMenu.Draw();
         if (ImGui::BeginMenu("Edit")) {
@@ -50,6 +50,10 @@ void TextBuffer::Render() const {
         }
         ImGui::EndMenuBar();
     }
+}
+
+void TextBuffer::Render() const {
+    RenderMenu();
 
     static bool initialized = false;
     static auto lang = TextEditor::LanguageDefT::CPlusPlus();

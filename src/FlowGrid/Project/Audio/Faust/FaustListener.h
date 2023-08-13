@@ -1,26 +1,25 @@
 #pragma once
 
 /**
-`FaustDSP` is a wrapper around Faust DSP/Box instances.
-`Audio.Faust` listens to `Audio.Faust.Code` changes and updates `FaustDSP` instances accordingly.
+`FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
+It owns a Faust DSP code buffer, and listens to its changes to update its DSP and Box instances.
 
-Components that listen to `FaustDsp` changes:
-- `Audio.Faust.FaustGraph`: An extensively configurable, live-updating block diagram of the Faust DSP.
-  - By default, `FaustGraph` matches the FlowGrid style (which is ImGui's dark style).
-    But it can be configured to exactly match the Faust SVG diagram style.
+Components that listen to `FaustDSP` changes:
+- `Audio.Faust.FaustGraphs` (listens to Box): Extensively configurable, live-updating block diagrams for all Faust DSP instances.
+  - By default, `FaustGraph` matches the FlowGrid style (which is ImGui's dark style), but it can be configured to exactly match the Faust SVG diagram style.
     `FaustGraph` can also be rendered as an SVG diagram.
-    `FaustGraph.Style` should be the same as the one produced by `faust2svg` with the same DSP code (at least visually!)
-- `Audio.Faust.Params`: Interface for the Faust DSP params. TODO: Not undoable yet.
-- `Audio.Graph.Nodes.Faust`: Updates the MiniAudio node and graph connections to reflect the new DSP.
+    When the graph style is set to the 'Faust' preset, it should look the same as the one produced by `faust2svg` with the same DSP code.
+- `Audio.Faust.Params` (listens to DSP): Interfaces for the params for each Faust DSP instance. TODO: Not undoable yet.
+- `Audio.Faust.Logs` (listens to FaustDSP, accesses error messages): A window to display Faust compilation errors.
 
 Here is the chain of notifications/updates in response to a Faust DSP code change:
 ```
-Audio.Faust.Code
-    -> Audio.Faust
-        -> Audio.Faust.FaustDSP
-            -> Audio.Faust.FaustGraph
-            -> Audio.Faust.FaustParams
-            -> Audio.Graph.Nodes.Faust
+Audio.Faust.FaustDsp.Code -> Audio.Faust.FaustDsp
+    -> Audio.Faust.FaustGraphs
+    -> Audio.Faust.FaustParams
+    -> Audio.Faust.FaustLogs
+    -> Audio
+        -> Audio.Graph.Nodes.Faust
 ```
 **/
 
@@ -38,7 +37,6 @@ struct FaustDspChangeListener {
 };
 
 struct FaustDSP;
-
 struct FaustChangeListener {
     virtual void OnFaustChanged(ID, const FaustDSP &) = 0;
 };

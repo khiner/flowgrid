@@ -771,6 +771,8 @@ DefineQ(Style::SetFlowGridColorPreset);
 DefineQ(AudioGraph::CreateNode);
 DefineQ(AudioGraph::DeleteNode);
 DefineQ(AudioGraph::SetDeviceDataFormat);
+DefineQ(Faust::DSP::Create);
+DefineQ(Faust::DSP::Delete);
 DefineQ(Faust::File::ShowOpenDialog);
 DefineQ(Faust::File::ShowSaveDialog);
 DefineQ(Faust::File::Save);

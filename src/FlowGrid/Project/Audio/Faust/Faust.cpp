@@ -37,6 +37,9 @@ Faust::~Faust() {
 void Faust::Apply(const ActionType &action) const {
     Visit(
         action,
+        [this](const Action::Faust::DSP::Any &a) { FaustDsps.Apply(a); },
+        [this](const Action::Faust::Graph::Any &a) { Graphs.Apply(a); },
+        [this](const Action::Faust::GraphStyle::Any &a) { Graphs.Style.Apply(a); },
         [this](const Action::Faust::File::Any &a) {
             Visit(
                 a,
@@ -52,8 +55,7 @@ void Faust::Apply(const ActionType &action) const {
                 },
             );
         },
-        [this](const Action::Faust::Graph::Any &a) { Graphs.Apply(a); },
-        [this](const Action::Faust::GraphStyle::Any &a) { Graphs.Style.Apply(a); },
+
     );
 }
 

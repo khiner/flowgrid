@@ -1,10 +1,10 @@
 #pragma once
 
-#include <string>
 #include <unordered_set>
 
 #include "Core/Container/TextBuffer.h"
 #include "Core/Container/Vector.h"
+#include "FaustDSPAction.h"
 #include "FaustListener.h"
 
 class dsp;
@@ -47,8 +47,11 @@ private:
     FaustDSPs *ParentContainer;
 };
 
-struct FaustDSPs : Vector<FaustDSP> {
+struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
     using Vector<FaustDSP>::Vector;
+
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override { return true; }
 
     inline void RegisterChangeListener(FaustChangeListener *listener) const noexcept {
         ChangeListeners.insert(listener);

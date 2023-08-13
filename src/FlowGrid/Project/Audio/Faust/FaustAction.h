@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FaustDSPAction.h"
 #include "FaustGraphAction.h"
 #include "FaustGraphStyleAction.h"
 
@@ -18,5 +19,5 @@ DefineNestedActionType(
 
 DefineActionType(
     Faust,
-    using Any = Combine<Faust::File::Any, Faust::Graph::Any, Faust::GraphStyle::Any>;
+    using Any = Combine<Faust::DSP::Any, Faust::File::Any, Faust::Graph::Any, Faust::GraphStyle::Any>;
 );

@@ -1,7 +1,5 @@
 #include "FaustDSPs.h"
 
-#include "Faust.h"
-
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
@@ -89,6 +87,16 @@ void FaustDSP::NotifyChangeListeners() const { ParentContainer->NotifyChangeList
 void FaustDSP::NotifyBoxChangeListeners() const { ParentContainer->NotifyBoxChangeListeners(*this); }
 void FaustDSP::NotifyDspChangeListeners() const { ParentContainer->NotifyDspChangeListeners(*this); }
 
+void FaustDSPs::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [this](const Action::Faust::DSP::Create &) {
+        },
+        [this](const Action::Faust::DSP::Delete &) {
+        },
+    );
+}
+
 using namespace ImGui;
 
 void FaustDSP::Render() const {
@@ -98,9 +106,7 @@ void FaustDSP::Render() const {
 void FaustDSPs::Render() const {
     if (Empty()) {
         TextUnformatted("No Faust DSPs created yet.");
-        if (Button("Create Faust DSP")) {
-            // todo
-        }
+        if (Button("Create Faust DSP")) Action::Faust::DSP::Create().q();
         return;
     }
     if (Size() == 1) {

@@ -6,7 +6,7 @@
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/UI.h"
 
-static const Menu FileMenu = {"File", {Action::FaustFile::ShowOpenDialog::MenuItem, Action::FaustFile::ShowSaveDialog::MenuItem}};
+static const Menu FileMenu = {"File", {Action::Faust::File::ShowOpenDialog::MenuItem, Action::Faust::File::ShowSaveDialog::MenuItem}};
 
 TextBuffer::TextBuffer(ComponentArgs &&args, string_view value) : PrimitiveField(std::move(args), string(value)) {}
 

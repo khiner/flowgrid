@@ -1238,10 +1238,10 @@ void FaustGraphs::Apply(const ActionType &action) const {
     Visit(
         action,
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
-        [](const Action::FaustGraph::ShowSaveSvgDialog &) {
-            file_dialog.Set({Action::FaustGraph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
+        [](const Action::Faust::Graph::ShowSaveSvgDialog &) {
+            file_dialog.Set({Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
         },
-        [](const Action::FaustGraph::SaveSvgFile &a) { SaveBoxSvg(a.dir_path); },
+        [](const Action::Faust::Graph::SaveSvgFile &a) { SaveBoxSvg(a.dir_path); },
     );
 }
 
@@ -1257,8 +1257,8 @@ void FaustGraphs::Render() const {
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
         const fs::path selected_path = file_dialog.SelectedFilePath;
-        if (file_dialog.Title == Action::FaustGraph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
-            Action::FaustGraph::SaveSvgFile{selected_path}.q();
+        if (file_dialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
+            Action::Faust::Graph::SaveSvgFile{selected_path}.q();
         }
         PrevSelectedPath = selected_path;
     }

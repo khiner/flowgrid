@@ -3,8 +3,8 @@
 #include "FaustGraphAction.h"
 #include "FaustGraphStyleAction.h"
 
-DefineActionType(
-    FaustFile,
+DefineNestedActionType(
+    Faust, File,
     DefineUnsavedAction(ShowOpenDialog, Merge, "~Open DSP file");
     DefineUnsavedAction(ShowSaveDialog, Merge, "~Save DSP as...");
     DefineAction(Open, CustomMerge, "", fs::path file_path;);
@@ -16,6 +16,7 @@ DefineActionType(
     using Any = ActionVariant<ShowOpenDialog, ShowSaveDialog, Save, Open>;
 );
 
-namespace Action {
-using Faust = Combine<FaustFile::Any, FaustGraph::Any, FaustGraphStyle::Any>;
-} // namespace Action
+DefineActionType(
+    Faust,
+    using Any = Combine<Faust::File::Any, Faust::Graph::Any, Faust::GraphStyle::Any>;
+);

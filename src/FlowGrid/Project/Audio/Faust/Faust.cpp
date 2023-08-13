@@ -37,23 +37,23 @@ Faust::~Faust() {
 void Faust::Apply(const ActionType &action) const {
     Visit(
         action,
-        [this](const Action::FaustFile::Any &a) {
+        [this](const Action::Faust::File::Any &a) {
             Visit(
                 a,
-                [](const Action::FaustFile::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
-                [](const Action::FaustFile::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
-                [this](const Action::FaustFile::Open &a) {
+                [](const Action::Faust::File::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
+                [](const Action::Faust::File::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
+                [this](const Action::Faust::File::Open &a) {
                     if (FaustDsps.Empty()) return;
                     FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
                 },
-                [this](const Action::FaustFile::Save &a) {
+                [this](const Action::Faust::File::Save &a) {
                     if (FaustDsps.Empty()) return;
                     FileIO::write(a.file_path, FaustDsps.front()->Code);
                 },
             );
         },
-        [this](const Action::FaustGraph::Any &a) { Graphs.Apply(a); },
-        [this](const Action::FaustGraphStyle::Any &a) { Graphs.Style.Apply(a); },
+        [this](const Action::Faust::Graph::Any &a) { Graphs.Apply(a); },
+        [this](const Action::Faust::GraphStyle::Any &a) { Graphs.Style.Apply(a); },
     );
 }
 
@@ -86,8 +86,8 @@ void Faust::Render() const {
         const fs::path selected_path = file_dialog.SelectedFilePath;
         const string &extension = selected_path.extension();
         if (extension == FaustDspFileExtension) {
-            if (file_dialog.SaveMode) Action::FaustFile::Save{selected_path}.q();
-            else Action::FaustFile::Open{selected_path}.q();
+            if (file_dialog.SaveMode) Action::Faust::File::Save{selected_path}.q();
+            else Action::Faust::File::Open{selected_path}.q();
         }
         PrevSelectedPath = selected_path;
     }

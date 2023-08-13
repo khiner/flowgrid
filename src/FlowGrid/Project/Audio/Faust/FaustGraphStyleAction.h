@@ -2,8 +2,8 @@
 
 #include "Core/Action/DefineAction.h"
 
-DefineActionType(
-    FaustGraphStyle,
+DefineNestedActionType(
+    Faust, GraphStyle,
     DefineAction(ApplyColorPreset, Merge, "", int id;);
     DefineAction(ApplyLayoutPreset, Merge, "", int id;);
 

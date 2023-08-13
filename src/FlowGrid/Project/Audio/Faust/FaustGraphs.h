@@ -6,12 +6,12 @@
 
 #include "FaustListener.h"
 
-struct FaustGraphs : Component, Actionable<Action::FaustGraph::Any>, FaustBoxChangeListener {
+struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, FaustBoxChangeListener {
     FaustGraphs(ComponentArgs &&args)
         : Component(
               std::move(args),
               Menu({
-                  Menu("File", {Action::FaustGraph::ShowSaveSvgDialog::MenuItem}),
+                  Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
                   Menu("View", {Settings.HoverFlags}),
               })
           ) {}

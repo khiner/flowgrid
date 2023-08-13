@@ -2,8 +2,8 @@
 
 #include "Core/Action/DefineAction.h"
 
-DefineActionType(
-    FaustGraph,
+DefineNestedActionType(
+    Faust, Graph,
     DefineAction(ShowSaveSvgDialog, Merge, "~Export SVG");
     Json(ShowSaveSvgDialog);
 

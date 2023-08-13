@@ -20,7 +20,7 @@ private:
     void Render() const override;
 };
 
-struct Faust : Component, Actionable<Action::Faust> {
+struct Faust : Component, Actionable<Action::Faust::Any> {
     Faust(ComponentArgs &&);
     ~Faust();
 

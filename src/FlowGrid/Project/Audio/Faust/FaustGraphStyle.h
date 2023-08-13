@@ -39,7 +39,7 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraphStyle : Component, Actionable<Action::FaustGraphStyle::Any> {
+struct FaustGraphStyle : Component, Actionable<Action::Faust::GraphStyle::Any> {
     FaustGraphStyle(ComponentArgs &&);
 
     void Apply(const ActionType &) const override;

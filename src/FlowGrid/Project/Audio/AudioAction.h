@@ -6,5 +6,5 @@
 DefineActionType(
     Audio,
 
-    using Any = Combine<Faust, AudioGraph::Any>;
+    using Any = Combine<Faust::Any, AudioGraph::Any>;
 );

@@ -8,7 +8,6 @@
 #include "Project/FileDialog/FileDialog.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
-static const std::string FaustDspPathSegment = "FaustDSP";
 
 void FaustLogs::OnFaustChanged(ID, const FaustDSP &faust_dsp) {
     ErrorMessages.clear();
@@ -22,8 +21,6 @@ void FaustLogs::OnFaustRemoved(ID) {
 }
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
-    FaustDsps.WindowFlags |= ImGuiWindowFlags_MenuBar;
-    FaustDsps.EmplaceBack_(FaustDspPathSegment);
     FaustDsps.RegisterDspChangeListener(&ParamsUis);
     FaustDsps.RegisterBoxChangeListener(&Graphs);
     FaustDsps.RegisterChangeListener(&Logs);

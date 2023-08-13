@@ -8,6 +8,8 @@
 
 struct FaustMaNode : MaNode {
     FaustMaNode(ma_node_graph *graph, dsp *dsp, u32 sample_rate) {
+        if (dsp == nullptr) throw std::runtime_error("Attempting to create a Faust node with a null DSP.");
+
         auto config = ma_faust_node_config_init(dsp, sample_rate);
         ma_result result = ma_faust_node_init(graph, &config, nullptr, &_Node);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", int(result)));

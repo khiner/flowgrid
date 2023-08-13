@@ -9,16 +9,18 @@
 
 #include "imgui.h"
 
+using enum NotificationType;
+
 static const std::string FaustDspFileExtension = ".dsp";
 
 FaustDSP::FaustDSP(ComponentArgs &&args)
     : Component(std::move(args)), ParentContainer(static_cast<FaustDSPs *>(Parent->Parent)) {
     Code.RegisterChangeListener(this);
-    Init();
+    if (Code) Init(true);
 }
 
 FaustDSP::~FaustDSP() {
-    Uninit();
+    Uninit(true);
     Field::UnregisterChangeListener(this);
 }
 
@@ -26,8 +28,8 @@ void FaustDSP::OnFieldChanged() {
     if (Code.IsChanged()) Update();
 }
 
-void FaustDSP::Init() {
-    if (Dsp || !Code) return Uninit();
+void FaustDSP::Init(bool constructing) {
+    if (Dsp || !Code) return Uninit(false);
 
     createLibContext();
 
@@ -35,11 +37,13 @@ void FaustDSP::Init() {
     std::vector<const char *> argv = {"-I", libraries_path};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
 
+    const auto notification_type = constructing ? Added : Changed;
+
     const int argc = argv.size();
     static int num_inputs, num_outputs;
     Box = DSPToBoxes("FlowGrid", string(Code), argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
     if (!Box) destroyLibContext();
-    NotifyBoxChangeListeners();
+    NotifyBoxListeners(notification_type);
 
     if (Box && ErrorMessage.empty()) {
         static llvm_dsp_factory *dsp_factory;
@@ -52,48 +56,56 @@ void FaustDSP::Init() {
     } else if (!Box && ErrorMessage.empty()) {
         ErrorMessage = "`DSPToBoxes` returned no error but did not produce a result.";
     }
-    NotifyDspChangeListeners();
+    NotifyDspListeners(notification_type);
 
-    NotifyChangeListeners();
+    NotifyListeners(notification_type);
 }
 
-void FaustDSP::Uninit() {
+void FaustDSP::Uninit(bool destructing) {
     if (Dsp || Box) {
+        const auto notification_type = destructing ? Removed : Changed;
         if (Dsp) {
             Dsp = nullptr;
-            NotifyDspChangeListeners();
+            NotifyDspListeners(notification_type);
             delete Dsp;
             deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
         }
         if (Box) {
             Box = nullptr;
-            NotifyBoxChangeListeners();
+            NotifyBoxListeners(notification_type);
         }
-        NotifyChangeListeners();
+        NotifyListeners(notification_type);
     }
     destroyLibContext();
     ErrorMessage = "";
 }
 
 void FaustDSP::Update() {
-    if (!Dsp && Code) return Init();
-    if (Dsp && !Code) return Uninit();
+    if (!Dsp && Code) return Init(false);
+    if (Dsp && !Code) return Uninit(false);
 
-    Uninit();
-    Init();
+    Uninit(false);
+    Init(false);
 }
 
-void FaustDSP::NotifyChangeListeners() const { ParentContainer->NotifyChangeListeners(*this); }
-void FaustDSP::NotifyBoxChangeListeners() const { ParentContainer->NotifyBoxChangeListeners(*this); }
-void FaustDSP::NotifyDspChangeListeners() const { ParentContainer->NotifyDspChangeListeners(*this); }
+void FaustDSP::NotifyBoxListeners(NotificationType type) const { ParentContainer->NotifyBoxListeners(type, *this); }
+void FaustDSP::NotifyDspListeners(NotificationType type) const { ParentContainer->NotifyDspListeners(type, *this); }
+void FaustDSP::NotifyListeners(NotificationType type) const { ParentContainer->NotifyListeners(type, *this); }
+
+static const std::string FaustDspPathSegment = "FaustDSP";
+
+FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector<FaustDSP>(std::move(args)) {
+    WindowFlags |= ImGuiWindowFlags_MenuBar;
+    // EmplaceBack_(FaustDspPathSegment);
+}
+
+FaustDSPs::~FaustDSPs() {}
 
 void FaustDSPs::Apply(const ActionType &action) const {
     Visit(
         action,
-        [this](const Action::Faust::DSP::Create &) {
-        },
-        [this](const Action::Faust::DSP::Delete &) {
-        },
+        [this](const Action::Faust::DSP::Create &) { EmplaceBack(FaustDspPathSegment); },
+        [this](const Action::Faust::DSP::Delete &a) { EraseId(a.id); },
     );
 }
 

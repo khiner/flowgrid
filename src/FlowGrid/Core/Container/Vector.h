@@ -28,9 +28,11 @@ We need to store this in an auxiliary store member since child component members
 template<typename ChildType> struct Vector : Field {
     using CreatorFunction = std::function<std::unique_ptr<ChildType>(Component *, string_view path_prefix_segment, string_view path_segment)>;
 
-    Vector(ComponentArgs &&args, CreatorFunction creator = [](Component *parent, string_view path_prefix_segment, string_view path_segment) {
-        return std::make_unique<ChildType>(ComponentArgs{parent, path_segment, path_prefix_segment});
-    })
+    inline static CreatorFunction DefaultCreator = [](Component *parent, string_view path_prefix_segment, string_view path_segment) {
+        return std::make_unique<ChildType>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+    };
+
+    Vector(ComponentArgs &&args, CreatorFunction creator = DefaultCreator)
         : Field(std::move(args)), Creator(std::move(creator)) {
         ComponentContainerFields.insert(Id);
         ComponentContainerAuxiliaryFields.insert(ChildPrefixes.Id);

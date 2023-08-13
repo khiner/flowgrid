@@ -11,6 +11,12 @@ class dsp;
 
 struct FaustDSPs;
 
+enum NotificationType {
+    Changed,
+    Added,
+    Removed
+};
+
 // `FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
 struct FaustDSP : Component, Field::ChangeListener {
@@ -37,18 +43,19 @@ process = _ : pitchshifter;)#");
 private:
     void Render() const override;
 
-    void Init(); // Any resulting error message is set in `ErrorMessage`.
-    void Uninit();
+    void Init(bool constructing);
+    void Uninit(bool destructing);
 
-    void NotifyChangeListeners() const;
-    void NotifyBoxChangeListeners() const;
-    void NotifyDspChangeListeners() const;
+    void NotifyBoxListeners(NotificationType) const;
+    void NotifyDspListeners(NotificationType) const;
+    void NotifyListeners(NotificationType) const;
 
     FaustDSPs *ParentContainer;
 };
 
 struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
-    using Vector<FaustDSP>::Vector;
+    FaustDSPs(ComponentArgs &&);
+    ~FaustDSPs();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
@@ -83,14 +90,26 @@ struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
         DspChangeListeners.erase(listener);
     }
 
-    inline void NotifyChangeListeners(const FaustDSP &faust_dsp) const noexcept {
-        for (auto *listener : ChangeListeners) listener->OnFaustChanged(Id, faust_dsp);
+    inline void NotifyListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {
+        for (auto *listener : ChangeListeners) {
+            if (type == Changed) listener->OnFaustChanged(Id, faust_dsp);
+            else if (type == Added) listener->OnFaustAdded(Id, faust_dsp);
+            else if (type == Removed) listener->OnFaustRemoved(Id);
+        }
     }
-    inline void NotifyBoxChangeListeners(const FaustDSP &faust_dsp) const noexcept {
-        for (auto *listener : BoxChangeListeners) listener->OnFaustBoxChanged(Id, faust_dsp.Box);
+    inline void NotifyBoxListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {
+        for (auto *listener : BoxChangeListeners) {
+            if (type == Changed) listener->OnFaustBoxChanged(Id, faust_dsp.Box);
+            else if (type == Added) listener->OnFaustBoxAdded(Id, faust_dsp.Box);
+            else if (type == Removed) listener->OnFaustBoxRemoved(Id);
+        }
     }
-    inline void NotifyDspChangeListeners(const FaustDSP &faust_dsp) const noexcept {
-        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(Id, faust_dsp.Dsp);
+    inline void NotifyDspListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {
+        for (auto *listener : DspChangeListeners) {
+            if (type == Changed) listener->OnFaustDspChanged(Id, faust_dsp.Dsp);
+            else if (type == Added) listener->OnFaustDspAdded(Id, faust_dsp.Dsp);
+            else if (type == Removed) listener->OnFaustDspRemoved(Id);
+        }
     }
 
 private:

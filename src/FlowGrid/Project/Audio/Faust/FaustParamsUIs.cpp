@@ -17,7 +17,7 @@ void FaustParamsUIs::Render() const {
     Uis.front().Render();
 }
 
-void FaustParamsUIs::OnFaustDspChanged(dsp *dsp) {
+void FaustParamsUIs::OnFaustDspChanged(ID, dsp *dsp) {
     Uis.clear();
     if (dsp) {
         Uis.emplace_back(Style);

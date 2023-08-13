@@ -19,7 +19,7 @@ private:
 struct FaustLogs : Component, FaustChangeListener {
     using Component::Component;
 
-    void OnFaustChanged(const FaustDSP &) override;
+    void OnFaustChanged(ID, const FaustDSP &) override;
 
     std::vector<std::string> ErrorMessages;
 

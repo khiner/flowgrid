@@ -1208,7 +1208,7 @@ void FaustGraphs::OnFaustBoxChangedInner(Box box) const {
         Node::ById.clear();
     }
 }
-void FaustGraphs::OnFaustBoxChanged(Box box) {
+void FaustGraphs::OnFaustBoxChanged(ID, Box box) {
     OnFaustBoxChangedInner(box);
 }
 

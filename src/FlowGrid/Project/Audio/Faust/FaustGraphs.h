@@ -20,7 +20,7 @@ struct FaustGraphs : Component, Actionable<Action::FaustGraph::Any>, FaustBoxCha
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    void OnFaustBoxChanged(Box) override;
+    void OnFaustBoxChanged(ID, Box) override;
 
     struct GraphSettings : Component {
         using Component::Component;

@@ -24,21 +24,21 @@ Audio.Faust.Code
 ```
 **/
 
+using ID = unsigned int;
+
 class CTree;
 typedef CTree *Box;
-
 struct FaustBoxChangeListener {
-    virtual void OnFaustBoxChanged(Box) = 0;
+    virtual void OnFaustBoxChanged(ID, Box) = 0;
 };
 
 class dsp;
-
 struct FaustDspChangeListener {
-    virtual void OnFaustDspChanged(dsp *) = 0;
+    virtual void OnFaustDspChanged(ID, dsp *) = 0;
 };
 
 struct FaustDSP;
 
 struct FaustChangeListener {
-    virtual void OnFaustChanged(const FaustDSP &) = 0;
+    virtual void OnFaustChanged(ID, const FaustDSP &) = 0;
 };

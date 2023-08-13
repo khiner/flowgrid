@@ -512,7 +512,7 @@ std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
     return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
 }
 
-void AudioGraph::OnFaustDspChanged(dsp *dsp) {
+void AudioGraph::OnFaustDspChanged(ID, dsp *dsp) {
     const auto *faust_node = FindByPathSegment(FaustNodeTypeId);
     FaustDsp = dsp;
     if (!dsp && faust_node) {

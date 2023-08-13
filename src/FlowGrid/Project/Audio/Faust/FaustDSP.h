@@ -16,7 +16,7 @@ struct FaustDSP : Component, Field::ChangeListener {
 
     inline void RegisterChangeListener(FaustChangeListener *listener) const noexcept {
         ChangeListeners.insert(listener);
-        listener->OnFaustChanged(*this);
+        listener->OnFaustChanged(Id, *this);
     }
     inline void UnregisterChangeListener(FaustChangeListener *listener) const noexcept {
         ChangeListeners.erase(listener);
@@ -24,7 +24,7 @@ struct FaustDSP : Component, Field::ChangeListener {
 
     inline void RegisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
         BoxChangeListeners.insert(listener);
-        listener->OnFaustBoxChanged(Box);
+        listener->OnFaustBoxChanged(Id, Box);
     }
     inline void UnregisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
         BoxChangeListeners.erase(listener);
@@ -32,7 +32,7 @@ struct FaustDSP : Component, Field::ChangeListener {
 
     inline void RegisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
         DspChangeListeners.insert(listener);
-        listener->OnFaustDspChanged(Dsp);
+        listener->OnFaustDspChanged(Id, Dsp);
     }
     inline void UnregisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
         DspChangeListeners.erase(listener);
@@ -60,13 +60,13 @@ private:
     void Uninit();
 
     inline void NotifyChangeListeners() const noexcept {
-        for (auto *listener : ChangeListeners) listener->OnFaustChanged(*this);
+        for (auto *listener : ChangeListeners) listener->OnFaustChanged(Id, *this);
     }
     inline void NotifyBoxChangeListeners() const noexcept {
-        for (auto *listener : BoxChangeListeners) listener->OnFaustBoxChanged(Box);
+        for (auto *listener : BoxChangeListeners) listener->OnFaustBoxChanged(Id, Box);
     }
     inline void NotifyDspChangeListeners() const noexcept {
-        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(Dsp);
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(Id, Dsp);
     }
 
     inline static std::unordered_set<FaustChangeListener *> ChangeListeners;

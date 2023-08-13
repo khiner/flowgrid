@@ -10,7 +10,7 @@
 static const std::string FaustDspFileExtension = ".dsp";
 static const std::string FaustDspPathSegment = "FaustDSP";
 
-void FaustLogs::OnFaustChanged(const FaustDSP &faust_dsp) {
+void FaustLogs::OnFaustChanged(ID, const FaustDSP &faust_dsp) {
     ErrorMessages.clear();
     ErrorMessages.emplace_back(faust_dsp.ErrorMessage);
 }

@@ -1245,7 +1245,13 @@ void FaustGraphs::Apply(const ActionType &action) const {
     );
 }
 
-bool FaustGraphs::CanApply(const ActionType &) const { return true; }
+bool FaustGraphs::CanApply(const ActionType &action) const {
+    return Visit(
+        action,
+        [](const Action::Faust::Graph::ShowSaveSvgDialog &) { return !RootNodes.empty(); },
+        [](const Action::Faust::Graph::SaveSvgFile &) { return !RootNodes.empty(); },
+    );
+}
 
 void FaustGraphs::Render() const {
     if (RootNodes.empty()) {

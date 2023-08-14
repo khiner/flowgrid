@@ -52,11 +52,18 @@ void Faust::Apply(const ActionType &action) const {
                 },
             );
         },
-
     );
 }
 
-bool Faust::CanApply(const ActionType &) const { return true; }
+bool Faust::CanApply(const ActionType &action) const {
+    return Visit(
+        action,
+        [this](const Action::Faust::DSP::Any &a) { return FaustDsps.CanApply(a); },
+        [this](const Action::Faust::Graph::Any &a) { return Graphs.CanApply(a); },
+        [this](const Action::Faust::GraphStyle::Any &a) { return Graphs.Style.CanApply(a); },
+        [](const Action::Faust::File::Any &) { return true; },
+    );
+}
 
 using namespace ImGui;
 

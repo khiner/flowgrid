@@ -158,11 +158,15 @@ bool Project::CanApply(const ActionType &action) const {
         action,
         [](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
         [](const Action::Project::Redo &) { return History.CanRedo(); },
+        [](const Action::Project::SetHistoryIndex &a) { return a.index < History.Size(); },
         [](const Action::Project::Save &) { return !History.Empty(); },
         [](const Action::Project::SaveDefault &) { return !History.Empty(); },
+        [](const Action::Project::ShowOpenDialog &) { return true; },
         [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
         [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
         [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
+        [](const Action::Project::OpenEmpty &) { return true; },
+        [](const Action::Project::Open &) { return true; },
 
         [](const FieldActionHandler::ActionType &a) { return Field::ActionHandler.CanApply(a); },
         [this](const Store::ActionType &a) { return RootStore.CanApply(a); },
@@ -170,7 +174,6 @@ bool Project::CanApply(const ActionType &action) const {
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
         [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
         [this](const Style::ActionType &a) { return Style.CanApply(a); },
-        [](const auto &) { return true; },
     );
 }
 
@@ -563,7 +566,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
             if (!no_history) {
                 int edited_history_index = int(History.Index);
                 if (SliderInt("History index", &edited_history_index, 0, int(History.Size() - 1))) {
-                    Action::Project::SetHistoryIndex{edited_history_index}.q();
+                    Action::Project::SetHistoryIndex{u32(edited_history_index)}.q();
                 }
             }
             for (u32 i = 1; i < History.Size(); i++) {

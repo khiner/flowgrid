@@ -9,7 +9,7 @@ DefineActionType(
 
     DefineUnsavedAction(Undo, NoMerge, "@cmd+z");
     DefineUnsavedAction(Redo, NoMerge, "@shift+cmd+z");
-    DefineUnsavedAction(SetHistoryIndex, NoMerge, "", int index;);
+    DefineUnsavedAction(SetHistoryIndex, NoMerge, "", u32 index;);
     DefineUnsavedAction(Open, NoMerge, "", fs::path file_path;);
     DefineUnsavedAction(OpenEmpty, NoMerge, "~New project@cmd+n");
     DefineUnsavedAction(OpenDefault, NoMerge, "@shift+cmd+o");

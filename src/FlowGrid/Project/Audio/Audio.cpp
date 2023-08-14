@@ -18,7 +18,13 @@ void Audio::Apply(const ActionType &action) const {
     );
 }
 
-bool Audio::CanApply(const ActionType &) const { return true; }
+bool Audio::CanApply(const ActionType &action) const {
+    return Visit(
+        action,
+        [this](const Action::AudioGraph::Any &a) { return Graph.CanApply(a); },
+        [this](const Action::Faust::Any &a) { return Faust.CanApply(a); },
+    );
+}
 
 using namespace ImGui;
 

@@ -19,7 +19,7 @@ struct FaustParamsUIStyle;
 // See Faust's `APIUI` for possible extensions (response curves, gyro, ...).
 class FAUST_API FaustParamsUI : public UI, public MetaDataUI, public PathBuilder {
 public:
-    FaustParamsUI(const FaustParamsUIStyle &style) : Style(style) {};
+    FaustParamsUI(const FaustParamsUIStyle &style) : Style(style){};
     ~FaustParamsUI() override = default;
 
     void openHorizontalBox(const char *label) override {
@@ -98,7 +98,6 @@ public:
     void Render() const;
 
 private:
-
     void addUiItem(const FaustParam::Type type, const char *label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
         activeGroup().children.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
         const std::string path = buildPath(label);
@@ -112,7 +111,6 @@ private:
 
     // Param drawing.
     void DrawUiItem(const FaustParam &, const char *label, const float suggested_height) const;
-
 
     FaustParam &activeGroup() { return Groups.empty() ? UiParam : *Groups.top(); }
 

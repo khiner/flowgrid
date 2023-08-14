@@ -805,9 +805,9 @@ void AudioGraph::RenderNodeCreateSelector() const {
             if (Button(WaveformNodeTypeId.c_str())) Action::AudioGraph::CreateNode{WaveformNodeTypeId}.q();
             TreePop();
         }
-        if (ImGui::TreeNode(FaustNodeTypeId.c_str())) {
+        if (!FaustDsps.empty() && ImGui::TreeNode(FaustNodeTypeId.c_str())) {
             for (const auto &[id, _] : FaustDsps) {
-                if (Button(to_string(id).c_str()))  Action::AudioGraph::CreateFaustNode{id}.q();
+                if (Button(to_string(id).c_str())) Action::AudioGraph::CreateFaustNode{id}.q();
             }
             TreePop();
         }

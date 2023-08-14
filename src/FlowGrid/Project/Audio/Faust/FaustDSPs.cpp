@@ -68,7 +68,9 @@ void FaustDSP::Uninit(bool destructing) {
             Dsp = nullptr;
             NotifyDspListeners(notification_type);
             delete Dsp;
-            deleteAllDSPFactories(); // There should only be one factory, but using this instead of `deleteDSPFactory` avoids storing another file-scoped variable.
+            // todo only delete the factory if it's the last dsp.
+            // todo this is breaking.
+            deleteAllDSPFactories();
         }
         if (Box) {
             Box = nullptr;

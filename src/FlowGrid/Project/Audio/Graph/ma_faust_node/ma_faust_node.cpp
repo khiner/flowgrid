@@ -17,10 +17,30 @@ ma_faust_node_config ma_faust_node_config_init(dsp *faust_dsp, ma_uint32 sample_
     return config;
 }
 
+ma_uint32 ma_faust_dsp_get_in_channels(dsp *faust_dsp) { return faust_dsp->getNumInputs(); }
+ma_uint32 ma_faust_dsp_get_out_channels(dsp *faust_dsp) { return faust_dsp->getNumOutputs(); }
+
+ma_uint32 ma_faust_node_get_in_channels(ma_faust_node *faust_node) { return ma_faust_dsp_get_in_channels(faust_node->config.faust_dsp); }
+ma_uint32 ma_faust_node_get_out_channels(ma_faust_node *faust_node) { return ma_faust_dsp_get_out_channels(faust_node->config.faust_dsp); }
+
+ma_uint32 ma_faust_node_get_sample_rate(ma_faust_node *faust_node) {
+    return faust_node->config.sample_rate;
+}
+
 ma_result ma_faust_node_set_sample_rate(ma_faust_node *faust_node, ma_uint32 sample_rate) {
     if (faust_node == nullptr) return MA_INVALID_ARGS;
 
     if (faust_node->config.faust_dsp != nullptr) faust_node->config.faust_dsp->init(sample_rate);
+    return MA_SUCCESS;
+}
+
+ma_result ma_faust_node_set_dsp(ma_faust_node *faust_node, dsp *faust_dsp) {
+    if (faust_node == nullptr) return MA_INVALID_ARGS;
+    // Reinitialize the node if the channel count has changed.
+    if (ma_faust_node_get_in_channels(faust_node) != ma_uint32(faust_dsp->getNumInputs()) ||
+        ma_faust_node_get_out_channels(faust_node) != ma_uint32(faust_dsp->getNumOutputs())) return MA_INVALID_ARGS;
+
+    faust_node->config.faust_dsp = faust_dsp;
     return MA_SUCCESS;
 }
 

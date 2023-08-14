@@ -57,7 +57,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     virtual ~AudioGraphNode();
 
     struct Listener {
-        // This allows for the parent graph to respond to changes in the graph topology _after_ the node has updated its internal state.
+        // Called when a node's internal nodes (gainer/monitor) have meen added/removed/reinitialized.
         virtual void OnNodeConnectionsChanged(AudioGraphNode *) = 0;
     };
     inline void RegisterListener(Listener *listener) noexcept { Listeners.insert(listener); }

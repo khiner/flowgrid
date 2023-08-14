@@ -281,9 +281,8 @@ void AudioGraphNode::OnSampleRateChanged() {
 
 void AudioGraphNode::OnFieldChanged() {
     if (Graph->SampleRate.IsChanged()) OnSampleRateChanged();
-    // Notify on field changes that can result in connection changes.
     if (InputGainer.IsChanged() || OutputGainer.IsChanged() || InputMonitor.IsChanged() || OutputMonitor.IsChanged()) {
-        NotifyConnectionsChanged();
+        NotifyConnectionsChanged(); // An inner node was added/removed.
     }
 }
 

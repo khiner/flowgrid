@@ -3,8 +3,8 @@
 #include "AudioGraphAction.h"
 #include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
-#include "Project/Audio/Faust/FaustListener.h"
 #include "Project/Audio/Device/DeviceDataFormat.h"
+#include "Project/Audio/Faust/FaustListener.h"
 
 #include "Core/Container/Vector.h"
 
@@ -45,7 +45,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
     ma_node_graph *Get();
-    dsp *GetFaustDsp() const;
+    dsp *GetFaustDsp(ID id) const;
 
     // A sample rate is considered "native" by the graph (and suffixed with an asterix)
     // if it is native to all device nodes within the graph (or if there are no device nodes in the graph).
@@ -113,10 +113,8 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     mutable ID SelectedNodeId{0}; // `Used for programatically navigating to nodes in the graph view.
 
 private:
-    // Returns the chosen node type-id, or `std::nullopt` if no node type was chosen.
-    std::optional<std::string> RenderNodeCreateSelector() const;
-
     void Render() const override;
+    void RenderNodeCreateSelector() const;
 
     void UpdateConnections();
 
@@ -137,4 +135,6 @@ private:
         return FindAllByPathSegment(OutputDeviceNodeTypeId) |
             std::views::transform([](const auto &node) { return reinterpret_cast<OutputDeviceNode *>(node.get()); });
     }
+
+    std::unordered_map<ID, dsp *> FaustDsps;
 };

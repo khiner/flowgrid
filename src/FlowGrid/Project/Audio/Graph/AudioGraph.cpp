@@ -448,6 +448,14 @@ static std::unique_ptr<AudioGraphNodeSubType> CreateAudioGraphNode(AudioGraph *g
     return node;
 }
 
+static ID last_dsp_id = 0; // xxx
+
+dsp *AudioGraph::GetFaustDsp(ID id) const {
+    if (FaustDsps.contains(id)) return FaustDsps.at(id);
+    if (id == 0 && FaustDsps.contains(last_dsp_id)) return FaustDsps.at(last_dsp_id);
+    return nullptr;
+}
+
 std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     ComponentArgs args{parent, path_segment, "", path_prefix_segment};
     auto *graph = static_cast<AudioGraph *>(parent->Parent);
@@ -465,6 +473,10 @@ void AudioGraph::Apply(const ActionType &action) const {
         [this](const Action::AudioGraph::CreateNode &a) {
             Nodes.EmplaceBack(a.node_type_id);
         },
+        [this](const Action::AudioGraph::CreateFaustNode &a) {
+            last_dsp_id = a.dsp_id;
+            Nodes.EmplaceBack(FaustNodeTypeId);
+        },
         [this](const Action::AudioGraph::DeleteNode &a) {
             Nodes.EraseId(a.id);
             Connections.DisconnectOutput(a.id);
@@ -479,7 +491,6 @@ void AudioGraph::Apply(const ActionType &action) const {
 }
 
 ma_node_graph *AudioGraph::Get() { return &reinterpret_cast<GraphMaNode *>(Node.get())->_Graph; }
-dsp *AudioGraph::GetFaustDsp() const { return FaustDsp; }
 DeviceDataFormat AudioGraph::GetFormat() const { return {int(ma_format_f32), 1, SampleRate}; }
 
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
@@ -512,21 +523,18 @@ std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
     return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
 }
 
-void AudioGraph::OnFaustDspChanged(ID, dsp *dsp) {
-    const auto *faust_node = FindByPathSegment(FaustNodeTypeId);
-    FaustDsp = dsp;
-    if (!dsp && faust_node) {
-        Nodes.EraseId(faust_node->Id);
-    } else if (dsp) {
-        if (faust_node) Nodes.EraseId(faust_node->Id);
-        Nodes.EmplaceBack_(FaustNodeTypeId);
+void AudioGraph::OnFaustDspChanged(ID id, dsp *dsp) {
+    for (auto &node : FindAllByPathSegment(FaustNodeTypeId)) {
+        auto *faust_node = reinterpret_cast<FaustNode *>(node.get());
+        if (faust_node->Id == id) faust_node->SetDsp(id, dsp);
     }
-    UpdateConnections(); // todo only update connections if the dsp change caused a change in the number of channels.
 }
 void AudioGraph::OnFaustDspAdded(ID id, dsp *dsp) {
+    FaustDsps[id] = dsp;
     OnFaustDspChanged(id, dsp);
 }
 void AudioGraph::OnFaustDspRemoved(ID id) {
+    FaustDsps.erase(id);
     OnFaustDspChanged(id, nullptr);
 }
 
@@ -785,31 +793,30 @@ void AudioGraph::Style::Matrix::Render() const {
     MaxLabelSpace.Draw();
 }
 
-std::optional<string> AudioGraph::RenderNodeCreateSelector() const {
-    std::optional<string> node_type_id;
+void AudioGraph::RenderNodeCreateSelector() const {
     if (ImGui::TreeNode("Create")) {
         if (ImGui::TreeNode("Device")) {
-            if (Button(InputDeviceNodeTypeId.c_str())) node_type_id = InputDeviceNodeTypeId;
+            if (Button(InputDeviceNodeTypeId.c_str())) Action::AudioGraph::CreateNode{InputDeviceNodeTypeId}.q();
             SameLine();
-            if (Button(OutputDeviceNodeTypeId.c_str())) node_type_id = OutputDeviceNodeTypeId;
+            if (Button(OutputDeviceNodeTypeId.c_str())) Action::AudioGraph::CreateNode{OutputDeviceNodeTypeId}.q();
             TreePop();
         }
         if (ImGui::TreeNode("Generator")) {
-            if (Button(WaveformNodeTypeId.c_str())) node_type_id = WaveformNodeTypeId;
+            if (Button(WaveformNodeTypeId.c_str())) Action::AudioGraph::CreateNode{WaveformNodeTypeId}.q();
+            TreePop();
+        }
+        if (ImGui::TreeNode(FaustNodeTypeId.c_str())) {
+            for (const auto &[id, _] : FaustDsps) {
+                if (Button(to_string(id).c_str()))  Action::AudioGraph::CreateFaustNode{id}.q();
+            }
             TreePop();
         }
         // todo miniaudio effects
         // if (ImGui::TreeNode("Effect")) {
         //     TreePop();
         // }
-        // More work is needed before we can handle multiple Faust nodes.
-        // if (ImGui::TreeNode(FaustNodeTypeId.c_str())) {
-        //     if (Button("Custom")) node_type_id = FaustNodeTypeId;
-        //     TreePop();
-        // }
         TreePop();
     }
-    return node_type_id;
 }
 
 void AudioGraph::Render() const {
@@ -822,9 +829,7 @@ void AudioGraph::Render() const {
     }
 
     if (ImGui::TreeNode(Nodes.ImGuiLabel.c_str())) {
-        if (const auto new_node_type_id = RenderNodeCreateSelector()) {
-            Action::AudioGraph::CreateNode{*new_node_type_id}.q();
-        }
+        RenderNodeCreateSelector();
 
         for (const auto *node : Nodes) {
             if (SelectedNodeId != 0) {

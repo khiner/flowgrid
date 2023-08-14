@@ -769,6 +769,7 @@ DefineQ(Style::SetImGuiColorPreset);
 DefineQ(Style::SetImPlotColorPreset);
 DefineQ(Style::SetFlowGridColorPreset);
 DefineQ(AudioGraph::CreateNode);
+DefineQ(AudioGraph::CreateFaustNode);
 DefineQ(AudioGraph::DeleteNode);
 DefineQ(AudioGraph::SetDeviceDataFormat);
 DefineQ(Faust::DSP::Create);

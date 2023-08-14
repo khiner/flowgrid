@@ -92,23 +92,23 @@ struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
 
     inline void NotifyListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {
         for (auto *listener : ChangeListeners) {
-            if (type == Changed) listener->OnFaustChanged(Id, faust_dsp);
-            else if (type == Added) listener->OnFaustAdded(Id, faust_dsp);
-            else if (type == Removed) listener->OnFaustRemoved(Id);
+            if (type == Changed) listener->OnFaustChanged(faust_dsp.Id, faust_dsp);
+            else if (type == Added) listener->OnFaustAdded(faust_dsp.Id, faust_dsp);
+            else if (type == Removed) listener->OnFaustRemoved(faust_dsp.Id);
         }
     }
     inline void NotifyBoxListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {
         for (auto *listener : BoxChangeListeners) {
-            if (type == Changed) listener->OnFaustBoxChanged(Id, faust_dsp.Box);
-            else if (type == Added) listener->OnFaustBoxAdded(Id, faust_dsp.Box);
-            else if (type == Removed) listener->OnFaustBoxRemoved(Id);
+            if (type == Changed) listener->OnFaustBoxChanged(faust_dsp.Id, faust_dsp.Box);
+            else if (type == Added) listener->OnFaustBoxAdded(faust_dsp.Id, faust_dsp.Box);
+            else if (type == Removed) listener->OnFaustBoxRemoved(faust_dsp.Id);
         }
     }
     inline void NotifyDspListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {
         for (auto *listener : DspChangeListeners) {
-            if (type == Changed) listener->OnFaustDspChanged(Id, faust_dsp.Dsp);
-            else if (type == Added) listener->OnFaustDspAdded(Id, faust_dsp.Dsp);
-            else if (type == Removed) listener->OnFaustDspRemoved(Id);
+            if (type == Changed) listener->OnFaustDspChanged(faust_dsp.Id, faust_dsp.Dsp);
+            else if (type == Added) listener->OnFaustDspAdded(faust_dsp.Id, faust_dsp.Dsp);
+            else if (type == Removed) listener->OnFaustDspRemoved(faust_dsp.Id);
         }
     }
 

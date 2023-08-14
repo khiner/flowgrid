@@ -5,6 +5,7 @@
 
 #include "Helper/File.h"
 #include "Project/Audio/AudioIO.h"
+#include "Project/Audio/Graph/AudioGraphAction.h"
 #include "Project/FileDialog/FileDialog.h"
 
 #include "imgui.h"
@@ -114,13 +115,26 @@ void FaustDSPs::Apply(const ActionType &action) const {
 using namespace ImGui;
 
 void FaustDSP::Render() const {
+    if (BeginMenuBar()) {
+        if (BeginMenu("Audio")) {
+            if (MenuItem("Create audio node")) Action::AudioGraph::CreateFaustNode{Id}.q();
+            EndMenu();
+        }
+        EndMenuBar();
+    }
     Code.Draw();
 }
 
 void FaustDSPs::Render() const {
+    if (BeginMenuBar()) {
+        if (BeginMenu("Create")) {
+            if (MenuItem("Create Faust DSP")) Action::Faust::DSP::Create().q();
+            EndMenu();
+        }
+        EndMenuBar();
+    }
     if (Empty()) {
         TextUnformatted("No Faust DSPs created yet.");
-        if (Button("Create Faust DSP")) Action::Faust::DSP::Create().q();
         return;
     }
     if (Size() == 1) {

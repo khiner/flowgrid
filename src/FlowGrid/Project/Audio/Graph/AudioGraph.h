@@ -136,5 +136,5 @@ private:
             std::views::transform([](const auto &node) { return reinterpret_cast<OutputDeviceNode *>(node.get()); });
     }
 
-    std::unordered_map<ID, dsp *> FaustDsps;
+    std::unordered_map<ID, dsp *> DspById;
 };

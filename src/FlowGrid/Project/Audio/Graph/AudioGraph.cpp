@@ -69,6 +69,7 @@ struct DeviceNode : AudioGraphNode {
         // the `DeviceNode` instance members are not fully initialized at the point of `AudioGraphNode` construction.
         // At this point, they are initialized, so we need to update the device appropriately.
         // (It's unfortunate that this technicality leads to potentially restarting the device after its initial creation.)
+        // TODO there's a way to do this - make `DeviceMaNode` a component. See `FaustNode` for an example (and its `DspId` field).
         UpdateDeviceConfig();
 
         // The device may have a different configuration than what we requested. Update fields to reflect the actual device config.
@@ -448,13 +449,12 @@ static std::unique_ptr<AudioGraphNodeSubType> CreateAudioGraphNode(AudioGraph *g
     return node;
 }
 
-static ID last_dsp_id = 0; // xxx
-
 dsp *AudioGraph::GetFaustDsp(ID id) const {
-    if (FaustDsps.contains(id)) return FaustDsps.at(id);
-    if (id == 0 && FaustDsps.contains(last_dsp_id)) return FaustDsps.at(last_dsp_id);
+    if (DspById.contains(id)) return DspById.at(id);
     return nullptr;
 }
+
+static ID latest_dsp_id = 0; // xxx
 
 std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     ComponentArgs args{parent, path_segment, "", path_prefix_segment};
@@ -462,7 +462,12 @@ std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(Component *pare
     if (path_segment == InputDeviceNodeTypeId) return CreateAudioGraphNode<InputDeviceNode>(graph, std::move(args));
     if (path_segment == OutputDeviceNodeTypeId) return CreateAudioGraphNode<OutputDeviceNode>(graph, std::move(args));
     if (path_segment == WaveformNodeTypeId) return CreateAudioGraphNode<WaveformNode>(graph, std::move(args));
-    if (path_segment == FaustNodeTypeId) return CreateAudioGraphNode<FaustNode>(graph, std::move(args));
+    if (path_segment == FaustNodeTypeId) {
+        auto node = std::make_unique<FaustNode>(std::move(args), latest_dsp_id);
+        latest_dsp_id = 0;
+        node->RegisterListener(graph);
+        return node;
+    }
 
     return nullptr;
 }
@@ -474,7 +479,7 @@ void AudioGraph::Apply(const ActionType &action) const {
             Nodes.EmplaceBack(a.node_type_id);
         },
         [this](const Action::AudioGraph::CreateFaustNode &a) {
-            last_dsp_id = a.dsp_id;
+            latest_dsp_id = a.dsp_id;
             Nodes.EmplaceBack(FaustNodeTypeId);
         },
         [this](const Action::AudioGraph::DeleteNode &a) {
@@ -530,11 +535,11 @@ void AudioGraph::OnFaustDspChanged(ID id, dsp *dsp) {
     }
 }
 void AudioGraph::OnFaustDspAdded(ID id, dsp *dsp) {
-    FaustDsps[id] = dsp;
+    DspById[id] = dsp;
     OnFaustDspChanged(id, dsp);
 }
 void AudioGraph::OnFaustDspRemoved(ID id) {
-    FaustDsps.erase(id);
+    DspById.erase(id);
     OnFaustDspChanged(id, nullptr);
 }
 
@@ -805,8 +810,8 @@ void AudioGraph::RenderNodeCreateSelector() const {
             if (Button(WaveformNodeTypeId.c_str())) Action::AudioGraph::CreateNode{WaveformNodeTypeId}.q();
             TreePop();
         }
-        if (!FaustDsps.empty() && ImGui::TreeNode(FaustNodeTypeId.c_str())) {
-            for (const auto &[id, _] : FaustDsps) {
+        if (!DspById.empty() && ImGui::TreeNode(FaustNodeTypeId.c_str())) {
+            for (const auto &[id, _] : DspById) {
                 if (Button(to_string(id).c_str())) Action::AudioGraph::CreateFaustNode{id}.q();
             }
             TreePop();

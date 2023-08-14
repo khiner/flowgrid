@@ -63,6 +63,10 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     inline void RegisterListener(Listener *listener) noexcept { Listeners.insert(listener); }
     inline void UnregisterListener(Listener *listener) noexcept { Listeners.erase(listener); }
 
+    void NotifyConnectionsChanged() {
+        for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
+    }
+
     void OnFieldChanged() override;
 
     // If `Allow...ConnectionChange` returns `true`, users can dynamically change the input/output connections.
@@ -194,10 +198,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
 
 protected:
     void Render() const override;
-
-    void NotifyConnectionsChanged() {
-        for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
-    }
 
     std::unique_ptr<MaNode> Node;
 

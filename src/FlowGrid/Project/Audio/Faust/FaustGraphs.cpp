@@ -867,6 +867,7 @@ Each property can be changed in `Style.(Group|Decorate){PropertyName}`.
 struct GroupNode : Node {
     GroupNode(NodeType type, Tree tree, Node *inner, string text = "")
         : Node(tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
+    ~GroupNode() override = default;
 
     void DoPlaceSize(const DeviceType) override {
         Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() * 2 + GetFontSize()};
@@ -1041,24 +1042,41 @@ static bool IsPureRouting(Tree t) {
 static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
     prim0 p0;
     if (isBoxPrim0(box, &p0)) return pair(0, prim0name(p0));
+
     prim1 p1;
     if (isBoxPrim1(box, &p1)) return pair(1, prim1name(p1));
+
     prim2 p2;
     if (isBoxPrim2(box, &p2)) return pair(2, prim2name(p2));
+
     prim3 p3;
     if (isBoxPrim3(box, &p3)) return pair(3, prim3name(p3));
+
     prim4 p4;
     if (isBoxPrim4(box, &p4)) return pair(4, prim4name(p4));
+
     prim5 p5;
     if (isBoxPrim5(box, &p5)) return pair(5, prim5name(p5));
 
     return {};
 }
 
-static Node *Tree2Node(Tree);
+FaustGraphs::FaustGraphs(ComponentArgs &&args)
+    : Component(
+          std::move(args),
+          Menu({
+              Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
+              Menu("View", {Settings.HoverFlags}),
+          })
+      ) {
+    Style.FoldComplexity.RegisterChangeListener(this);
+}
+FaustGraphs::~FaustGraphs() {
+    Field::UnregisterChangeListener(this);
+}
 
 // Generate the inside node of a block graph according to its type.
-static Node *Tree2NodeInner(Tree t) {
+Node *FaustGraphs::Tree2NodeInner(Tree t) const {
     if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
     if (isBoxInverter(t)) return new InverterNode(t);
     if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
@@ -1120,16 +1138,14 @@ static Node *Tree2NodeInner(Tree t) {
     throw std::runtime_error("Box expression not recognized: " + PrintTree(t));
 }
 
-static u32 FoldComplexity = 0; // Cache the most recently seen value and recompile when it changes.
-
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping these bad names to remind me to clean this up, likely into a `Node` ctor.)
-static Node *Tree2Node(Tree t) {
+Node *FaustGraphs::Tree2Node(Tree t) const {
     auto *node = Tree2NodeInner(t);
     if (GetTreeName(t).empty()) return node; // Normal case
 
     // `FoldComplexity == 0` means no folding.
-    if (FoldComplexity != 0 && node->Descendents >= FoldComplexity) {
+    if (Style.FoldComplexity != 0u && node->Descendents >= u32(Style.FoldComplexity)) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
         return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, new GroupNode(NodeType_Decorate, t, node));
@@ -1188,24 +1204,25 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
-// Each root node corresponds to a distinct Faust box.
-// Each box gets its own tab, and drawn every frame.
-static std::vector<GroupNode> RootNodes{};
-static GroupNode CreateRootNode(Tree t) { return {NodeType_Decorate, t, Tree2NodeInner(t)}; }
-
 string GetBoxInfo(u32 id) {
     const auto *node = Node::ById[id];
     if (!node) return "";
     return GetBoxType(node->FaustTree); // Just type for now.
 }
 
-void FaustGraphs::OnFaustBoxChangedInner(Box box) const {
+void FaustGraphs::OnFieldChanged() {
+    if (Style.FoldComplexity.IsChanged() && RootNode) {
+        OnFaustBoxChangedInner(RootNode->FaustTree);
+    }
+}
+
+void FaustGraphs::OnFaustBoxChangedInner(Box box) {
     IsTreePureRouting.clear();
     FocusedNodeStack = {};
-    RootNodes.clear();
+    RootNode.reset();
     if (box) {
-        RootNodes.emplace_back(CreateRootNode(box));
-        FocusedNodeStack.push(&RootNodes.front());
+        RootNode = std::make_unique<GroupNode>(NodeType_Decorate, box, Tree2NodeInner(box));
+        FocusedNodeStack.push(RootNode.get());
         Node::ById.clear();
     }
 }
@@ -1220,13 +1237,13 @@ void FaustGraphs::OnFaustBoxRemoved(ID) {
     OnFaustBoxChangedInner(nullptr);
 }
 
-void SaveBoxSvg(const fs::path &dir_path) {
-    if (RootNodes.empty()) return;
+void FaustGraphs::SaveBoxSvg(const fs::path &dir_path) const {
+    if (!RootNode) return;
 
     fs::remove_all(dir_path);
     fs::create_directory(dir_path);
 
-    auto node = CreateRootNode(RootNodes.front().FaustTree); // Create a fresh mutable root node to place and render.
+    GroupNode node{NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
     node.PlaceSize(DeviceType_SVG);
     node.Place(DeviceType_SVG);
     node.WriteSvg(dir_path);
@@ -1241,20 +1258,20 @@ void FaustGraphs::Apply(const ActionType &action) const {
         [](const Action::Faust::Graph::ShowSaveSvgDialog &) {
             file_dialog.Set({Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
         },
-        [](const Action::Faust::Graph::SaveSvgFile &a) { SaveBoxSvg(a.dir_path); },
+        [this](const Action::Faust::Graph::SaveSvgFile &a) { SaveBoxSvg(a.dir_path); },
     );
 }
 
 bool FaustGraphs::CanApply(const ActionType &action) const {
     return Visit(
         action,
-        [](const Action::Faust::Graph::ShowSaveSvgDialog &) { return !RootNodes.empty(); },
-        [](const Action::Faust::Graph::SaveSvgFile &) { return !RootNodes.empty(); },
+        [this](const Action::Faust::Graph::ShowSaveSvgDialog &) { return bool(RootNode); },
+        [this](const Action::Faust::Graph::SaveSvgFile &) { return bool(RootNode); },
     );
 }
 
 void FaustGraphs::Render() const {
-    if (RootNodes.empty()) {
+    if (!RootNode) {
         // todo don't show empty menu bar in this case
         TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?
         return;
@@ -1270,11 +1287,6 @@ void FaustGraphs::Render() const {
     }
 
     if (FocusedNodeStack.empty()) return;
-
-    if (Style.FoldComplexity != FoldComplexity) {
-        FoldComplexity = Style.FoldComplexity;
-        OnFaustBoxChangedInner(RootNodes.front().FaustTree);
-    }
 
     {
         // Nav menu
@@ -1294,7 +1306,7 @@ void FaustGraphs::Render() const {
 
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    if (Node::ById.empty()) RootNodes.front().AddId(GetCurrentWindowRead()->ID);
+    if (Node::ById.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
     GetCurrentWindow()->FontWindowScale = Scale(1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 

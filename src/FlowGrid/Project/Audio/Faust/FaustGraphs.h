@@ -6,18 +6,16 @@
 
 #include "FaustListener.h"
 
-struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, FaustBoxChangeListener {
-    FaustGraphs(ComponentArgs &&args)
-        : Component(
-              std::move(args),
-              Menu({
-                  Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
-                  Menu("View", {Settings.HoverFlags}),
-              })
-          ) {}
+struct Node;
+
+struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, Field::ChangeListener, FaustBoxChangeListener {
+    FaustGraphs(ComponentArgs &&);
+    ~FaustGraphs();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
+
+    void OnFieldChanged() override;
 
     void OnFaustBoxChanged(ID, Box) override;
     void OnFaustBoxAdded(ID, Box) override;
@@ -35,7 +33,14 @@ struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, FaustBoxC
 private:
     void Render() const override;
 
-    void OnFaustBoxChangedInner(Box) const;
+    void SaveBoxSvg(const fs::path &dir_path) const;
+    void OnFaustBoxChangedInner(Box);
+
+    Node *Tree2Node(Box) const;
+    Node *Tree2NodeInner(Box) const;
+
+    std::unique_ptr<Node> RootNode{};
+    // std::unordered_map<ID, Box> BoxById;
 };
 
 extern const FaustGraphs &faust_graphs;

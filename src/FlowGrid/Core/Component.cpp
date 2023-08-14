@@ -129,7 +129,7 @@ void Menu::Render() const {
     }
 }
 
-ImGuiWindow *Component::FindImGuiWindow() const { return FindWindowByName(ImGuiLabel.c_str()); }
+ImGuiWindow *Component::FindImGuiWindow() const { return GetCurrentContext() ? FindWindowByName(ImGuiLabel.c_str()) : nullptr; }
 
 void Component::Dock(ID node_id) const {
     DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);

@@ -442,10 +442,11 @@ void AudioGraph::OnFieldChanged() {
     }
 }
 
-template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType>
-static std::unique_ptr<AudioGraphNodeSubType> CreateAudioGraphNode(AudioGraph *graph, Component::ComponentArgs &&args) {
-    auto node = std::make_unique<AudioGraphNodeSubType>(std::move(args));
+template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType, typename... Args>
+static std::unique_ptr<AudioGraphNodeSubType> CreateAudioGraphNode(AudioGraph *graph, Args &&... args) {
+    auto node = std::make_unique<AudioGraphNodeSubType>(std::forward<Args>(args)...);
     node->RegisterListener(graph);
+    if (graph->Focus()) graph->SelectedNodeId = node->Id; // Navigate to newly created node.
     return node;
 }
 
@@ -463,9 +464,8 @@ std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(Component *pare
     if (path_segment == OutputDeviceNodeTypeId) return CreateAudioGraphNode<OutputDeviceNode>(graph, std::move(args));
     if (path_segment == WaveformNodeTypeId) return CreateAudioGraphNode<WaveformNode>(graph, std::move(args));
     if (path_segment == FaustNodeTypeId) {
-        auto node = std::make_unique<FaustNode>(std::move(args), latest_dsp_id);
+        auto node = CreateAudioGraphNode<FaustNode>(graph, std::move(args), latest_dsp_id);
         latest_dsp_id = 0;
-        node->RegisterListener(graph);
         return node;
     }
 

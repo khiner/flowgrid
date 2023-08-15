@@ -362,6 +362,8 @@ struct Node {
     const u32 Descendents = 0; // The number of boxes within this node (recursively).
     Node *A{}, *B{}; // Nodes have at most two children.
 
+    u32 Index{0}; // Position in the parent's list of children.
+
     ImVec2 Size;
     ImVec2 Position; // Relative to parent.
     GraphOrientation Orientation = GraphForward;
@@ -370,13 +372,15 @@ struct Node {
         : Context(context), Style(context.Style), FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
           BoxTypeLabel(GetBoxType(FaustTree)), InCount(in_count), OutCount(out_count),
           Descendents((is_block ? 1 : 0) + (a ? a->Descendents : 0) + (b ? b->Descendents : 0)), A(a), B(b) {
+        if (A) A->Index = 0;
+        if (B) B->Index = 1;
         // cout << tree2str(tree) << '\n';
     }
 
     virtual ~Node() = default;
 
     void AddId(ID parent_id) const {
-        const auto imgui_id = ImHashStr(Id.c_str(), 0, parent_id);
+        const auto imgui_id = ImHashStr(std::format("{}", Index).c_str(), 0, parent_id);
         ByImGuiId[imgui_id] = this;
         if (A) A->AddId(imgui_id);
         if (B) B->AddId(imgui_id);
@@ -399,7 +403,7 @@ struct Node {
         const bool is_imgui = device.Type() == DeviceType_ImGui;
         const auto before_cursor = device.CursorPosition;
         device.AdvanceCursor(Position);
-        if (is_imgui) PushID(Id.c_str());
+        if (is_imgui) PushID(std::format("{}", Index).c_str());
 
         InteractionFlags flags = InteractionFlags_None;
         if (is_imgui) {
@@ -527,7 +531,9 @@ float FaustGraphs::GetScale() const {
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
     BlockNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
-        : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
+        : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {
+        if (Inner) Inner->Index = 0;
+    }
 
     void Place(const DeviceType type) override {
         const auto text_size = CalcTextSize(string(Text));

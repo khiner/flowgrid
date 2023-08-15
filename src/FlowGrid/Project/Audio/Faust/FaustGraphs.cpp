@@ -344,7 +344,7 @@ using StringHelper::Capitalize;
 
 // An abstract block graph node.
 struct Node {
-    inline static std::unordered_map<ID, const Node *> ByImGuiId;
+    inline static std::unordered_map<ID, Node *> ByImGuiId;
 
     inline static const u32
         BgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.1f}),
@@ -357,12 +357,13 @@ struct Node {
     const FaustGraphs &Context;
     const FaustGraphStyle &Style;
     const Tree FaustTree;
-    const string Id, Text, BoxTypeLabel;
+    const string Id, Text, BoxTypeLabel; // TODO can we get rid of `Id` now that we have `ImGuiId`?
     const u32 InCount, OutCount;
     const u32 Descendents = 0; // The number of boxes within this node (recursively).
     Node *A{}, *B{}; // Nodes have at most two children.
 
     u32 Index{0}; // Position in the parent's list of children.
+    ID ImGuiId;
 
     ImVec2 Size;
     ImVec2 Position; // Relative to parent.
@@ -379,11 +380,11 @@ struct Node {
 
     virtual ~Node() = default;
 
-    void AddId(ID parent_id) const {
-        const auto imgui_id = ImHashStr(std::format("{}", Index).c_str(), 0, parent_id);
-        ByImGuiId[imgui_id] = this;
-        if (A) A->AddId(imgui_id);
-        if (B) B->AddId(imgui_id);
+    virtual void GenerateIds(ID parent_id) {
+        ImGuiId = ImHashData(&Index, sizeof(Index), parent_id);
+        ByImGuiId[ImGuiId] = this;
+        if (A) A->GenerateIds(ImGuiId);
+        if (B) B->GenerateIds(ImGuiId);
     }
 
     u32 IoCount(IO io) const { return io == IO_In ? InCount : OutCount; };
@@ -403,10 +404,10 @@ struct Node {
         const bool is_imgui = device.Type() == DeviceType_ImGui;
         const auto before_cursor = device.CursorPosition;
         device.AdvanceCursor(Position);
-        if (is_imgui) PushID(std::format("{}", Index).c_str());
 
         InteractionFlags flags = InteractionFlags_None;
         if (is_imgui) {
+            PushOverrideID(ImGuiId);
             const auto before_cursor_inner = device.CursorPosition;
             const auto &local_rect = GetFrameRect();
             device.AdvanceCursor(local_rect.Min);
@@ -525,7 +526,7 @@ protected:
 
 float FaustGraphs::GetScale() const {
     if (!Style.ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return Style.Scale;
-    return GetWindowHeight() / FocusedNodeStack.top()->H();
+    return GetWindowHeight() / Node::ByImGuiId.at(FocusedNodeStack.back())->H();
 }
 
 // A simple rectangular box with text and inputs/outputs.
@@ -533,6 +534,11 @@ struct BlockNode : Node {
     BlockNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
         : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {
         if (Inner) Inner->Index = 0;
+    }
+
+    void GenerateIds(ID parent_id) override {
+        Node::GenerateIds(parent_id);
+        if (Inner) Inner->GenerateIds(ImGuiId);
     }
 
     void Place(const DeviceType type) override {
@@ -562,8 +568,7 @@ struct BlockNode : Node {
         } else {
             if (Inner) {
                 if (flags & InteractionFlags_Clicked) {
-                    Context.FocusedNodeStack.push(Inner);
-                    Context.UpdateNodeImGuiIds();
+                    Context.FocusedNodeStack.push_back(Inner->ImGuiId);
                 }
                 fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
@@ -1238,8 +1243,8 @@ void FaustGraphs::OnFaustBoxChangedInner(Box box) {
     if (box) {
         Node::ByImGuiId.clear();
         RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
-        FocusedNodeStack.push(RootNode.get());
-        UpdateNodeImGuiIds();
+        RootNode->GenerateIds(Id);
+        FocusedNodeStack.push_back(RootNode->ImGuiId);
     }
 }
 
@@ -1285,14 +1290,6 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
     );
 }
 
-void FaustGraphs::UpdateNodeImGuiIds() const {
-    Node::ByImGuiId.clear();
-    if (auto *focused = FocusedNodeStack.top()) {
-        // Emulate ImGui child window ID creation for `BeginChild(Id, ...)`.
-        focused->AddId(ImHashStr(std::format("{}/{:08X}", ImGuiLabel, Id).c_str()));
-    }
-}
-
 void FaustGraphs::Render() const {
     if (!RootNode) {
         // todo don't show empty menu bar in this case
@@ -1316,18 +1313,16 @@ void FaustGraphs::Render() const {
         const bool can_nav = FocusedNodeStack.size() > 1;
         if (!can_nav) BeginDisabled();
         if (Button("Top")) {
-            while (FocusedNodeStack.size() > 1) FocusedNodeStack.pop();
-            UpdateNodeImGuiIds();
+            while (FocusedNodeStack.size() > 1) FocusedNodeStack.pop_back();
         }
         SameLine();
         if (Button("Back")) {
-            FocusedNodeStack.pop();
-            UpdateNodeImGuiIds();
+            FocusedNodeStack.pop_back();
         }
         if (!can_nav) EndDisabled();
     }
 
-    auto *focused = FocusedNodeStack.top();
+    auto *focused = Node::ByImGuiId.at(FocusedNodeStack.back());
     focused->Place(DeviceType_ImGui);
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(focused->Size * GetScale());
 

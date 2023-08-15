@@ -33,10 +33,6 @@ enum GraphOrientation {
     GraphReverse
 };
 
-static inline float GetScale(const FaustGraphStyle &style);
-static inline ImVec2 Scale(const FaustGraphStyle &style, const ImVec2 &p) { return p * GetScale(style); }
-static inline float Scale(const FaustGraphStyle &style, const float f) { return f * GetScale(style); }
-
 static inline ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientation) {
     ImGuiDir dir = style.Direction;
     return (dir == ImGuiDir_Right && orientation == GraphForward) || (dir == ImGuiDir_Left && orientation == GraphReverse) ?
@@ -51,7 +47,7 @@ static inline bool IsLr(const FaustGraphStyle &style, GraphOrientation orientati
 struct Device {
     static constexpr float RectLabelPaddingLeft = 3;
 
-    Device(const FaustGraphStyle &style, const ImVec2 &position = {0, 0}) : Style(style), Position(position) {}
+    Device(const FaustGraphs &context, const ImVec2 &position = {0, 0}) : Context(context), Style(Context.Style), Position(position) {}
     virtual ~Device() = default;
 
     virtual DeviceType Type() = 0;
@@ -75,9 +71,10 @@ struct Device {
     inline ImVec2 At(const ImVec2 &local_pos) const { return Position + CursorPosition + Scale(local_pos); }
     inline ImRect At(const ImRect &local_rect) const { return {At(local_rect.Min), At(local_rect.Max)}; }
 
-    inline ImVec2 Scale(const ImVec2 &p) const { return p * GetScale(Style); }
-    inline float Scale(const float f) const { return f * GetScale(Style); }
+    inline ImVec2 Scale(const ImVec2 &p) const { return p * Context.GetScale(); }
+    inline float Scale(const float f) const { return f * Context.GetScale(); }
 
+    const FaustGraphs &Context;
     const FaustGraphStyle &Style;
 
     ImVec2 Position{}; // Absolute window position of device
@@ -109,8 +106,8 @@ static inline string GetFontBase64() {
 
 // todo: Fix rendering SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct SVGDevice : Device {
-    SVGDevice(const FaustGraphStyle &style, fs::path Directory, string FileName, ImVec2 size)
-        : Device(style), Directory(std::move(Directory)), FileName(std::move(FileName)) {
+    SVGDevice(const FaustGraphs &context, fs::path Directory, string FileName, ImVec2 size)
+        : Device(context), Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
         Stream << std::format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
         Stream << (Style.ScaleFillHeight ? R"( height="100%">)" : std::format(R"( width="{}" height="{}">)", w, h));
@@ -240,8 +237,8 @@ private:
 };
 
 struct ImGuiDevice : Device {
-    ImGuiDevice(const FaustGraphStyle &style)
-        : Device(style, GetCursorScreenPos()), DC(GetCurrentWindow()->DC), DrawList(GetWindowDrawList()) {}
+    ImGuiDevice(const FaustGraphs &context)
+        : Device(context, GetCursorScreenPos()), DC(GetCurrentWindow()->DC), DrawList(GetWindowDrawList()) {}
 
     DeviceType Type() override { return DeviceType_ImGui; }
 
@@ -409,7 +406,7 @@ struct Node {
             const auto before_cursor_inner = device.CursorPosition;
             const auto &local_rect = GetFrameRect();
             device.AdvanceCursor(local_rect.Min);
-            flags |= fg::InvisibleButton(Scale(Style, local_rect.GetSize()), "");
+            flags |= fg::InvisibleButton(local_rect.GetSize() * Context.GetScale(), "");
             SetItemAllowOverlap();
             device.SetCursorPos(before_cursor_inner);
         }
@@ -500,7 +497,7 @@ struct Node {
     }
 
     void WriteSvg(const fs::path &path) const {
-        SVGDevice device(Style, path, SvgFileName(), Size);
+        SVGDevice device(Context, path, SvgFileName(), Size);
         device.Rect(*this, {.FillColor = Style.Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
         Draw(device);
     }
@@ -522,9 +519,8 @@ protected:
     }
 };
 
-std::stack<Node *> FocusedNodeStack;
-static inline float GetScale(const FaustGraphStyle &style) {
-    if (!style.ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return style.Scale;
+float FaustGraphs::GetScale() const {
+    if (!Style.ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return Style.Scale;
     return GetWindowHeight() / FocusedNodeStack.top()->H();
 }
 
@@ -560,7 +556,7 @@ struct BlockNode : Node {
         } else {
             if (Inner) {
                 if (flags & InteractionFlags_Clicked) {
-                    FocusedNodeStack.push(Inner);
+                    Context.FocusedNodeStack.push(Inner);
                     Context.UpdateNodeImGuiIds();
                 }
                 fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
@@ -1327,13 +1323,13 @@ void FaustGraphs::Render() const {
 
     auto *focused = FocusedNodeStack.top();
     focused->Place(DeviceType_ImGui);
-    if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(Style, focused->Size));
+    if (!Style.ScaleFillHeight) SetNextWindowContentSize(focused->Size * GetScale());
 
     BeginChild(Id, {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    GetCurrentWindow()->FontWindowScale = Scale(Style, 1);
+    GetCurrentWindow()->FontWindowScale = GetScale();
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 
-    ImGuiDevice device{Style};
+    ImGuiDevice device{*this};
     focused->Draw(device);
 
     EndChild();

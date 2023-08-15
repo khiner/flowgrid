@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stack>
+
 #include "Core/Primitive/Flags.h"
 #include "FaustGraphAction.h"
 #include "FaustGraphStyle.h"
@@ -21,6 +23,7 @@ struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, Field::Ch
     void OnFaustBoxAdded(ID, Box) override;
     void OnFaustBoxRemoved(ID) override;
 
+    float GetScale() const;
     void UpdateNodeImGuiIds() const;
 
     struct GraphSettings : Component {
@@ -32,12 +35,13 @@ struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, Field::Ch
     Prop(GraphSettings, Settings);
     Prop(FaustGraphStyle, Style);
 
+    mutable std::stack<Node *> FocusedNodeStack; // TODO public mutable is temporary. Replace with navigation actions.
+
 private:
     void Render() const override;
 
     void SaveBoxSvg(const fs::path &dir_path) const;
     void OnFaustBoxChangedInner(Box);
-
 
     Node *Tree2Node(Box) const;
     Node *Tree2NodeInner(Box) const;

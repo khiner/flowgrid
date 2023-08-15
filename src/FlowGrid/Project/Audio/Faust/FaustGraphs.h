@@ -21,6 +21,8 @@ struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, Field::Ch
     void OnFaustBoxAdded(ID, Box) override;
     void OnFaustBoxRemoved(ID) override;
 
+    void UpdateNodeImGuiIds() const;
+
     struct GraphSettings : Component {
         using Component::Component;
 
@@ -35,6 +37,7 @@ private:
 
     void SaveBoxSvg(const fs::path &dir_path) const;
     void OnFaustBoxChangedInner(Box);
+
 
     Node *Tree2Node(Box) const;
     Node *Tree2NodeInner(Box) const;

@@ -347,7 +347,7 @@ using StringHelper::Capitalize;
 
 // An abstract block graph node.
 struct Node {
-    inline static std::unordered_map<ID, const Node *> ById;
+    inline static std::unordered_map<ID, const Node *> ByImGuiId;
 
     inline static const u32
         BgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.1f}),
@@ -380,7 +380,7 @@ struct Node {
 
     void AddId(ID parent_id) const {
         const auto imgui_id = ImHashStr(Id.c_str(), 0, parent_id);
-        ById[imgui_id] = this;
+        ByImGuiId[imgui_id] = this;
         if (A) A->AddId(imgui_id);
         if (B) B->AddId(imgui_id);
     }
@@ -559,7 +559,10 @@ struct BlockNode : Node {
             svg_device.Text(size / 2, Text, {.Color = text_color}, link);
         } else {
             if (Inner) {
-                if (flags & InteractionFlags_Clicked) FocusedNodeStack.push(Inner);
+                if (flags & InteractionFlags_Clicked) {
+                    FocusedNodeStack.push(Inner);
+                    Context.UpdateNodeImGuiIds();
+                }
                 fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
             RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, Style.BoxCornerRadius);
@@ -1215,7 +1218,7 @@ string GetBoxType(Box t) {
 }
 
 string GetBoxInfo(u32 id) {
-    const auto *node = Node::ById[id];
+    const auto *node = Node::ByImGuiId[id];
     if (!node) return "";
     return GetBoxType(node->FaustTree); // Just type for now.
 }
@@ -1231,9 +1234,10 @@ void FaustGraphs::OnFaustBoxChangedInner(Box box) {
     FocusedNodeStack = {};
     RootNode.reset();
     if (box) {
+        Node::ByImGuiId.clear();
         RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
         FocusedNodeStack.push(RootNode.get());
-        Node::ById.clear();
+        UpdateNodeImGuiIds();
     }
 }
 
@@ -1258,7 +1262,7 @@ void FaustGraphs::SaveBoxSvg(const fs::path &dir_path) const {
     node.WriteSvg(dir_path);
 }
 
-bool IsBoxHovered(ID imgui_id) { return Node::ById[imgui_id] != nullptr; }
+bool IsBoxHovered(ID imgui_id) { return Node::ByImGuiId[imgui_id] != nullptr; }
 
 void FaustGraphs::Apply(const ActionType &action) const {
     Visit(
@@ -1277,6 +1281,14 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
         [this](const Action::Faust::Graph::ShowSaveSvgDialog &) { return bool(RootNode); },
         [this](const Action::Faust::Graph::SaveSvgFile &) { return bool(RootNode); },
     );
+}
+
+void FaustGraphs::UpdateNodeImGuiIds() const {
+    Node::ByImGuiId.clear();
+    if (auto *focused = FocusedNodeStack.top()) {
+        // Emulate ImGui child window ID creation for `BeginChild(Id, ...)`.
+        focused->AddId(ImHashStr(std::format("{}/{:08X}", ImGuiLabel, Id).c_str()));
+    }
 }
 
 void FaustGraphs::Render() const {
@@ -1303,18 +1315,21 @@ void FaustGraphs::Render() const {
         if (!can_nav) BeginDisabled();
         if (Button("Top")) {
             while (FocusedNodeStack.size() > 1) FocusedNodeStack.pop();
+            UpdateNodeImGuiIds();
         }
         SameLine();
-        if (Button("Back")) FocusedNodeStack.pop();
+        if (Button("Back")) {
+            FocusedNodeStack.pop();
+            UpdateNodeImGuiIds();
+        }
         if (!can_nav) EndDisabled();
     }
 
     auto *focused = FocusedNodeStack.top();
     focused->Place(DeviceType_ImGui);
-
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(Style, focused->Size));
-    BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
-    if (Node::ById.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
+
+    BeginChild(Id, {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = Scale(Style, 1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 

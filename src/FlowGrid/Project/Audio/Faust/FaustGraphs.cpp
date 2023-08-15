@@ -365,9 +365,9 @@ struct Node {
     const u32 Descendents = 0; // The number of boxes within this node (recursively).
     Node *A{}, *B{}; // Nodes have at most two children.
 
-    ImVec2 Size; // Set in `PlaceSize`.
-    ImVec2 Position; // Relative to parent. Set in `Place`.
-    GraphOrientation Orientation = GraphForward; // Set in `Place`.
+    ImVec2 Size;
+    ImVec2 Position; // Relative to parent.
+    GraphOrientation Orientation = GraphForward;
 
     Node(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
         : Context(context), Style(context.Style), FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
@@ -396,17 +396,8 @@ struct Node {
     // IO point relative to parent.
     ImVec2 ChildPoint(IO io, u32 channel) const { return Position + Point(io, channel); }
 
-    void Place(const DeviceType type, const ImVec2 &position, GraphOrientation orientation) {
-        Position = position;
-        Orientation = orientation;
-        DoPlace(type);
-    }
-    void PlaceSize(const DeviceType type) {
-        if (A) A->PlaceSize(type);
-        if (B) B->PlaceSize(type);
-        DoPlaceSize(type);
-    }
-    void Place(const DeviceType type) { DoPlace(type); }
+    virtual void Place(const DeviceType) = 0;
+
     void Draw(Device &device) const {
         const bool is_imgui = device.Type() == DeviceType_ImGui;
         const auto before_cursor = device.CursorPosition;
@@ -515,8 +506,6 @@ struct Node {
     }
 
 protected:
-    virtual void DoPlaceSize(DeviceType) = 0;
-    virtual void DoPlace(DeviceType) = 0;
     virtual void Render(Device &, InteractionFlags flags = InteractionFlags_None) const = 0;
 
     ImRect GetFrameRect() const { return {Margin(), Size - Margin()}; }
@@ -544,17 +533,13 @@ struct BlockNode : Node {
     BlockNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
         : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
 
-    void DoPlaceSize(const DeviceType type) override {
+    void Place(const DeviceType type) override {
         const auto text_size = CalcTextSize(string(Text));
         Size = Margin() * 2 +
             ImVec2{
                 max(Style.NodeMinSize.X(), text_size.x + Padding().x * 2),
                 max(Style.NodeMinSize.Y(), max(text_size.y, float(max(InCount, OutCount)) * WireGap())),
             };
-        if (Inner && type == DeviceType_SVG) Inner->PlaceSize(type);
-    }
-
-    void DoPlace(const DeviceType type) override {
         if (Inner && type == DeviceType_SVG) Inner->Place(type);
     }
 
@@ -605,8 +590,7 @@ struct CableNode : Node {
     CableNode(const FaustGraphs &context, Tree tree, u32 n = 1) : Node(context, tree, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
-    void DoPlaceSize(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
-    void DoPlace(const DeviceType) override {}
+    void Place(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
     void Render(Device &, InteractionFlags) const override {}
 
     // Cable points are vertically spaced by `WireGap`.
@@ -621,7 +605,7 @@ struct CableNode : Node {
 struct InverterNode : BlockNode {
     InverterNode(const FaustGraphs &context, Tree tree) : BlockNode(context, tree, 1, 1, "-1", FlowGridGraphCol_Inverter) {}
 
-    void DoPlaceSize(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
+    void Place(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
 
     void Render(Device &device, InteractionFlags) const override {
         const float radius = Style.InverterRadius;
@@ -641,8 +625,7 @@ struct CutNode : Node {
     CutNode(const FaustGraphs &context, Tree tree) : Node(context, tree, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
-    void DoPlaceSize(const DeviceType) override { Size = {0, 1}; }
-    void DoPlace(const DeviceType) override {}
+    void Place(const DeviceType) override { Size = {0, 1}; }
 
     // A cut is represented by a small black dot.
     void Render(Device &, InteractionFlags) const override {
@@ -689,34 +672,44 @@ struct BinaryNode : Node {
         }
         return (io == IO_In ? A : B)->ChildPoint(io, i);
     }
-    void DoPlaceSize(const DeviceType) override {
-        if (Type == ParallelNode) {
-            Size = {max(A->W(), B->W()), A->H() + B->H()};
-        } else if (Type == RecursiveNode) {
-            Size = {
-                max(A->W(), B->W()) + 2 * WireGap() * float(max(B->IoCount(IO_In), B->IoCount(IO_Out))),
-                A->H() + B->H(),
-            };
-        } else {
-            Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())};
-        }
-    }
 
     // Place the two components horizontally, centered, with enough space for the connections.
-    void DoPlace(const DeviceType type) override {
+    void Place(const DeviceType device_type) override {
         if (Type == ParallelNode || Type == RecursiveNode) {
             // For parallel, A is top and B is bottom. For recursive, this is reversed.
             // In both cases, flip the order if this node is oriented in reverse.
             const bool a_top = IsForward() == (Type == ParallelNode); // XNOR - result is true if either both are true or both are false.
             auto *top = a_top ? A : B;
             auto *bottom = a_top ? B : A;
-            top->Place(type, {(W() - top->W()) / 2, 0}, Type == RecursiveNode ? GraphReverse : Orientation);
-            bottom->Place(type, {(W() - bottom->W()) / 2, top->H()}, Type == RecursiveNode ? GraphForward : Orientation);
+            top->Orientation = Type == RecursiveNode ? GraphReverse : Orientation;
+            bottom->Orientation = Type == RecursiveNode ? GraphForward : Orientation;
+
+            top->Place(device_type);
+            bottom->Place(device_type);
+            if (Type == ParallelNode) {
+                Size = {max(A->W(), B->W()), A->H() + B->H()};
+            } else if (Type == RecursiveNode) {
+                Size = {
+                    max(A->W(), B->W()) + 2 * WireGap() * float(max(B->IoCount(IO_In), B->IoCount(IO_Out))),
+                    A->H() + B->H(),
+                };
+            }
+
+            top->Position = {(W() - top->W()) / 2, 0};
+            bottom->Position = {(W() - bottom->W()) / 2, top->H()};
         } else {
             auto *left = IsLr() ? A : B;
             auto *right = IsLr() ? B : A;
-            left->Place(type, {0, max(0.f, right->H() - left->H()) / 2}, Orientation);
-            right->Place(type, {left->W() + HorizontalGap(), max(0.f, left->H() - right->H()) / 2}, Orientation);
+            left->Orientation = Orientation;
+            right->Orientation = Orientation;
+
+            left->Place(device_type);
+            right->Place(device_type);
+            left->Position = {0, max(0.f, right->H() - left->H()) / 2};
+            right->Position = {left->W(), max(0.f, left->H() - right->H()) / 2};
+            const float horizontal_gap = HorizontalGap();
+            right->Position.x += horizontal_gap;
+            Size = {A->W() + B->W() + horizontal_gap, max(A->H(), B->H())};
         }
     }
 
@@ -882,13 +875,18 @@ struct GroupNode : Node {
         : Node(context, tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
     ~GroupNode() override = default;
 
-    void DoPlaceSize(const DeviceType) override {
+    void Place(const DeviceType type) override {
+        A->Place(type);
         Size = A->Size + (Margin() + Padding()) * 2 + ImVec2{LineWidth() * 2, LineWidth() * 2 + GetFontSize()};
+
+        if (!ShouldDecorate()) {
+            A->Orientation = Orientation;
+        } else {
+            A->Position = Margin() + Padding() + ImVec2{LineWidth(), LineWidth() + GetFontSize() / 2};
+            A->Orientation = Orientation;
+        }
     }
-    void DoPlace(const DeviceType type) override {
-        if (!ShouldDecorate()) return A->Place(type, {0, 0}, Orientation);
-        A->Place(type, Margin() + Padding() + ImVec2{LineWidth(), LineWidth() + GetFontSize() / 2}, Orientation);
-    }
+
     void Render(Device &device, InteractionFlags) const override {
         if (ShouldDecorate()) {
             device.LabeledRect(
@@ -935,11 +933,10 @@ struct RouteNode : Node {
     RouteNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, std::vector<int> routes)
         : Node(context, tree, in_count, out_count), Routes(std::move(routes)) {}
 
-    void DoPlaceSize(const DeviceType) override {
+    void Place(const DeviceType) override {
         const float h = 2 * YMargin() + max(Style.NodeMinSize.Y(), float(max(InCount, OutCount)) * WireGap());
         Size = {2 * XMargin() + max(Style.NodeMinSize.X(), h * 0.75f), h};
     }
-    void DoPlace(const DeviceType) override {}
 
     void Render(Device &device, InteractionFlags) const override {
         if (Style.RouteFrame) {
@@ -1256,7 +1253,6 @@ void FaustGraphs::SaveBoxSvg(const fs::path &dir_path) const {
     fs::create_directory(dir_path);
 
     GroupNode node{*this, NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
-    node.PlaceSize(DeviceType_SVG);
     node.Place(DeviceType_SVG);
     node.WriteSvg(dir_path);
 }
@@ -1313,14 +1309,7 @@ void FaustGraphs::Render() const {
     }
 
     auto *focused = FocusedNodeStack.top();
-    // TODO two placement passes are currently needed because `BinaryNode::PlaceSize` depends on its `HorizontalGap()` computation,
-    //   which in turn depends on the ultimate y position of its child nodes' points... which depend on their `Place` having been called.
-    // if (Button("Place")) {
-    focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
-    focused->PlaceSize(DeviceType_ImGui);
-    focused->Place(DeviceType_ImGui);
-    // }
 
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(Style, focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);

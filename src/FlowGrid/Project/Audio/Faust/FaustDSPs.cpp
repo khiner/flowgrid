@@ -99,7 +99,7 @@ static const std::string FaustDspPathSegment = "FaustDSP";
 
 FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector<FaustDSP>(std::move(args)) {
     WindowFlags |= ImGuiWindowFlags_MenuBar;
-    // EmplaceBack_(FaustDspPathSegment);
+    EmplaceBack_(FaustDspPathSegment);
 }
 
 FaustDSPs::~FaustDSPs() {}

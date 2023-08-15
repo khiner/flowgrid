@@ -206,7 +206,7 @@ struct SVGDevice : Device {
         const auto &start_scaled = At(start);
         const auto &end_scaled = At(end);
         const ImColor &color = Style.Colors[FlowGridGraphCol_Line];
-        const auto width = Scale(Style.WireWidth);
+        const auto width = Scale(Style.WireThickness);
         Stream << std::format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
     }
 
@@ -307,7 +307,7 @@ struct ImGuiDevice : Device {
         static const auto offset = ImVec2{0.f, 0.5f};
         DrawList->PathLineTo(At(start) + offset);
         DrawList->PathLineTo(At(end) + offset);
-        DrawList->PathStroke(Style.Colors[FlowGridGraphCol_Line], 0, Scale(Style.WireWidth));
+        DrawList->PathStroke(Style.Colors[FlowGridGraphCol_Line], 0, Scale(Style.WireThickness));
     }
 
     void Text(const ImVec2 &p, string_view text, const TextStyle &style) override {
@@ -545,10 +545,11 @@ struct BlockNode : Node {
         : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
+        const auto text_size = CalcTextSize(string(Text));
         Size = Margin() * 2 +
             ImVec2{
-                max(3.f * WireGap(), CalcTextSize(string(Text)).x + Padding().x * 2),
-                max(3.f * WireGap(), float(max(InCount, OutCount)) * WireGap()),
+                max(Style.NodeMinSize.X(), text_size.x + Padding().x * 2),
+                max(Style.NodeMinSize.Y(), max(text_size.y, float(max(InCount, OutCount)) * WireGap())),
             };
         if (Inner && type == DeviceType_SVG) Inner->PlaceSize(type);
     }
@@ -689,11 +690,16 @@ struct BinaryNode : Node {
         return (io == IO_In ? A : B)->ChildPoint(io, i);
     }
     void DoPlaceSize(const DeviceType) override {
-        if (Type == ParallelNode) Size = {max(A->W(), B->W()), A->H() + B->H()};
-        else if (Type == RecursiveNode) Size = {
-                                            max(A->W(), B->W()) + 2 * WireGap() * float(max(B->IoCount(IO_In), B->IoCount(IO_Out))),
-                                            A->H() + B->H()};
-        else Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())};
+        if (Type == ParallelNode) {
+            Size = {max(A->W(), B->W()), A->H() + B->H()};
+        } else if (Type == RecursiveNode) {
+            Size = {
+                max(A->W(), B->W()) + 2 * WireGap() * float(max(B->IoCount(IO_In), B->IoCount(IO_Out))),
+                A->H() + B->H(),
+            };
+        } else {
+            Size = {A->W() + B->W() + HorizontalGap(), max(A->H(), B->H())};
+        }
     }
 
     // Place the two components horizontally, centered, with enough space for the connections.
@@ -806,10 +812,10 @@ struct BinaryNode : Node {
             // The horizontal gap for the wires depends on the largest group of contiguous connections that go in the same up/down direction.
             if (A->IoCount(IO_Out) == 0) return 0;
 
-            // todo simplify this by only tracking two counts: max same dir u32 in either direction, and current same dir u32 ...
+            // todo simplify this by only tracking two counts: max same dir count in either direction, and current same dir count...
             ImGuiDir prev_dir = ImGuiDir_None;
-            u32 same_dir_count = 0;
-            std::unordered_map<ImGuiDir, u32> max_group_size; // Store the size of the largest group for each direction.
+            int same_dir_count = 0;
+            std::unordered_map<ImGuiDir, int> max_group_size; // Store the size of the largest group for each direction.
             for (u32 i = 0; i < A->IoCount(IO_Out); i++) {
                 const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
                 const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
@@ -818,7 +824,7 @@ struct BinaryNode : Node {
                 max_group_size[dir] = max(max_group_size[dir], same_dir_count);
             }
 
-            return WireGap() * float(max(max_group_size[ImGuiDir_Up], max_group_size[ImGuiDir_Down]));
+            return WireGap() * float(max(0, max(max_group_size[ImGuiDir_Up] - 1, max_group_size[ImGuiDir_Down] - 1)));
         }
         return (A->H() + B->H()) * Style.BinaryHorizontalGapRatio;
     }
@@ -930,9 +936,8 @@ struct RouteNode : Node {
         : Node(context, tree, in_count, out_count), Routes(std::move(routes)) {}
 
     void DoPlaceSize(const DeviceType) override {
-        const float minimal = 3 * WireGap();
-        const float h = 2 * YMargin() + max(minimal, float(max(InCount, OutCount)) * WireGap());
-        Size = {2 * XMargin() + max(minimal, h * 0.75f), h};
+        const float h = 2 * YMargin() + max(Style.NodeMinSize.Y(), float(max(InCount, OutCount)) * WireGap());
+        Size = {2 * XMargin() + max(Style.NodeMinSize.X(), h * 0.75f), h};
     }
     void DoPlace(const DeviceType) override {}
 
@@ -1308,8 +1313,14 @@ void FaustGraphs::Render() const {
     }
 
     auto *focused = FocusedNodeStack.top();
+    // TODO two placement passes are currently needed because `BinaryNode::PlaceSize` depends on its `HorizontalGap()` computation,
+    //   which in turn depends on the ultimate y position of its child nodes' points... which depend on their `Place` having been called.
+    // if (Button("Place")) {
     focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
+    focused->PlaceSize(DeviceType_ImGui);
+    focused->Place(DeviceType_ImGui);
+    // }
 
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(Style, focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);

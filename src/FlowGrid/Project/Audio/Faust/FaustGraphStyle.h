@@ -72,11 +72,12 @@ struct FaustGraphStyle : Component, Actionable<Action::Faust::GraphStyle::Any> {
 
     Prop(Vec2Linked, NodeMargin, {8, 8}, 0, 20);
     Prop(Vec2Linked, NodePadding, {8, 0}, 0, 20, false); // todo padding y not actually used yet, since blocks already have a min-height determined by WireGap.
+    Prop(Vec2Linked, NodeMinSize, {48, 48}, 0, 128);
 
     Prop(Float, BoxCornerRadius, 4, 0, 10);
     Prop(Float, BinaryHorizontalGapRatio, 0.25, 0, 1);
-    Prop(Float, WireWidth, 1, 0.5, 4);
-    Prop(Float, WireGap, 16, 10, 20);
+    Prop(Float, WireThickness, 1, 0.5, 4);
+    Prop(Float, WireGap, 16, 4, 20);
     Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
     Prop(Float, InverterRadius, 3, 1, 5);
 

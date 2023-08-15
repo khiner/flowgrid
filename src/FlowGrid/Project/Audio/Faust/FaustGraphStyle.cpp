@@ -138,10 +138,11 @@ void FaustGraphStyle::LayoutFlowGrid() const {
     GroupCornerRadius.Set(5);
     BoxCornerRadius.Set(4);
     BinaryHorizontalGapRatio.Set(0.25);
-    WireWidth.Set(1);
+    WireThickness.Set(1);
     WireGap.Set(16);
     NodeMargin.Set({8, 8});
     NodePadding.Set({8, 0});
+    NodeMinSize.Set({48, 48});
     ArrowSize.Set({3, 2});
     InverterRadius.Set(3);
 }
@@ -160,10 +161,11 @@ void FaustGraphStyle::LayoutFaust() const {
     GroupCornerRadius.Set(0);
     BoxCornerRadius.Set(0);
     BinaryHorizontalGapRatio.Set(0.25f);
-    WireWidth.Set(1);
+    WireThickness.Set(1);
     WireGap.Set(16);
     NodeMargin.Set({8, 8});
     NodePadding.Set({8, 0});
+    NodeMinSize.Set({48, 48});
     ArrowSize.Set({3, 2});
     InverterRadius.Set(3);
 }
@@ -212,10 +214,11 @@ void FaustGraphStyle::Render() const {
             Separator();
             NodeMargin.Draw();
             NodePadding.Draw();
+            NodeMinSize.Draw();
             BoxCornerRadius.Draw();
             BinaryHorizontalGapRatio.Draw();
             WireGap.Draw();
-            WireWidth.Draw();
+            WireThickness.Draw();
             ArrowSize.Draw();
             InverterRadius.Draw();
             EndTabItem();

@@ -42,5 +42,3 @@ private:
     std::unique_ptr<Node> RootNode{};
     // std::unordered_map<ID, Box> BoxById;
 };
-
-extern const FaustGraphs &faust_graphs;

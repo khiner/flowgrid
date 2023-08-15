@@ -33,26 +33,25 @@ enum GraphOrientation {
     GraphReverse
 };
 
-static inline auto &Style() { return faust_graphs.Style; }
+static inline float GetScale(const FaustGraphStyle &style);
+static inline ImVec2 Scale(const FaustGraphStyle &style, const ImVec2 &p) { return p * GetScale(style); }
+static inline float Scale(const FaustGraphStyle &style, const float f) { return f * GetScale(style); }
 
-static inline float GetScale();
-static inline ImVec2 Scale(const ImVec2 &p) { return p * GetScale(); }
-static inline float Scale(const float f) { return f * GetScale(); }
-
-static inline ImGuiDir GlobalDirection(GraphOrientation orientation) {
-    ImGuiDir dir = Style().Direction;
+static inline ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientation) {
+    ImGuiDir dir = style.Direction;
     return (dir == ImGuiDir_Right && orientation == GraphForward) || (dir == ImGuiDir_Left && orientation == GraphReverse) ?
         ImGuiDir_Right :
         ImGuiDir_Left;
 }
-
-static inline bool IsLr(GraphOrientation orientation) { return GlobalDirection(orientation) == ImGuiDir_Right; }
+static inline bool IsLr(const FaustGraphStyle &style, GraphOrientation orientation) {
+    return GlobalDirection(style, orientation) == ImGuiDir_Right;
+}
 
 // Device accepts unscaled positions/sizes.
 struct Device {
     static constexpr float RectLabelPaddingLeft = 3;
 
-    Device(const ImVec2 &position = {0, 0}) : Position(position) {}
+    Device(const FaustGraphStyle &style, const ImVec2 &position = {0, 0}) : Style(style), Position(position) {}
     virtual ~Device() = default;
 
     virtual DeviceType Type() = 0;
@@ -75,6 +74,11 @@ struct Device {
 
     inline ImVec2 At(const ImVec2 &local_pos) const { return Position + CursorPosition + Scale(local_pos); }
     inline ImRect At(const ImRect &local_rect) const { return {At(local_rect.Min), At(local_rect.Max)}; }
+
+    inline ImVec2 Scale(const ImVec2 &p) const { return p * GetScale(Style); }
+    inline float Scale(const float f) const { return f * GetScale(Style); }
+
+    const FaustGraphStyle &Style;
 
     ImVec2 Position{}; // Absolute window position of device
     ImVec2 CursorPosition{}; // In local coordinates, relative to `Position`
@@ -105,10 +109,11 @@ static inline string GetFontBase64() {
 
 // todo: Fix rendering SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct SVGDevice : Device {
-    SVGDevice(fs::path Directory, string FileName, ImVec2 size) : Directory(std::move(Directory)), FileName(std::move(FileName)) {
+    SVGDevice(const FaustGraphStyle &style, fs::path Directory, string FileName, ImVec2 size)
+        : Device(style), Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
         Stream << std::format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
-        Stream << (Style().ScaleFillHeight ? R"( height="100%">)" : std::format(R"( width="{}" height="{}">)", w, h));
+        Stream << (Style.ScaleFillHeight ? R"( height="100%">)" : std::format(R"( width="{}" height="{}">)", w, h));
 
         // Embed the current font as a base64-encoded string.
         Stream << std::format(R"(
@@ -136,8 +141,8 @@ struct SVGDevice : Device {
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    static string ArrowPointingAt(const ImVec2 &pos, ImVec2 half_sz, GraphOrientation orientation, const ImColor &color) {
-        const float d = IsLr(orientation) ? -1 : 1;
+    string ArrowPointingAt(const ImVec2 &pos, ImVec2 half_sz, GraphOrientation orientation, const ImColor &color) const {
+        const float d = IsLr(Style, orientation) ? -1 : 1;
         return CreateTriangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
     }
     static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &fill_color, const ImColor &stroke_color) {
@@ -149,7 +154,7 @@ struct SVGDevice : Device {
     }
     // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
     // Determined empirically to make the two renderings look the same.
-    static float GetFontSize() { return Scale(GetTextLineHeight()) * 0.8f; }
+    float GetFontSize() const { return Scale(GetTextLineHeight()) * 0.8f; }
 
     void Rect(const ImRect &local_rect, const RectStyle &style) override {
         const auto &rect = At(local_rect);
@@ -193,15 +198,15 @@ struct SVGDevice : Device {
     }
 
     void Arrow(const ImVec2 &pos, GraphOrientation orientation) override {
-        Stream << ArrowPointingAt(At(pos), Scale(Style().ArrowSize), orientation, Style().Colors[FlowGridGraphCol_Line]);
+        Stream << ArrowPointingAt(At(pos), Scale(Style.ArrowSize), orientation, Style.Colors[FlowGridGraphCol_Line]);
     }
 
     void Line(const ImVec2 &start, const ImVec2 &end) override {
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
         const auto &start_scaled = At(start);
         const auto &end_scaled = At(end);
-        const ImColor &color = Style().Colors[FlowGridGraphCol_Line];
-        const auto width = Scale(Style().WireWidth);
+        const ImColor &color = Style.Colors[FlowGridGraphCol_Line];
+        const auto width = Scale(Style.WireWidth);
         Stream << std::format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
     }
 
@@ -223,7 +228,7 @@ struct SVGDevice : Device {
 
     void Dot(const ImVec2 &pos, const ImColor &fill_color) override {
         const auto &p = At(pos);
-        const float radius = Scale(Style().OrientationMarkRadius);
+        const float radius = Scale(Style.OrientationMarkRadius);
         Stream << std::format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, RgbColor(fill_color));
     }
 
@@ -235,7 +240,8 @@ private:
 };
 
 struct ImGuiDevice : Device {
-    ImGuiDevice() : Device(GetCursorScreenPos()), DC(GetCurrentWindow()->DC), DrawList(GetWindowDrawList()) {}
+    ImGuiDevice(const FaustGraphStyle &style)
+        : Device(style, GetCursorScreenPos()), DC(GetCurrentWindow()->DC), DrawList(GetWindowDrawList()) {}
 
     DeviceType Type() override { return DeviceType_ImGui; }
 
@@ -293,7 +299,7 @@ struct ImGuiDevice : Device {
     }
 
     void Arrow(const ImVec2 &p, GraphOrientation orientation) override {
-        RenderArrowPointingAt(DrawList, At(p) + ImVec2{0, 0.5f}, Scale(Style().ArrowSize), GlobalDirection(orientation), Style().Colors[FlowGridGraphCol_Line]);
+        RenderArrowPointingAt(DrawList, At(p) + ImVec2{0, 0.5f}, Scale(Style.ArrowSize), GlobalDirection(Style, orientation), Style.Colors[FlowGridGraphCol_Line]);
     }
 
     // Basically `DrawList->AddLine(...)`, but avoiding extra vec2 math to cancel out the +0.5x ImGui adds to line points.
@@ -301,7 +307,7 @@ struct ImGuiDevice : Device {
         static const auto offset = ImVec2{0.f, 0.5f};
         DrawList->PathLineTo(At(start) + offset);
         DrawList->PathLineTo(At(end) + offset);
-        DrawList->PathStroke(Style().Colors[FlowGridGraphCol_Line], 0, Scale(Style().WireWidth));
+        DrawList->PathStroke(Style.Colors[FlowGridGraphCol_Line], 0, Scale(Style.WireWidth));
     }
 
     void Text(const ImVec2 &p, string_view text, const TextStyle &style) override {
@@ -319,7 +325,7 @@ struct ImGuiDevice : Device {
     }
 
     void Dot(const ImVec2 &p, const ImColor &fill_color) override {
-        const float radius = Scale(Style().OrientationMarkRadius);
+        const float radius = Scale(Style.OrientationMarkRadius);
         DrawList->AddCircleFilled(At(p), radius, fill_color);
     }
 
@@ -351,6 +357,8 @@ struct Node {
         TypeLabelBgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.3f}),
         TypeTextColor = ColorConvertFloat4ToU32({1.f, 0.f, 0.f, 1.f});
 
+    const FaustGraphs &Context;
+    const FaustGraphStyle &Style;
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel;
     const u32 InCount, OutCount;
@@ -361,8 +369,8 @@ struct Node {
     ImVec2 Position; // Relative to parent. Set in `Place`.
     GraphOrientation Orientation = GraphForward; // Set in `Place`.
 
-    Node(Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
-        : FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
+    Node(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
+        : Context(context), Style(context.Style), FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
           BoxTypeLabel(GetBoxType(FaustTree)), InCount(in_count), OutCount(out_count),
           Descendents((is_block ? 1 : 0) + (a ? a->Descendents : 0) + (b ? b->Descendents : 0)), A(a), B(b) {
         // cout << tree2str(tree) << '\n';
@@ -410,7 +418,7 @@ struct Node {
             const auto before_cursor_inner = device.CursorPosition;
             const auto &local_rect = GetFrameRect();
             device.AdvanceCursor(local_rect.Min);
-            flags |= fg::InvisibleButton(Scale(local_rect.GetSize()), "");
+            flags |= fg::InvisibleButton(Scale(Style, local_rect.GetSize()), "");
             SetItemAllowOverlap();
             device.SetCursorPos(before_cursor_inner);
         }
@@ -420,7 +428,7 @@ struct Node {
         if (B) B->Draw(device);
 
         if (flags & InteractionFlags_Hovered) {
-            const auto &flags = faust_graphs.Settings.HoverFlags;
+            const auto &flags = Context.Settings.HoverFlags;
             // todo get abs pos by traversing through ancestors
             if (flags & FaustGraphHoverFlags_ShowRect) DrawRect(device);
             if (flags & FaustGraphHoverFlags_ShowType) DrawType(device);
@@ -432,10 +440,10 @@ struct Node {
         device.SetCursorPos(before_cursor);
     };
 
-    inline static float WireGap() { return Style().WireGap; }
+    inline float WireGap() const { return Style.WireGap; }
 
-    virtual ImVec2 Margin() const { return Style().NodeMargin; }
-    virtual ImVec2 Padding() const { return Style().NodePadding; } // Currently only actually used for `BlockNode` text
+    virtual ImVec2 Margin() const { return Style.NodeMargin; }
+    virtual ImVec2 Padding() const { return Style.NodePadding; } // Currently only actually used for `BlockNode` text
     inline float XMargin() const { return Margin().x; }
     inline float YMargin() const { return Margin().y; }
 
@@ -446,7 +454,7 @@ struct Node {
     inline bool IsForward() const { return Orientation == GraphForward; }
     inline float OrientationUnit() const { return IsForward() ? 1 : -1; }
 
-    inline bool IsLr() const { return ::IsLr(Orientation); }
+    inline bool IsLr() const { return ::IsLr(Style, Orientation); }
     inline float DirUnit() const { return IsLr() ? 1 : -1; }
     inline float DirUnit(IO io) const { return DirUnit() * (io == IO_In ? 1.f : -1.f); }
 
@@ -501,8 +509,8 @@ struct Node {
     }
 
     void WriteSvg(const fs::path &path) const {
-        SVGDevice device(path, SvgFileName(), Size);
-        device.Rect(*this, {.FillColor = Style().Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
+        SVGDevice device(Style, path, SvgFileName(), Size);
+        device.Rect(*this, {.FillColor = Style.Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
         Draw(device);
     }
 
@@ -517,25 +525,24 @@ protected:
     // Marker on top: Forward orientation. Inputs go from top to bottom.
     // Marker on bottom: Backward orientation. Inputs go from bottom to top.
     void DrawOrientationMark(Device &device) const {
-        if (!Style().OrientationMark) return;
+        if (!Style.OrientationMark) return;
 
         const auto &rect = GetFrameRect();
-        const u32 color = Style().Colors[FlowGridGraphCol_OrientationMark];
+        const u32 color = Style.Colors[FlowGridGraphCol_OrientationMark];
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
 
 std::stack<Node *> FocusedNodeStack;
-
-static inline float GetScale() {
-    if (!Style().ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return Style().Scale;
+static inline float GetScale(const FaustGraphStyle &style) {
+    if (!style.ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return style.Scale;
     return GetWindowHeight() / FocusedNodeStack.top()->H();
 }
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
-    BlockNode(Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
-        : Node(tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
+    BlockNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
+        : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {}
 
     void DoPlaceSize(const DeviceType type) override {
         Size = Margin() * 2 +
@@ -551,8 +558,8 @@ struct BlockNode : Node {
     }
 
     void Render(Device &device, InteractionFlags flags) const override {
-        u32 fill_color = Style().Colors[Color];
-        const u32 text_color = Style().Colors[FlowGridGraphCol_Text];
+        u32 fill_color = Style.Colors[Color];
+        const u32 text_color = Style.Colors[FlowGridGraphCol_Text];
         const auto &local_rect = GetFrameRect();
         const auto &size = local_rect.GetSize();
         const auto before_cursor = device.CursorPosition;
@@ -562,14 +569,14 @@ struct BlockNode : Node {
             auto &svg_device = static_cast<SVGDevice &>(device);
             if (Inner && !fs::exists(svg_device.Directory / Inner->SvgFileName())) Inner->WriteSvg(svg_device.Directory);
             const string link = Inner ? SvgFileName() : "";
-            svg_device.Rect({{0, 0}, size}, {.FillColor = fill_color, .CornerRadius = Style().BoxCornerRadius}, link);
+            svg_device.Rect({{0, 0}, size}, {.FillColor = fill_color, .CornerRadius = Style.BoxCornerRadius}, link);
             svg_device.Text(size / 2, Text, {.Color = text_color}, link);
         } else {
             if (Inner) {
                 if (flags & InteractionFlags_Clicked) FocusedNodeStack.push(Inner);
                 fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
-            RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, Style().BoxCornerRadius);
+            RenderFrame(device.At({0, 0}), device.At(size), fill_color, false, Style.BoxCornerRadius);
             device.Text(size / 2, Text, {.Color = text_color});
         }
 
@@ -578,7 +585,7 @@ struct BlockNode : Node {
 
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            const float arrow_width = in ? Style().ArrowSize.X() : 0.f;
+            const float arrow_width = in ? Style.ArrowSize.X() : 0.f;
             for (u32 channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(io, channel);
                 const auto &b = channel_point + ImVec2{(XMargin() - arrow_width) * DirUnit(io), 0};
@@ -594,7 +601,7 @@ struct BlockNode : Node {
 
 // Simple cables (identity box) in parallel.
 struct CableNode : Node {
-    CableNode(Tree tree, u32 n = 1) : Node(tree, n, n) {}
+    CableNode(const FaustGraphs &context, Tree tree, u32 n = 1) : Node(context, tree, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
     void DoPlaceSize(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
@@ -611,18 +618,18 @@ struct CableNode : Node {
 // An inverter is a circle followed by a triangle.
 // It corresponds to '*(-1)', and it's used to create more compact graphs.
 struct InverterNode : BlockNode {
-    InverterNode(Tree tree) : BlockNode(tree, 1, 1, "-1", FlowGridGraphCol_Inverter) {}
+    InverterNode(const FaustGraphs &context, Tree tree) : BlockNode(context, tree, 1, 1, "-1", FlowGridGraphCol_Inverter) {}
 
     void DoPlaceSize(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
 
     void Render(Device &device, InteractionFlags) const override {
-        const float radius = Style().InverterRadius;
+        const float radius = Style.InverterRadius;
         const ImVec2 p1 = {W() - 2 * XMargin(), 1 + (H() - 1) / 2};
         const auto tri_a = ImVec2{XMargin() + (IsLr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : W()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
-        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, Style().Colors[Color]);
-        device.Triangle(tri_a, tri_b, tri_c, Style().Colors[Color]);
+        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, Style.Colors[Color]);
+        device.Triangle(tri_a, tri_b, tri_c, Style.Colors[Color]);
     }
 };
 
@@ -630,7 +637,7 @@ struct InverterNode : BlockNode {
 struct CutNode : Node {
     // A Cut is represented by a small black dot.
     // It has 1 input and no output.
-    CutNode(Tree tree) : Node(tree, 1, 0) {}
+    CutNode(const FaustGraphs &context, Tree tree) : Node(context, tree, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
     void DoPlaceSize(const DeviceType) override { Size = {0, 1}; }
@@ -659,9 +666,9 @@ enum BinaryNodeType {
 };
 
 struct BinaryNode : Node {
-    BinaryNode(Tree tree, Node *a, Node *b, BinaryNodeType type)
+    BinaryNode(const FaustGraphs &context, Tree tree, Node *a, Node *b, BinaryNodeType type)
         : Node(
-              tree,
+              context, tree,
               type == ParallelNode ? a->InCount + b->InCount : (type == RecursiveNode ? a->InCount - b->OutCount : a->InCount),
               type == ParallelNode ? a->OutCount + b->OutCount : (type == RecursiveNode ? a->OutCount : b->OutCount),
               a, b
@@ -752,7 +759,7 @@ struct BinaryNode : Node {
             }
         } else if (Type == SequentialNode) {
             assert(A->OutCount == B->InCount); // Children must be "compatible" (a: n->m and b: m->q).
-            if (!Style().SequentialConnectionZigzag) {
+            if (!Style.SequentialConnectionZigzag) {
                 // Draw a straight, potentially diagonal cable.
                 for (u32 i = 0; i < A->IoCount(IO_Out); i++) device.Line(A->ChildPoint(IO_Out, i), B->ChildPoint(IO_In, i));
                 return;
@@ -813,18 +820,18 @@ struct BinaryNode : Node {
 
             return WireGap() * float(max(max_group_size[ImGuiDir_Up], max_group_size[ImGuiDir_Down]));
         }
-        return (A->H() + B->H()) * Style().BinaryHorizontalGapRatio;
+        return (A->H() + B->H()) * Style.BinaryHorizontalGapRatio;
     }
 
     BinaryNodeType Type;
 };
 
-Node *MakeSequential(Tree tree, Node *a, Node *b) {
+Node *MakeSequential(const FaustGraphs &context, Tree tree, Node *a, Node *b) {
     const u32 o = a->OutCount, i = b->InCount;
     return new BinaryNode(
-        tree,
-        o < i ? new BinaryNode(tree, a, new CableNode(tree, i - o), ParallelNode) : a,
-        o > i ? new BinaryNode(tree, b, new CableNode(tree, o - i), ParallelNode) : b,
+        context, tree,
+        o < i ? new BinaryNode(context, tree, a, new CableNode(context, tree, i - o), ParallelNode) : a,
+        o > i ? new BinaryNode(context, tree, b, new CableNode(context, tree, o - i), ParallelNode) : b,
         SequentialNode
     );
 }
@@ -865,8 +872,8 @@ Each property can be changed in `Style.(Group|Decorate){PropertyName}`.
     * To: My right
 */
 struct GroupNode : Node {
-    GroupNode(NodeType type, Tree tree, Node *inner, string text = "")
-        : Node(tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
+    GroupNode(const FaustGraphs &context, NodeType type, Tree tree, Node *inner, string text = "")
+        : Node(context, tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
     ~GroupNode() override = default;
 
     void DoPlaceSize(const DeviceType) override {
@@ -881,11 +888,11 @@ struct GroupNode : Node {
             device.LabeledRect(
                 {Margin() + LineWidth() / 2, Size - Margin() - LineWidth() / 2}, Text,
                 {
-                    .StrokeColor = Style().Colors[Type == NodeType_Group ? FlowGridGraphCol_GroupStroke : FlowGridGraphCol_DecorateStroke],
-                    .StrokeWidth = Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth,
-                    .CornerRadius = Type == NodeType_Group ? Style().GroupCornerRadius : Style().DecorateCornerRadius,
+                    .StrokeColor = Style.Colors[Type == NodeType_Group ? FlowGridGraphCol_GroupStroke : FlowGridGraphCol_DecorateStroke],
+                    .StrokeWidth = Type == NodeType_Group ? Style.GroupLineWidth : Style.DecorateLineWidth,
+                    .CornerRadius = Type == NodeType_Group ? Style.GroupCornerRadius : Style.DecorateCornerRadius,
                 },
-                {.Color = Style().Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
+                {.Color = Style.Colors[FlowGridGraphCol_Text], .Padding = {0, Device::RectLabelPaddingLeft}}
             );
         }
 
@@ -893,7 +900,7 @@ struct GroupNode : Node {
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
             const bool has_arrow = Type == NodeType_Decorate && !in;
-            const float arrow_width = has_arrow ? Style().ArrowSize.X() : 0.f;
+            const float arrow_width = has_arrow ? Style.ArrowSize.X() : 0.f;
             for (u32 channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
                 const ImVec2 &a = {in ? 0 : (Size - offset).x, channel_point.y};
@@ -910,17 +917,17 @@ struct GroupNode : Node {
     NodeType Type;
 
 private:
-    inline bool ShouldDecorate() const { return Type == NodeType_Group || Style().DecorateRootNode; }
-    inline float LineWidth() const { return !ShouldDecorate() ? 0.f : (Type == NodeType_Group ? Style().GroupLineWidth : Style().DecorateLineWidth); }
-    ImVec2 Margin() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupMargin : Style().DecorateMargin); }
-    ImVec2 Padding() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style().GroupPadding : Style().DecoratePadding); }
+    inline bool ShouldDecorate() const { return Type == NodeType_Group || Style.DecorateRootNode; }
+    inline float LineWidth() const { return !ShouldDecorate() ? 0.f : (Type == NodeType_Group ? Style.GroupLineWidth : Style.DecorateLineWidth); }
+    ImVec2 Margin() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style.GroupMargin : Style.DecorateMargin); }
+    ImVec2 Padding() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style.GroupPadding : Style.DecoratePadding); }
 };
 
 struct RouteNode : Node {
     inline static const u32 RouteFrameBgColor = ColorConvertFloat4ToU32({0.93f, 0.93f, 0.65f, 1.f});
 
-    RouteNode(Tree tree, u32 in_count, u32 out_count, std::vector<int> routes)
-        : Node(tree, in_count, out_count), Routes(std::move(routes)) {}
+    RouteNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, std::vector<int> routes)
+        : Node(context, tree, in_count, out_count), Routes(std::move(routes)) {}
 
     void DoPlaceSize(const DeviceType) override {
         const float minimal = 3 * WireGap();
@@ -930,7 +937,7 @@ struct RouteNode : Node {
     void DoPlace(const DeviceType) override {}
 
     void Render(Device &device, InteractionFlags) const override {
-        if (Style().RouteFrame) {
+        if (Style.RouteFrame) {
             device.Rect(GetFrameRect(), {.FillColor = RouteFrameBgColor});
             DrawOrientationMark(device);
             // Input arrows
@@ -1001,7 +1008,7 @@ static string GetUiDescription(Box box) {
 }
 
 // Generate a 1->0 block node for an input slot.
-static Node *MakeInputSlot(Tree tree) { return new BlockNode(tree, 1, 0, "", FlowGridGraphCol_Slot); }
+static Node *MakeInputSlot(const FaustGraphs &context, Tree tree) { return new BlockNode(context, tree, 1, 0, "", FlowGridGraphCol_Slot); }
 
 // Collect the leaf numbers `tree` into `v`.
 // Return `true` if `tree` is a number or a parallel tree of numbers.
@@ -1077,53 +1084,53 @@ FaustGraphs::~FaustGraphs() {
 
 // Generate the inside node of a block graph according to its type.
 Node *FaustGraphs::Tree2NodeInner(Tree t) const {
-    if (getUserData(t) != nullptr) return new BlockNode(t, xtendedArity(t), 1, xtendedName(t));
-    if (isBoxInverter(t)) return new InverterNode(t);
-    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
-    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(t, 1, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
-    if (isBoxWaveform(t)) return new BlockNode(t, 0, 2, "waveform{...}");
-    if (isBoxWire(t)) return new CableNode(t);
-    if (isBoxCut(t)) return new CutNode(t);
-    if (isBoxEnvironment(t)) return new BlockNode(t, 0, 0, "environment{...}");
-    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return new BlockNode(t, (*count_and_name).first, 1, (*count_and_name).second);
+    if (getUserData(t) != nullptr) return new BlockNode(*this, t, xtendedArity(t), 1, xtendedName(t));
+    if (isBoxInverter(t)) return new InverterNode(*this, t);
+    if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(*this, t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxVBargraph(t) || isBoxHBargraph(t)) return new BlockNode(*this, t, 1, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxWaveform(t)) return new BlockNode(*this, t, 0, 2, "waveform{...}");
+    if (isBoxWire(t)) return new CableNode(*this, t);
+    if (isBoxCut(t)) return new CutNode(*this, t);
+    if (isBoxEnvironment(t)) return new BlockNode(*this, t, 0, 0, "environment{...}");
+    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return new BlockNode(*this, t, (*count_and_name).first, 1, (*count_and_name).second);
 
     Tree a, b;
     if (isBoxMetadata(t, a, b)) return Tree2Node(a);
-    if (isBoxSeq(t, a, b)) return MakeSequential(t, Tree2Node(a), Tree2Node(b));
-    if (isBoxPar(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), ParallelNode);
-    if (isBoxSplit(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), SplitNode);
-    if (isBoxMerge(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), MergeNode);
-    if (isBoxRec(t, a, b)) return new BinaryNode(t, Tree2Node(a), Tree2Node(b), RecursiveNode);
+    if (isBoxSeq(t, a, b)) return MakeSequential(*this, t, Tree2Node(a), Tree2Node(b));
+    if (isBoxPar(t, a, b)) return new BinaryNode(*this, t, Tree2Node(a), Tree2Node(b), ParallelNode);
+    if (isBoxSplit(t, a, b)) return new BinaryNode(*this, t, Tree2Node(a), Tree2Node(b), SplitNode);
+    if (isBoxMerge(t, a, b)) return new BinaryNode(*this, t, Tree2Node(a), Tree2Node(b), MergeNode);
+    if (isBoxRec(t, a, b)) return new BinaryNode(*this, t, Tree2Node(a), Tree2Node(b), RecursiveNode);
     if (isBoxSymbolic(t, a, b)) {
         // Generate an abstraction node by placing the input slots and body in sequence.
-        auto *input_slots = MakeInputSlot(a);
+        auto *input_slots = MakeInputSlot(*this, a);
         Tree _a, _b;
         while (isBoxSymbolic(b, _a, _b)) {
-            input_slots = new BinaryNode(b, input_slots, MakeInputSlot(_a), ParallelNode);
+            input_slots = new BinaryNode(*this, b, input_slots, MakeInputSlot(*this, _a), ParallelNode);
             b = _b;
         }
-        auto *abstraction = MakeSequential(b, input_slots, Tree2Node(b));
-        return !GetTreeName(t).empty() ? abstraction : new GroupNode(NodeType_Group, t, abstraction, "Abstraction");
+        auto *abstraction = MakeSequential(*this, b, input_slots, Tree2Node(b));
+        return !GetTreeName(t).empty() ? abstraction : new GroupNode(*this, NodeType_Group, t, abstraction, "Abstraction");
     }
 
     int i;
     double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridGraphCol_Number);
-    if (isBoxSlot(t, &i)) return new BlockNode(t, 0, 1, "", FlowGridGraphCol_Slot);
+    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(*this, t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridGraphCol_Number);
+    if (isBoxSlot(t, &i)) return new BlockNode(*this, t, 0, 1, "", FlowGridGraphCol_Slot);
 
     Tree ff;
-    if (isBoxFFun(t, ff)) return new BlockNode(t, ffarity(ff), 1, ffname(ff));
+    if (isBoxFFun(t, ff)) return new BlockNode(*this, t, ffarity(ff), 1, ffname(ff));
 
     Tree type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(t, 0, 1, tree2str(name));
+    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(*this, t, 0, 1, tree2str(name));
 
     Tree label, chan;
-    if (isBoxSoundfile(t, label, chan)) return new BlockNode(t, 2, 2 + tree2int(chan), GetUiDescription(t), FlowGridGraphCol_Ui);
+    if (isBoxSoundfile(t, label, chan)) return new BlockNode(*this, t, 2, 2 + tree2int(chan), GetUiDescription(t), FlowGridGraphCol_Ui);
 
     const bool is_vgroup = isBoxVGroup(t, label, a), is_hgroup = isBoxHGroup(t, label, a), is_tgroup = isBoxTGroup(t, label, a);
     if (is_vgroup || is_hgroup || is_tgroup) {
         const char prefix = is_vgroup ? 'v' : (is_hgroup ? 'h' : 't');
-        return new GroupNode(NodeType_Group, t, Tree2Node(a), std::format("{}group({})", prefix, extractName(label)));
+        return new GroupNode(*this, NodeType_Group, t, Tree2Node(a), std::format("{}group({})", prefix, extractName(label)));
     }
 
     Tree route;
@@ -1131,7 +1138,7 @@ Node *FaustGraphs::Tree2NodeInner(Tree t) const {
         int ins, outs;
         std::vector<int> routes;
         // Build `ins`x`outs` cable routing.
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isBoxInts(route, routes)) return new RouteNode(t, ins, outs, routes);
+        if (isBoxInt(a, &ins) && isBoxInt(b, &outs) && isBoxInts(route, routes)) return new RouteNode(*this, t, ins, outs, routes);
         throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
@@ -1148,9 +1155,9 @@ Node *FaustGraphs::Tree2Node(Tree t) const {
     if (Style.FoldComplexity != 0u && node->Descendents >= u32(Style.FoldComplexity)) {
         int ins, outs;
         getBoxType(t, &ins, &outs);
-        return new BlockNode(t, ins, outs, "", FlowGridGraphCol_Link, new GroupNode(NodeType_Decorate, t, node));
+        return new BlockNode(*this, t, ins, outs, "", FlowGridGraphCol_Link, new GroupNode(*this, NodeType_Decorate, t, node));
     }
-    return IsPureRouting(t) ? node : new GroupNode(NodeType_Group, t, node);
+    return IsPureRouting(t) ? node : new GroupNode(*this, NodeType_Group, t, node);
 }
 
 string GetBoxType(Box t) {
@@ -1221,7 +1228,7 @@ void FaustGraphs::OnFaustBoxChangedInner(Box box) {
     FocusedNodeStack = {};
     RootNode.reset();
     if (box) {
-        RootNode = std::make_unique<GroupNode>(NodeType_Decorate, box, Tree2NodeInner(box));
+        RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
         FocusedNodeStack.push(RootNode.get());
         Node::ById.clear();
     }
@@ -1243,7 +1250,7 @@ void FaustGraphs::SaveBoxSvg(const fs::path &dir_path) const {
     fs::remove_all(dir_path);
     fs::create_directory(dir_path);
 
-    GroupNode node{NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
+    GroupNode node{*this, NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
     node.PlaceSize(DeviceType_SVG);
     node.Place(DeviceType_SVG);
     node.WriteSvg(dir_path);
@@ -1304,13 +1311,13 @@ void FaustGraphs::Render() const {
     focused->PlaceSize(DeviceType_ImGui);
     focused->Place(DeviceType_ImGui);
 
-    if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(focused->Size));
+    if (!Style.ScaleFillHeight) SetNextWindowContentSize(Scale(Style, focused->Size));
     BeginChild("Faust graph inner", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     if (Node::ById.empty()) RootNode->AddId(GetCurrentWindowRead()->ID);
-    GetCurrentWindow()->FontWindowScale = Scale(1);
+    GetCurrentWindow()->FontWindowScale = Scale(Style, 1);
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 
-    ImGuiDevice device;
+    ImGuiDevice device{Style};
     focused->Draw(device);
 
     EndChild();

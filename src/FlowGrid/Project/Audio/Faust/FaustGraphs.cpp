@@ -802,22 +802,23 @@ struct BinaryNode : Node {
 
     float HorizontalGap() const {
         if (Type == SequentialNode) {
-            // The horizontal gap for the wires depends on the largest group of contiguous connections that go in the same up/down direction.
+            // The horizontal gap depends on the largest group of contiguous connections that go in the same up/down direction.
             if (A->IoCount(IO_Out) == 0) return 0;
 
             // todo simplify this by only tracking two counts: max same dir count in either direction, and current same dir count...
             ImGuiDir prev_dir = ImGuiDir_None;
-            int same_dir_count = 0;
-            std::unordered_map<ImGuiDir, int> max_group_size; // Store the size of the largest group for each direction.
+            u32 same_dir_count = 0;
+            std::unordered_map<ImGuiDir, u32> max_group_size; // Store the size of the largest group for each direction.
             for (u32 i = 0; i < A->IoCount(IO_Out); i++) {
+                static const float Threshold = 0.1f;
                 const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
-                const auto dir = yd < 0 ? ImGuiDir_Up : (yd > 0 ? ImGuiDir_Down : ImGuiDir_None);
+                const auto dir = abs(yd) < Threshold ? ImGuiDir_None : (yd < 0 ? ImGuiDir_Up : ImGuiDir_Down);
                 same_dir_count = dir == prev_dir ? same_dir_count + 1 : 1;
                 prev_dir = dir;
                 max_group_size[dir] = max(max_group_size[dir], same_dir_count);
             }
 
-            return WireGap() * float(max(0, max(max_group_size[ImGuiDir_Up] - 1, max_group_size[ImGuiDir_Down] - 1)));
+            return WireGap() * float(max(0, int(max(max_group_size[ImGuiDir_Up], max_group_size[ImGuiDir_Down])) - 1));
         }
         return (A->H() + B->H()) * Style.BinaryHorizontalGapRatio;
     }

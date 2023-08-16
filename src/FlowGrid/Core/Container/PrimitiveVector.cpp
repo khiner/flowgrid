@@ -25,9 +25,9 @@ template<IsPrimitive T> void PrimitiveVector<T>::PushBack(const T &value) const 
     RootStore.Set(PathAt(Value.size()), value);
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::PushBack_(const T &value) {
-    PushBack(value);
-    Value.push_back(value);
+template<IsPrimitive T> void PrimitiveVector<T>::PopBack() const {
+    if (Value.empty()) return;
+    RootStore.Erase(PathAt(Value.size() - 1));
 }
 
 template<IsPrimitive T> void PrimitiveVector<T>::Resize(u32 size) const {

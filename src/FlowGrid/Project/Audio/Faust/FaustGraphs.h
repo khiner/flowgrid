@@ -33,9 +33,7 @@ struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, Field::Ch
 
     Prop(GraphSettings, Settings);
     Prop(FaustGraphStyle, Style);
-
-    // TODO public mutable is temporary. Replace with a component and navigation actions.
-    mutable Navigable<ID> NodeNavigationHistory{};
+    Prop(Navigable<ID>, NodeNavigationHistory);
 
 private:
     void Render() const override;

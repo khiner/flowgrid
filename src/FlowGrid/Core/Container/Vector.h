@@ -44,6 +44,7 @@ template<typename ChildType> struct Vector : Field {
 
     inline void Clear() { Value.clear(); }
     bool Empty() const { return Value.empty(); }
+    u32 Size() const { return Value.size(); }
 
     inline static std::pair<std::string, std::string> GetPathPrefixAndSegment(StorePath relative_path) {
         auto it = relative_path.begin();
@@ -125,8 +126,6 @@ template<typename ChildType> struct Vector : Field {
             return GetChildPrefix(child.get()) == child_prefix;
         });
     }
-
-    u32 Size() const { return Value.size(); }
 
     void Refresh() override {
         ChildPrefixes.Refresh();

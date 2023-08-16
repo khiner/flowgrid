@@ -767,6 +767,8 @@ DefineQ(Vec2::SetY);
 DefineQ(Vec2::SetAll);
 DefineQ(Vec2::ToggleLinked);
 DefineQ(AdjacencyList::ToggleConnection);
+DefineQ(Navigable<u32>::Push);
+DefineQ(Navigable<u32>::MoveTo);
 DefineQ(Store::ApplyPatch);
 DefineQ(Style::SetImGuiColorPreset);
 DefineQ(Style::SetImPlotColorPreset);

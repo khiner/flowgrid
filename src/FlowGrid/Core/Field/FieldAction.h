@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Container/AdjacencyListAction.h"
+#include "Core/Container/NavigableAction.h"
 #include "Core/Container/PrimitiveVector2DAction.h"
 #include "Core/Container/PrimitiveVectorAction.h"
 #include "Core/Container/TextBufferAction.h"
@@ -20,5 +21,5 @@ DefineActionType(
         TextBuffer::Any, Vec2::Any,
         PrimitiveVector<bool>::Any, PrimitiveVector<int>::Any, PrimitiveVector<u32>::Any, PrimitiveVector<float>::Any, PrimitiveVector<std::string>::Any,
         PrimitiveVector2D<bool>::Any, PrimitiveVector2D<int>::Any, PrimitiveVector2D<u32>::Any, PrimitiveVector2D<float>::Any,
-        AdjacencyList::Any>;
+        AdjacencyList::Any, Navigable<u32>::Any>;
 );

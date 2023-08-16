@@ -1,6 +1,7 @@
 #include "FieldActionHandler.h"
 
 #include "Core/Container/AdjacencyList.h"
+#include "Core/Container/Navigable.h"
 #include "Core/Container/Optional.h"
 #include "Core/Container/PrimitiveVector.h"
 #include "Core/Container/PrimitiveVector2D.h"
@@ -32,6 +33,7 @@ void FieldActionHandler::Apply(const ActionType &action) const {
         [&field](const Flags::ActionType &a) { static_cast<const Flags *>(field)->Apply(a); },
         [&field](const TextBuffer::ActionType &a) { static_cast<const TextBuffer *>(field)->Apply(a); },
         [&field](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(field)->Apply(a); },
+        [&field](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(field)->Apply(a); },
         [&field](const Vec2::ActionType &a) { static_cast<const Vec2 *>(field)->Apply(a); },
         [&field](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(field)->Apply(a); },
         [&field](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(field)->Apply(a); },

@@ -25,6 +25,7 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     void SetJson(json &&) const override;
     json ToJson() const override;
 
+    bool Empty() const { return Value.empty(); }
     T operator[](u32 i) const { return Value[i]; }
     bool Contains(const T &value) const { return std::find(Value.begin(), Value.end(), value) != Value.end(); }
     u32 IndexOf(const T &value) const { return std::find(Value.begin(), Value.end(), value) - Value.begin(); }
@@ -38,12 +39,23 @@ template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Acti
     void Set(const std::vector<T> &) const;
     void Set(size_t i, const T &) const;
     void Set(const std::vector<std::pair<int, T>> &) const;
-    void PushBack(const T &) const;
+    void PushBack(const T &) const; // TODO use templated perfect-forwarding (see `Navigable`).
+    void PushBack_(const T &t) {
+        PushBack(t);
+        Value.push_back(t);
+    }
+    void PopBack() const;
     void Resize(u32) const;
+    void Resize_(u32 size) {
+        Resize(size);
+        Value.resize(size);
+    }
     void Erase() const override;
     void Erase(const T &) const;
-
-    void PushBack_(const T &);
+    void Clear_() {
+        Erase();
+        Value.clear();
+    }
 
 protected:
     std::vector<T> Value;

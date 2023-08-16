@@ -568,7 +568,7 @@ struct BlockNode : Node {
         } else {
             if (Inner) {
                 if (flags & InteractionFlags_Clicked) {
-                    Context.NodeNavigationHistory.Push(Inner->ImGuiId);
+                    Context.NodeNavigationHistory.IssuePush(Inner->ImGuiId);
                 }
                 fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
@@ -1238,13 +1238,13 @@ void FaustGraphs::OnFieldChanged() {
 
 void FaustGraphs::OnFaustBoxChangedInner(Box box) {
     IsTreePureRouting.clear();
-    NodeNavigationHistory = {};
+    NodeNavigationHistory.Clear_();
     RootNode.reset();
     if (box) {
-        Node::ByImGuiId.clear();
         RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
+        Node::ByImGuiId.clear();
         RootNode->GenerateIds(Id);
-        NodeNavigationHistory.Push(RootNode->ImGuiId);
+        NodeNavigationHistory.Push_(RootNode->ImGuiId);
     }
 }
 
@@ -1312,19 +1312,19 @@ void FaustGraphs::Render() const {
         // Nav menu
         const bool can_move_top = NodeNavigationHistory.GetCursor() != 0;
         if (!can_move_top) BeginDisabled();
-        if (Button("Top")) NodeNavigationHistory.MoveTo(0);
+        if (Button("Top")) NodeNavigationHistory.IssueMoveTo(0);
         if (!can_move_top) EndDisabled();
         SameLine();
 
         const bool can_step_back = NodeNavigationHistory.CanStepBackward();
         if (!can_step_back) BeginDisabled();
-        if (Button("Back")) NodeNavigationHistory.StepBackward();
+        if (Button("Back")) NodeNavigationHistory.IssueStepBackward();
         if (!can_step_back) EndDisabled();
         SameLine();
 
         const bool can_step_forward = NodeNavigationHistory.CanStepForward();
         if (!can_step_forward) BeginDisabled();
-        if (Button("Forward")) NodeNavigationHistory.StepForward();
+        if (Button("Forward")) NodeNavigationHistory.IssueStepForward();
         if (!can_step_forward) EndDisabled();
     }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Container/Navigable.h"
 #include "Core/Primitive/Flags.h"
 #include "FaustGraphAction.h"
 #include "FaustGraphStyle.h"
@@ -33,8 +34,8 @@ struct FaustGraphs : Component, Actionable<Action::Faust::Graph::Any>, Field::Ch
     Prop(GraphSettings, Settings);
     Prop(FaustGraphStyle, Style);
 
-    // TODO public mutable is temporary. Replace with `PrimitiveVector<UInt>` components and navigation actions.
-    mutable std::vector<ID> FocusedNodeStack;
+    // TODO public mutable is temporary. Replace with a component and navigation actions.
+    mutable Navigable<ID> NodeNavigationHistory{};
 
 private:
     void Render() const override;

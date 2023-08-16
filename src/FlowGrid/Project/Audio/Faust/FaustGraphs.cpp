@@ -525,8 +525,8 @@ protected:
 };
 
 float FaustGraphs::GetScale() const {
-    if (!Style.ScaleFillHeight || FocusedNodeStack.empty() || !GetCurrentWindowRead()) return Style.Scale;
-    return GetWindowHeight() / Node::ByImGuiId.at(FocusedNodeStack.back())->H();
+    if (!Style.ScaleFillHeight || NodeNavigationHistory.Empty() || !GetCurrentWindowRead()) return Style.Scale;
+    return GetWindowHeight() / Node::ByImGuiId.at(*NodeNavigationHistory)->H();
 }
 
 // A simple rectangular box with text and inputs/outputs.
@@ -568,7 +568,7 @@ struct BlockNode : Node {
         } else {
             if (Inner) {
                 if (flags & InteractionFlags_Clicked) {
-                    Context.FocusedNodeStack.push_back(Inner->ImGuiId);
+                    Context.NodeNavigationHistory.Push(Inner->ImGuiId);
                 }
                 fill_color = GetColorU32(flags & InteractionFlags_Held ? ImGuiCol_ButtonActive : (flags & InteractionFlags_Hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button));
             }
@@ -1238,13 +1238,13 @@ void FaustGraphs::OnFieldChanged() {
 
 void FaustGraphs::OnFaustBoxChangedInner(Box box) {
     IsTreePureRouting.clear();
-    FocusedNodeStack = {};
+    NodeNavigationHistory = {};
     RootNode.reset();
     if (box) {
         Node::ByImGuiId.clear();
         RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
         RootNode->GenerateIds(Id);
-        FocusedNodeStack.push_back(RootNode->ImGuiId);
+        NodeNavigationHistory.Push(RootNode->ImGuiId);
     }
 }
 
@@ -1306,23 +1306,29 @@ void FaustGraphs::Render() const {
         PrevSelectedPath = selected_path;
     }
 
-    if (FocusedNodeStack.empty()) return;
+    if (NodeNavigationHistory.Empty()) return;
 
     {
         // Nav menu
-        const bool can_nav = FocusedNodeStack.size() > 1;
-        if (!can_nav) BeginDisabled();
-        if (Button("Top")) {
-            while (FocusedNodeStack.size() > 1) FocusedNodeStack.pop_back();
-        }
+        const bool can_move_top = NodeNavigationHistory.GetCursor() != 0;
+        if (!can_move_top) BeginDisabled();
+        if (Button("Top")) NodeNavigationHistory.MoveTo(0);
+        if (!can_move_top) EndDisabled();
         SameLine();
-        if (Button("Back")) {
-            FocusedNodeStack.pop_back();
-        }
-        if (!can_nav) EndDisabled();
+
+        const bool can_step_back = NodeNavigationHistory.CanStepBackward();
+        if (!can_step_back) BeginDisabled();
+        if (Button("Back")) NodeNavigationHistory.StepBackward();
+        if (!can_step_back) EndDisabled();
+        SameLine();
+
+        const bool can_step_forward = NodeNavigationHistory.CanStepForward();
+        if (!can_step_forward) BeginDisabled();
+        if (Button("Forward")) NodeNavigationHistory.StepForward();
+        if (!can_step_forward) EndDisabled();
     }
 
-    auto *focused = Node::ByImGuiId.at(FocusedNodeStack.back());
+    auto *focused = Node::ByImGuiId.at(*NodeNavigationHistory);
     focused->Place(DeviceType_ImGui);
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(focused->Size * GetScale());
 

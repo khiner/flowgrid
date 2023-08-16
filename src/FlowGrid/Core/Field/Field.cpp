@@ -70,7 +70,7 @@ void Field::MarkAllChanged(const Patch &patch) {
     }
 
     // Copy `ChangedPaths` over to `LatestChangedPaths`.
-    // (`ChangedPaths` is cleared at the end of each action batch, while `LatestChangedPaths` is retained for the lifetime of the application.)
+    // (`ChangedPaths` is cleared at the end of each action, while `LatestChangedPaths` is retained for the lifetime of the application.)
     for (const auto &[field_id, paths_moment] : ChangedPaths) LatestChangedPaths[field_id] = paths_moment;
 }
 

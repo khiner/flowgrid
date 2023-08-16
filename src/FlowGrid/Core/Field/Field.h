@@ -64,11 +64,11 @@ struct Field : Component {
     }
     inline void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
-    // IDs of all fields updated/added/removed during the latest action batch or undo/redo, mapped to all (field-relative) paths affected in the field.
+    // IDs of all fields updated/added/removed during the latest action or undo/redo, mapped to all (field-relative) paths affected in the field.
     // For primitive fields, the paths will consist of only the root path.
     // For container fields, the paths will contain the container-relative paths of all affected elements.
-    // All values are appended to `GestureChangedPaths` if the change occurred during an action batch.
-    // This is cleared at the end of each action batch, and can thus be used to determine which fields were affected by the latest action batch.
+    // All values are appended to `GestureChangedPaths` if the change occurred during a runtime action batch (as opposed to undo/redo, initialization, or project load).
+    // `ChangedPaths` is cleared after each action (after refreshing all affected fields), and can thus be used to determine which fields were affected by the latest action.
     // (`LatestChangedPaths` is retained for the lifetime of the application.)
     // These same key IDs are also stored in the `ChangedFieldIds` set, which also includes IDs for all ancestor component of all changed fields.
     inline static std::unordered_map<ID, PathsMoment> ChangedPaths;

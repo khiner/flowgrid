@@ -371,11 +371,11 @@ void Project::Open(const fs::path &file_path) const {
                     action_moment.Action,
                     [](const Project::ActionType &a) { project.Apply(a); },
                 );
+                LatestPatch = RootStore.CheckedCommit();
+                Field::RefreshChanged(LatestPatch);
             }
             History.AddGesture(std::move(gesture));
         }
-        LatestPatch = RootStore.CheckedCommit();
-        Field::RefreshChanged(LatestPatch);
         SetHistoryIndex(indexed_gestures.Index);
         Field::LatestChangedPaths.clear();
     }
@@ -667,8 +667,6 @@ void q(const Action::Any &&action) {
 
 void RunQueuedActions(Store &store, bool force_commit_gesture) {
     static ActionMoment action_moment;
-    static vector<SavableActionMoment> stateful_actions; // Same type as `Gesture`, but doesn't represent a full semantic "gesture".
-    stateful_actions.clear();
 
     if (file_dialog.Visible) {
         // Disable all actions while the file dialog is open.
@@ -676,10 +674,9 @@ void RunQueuedActions(Store &store, bool force_commit_gesture) {
         return;
     }
 
+    const bool gesture_actions_already_present = !ActiveGestureActions.empty();
+
     while (ActionQueue.try_dequeue(action_moment)) {
-        // Note that multiple actions enqueued during the same frame (in the same queue batch) are all evaluated independently to see if they're allowed.
-        // This means that if one action would change the state such that a later action in the same batch _would be allowed_,
-        // the current approach would incorrectly throw this later action away.
         auto &[action, queue_time] = action_moment;
         if (!project.CanApply(action)) continue;
 
@@ -693,35 +690,27 @@ void RunQueuedActions(Store &store, bool force_commit_gesture) {
             std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
             std::holds_alternative<Action::FileDialog::Select>(action);
 
-        // todo really we want to separate out stateful and non-stateful actions, and commit each batch of stateful actions.
-        if (!action.IsSavable() && !stateful_actions.empty()) throw std::runtime_error("Non-stateful action in the same batch as stateful action (in transient mode).");
-
         project.Apply(action);
 
         Visit(
             action,
-            [&queue_time](const Action::Savable &a) { stateful_actions.emplace_back(a, queue_time); },
+            [&store, &queue_time](const Action::Savable &a) {
+                LatestPatch = store.CheckedCommit();
+                if (!LatestPatch.Empty()) {
+                    Field::RefreshChanged(LatestPatch, true);
+                    ActiveGestureActions.emplace_back(a, queue_time);
+                    ProjectHasChanges = true;
+                }
+            },
             // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
             [](const Action::NonSavable &) {},
         );
     }
 
-    const bool commit_gesture = force_commit_gesture ||
-        (!Field::IsGesturing && !ActiveGestureActions.empty() && GestureTimeRemainingSec(project_settings.GestureDurationSec) <= 0);
-
-    if (!stateful_actions.empty()) {
-        LatestPatch = store.CheckedCommit();
-        if (!LatestPatch.Empty()) {
-            Field::RefreshChanged(LatestPatch, true);
-            ActiveGestureActions.insert(ActiveGestureActions.end(), stateful_actions.begin(), stateful_actions.end());
-
-            ProjectHasChanges = true;
-        }
-    } else {
-        store.Commit(); // This ends transient mode but should not modify the state, since there were no stateful actions.
+    if (force_commit_gesture ||
+        (!Field::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(project_settings.GestureDurationSec) <= 0)) {
+        CommitGesture();
     }
-
-    if (commit_gesture) CommitGesture();
 }
 
 #define DefineQ(ActionType)                                                                                                  \

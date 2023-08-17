@@ -155,6 +155,11 @@ template<typename ChildType> struct Vector : Field {
         ChildPrefixes.Erase(GetChildPrefix(child));
     }
 
+    void EraseId_(ID id) {
+        EraseId(id);
+        Refresh();
+    }
+
     void RenderValueTree(bool annotate, bool auto_select) const override {
         if (Value.empty()) {
             TextUnformatted(std::format("{} (empty)", Name));

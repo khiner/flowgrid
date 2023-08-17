@@ -26,7 +26,9 @@ struct FaustGraph : Component {
 
     const FaustGraphs &Context;
     const FaustGraphStyle &Style;
+
     Box _Box;
+    mutable std::unordered_map<ID, Node *> NodeByImGuiId;
     std::unique_ptr<Node> RootNode{};
 
 private:

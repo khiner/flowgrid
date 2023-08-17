@@ -32,8 +32,6 @@ void FaustDSP::OnFieldChanged() {
 void FaustDSP::Init(bool constructing) {
     if (Dsp || !Code) return Uninit(false);
 
-    createLibContext();
-
     const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
     std::vector<const char *> argv = {"-I", libraries_path};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
@@ -79,7 +77,6 @@ void FaustDSP::Uninit(bool destructing) {
         }
         NotifyListeners(notification_type);
     }
-    destroyLibContext();
     ErrorMessage = "";
 }
 
@@ -98,11 +95,14 @@ void FaustDSP::NotifyListeners(NotificationType type) const { ParentContainer->N
 static const std::string FaustDspPathSegment = "FaustDSP";
 
 FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector<FaustDSP>(std::move(args)) {
+    createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);
 }
 
-FaustDSPs::~FaustDSPs() {}
+FaustDSPs::~FaustDSPs() {
+    destroyLibContext();
+}
 
 void FaustDSPs::Apply(const ActionType &action) const {
     Visit(

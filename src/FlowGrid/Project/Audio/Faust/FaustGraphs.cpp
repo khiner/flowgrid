@@ -344,8 +344,6 @@ using StringHelper::Capitalize;
 
 // An abstract block graph node.
 struct Node {
-    inline static std::unordered_map<ID, Node *> ByImGuiId;
-
     inline static const u32
         BgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.1f}),
         BorderColor = ColorConvertFloat4ToU32({0.f, 0.f, 1.f, 1.f}),
@@ -382,7 +380,7 @@ struct Node {
 
     virtual void GenerateIds(ID parent_id) {
         ImGuiId = ImHashData(&Index, sizeof(Index), parent_id);
-        ByImGuiId[ImGuiId] = this;
+        Context.NodeByImGuiId[ImGuiId] = this;
         if (A) A->GenerateIds(ImGuiId);
         if (B) B->GenerateIds(ImGuiId);
     }
@@ -523,8 +521,6 @@ protected:
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
-
-bool IsBoxHovered(ID imgui_id) { return Node::ByImGuiId[imgui_id] != nullptr; }
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
@@ -1221,10 +1217,17 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
+bool IsBoxHovered(ID imgui_id) {
+    return false; // todo bring this back to work with multiple graphs.
+    // return NodeByImGuiId[imgui_id] != nullptr;
+}
+
 string GetBoxInfo(u32 id) {
-    const auto *node = Node::ByImGuiId[id];
-    if (!node) return "";
-    return GetBoxType(node->FaustTree); // Just type for now.
+    return ""; // todo bring this back to work with multiple graphs.
+
+    // const auto *node = NodeByImGuiId[id];
+    // if (!node) return "";
+    // return GetBoxType(node->FaustTree); // Just type for now.
 }
 
 void FaustGraphs::OnFieldChanged() {
@@ -1244,7 +1247,7 @@ void FaustGraphs::OnFaustBoxAdded(ID id, Box box) {
     });
 }
 void FaustGraphs::OnFaustBoxRemoved(ID dsp_id) {
-    if (auto *graph = FindGraph(dsp_id)) Graphs.EraseId(graph->Id);
+    if (auto *graph = FindGraph(dsp_id)) Graphs.EraseId_(graph->Id);
 }
 
 void FaustGraphs::Apply(const ActionType &action) const {
@@ -1311,7 +1314,7 @@ FaustGraph *FaustGraphs::FindGraph(ID dsp_id) const {
 
 float FaustGraph::GetScale() const {
     if (!Style.ScaleFillHeight || NodeNavigationHistory.Empty() || !GetCurrentWindowRead()) return Style.Scale;
-    return GetWindowHeight() / Node::ByImGuiId.at(*NodeNavigationHistory)->H();
+    return GetWindowHeight() / NodeByImGuiId.at(*NodeNavigationHistory)->H();
 }
 
 void FaustGraph::Render() const {
@@ -1343,7 +1346,7 @@ void FaustGraph::Render() const {
         if (!can_step_forward) EndDisabled();
     }
 
-    auto *focused = Node::ByImGuiId.at(*NodeNavigationHistory);
+    auto *focused = NodeByImGuiId.at(*NodeNavigationHistory);
     focused->Place(DeviceType_ImGui);
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(focused->Size * GetScale());
 
@@ -1374,7 +1377,7 @@ void FaustGraph::SetBox(Box box) {
     RootNode.reset();
     if (box) {
         RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
-        Node::ByImGuiId.clear();
+        NodeByImGuiId.clear();
         RootNode->GenerateIds(Id);
         NodeNavigationHistory.Push_(RootNode->ImGuiId);
     }

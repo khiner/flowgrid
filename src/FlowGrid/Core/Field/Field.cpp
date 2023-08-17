@@ -42,8 +42,6 @@ Field *Field::FindChanged(const StorePath &path, PatchOp::Type op) {
         return static_cast<Field *>(field->Parent);
     }
 
-    if (!field) throw std::runtime_error(std::format("Could not find a field to attribute for op: {} at path: {}", to_string(op), path.string()));
-
     return field;
 }
 
@@ -54,6 +52,9 @@ void Field::MarkAllChanged(const Patch &patch) {
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto path = patch.BasePath / partial_path;
         if (auto *changed_field = FindChanged(path, op.Op)) {
+            // if (!changed_field) throw std::runtime_error(std::format("Could not find a field to attribute for op: {} at path: {}", to_string(op.Op), path.string()));
+            if (!changed_field) continue;
+
             const ID id = changed_field->Id;
             const StorePath relative_path = path == changed_field->Path ? "" : path.lexically_relative(changed_field->Path);
             ChangedPaths[id].first = change_time;

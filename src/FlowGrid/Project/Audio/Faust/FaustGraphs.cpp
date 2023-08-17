@@ -1239,10 +1239,17 @@ void FaustGraphs::OnFieldChanged() {
 void FaustGraphs::OnFaustBoxChanged(ID dsp_id, Box box) {
     if (auto *graph = FindGraph(dsp_id)) graph->SetBox(box);
 }
-void FaustGraphs::OnFaustBoxAdded(ID id, Box box) {
+void FaustGraphs::OnFaustBoxAdded(ID dsp_id, Box box) {
     static const string GraphPrefixSegment = "Graph";
-    Graphs.EmplaceBack_(GraphPrefixSegment, [id, box](auto *child) {
-        child->DspId.Set_(id);
+    Graphs.Refresh(); // todo Seems to be needed, but shouldn't be.
+    auto child_it = std::find_if(Graphs.begin(), Graphs.end(), [dsp_id](auto *graph) { return graph->DspId == dsp_id; });
+    if (child_it != Graphs.end()) {
+        (*child_it)->SetBox(box);
+        return;
+    }
+
+    Graphs.EmplaceBack_(GraphPrefixSegment, [dsp_id, box](auto *child) {
+        child->DspId.Set_(dsp_id);
         child->SetBox(box);
     });
 }

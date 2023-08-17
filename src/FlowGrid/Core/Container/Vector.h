@@ -3,6 +3,13 @@
 #include "Core/Container/PrimitiveVector.h"
 #include "Helper/Hex.h"
 
+inline static std::pair<std::string, std::string> Split(fs::path relative_path) {
+    auto it = relative_path.begin();
+    const auto first = *it;
+    const auto secong = *std::next(it);
+    return {first.string(), secong.string()};
+}
+
 /*
 A component whose children are created/destroyed dynamically, with vector-ish semantics.
 Like a `Field`, this wraps around an inner `Value` instance, which in this case is a `std::vector` of `std::unique_ptr<ChildType>`.
@@ -27,6 +34,7 @@ We need to store this in an auxiliary store member since child component members
 */
 template<typename ChildType> struct Vector : Field {
     using CreatorFunction = std::function<std::unique_ptr<ChildType>(Component *, string_view path_prefix_segment, string_view path_segment)>;
+    using ChildInitializerFunction = std::function<void(ChildType *)>;
 
     inline static CreatorFunction DefaultCreator = [](Component *parent, string_view path_prefix_segment, string_view path_segment) {
         return std::make_unique<ChildType>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
@@ -45,13 +53,6 @@ template<typename ChildType> struct Vector : Field {
     inline void Clear() { Value.clear(); }
     bool Empty() const { return Value.empty(); }
     u32 Size() const { return Value.size(); }
-
-    inline static std::pair<std::string, std::string> GetPathPrefixAndSegment(StorePath relative_path) {
-        auto it = relative_path.begin();
-        const auto path_prefix = *it;
-        const auto path_segment = *std::next(it);
-        return {path_prefix.string(), path_segment.string()};
-    }
 
     inline StorePath GetChildPrefix(const ChildType *child) const noexcept {
         if (child == nullptr) return {};
@@ -77,7 +78,7 @@ template<typename ChildType> struct Vector : Field {
     std::string GenerateNextPrefix(string_view path_segment) const {
         std::vector<u32> existing_prefix_ids;
         for (const auto &child : Value) {
-            const auto &[child_path_prefix, child_path_segment] = GetPathPrefixAndSegment(child->Path.lexically_relative(Path));
+            const auto &[child_path_prefix, child_path_segment] = Split(child->Path.lexically_relative(Path));
             if (path_segment == child_path_segment) {
                 existing_prefix_ids.push_back(HexToU32(child_path_prefix));
             }
@@ -96,9 +97,12 @@ template<typename ChildType> struct Vector : Field {
         ChildPrefixes.PushBack(StorePath(GenerateNextPrefix(path_segment)) / path_segment);
     }
 
-    void EmplaceBack_(string_view path_segment) {
-        Value.emplace_back(Creator(this, GenerateNextPrefix(path_segment), path_segment));
-        ChildPrefixes.PushBack_(GetChildPrefix(Value.back().get()));
+    void EmplaceBack_(string_view path_segment, ChildInitializerFunction &&initializer = {}) {
+        auto child = Creator(this, GenerateNextPrefix(path_segment), path_segment);
+        if (initializer) initializer(child.get());
+        const auto child_prefix = GetChildPrefix(child.get());
+        Value.emplace_back(std::move(child));
+        ChildPrefixes.PushBack_(child_prefix);
     }
 
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
@@ -133,7 +137,7 @@ template<typename ChildType> struct Vector : Field {
         for (const StorePath prefix : ChildPrefixes) {
             const auto child_it = FindIt(prefix);
             if (child_it == Value.end()) {
-                const auto &[path_prefix, path_segment] = GetPathPrefixAndSegment(prefix);
+                const auto &[path_prefix, path_segment] = Split(prefix);
                 auto new_child = Creator(this, path_prefix, path_segment);
                 u32 index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));
                 Value.insert(Value.begin() + index, std::move(new_child));
@@ -147,8 +151,8 @@ template<typename ChildType> struct Vector : Field {
         auto *child = Find(id);
         if (!child) return;
 
-        ChildPrefixes.Erase(GetChildPrefix(child));
         child->Erase();
+        ChildPrefixes.Erase(GetChildPrefix(child));
     }
 
     void RenderValueTree(bool annotate, bool auto_select) const override {
@@ -170,7 +174,7 @@ template<typename ChildType> struct Vector : Field {
 
 private:
     // Keep track of child ordering.
-    // Each prefix contains two segments: The child's unique prefix and its `PathSegment`.
+    // Each prefix is a path containing two segments: The child's unique prefix and its `PathSegment`.
     Prop(PrimitiveVector<std::string>, ChildPrefixes);
 
     CreatorFunction Creator;

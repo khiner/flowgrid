@@ -47,7 +47,7 @@ static inline bool IsLr(const FaustGraphStyle &style, GraphOrientation orientati
 struct Device {
     static constexpr float RectLabelPaddingLeft = 3;
 
-    Device(const FaustGraphs &context, const ImVec2 &position = {0, 0}) : Context(context), Style(Context.Style), Position(position) {}
+    Device(const FaustGraph &context, const ImVec2 &position = {0, 0}) : Context(context), Style(Context.Style), Position(position) {}
     virtual ~Device() = default;
 
     virtual DeviceType Type() = 0;
@@ -74,7 +74,7 @@ struct Device {
     inline ImVec2 Scale(const ImVec2 &p) const { return p * Context.GetScale(); }
     inline float Scale(const float f) const { return f * Context.GetScale(); }
 
-    const FaustGraphs &Context;
+    const FaustGraph &Context;
     const FaustGraphStyle &Style;
 
     ImVec2 Position{}; // Absolute window position of device
@@ -106,7 +106,7 @@ static inline string GetFontBase64() {
 
 // todo: Fix rendering SVG with `DecorateRootNode = false` (and generally get it back to its former self).
 struct SVGDevice : Device {
-    SVGDevice(const FaustGraphs &context, fs::path Directory, string FileName, ImVec2 size)
+    SVGDevice(const FaustGraph &context, fs::path Directory, string FileName, ImVec2 size)
         : Device(context), Directory(std::move(Directory)), FileName(std::move(FileName)) {
         const auto &[w, h] = Scale(size);
         Stream << std::format(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {} {}")", w, h);
@@ -237,7 +237,7 @@ private:
 };
 
 struct ImGuiDevice : Device {
-    ImGuiDevice(const FaustGraphs &context)
+    ImGuiDevice(const FaustGraph &context)
         : Device(context, GetCursorScreenPos()), DC(GetCurrentWindow()->DC), DrawList(GetWindowDrawList()) {}
 
     DeviceType Type() override { return DeviceType_ImGui; }
@@ -354,7 +354,7 @@ struct Node {
         TypeLabelBgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.3f}),
         TypeTextColor = ColorConvertFloat4ToU32({1.f, 0.f, 0.f, 1.f});
 
-    const FaustGraphs &Context;
+    const FaustGraph &Context;
     const FaustGraphStyle &Style;
     const Tree FaustTree;
     const string Id, Text, BoxTypeLabel; // TODO can we get rid of `Id` now that we have `ImGuiId`?
@@ -369,7 +369,7 @@ struct Node {
     ImVec2 Position; // Relative to parent.
     GraphOrientation Orientation = GraphForward;
 
-    Node(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
+    Node(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
         : Context(context), Style(context.Style), FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
           BoxTypeLabel(GetBoxType(FaustTree)), InCount(in_count), OutCount(out_count),
           Descendents((is_block ? 1 : 0) + (a ? a->Descendents : 0) + (b ? b->Descendents : 0)), A(a), B(b) {
@@ -421,7 +421,7 @@ struct Node {
         if (B) B->Draw(device);
 
         if (flags & InteractionFlags_Hovered) {
-            const auto &flags = Context.Settings.HoverFlags;
+            const auto &flags = Context.Context.Settings.HoverFlags;
             // todo get abs pos by traversing through ancestors
             if (flags & FaustGraphHoverFlags_ShowRect) DrawRect(device);
             if (flags & FaustGraphHoverFlags_ShowType) DrawType(device);
@@ -524,14 +524,11 @@ protected:
     }
 };
 
-float FaustGraphs::GetScale() const {
-    if (!Style.ScaleFillHeight || NodeNavigationHistory.Empty() || !GetCurrentWindowRead()) return Style.Scale;
-    return GetWindowHeight() / Node::ByImGuiId.at(*NodeNavigationHistory)->H();
-}
+bool IsBoxHovered(ID imgui_id) { return Node::ByImGuiId[imgui_id] != nullptr; }
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
-    BlockNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
+    BlockNode(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
         : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {
         if (Inner) Inner->Index = 0;
     }
@@ -597,7 +594,7 @@ struct BlockNode : Node {
 
 // Simple cables (identity box) in parallel.
 struct CableNode : Node {
-    CableNode(const FaustGraphs &context, Tree tree, u32 n = 1) : Node(context, tree, n, n) {}
+    CableNode(const FaustGraph &context, Tree tree, u32 n = 1) : Node(context, tree, n, n) {}
 
     // The width of a cable is null, so its input and output connection points are the same.
     void Place(const DeviceType) override { Size = {0, float(InCount) * WireGap()}; }
@@ -613,7 +610,7 @@ struct CableNode : Node {
 // An inverter is a circle followed by a triangle.
 // It corresponds to '*(-1)', and it's used to create more compact graphs.
 struct InverterNode : BlockNode {
-    InverterNode(const FaustGraphs &context, Tree tree) : BlockNode(context, tree, 1, 1, "-1", FlowGridGraphCol_Inverter) {}
+    InverterNode(const FaustGraph &context, Tree tree) : BlockNode(context, tree, 1, 1, "-1", FlowGridGraphCol_Inverter) {}
 
     void Place(const DeviceType) override { Size = ImVec2{2.5f, 1} * WireGap(); }
 
@@ -632,7 +629,7 @@ struct InverterNode : BlockNode {
 struct CutNode : Node {
     // A Cut is represented by a small black dot.
     // It has 1 input and no output.
-    CutNode(const FaustGraphs &context, Tree tree) : Node(context, tree, 1, 0) {}
+    CutNode(const FaustGraph &context, Tree tree) : Node(context, tree, 1, 0) {}
 
     // 0 width and 1 height, for the wire.
     void Place(const DeviceType) override { Size = {0, 1}; }
@@ -660,7 +657,7 @@ enum BinaryNodeType {
 };
 
 struct BinaryNode : Node {
-    BinaryNode(const FaustGraphs &context, Tree tree, Node *a, Node *b, BinaryNodeType type)
+    BinaryNode(const FaustGraph &context, Tree tree, Node *a, Node *b, BinaryNodeType type)
         : Node(
               context, tree,
               type == ParallelNode ? a->InCount + b->InCount : (type == RecursiveNode ? a->InCount - b->OutCount : a->InCount),
@@ -836,7 +833,7 @@ struct BinaryNode : Node {
     BinaryNodeType Type;
 };
 
-Node *MakeSequential(const FaustGraphs &context, Tree tree, Node *a, Node *b) {
+Node *MakeSequential(const FaustGraph &context, Tree tree, Node *a, Node *b) {
     const u32 o = a->OutCount, i = b->InCount;
     return new BinaryNode(
         context, tree,
@@ -882,7 +879,7 @@ Each property can be changed in `Style.(Group|Decorate){PropertyName}`.
     * To: My right
 */
 struct GroupNode : Node {
-    GroupNode(const FaustGraphs &context, NodeType type, Tree tree, Node *inner, string text = "")
+    GroupNode(const FaustGraph &context, NodeType type, Tree tree, Node *inner, string text = "")
         : Node(context, tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
     ~GroupNode() override = default;
 
@@ -941,7 +938,7 @@ private:
 struct RouteNode : Node {
     inline static const u32 RouteFrameBgColor = ColorConvertFloat4ToU32({0.93f, 0.93f, 0.65f, 1.f});
 
-    RouteNode(const FaustGraphs &context, Tree tree, u32 in_count, u32 out_count, std::vector<int> routes)
+    RouteNode(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, std::vector<int> routes)
         : Node(context, tree, in_count, out_count), Routes(std::move(routes)) {}
 
     void Place(const DeviceType) override {
@@ -1021,7 +1018,7 @@ static string GetUiDescription(Box box) {
 }
 
 // Generate a 1->0 block node for an input slot.
-static Node *MakeInputSlot(const FaustGraphs &context, Tree tree) { return new BlockNode(context, tree, 1, 0, "", FlowGridGraphCol_Slot); }
+static Node *MakeInputSlot(const FaustGraph &context, Tree tree) { return new BlockNode(context, tree, 1, 0, "", FlowGridGraphCol_Slot); }
 
 // Collect the leaf numbers `tree` into `v`.
 // Return `true` if `tree` is a number or a parallel tree of numbers.
@@ -1096,7 +1093,7 @@ FaustGraphs::~FaustGraphs() {
 }
 
 // Generate the inside node of a block graph according to its type.
-Node *FaustGraphs::Tree2NodeInner(Tree t) const {
+Node *FaustGraph::Tree2NodeInner(Tree t) const {
     if (getUserData(t) != nullptr) return new BlockNode(*this, t, xtendedArity(t), 1, xtendedName(t));
     if (isBoxInverter(t)) return new InverterNode(*this, t);
     if (isBoxButton(t) || isBoxCheckbox(t) || isBoxVSlider(t) || isBoxHSlider(t) || isBoxNumEntry(t)) return new BlockNode(*this, t, 0, 1, GetUiDescription(t), FlowGridGraphCol_Ui);
@@ -1160,7 +1157,7 @@ Node *FaustGraphs::Tree2NodeInner(Tree t) const {
 
 // This method calls itself through `Tree2NodeInner`.
 // (Keeping these bad names to remind me to clean this up, likely into a `Node` ctor.)
-Node *FaustGraphs::Tree2Node(Tree t) const {
+Node *FaustGraph::Tree2Node(Tree t) const {
     auto *node = Tree2NodeInner(t);
     if (GetTreeName(t).empty()) return node; // Normal case
 
@@ -1231,45 +1228,24 @@ string GetBoxInfo(u32 id) {
 }
 
 void FaustGraphs::OnFieldChanged() {
-    if (Style.FoldComplexity.IsChanged() && RootNode) {
-        OnFaustBoxChangedInner(RootNode->FaustTree);
+    if (Style.FoldComplexity.IsChanged()) {
+        for (auto *graph : Graphs) graph->ResetBox();
     }
 }
 
-void FaustGraphs::OnFaustBoxChangedInner(Box box) {
-    IsTreePureRouting.clear();
-    NodeNavigationHistory.Clear_();
-    RootNode.reset();
-    if (box) {
-        RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
-        Node::ByImGuiId.clear();
-        RootNode->GenerateIds(Id);
-        NodeNavigationHistory.Push_(RootNode->ImGuiId);
-    }
+void FaustGraphs::OnFaustBoxChanged(ID dsp_id, Box box) {
+    if (auto *graph = FindGraph(dsp_id)) graph->SetBox(box);
 }
-
-void FaustGraphs::OnFaustBoxChanged(ID, Box box) {
-    OnFaustBoxChangedInner(box);
+void FaustGraphs::OnFaustBoxAdded(ID id, Box box) {
+    static const string GraphPrefixSegment = "Graph";
+    Graphs.EmplaceBack_(GraphPrefixSegment, [id, box](auto *child) {
+        child->DspId.Set_(id);
+        child->SetBox(box);
+    });
 }
-void FaustGraphs::OnFaustBoxAdded(ID, Box box) {
-    OnFaustBoxChangedInner(box);
+void FaustGraphs::OnFaustBoxRemoved(ID dsp_id) {
+    if (auto *graph = FindGraph(dsp_id)) Graphs.EraseId(graph->Id);
 }
-void FaustGraphs::OnFaustBoxRemoved(ID) {
-    OnFaustBoxChangedInner(nullptr);
-}
-
-void FaustGraphs::SaveBoxSvg(const fs::path &dir_path) const {
-    if (!RootNode) return;
-
-    fs::remove_all(dir_path);
-    fs::create_directory(dir_path);
-
-    GroupNode node{*this, NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
-    node.Place(DeviceType_SVG);
-    node.WriteSvg(dir_path);
-}
-
-bool IsBoxHovered(ID imgui_id) { return Node::ByImGuiId[imgui_id] != nullptr; }
 
 void FaustGraphs::Apply(const ActionType &action) const {
     Visit(
@@ -1278,22 +1254,26 @@ void FaustGraphs::Apply(const ActionType &action) const {
         [](const Action::Faust::Graph::ShowSaveSvgDialog &) {
             file_dialog.Set({Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
         },
-        [this](const Action::Faust::Graph::SaveSvgFile &a) { SaveBoxSvg(a.dir_path); },
+        [this](const Action::Faust::Graph::SaveSvgFile &a) {
+            if (const auto *graph = FindGraph(a.dsp_id)) graph->SaveBoxSvg(a.dir_path);
+        },
     );
 }
 
 bool FaustGraphs::CanApply(const ActionType &action) const {
     return Visit(
         action,
-        [this](const Action::Faust::Graph::ShowSaveSvgDialog &) { return bool(RootNode); },
-        [this](const Action::Faust::Graph::SaveSvgFile &) { return bool(RootNode); },
+        [this](const Action::Faust::Graph::ShowSaveSvgDialog &) { return !Graphs.Empty(); },
+        [this](const Action::Faust::Graph::SaveSvgFile &a) {
+            const auto *graph = FindGraph(a.dsp_id);
+            return graph && graph->RootNode;
+        },
     );
 }
 
 void FaustGraphs::Render() const {
-    if (!RootNode) {
-        // todo don't show empty menu bar in this case
-        TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?
+    if (Graphs.Empty()) {
+        TextUnformatted("No Faust DSPs created yet.");
         return;
     }
 
@@ -1301,9 +1281,44 @@ void FaustGraphs::Render() const {
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
         const fs::path selected_path = file_dialog.SelectedFilePath;
         if (file_dialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
-            Action::Faust::Graph::SaveSvgFile{selected_path}.q();
+            Action::Faust::Graph::SaveSvgFile{Id, selected_path}.q();
         }
         PrevSelectedPath = selected_path;
+    }
+
+    if (BeginTabBar("")) {
+        for (const auto *graph : Graphs) {
+            if (BeginTabItem(graph->ImGuiLabel.c_str())) {
+                graph->Draw();
+                EndTabItem();
+            }
+        }
+        EndTabBar();
+    }
+}
+
+FaustGraph::FaustGraph(ComponentArgs &&args)
+    : Component(std::move(args)), Context(static_cast<const FaustGraphs &>(*Parent->Parent)), Style(Context.Style) {}
+
+FaustGraph::~FaustGraph() {}
+
+FaustGraph *FaustGraphs::FindGraph(ID dsp_id) const {
+    for (auto *graph : Graphs) {
+        if (graph->DspId == dsp_id) return graph;
+    }
+    return nullptr;
+}
+
+float FaustGraph::GetScale() const {
+    if (!Style.ScaleFillHeight || NodeNavigationHistory.Empty() || !GetCurrentWindowRead()) return Style.Scale;
+    return GetWindowHeight() / Node::ByImGuiId.at(*NodeNavigationHistory)->H();
+}
+
+void FaustGraph::Render() const {
+    if (!RootNode) {
+        // todo don't show empty menu bar in this case
+        TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its graph."); // todo link to window?
+        return;
     }
 
     if (NodeNavigationHistory.Empty()) return;
@@ -1340,4 +1355,31 @@ void FaustGraphs::Render() const {
     focused->Draw(device);
 
     EndChild();
+}
+
+void FaustGraph::SaveBoxSvg(const fs::path &dir_path) const {
+    if (!RootNode) return;
+
+    fs::remove_all(dir_path);
+    fs::create_directory(dir_path);
+
+    GroupNode node{*this, NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
+    node.Place(DeviceType_SVG);
+    node.WriteSvg(dir_path);
+}
+
+void FaustGraph::SetBox(Box box) {
+    IsTreePureRouting.clear();
+    NodeNavigationHistory.Clear_();
+    RootNode.reset();
+    if (box) {
+        RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
+        Node::ByImGuiId.clear();
+        RootNode->GenerateIds(Id);
+        NodeNavigationHistory.Push_(RootNode->ImGuiId);
+    }
+}
+
+void FaustGraph::ResetBox() {
+    if (RootNode) SetBox(RootNode->FaustTree);
 }

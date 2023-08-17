@@ -7,7 +7,7 @@ DefineNestedActionType(
     DefineAction(ShowSaveSvgDialog, Merge, "~Export SVG");
     Json(ShowSaveSvgDialog);
 
-    DefineUnsavedAction(SaveSvgFile, NoMerge, "", fs::path dir_path;);
+    DefineUnsavedAction(SaveSvgFile, NoMerge, "", ID dsp_id; fs::path dir_path;);
 
     using Any = ActionVariant<ShowSaveSvgDialog, SaveSvgFile>;
 );

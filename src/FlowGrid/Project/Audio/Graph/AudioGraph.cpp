@@ -443,7 +443,7 @@ void AudioGraph::OnFieldChanged() {
 }
 
 template<std::derived_from<AudioGraphNode> AudioGraphNodeSubType, typename... Args>
-static std::unique_ptr<AudioGraphNodeSubType> CreateAudioGraphNode(AudioGraph *graph, Args &&... args) {
+static std::unique_ptr<AudioGraphNodeSubType> CreateAudioGraphNode(AudioGraph *graph, Args &&...args) {
     auto node = std::make_unique<AudioGraphNodeSubType>(std::forward<Args>(args)...);
     node->RegisterListener(graph);
     if (graph->Focus()) graph->SelectedNodeId = node->Id; // Navigate to newly created node.
@@ -455,7 +455,7 @@ dsp *AudioGraph::GetFaustDsp(ID id) const {
     return nullptr;
 }
 
-static ID latest_dsp_id = 0; // xxx
+static ID latest_dsp_id = 0; // TODO use `Vector::ChildInitializerFunction` to set the store during creation instead.
 
 std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     ComponentArgs args{parent, path_segment, "", path_prefix_segment};

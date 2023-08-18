@@ -1240,7 +1240,7 @@ void FaustGraphs::OnFaustBoxChanged(ID dsp_id, Box box) {
     if (auto *graph = FindGraph(dsp_id)) graph->SetBox(box);
 }
 void FaustGraphs::OnFaustBoxAdded(ID dsp_id, Box box) {
-    static const string GraphPrefixSegment = "Graph";
+    static const string PrefixSegment = "Graph";
     Graphs.Refresh(); // todo Seems to be needed, but shouldn't be.
     auto child_it = std::find_if(Graphs.begin(), Graphs.end(), [dsp_id](auto *graph) { return graph->DspId == dsp_id; });
     if (child_it != Graphs.end()) {
@@ -1248,7 +1248,7 @@ void FaustGraphs::OnFaustBoxAdded(ID dsp_id, Box box) {
         return;
     }
 
-    Graphs.EmplaceBack_(GraphPrefixSegment, [dsp_id, box](auto *child) {
+    Graphs.EmplaceBack_(PrefixSegment, [dsp_id, box](auto *child) {
         child->DspId.Set_(dsp_id);
         child->SetBox(box);
     });
@@ -1298,7 +1298,7 @@ void FaustGraphs::Render() const {
 
     if (BeginTabBar("")) {
         for (const auto *graph : Graphs) {
-            if (BeginTabItem(graph->ImGuiLabel.c_str())) {
+            if (BeginTabItem(std::format("{}", ID(graph->DspId)).c_str())) {
                 graph->Draw();
                 EndTabItem();
             }

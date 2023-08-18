@@ -9,15 +9,14 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-void FaustLogs::OnFaustChanged(ID, const FaustDSP &faust_dsp) {
-    ErrorMessages.clear();
-    ErrorMessages.emplace_back(faust_dsp.ErrorMessage);
+void FaustLogs::OnFaustChanged(ID id, const FaustDSP &faust_dsp) {
+    ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
 }
 void FaustLogs::OnFaustAdded(ID id, const FaustDSP &faust_dsp) {
-    OnFaustChanged(id, faust_dsp);
+    ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
 }
-void FaustLogs::OnFaustRemoved(ID) {
-    ErrorMessages.clear();
+void FaustLogs::OnFaustRemoved(ID id) {
+    ErrorMessageByFaustDspId.erase(id);
 }
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
@@ -100,9 +99,21 @@ void Faust::Render() const {
 }
 
 void FaustLogs::Render() const {
-    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-    for (const auto &error_message : ErrorMessages) {
-        TextUnformatted(error_message);
+    if (BeginTabBar("")) {
+        for (const auto &[faust_dsp_id, error_message] : ErrorMessageByFaustDspId) {
+            if (BeginTabItem(std::format("{}", faust_dsp_id).c_str())) {
+                if (!error_message.empty()) {
+                    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
+                    TextUnformatted(error_message);
+                    PopStyleColor();
+                } else {
+                    PushStyleColor(ImGuiCol_Text, {0, 1, 0, 1});
+                    TextUnformatted("No error message.");
+                    PopStyleColor();
+                }
+                EndTabItem();
+            }
+        }
+        EndTabBar();
     }
-    PopStyleColor();
 }

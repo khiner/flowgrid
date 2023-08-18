@@ -14,7 +14,7 @@ struct FaustLogs : Component, FaustChangeListener {
     void OnFaustAdded(ID, const FaustDSP &) override;
     void OnFaustRemoved(ID) override;
 
-    std::vector<std::string> ErrorMessages;
+    std::map<ID, std::string> ErrorMessageByFaustDspId;
 
 private:
     void Render() const override;

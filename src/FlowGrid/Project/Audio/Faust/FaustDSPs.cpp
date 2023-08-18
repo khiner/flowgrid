@@ -116,7 +116,8 @@ using namespace ImGui;
 
 void FaustDSP::Render() const {
     if (BeginMenuBar()) {
-        if (BeginMenu("Audio")) {
+        if (BeginMenu("DSP")) {
+            if (MenuItem("Delete")) Action::Faust::DSP::Delete{Id}.q();
             if (MenuItem("Create audio node")) Action::AudioGraph::CreateFaustNode{Id}.q();
             EndMenu();
         }

@@ -60,6 +60,8 @@ struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
 
+    void Refresh() override;
+
     inline void RegisterChangeListener(FaustChangeListener *listener) const noexcept {
         ChangeListeners.insert(listener);
         for (auto *faust_dsp : *this) {
@@ -88,6 +90,12 @@ struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
     }
     inline void UnregisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
         DspChangeListeners.erase(listener);
+    }
+
+    inline void NotifyAllListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {
+        NotifyListeners(type, *this);
+        NotifyBoxListeners(type, *this);
+        NotifyDspListeners(type, *this);
     }
 
     inline void NotifyListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept {

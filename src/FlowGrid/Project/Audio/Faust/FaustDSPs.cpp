@@ -17,7 +17,7 @@ static const std::string FaustDspFileExtension = ".dsp";
 FaustDSP::FaustDSP(ComponentArgs &&args)
     : Component(std::move(args)), ParentContainer(static_cast<FaustDSPs *>(Parent->Parent)) {
     Code.RegisterChangeListener(this);
-    if (Code) Init(true);
+    if (Code) Init();
 }
 
 FaustDSP::~FaustDSP() {
@@ -35,8 +35,6 @@ void FaustDSP::Init(bool constructing) {
     const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
     std::vector<const char *> argv = {"-I", libraries_path};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
-
-    const auto notification_type = constructing ? Added : Changed;
 
     const int argc = argv.size();
     static int num_inputs, num_outputs;
@@ -57,7 +55,7 @@ void FaustDSP::Init(bool constructing) {
     }
     NotifyDspListeners(notification_type);
 
-    NotifyListeners(notification_type);
+    NotifyListeners();
 }
 
 void FaustDSP::Uninit(bool destructing) {
@@ -98,6 +96,11 @@ FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector<FaustDSP>(std::move(args)) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);
+    for (auto *listener : ChangeListeners) {
+        listener->OnFaustChanged(faust_dsp.Id, faust_dsp);
+        else if (type == Added) listener->OnFaustAdded(faust_dsp.Id, faust_dsp);
+        else if (type == Removed) listener->OnFaustRemoved(faust_dsp.Id);
+    }
 }
 
 FaustDSPs::~FaustDSPs() {
@@ -110,6 +113,19 @@ void FaustDSPs::Apply(const ActionType &action) const {
         [this](const Action::Faust::DSP::Create &) { EmplaceBack(FaustDspPathSegment); },
         [this](const Action::Faust::DSP::Delete &a) { EraseId(a.id); },
     );
+}
+
+void FaustDSPs::Refresh() {
+    Vector<FaustDSP>::Refresh();
+    // todo only notify listeners if this was an action-initiated change (as opposed to a store navigation)
+    //   - That is, if the change is due to executing a create due to an `Emplace`.
+    //   - Then, we can simplify `OnFaustDsp(Added|Removed)`, removing the existence check to not `Emplace` twice.
+    // I think we can do this by using a new private `Vector` method instead of `Emplace_` during `Refresh`.
+    if (...) {
+        NotifyAllListeners(Added);
+    } else {
+        NotifyAllListeners(Removed);
+    }
 }
 
 using namespace ImGui;

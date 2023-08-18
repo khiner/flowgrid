@@ -119,9 +119,8 @@ void Field::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsGesturing = false;
 }
 
-void Field::RenderValueTree(bool annotate, bool auto_select) const {
-    // Flash background color of changed fields.
-    if (const auto latest_update_time = LatestUpdateTime(Id)) {
+void Field::FlashUpdateRecencyBackground(std::optional<StorePath> relative_path) const {
+    if (const auto latest_update_time = LatestUpdateTime(Id, relative_path)) {
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / fg::style.FlowGrid.FlashDurationSec;
         ImColor flash_color = fg::style.FlowGrid.Colors[FlowGridCol_Flash];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);

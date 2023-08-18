@@ -88,7 +88,7 @@ u32 AdjacencyList::DestinationCount(ID source) const {
 using namespace ImGui;
 
 void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
-    Field::RenderValueTree(annotate, auto_select);
+    FlashUpdateRecencyBackground();
 
     if (!RootStore.IdPairCount(Path)) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());

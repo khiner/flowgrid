@@ -91,7 +91,7 @@ void Colors::Render() const {
 }
 
 void Colors::RenderValueTree(bool annotate, bool auto_select) const {
-    Field::RenderValueTree(annotate, auto_select);
+    FlashUpdateRecencyBackground();
 
     if (TreeNode(Name)) {
         for (u32 i = 0; i < Value.size(); i++) {

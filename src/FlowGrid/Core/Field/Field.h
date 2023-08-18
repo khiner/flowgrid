@@ -84,9 +84,12 @@ struct Field : Component {
     // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
     inline static std::unordered_set<ID> ChangedFieldIds;
 
-    inline static std::optional<TimePoint> LatestUpdateTime(const ID field_id) noexcept {
+    inline static std::optional<TimePoint> LatestUpdateTime(ID field_id, std::optional<StorePath> relative_path = {}) noexcept {
         if (!LatestChangedPaths.contains(field_id)) return {};
-        return LatestChangedPaths.at(field_id).first;
+        const auto &[update_time, paths] = LatestChangedPaths.at(field_id);
+        if (!relative_path) return update_time;
+        if (paths.contains(*relative_path)) return update_time;
+        return {};
     }
 
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
@@ -103,7 +106,9 @@ struct Field : Component {
     // Only used during `main.cpp` initialization.
     static void RefreshAll();
 
-    virtual void RenderValueTree(bool annotate, bool auto_select) const override;
+    virtual void RenderValueTree(bool annotate, bool auto_select) const override = 0;
+
+    void FlashUpdateRecencyBackground(std::optional<StorePath> relative_path = {}) const;
 
 private:
     // Find the field whose `Refresh()` should be called in response to a patch with this path and op type.

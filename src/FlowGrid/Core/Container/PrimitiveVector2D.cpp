@@ -66,7 +66,7 @@ template<IsPrimitive T> json PrimitiveVector2D<T>::ToJson() const { return json(
 using namespace ImGui;
 
 template<IsPrimitive T> void PrimitiveVector2D<T>::RenderValueTree(bool annotate, bool auto_select) const {
-    Field::RenderValueTree(annotate, auto_select);
+    FlashUpdateRecencyBackground();
 
     if (Value.empty()) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());

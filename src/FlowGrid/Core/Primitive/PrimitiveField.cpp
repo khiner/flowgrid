@@ -13,7 +13,7 @@ template<IsPrimitive T> void PrimitiveField<T>::Erase() const { RootStore.Erase(
 template<IsPrimitive T> json PrimitiveField<T>::ToJson() const { return Value; }
 
 template<IsPrimitive T> void PrimitiveField<T>::RenderValueTree(bool annotate, bool auto_select) const {
-    Field::RenderValueTree(annotate, auto_select);
+    FlashUpdateRecencyBackground();
     TreeNode(Name, false, std::format("{}", Value).c_str());
 }
 

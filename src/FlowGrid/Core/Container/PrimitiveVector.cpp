@@ -74,15 +74,16 @@ template<IsPrimitive T> json PrimitiveVector<T>::ToJson() const { return json(Va
 using namespace ImGui;
 
 template<IsPrimitive T> void PrimitiveVector<T>::RenderValueTree(bool annotate, bool auto_select) const {
-    Field::RenderValueTree(annotate, auto_select);
+    FlashUpdateRecencyBackground();
 
     if (Value.empty()) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());
         return;
     }
 
-    if (TreeNode(Name)) {
+    if (TreeNode(Name, false, nullptr, false, auto_select)) {
         for (u32 i = 0; i < Value.size(); i++) {
+            FlashUpdateRecencyBackground(to_string(i));
             T value = Value[i];
             TreeNode(to_string(i), false, to_string(value).c_str());
         }

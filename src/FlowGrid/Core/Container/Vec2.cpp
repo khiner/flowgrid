@@ -62,7 +62,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
 void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
 
 void Vec2::RenderValueTree(bool annotate, bool auto_select) const {
-    Field::RenderValueTree(annotate, auto_select);
+    FlashUpdateRecencyBackground();
 
     const std::string value_str = std::format("({}, {})", X(), Y());
     TreeNode(Name, false, value_str.c_str());
@@ -142,7 +142,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
 void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }
 
 void Vec2Linked::RenderValueTree(bool annotate, bool auto_select) const {
-    Field::RenderValueTree(annotate, auto_select);
+    FlashUpdateRecencyBackground();
 
     const std::string value_str = std::format("({}, {}, {})", X(), Y(), Linked ? "Linked" : "Unlinked");
     TreeNode(Name, false, value_str.c_str());

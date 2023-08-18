@@ -81,6 +81,10 @@ template<typename T> struct Navigable : Field, Actionable<typename Action::Navig
         return Value[Cursor];
     }
 
+    void RenderValueTree(bool annotate, bool auto_select) const override {
+        Component::RenderValueTree(annotate, auto_select);
+    }
+
 private:
     Prop(PrimitiveVector<T>, Value);
     Prop(UInt, Cursor);

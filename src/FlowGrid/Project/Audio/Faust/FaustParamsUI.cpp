@@ -1,9 +1,11 @@
 #include "FaustParamsUI.h"
 #include "FaustParamsUIStyle.h"
-
 #include "UI/Widgets.h"
 
 #include <range/v3/numeric/accumulate.hpp>
+
+#include "Project/Audio/Sample.h" // Must be included before any Faust includes.
+#include "faust/dsp/dsp.h"
 
 #include <imgui.h>
 
@@ -12,6 +14,16 @@ using namespace fg;
 
 using enum FaustParam::Type;
 using std::min, std::max;
+
+FaustParamsUI::FaustParamsUI(ComponentArgs &&args, const FaustParamsUIStyle &style)
+    : Component(std::move(args)), Style(style) {}
+
+FaustParamsUI::~FaustParamsUI() {}
+
+void FaustParamsUI::SetDsp(dsp *dsp) {
+    Dsp = dsp;
+    if (Dsp) Dsp->buildUserInterface(this);
+}
 
 static bool IsWidthExpandable(const FaustParam::Type type) {
     return type == Type_HGroup || type == Type_VGroup || type == Type_TGroup || type == Type_NumEntry || type == Type_HSlider || type == Type_HBargraph;

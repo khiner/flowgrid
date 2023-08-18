@@ -98,19 +98,26 @@ void Faust::Render() const {
     }
 }
 
+void FaustLogs::RenderErrorMessage(string_view error_message) const {
+    if (!error_message.empty()) {
+        PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
+        TextUnformatted(error_message);
+        PopStyleColor();
+    } else {
+        PushStyleColor(ImGuiCol_Text, {0, 1, 0, 1});
+        TextUnformatted("No error message.");
+        PopStyleColor();
+    }
+}
+
 void FaustLogs::Render() const {
+    if (ErrorMessageByFaustDspId.empty()) return TextUnformatted("No Faust DSPs created yet.");
+    if (ErrorMessageByFaustDspId.size() == 1) return RenderErrorMessage(ErrorMessageByFaustDspId.begin()->second);
+
     if (BeginTabBar("")) {
         for (const auto &[faust_dsp_id, error_message] : ErrorMessageByFaustDspId) {
             if (BeginTabItem(std::format("{}", faust_dsp_id).c_str())) {
-                if (!error_message.empty()) {
-                    PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
-                    TextUnformatted(error_message);
-                    PopStyleColor();
-                } else {
-                    PushStyleColor(ImGuiCol_Text, {0, 1, 0, 1});
-                    TextUnformatted("No error message.");
-                    PopStyleColor();
-                }
+                RenderErrorMessage(error_message);
                 EndTabItem();
             }
         }

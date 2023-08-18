@@ -18,6 +18,7 @@ struct FaustLogs : Component, FaustChangeListener {
 
 private:
     void Render() const override;
+    void RenderErrorMessage(string_view error_message) const;
 };
 
 struct Faust : Component, Actionable<Action::Faust::Any> {

@@ -38,11 +38,9 @@ void FaustParamsUIs::OnFaustDspRemoved(ID dsp_id) {
 using namespace ImGui;
 
 void FaustParamsUIs::Render() const {
-    if (Uis.Empty()) {
-        // todo don't show empty menu bar in this case
-        TextUnformatted("Enter a valid Faust program into the 'Faust editor' window to view its params."); // todo link to window?
-        return;
-    }
+    // todo don't show empty menu bar in this case
+    if (Uis.Empty()) return TextUnformatted("No Faust DSPs created yet.");
+    if (Uis.Size() == 1) return Uis[0]->Draw();
 
     if (BeginTabBar("")) {
         for (const auto *ui : Uis) {

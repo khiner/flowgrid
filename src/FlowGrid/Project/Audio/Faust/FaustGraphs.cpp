@@ -1369,10 +1369,7 @@ void FaustGraph::Render() const {
 }
 
 void FaustGraphs::Render() const {
-    if (Graphs.Empty()) {
-        TextUnformatted("No Faust DSPs created yet.");
-        return;
-    }
+    if (Graphs.Empty()) return TextUnformatted("No Faust DSPs created yet.");
 
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
@@ -1382,6 +1379,8 @@ void FaustGraphs::Render() const {
         }
         PrevSelectedPath = selected_path;
     }
+
+    if (Graphs.Size() == 1) return Graphs[0]->Draw();
 
     if (BeginTabBar("")) {
         for (const auto *graph : Graphs) {

@@ -1281,32 +1281,6 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
     );
 }
 
-void FaustGraphs::Render() const {
-    if (Graphs.Empty()) {
-        TextUnformatted("No Faust DSPs created yet.");
-        return;
-    }
-
-    static string PrevSelectedPath = "";
-    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
-        const fs::path selected_path = file_dialog.SelectedFilePath;
-        if (file_dialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
-            Action::Faust::Graph::SaveSvgFile{Id, selected_path}.q();
-        }
-        PrevSelectedPath = selected_path;
-    }
-
-    if (BeginTabBar("")) {
-        for (const auto *graph : Graphs) {
-            if (BeginTabItem(std::format("{}", ID(graph->DspId)).c_str())) {
-                graph->Draw();
-                EndTabItem();
-            }
-        }
-        EndTabBar();
-    }
-}
-
 FaustGraph::FaustGraph(ComponentArgs &&args)
     : Component(std::move(args)), Context(static_cast<const FaustGraphs &>(*Parent->Parent)), Style(Context.Style) {}
 
@@ -1322,6 +1296,33 @@ FaustGraph *FaustGraphs::FindGraph(ID dsp_id) const {
 float FaustGraph::GetScale() const {
     if (!Style.ScaleFillHeight || NodeNavigationHistory.Empty() || !GetCurrentWindowRead()) return Style.Scale;
     return GetWindowHeight() / NodeByImGuiId.at(*NodeNavigationHistory)->H();
+}
+
+void FaustGraph::SaveBoxSvg(const fs::path &dir_path) const {
+    if (!RootNode) return;
+
+    fs::remove_all(dir_path);
+    fs::create_directory(dir_path);
+
+    GroupNode node{*this, NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
+    node.Place(DeviceType_SVG);
+    node.WriteSvg(dir_path);
+}
+
+void FaustGraph::SetBox(Box box) {
+    IsTreePureRouting.clear();
+    NodeNavigationHistory.Clear_();
+    RootNode.reset();
+    if (box) {
+        RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
+        NodeByImGuiId.clear();
+        RootNode->GenerateIds(Id);
+        NodeNavigationHistory.Push_(RootNode->ImGuiId);
+    }
+}
+
+void FaustGraph::ResetBox() {
+    if (RootNode) SetBox(RootNode->FaustTree);
 }
 
 void FaustGraph::Render() const {
@@ -1367,29 +1368,28 @@ void FaustGraph::Render() const {
     EndChild();
 }
 
-void FaustGraph::SaveBoxSvg(const fs::path &dir_path) const {
-    if (!RootNode) return;
-
-    fs::remove_all(dir_path);
-    fs::create_directory(dir_path);
-
-    GroupNode node{*this, NodeType_Decorate, RootNode->FaustTree, Tree2NodeInner(RootNode->FaustTree)};
-    node.Place(DeviceType_SVG);
-    node.WriteSvg(dir_path);
-}
-
-void FaustGraph::SetBox(Box box) {
-    IsTreePureRouting.clear();
-    NodeNavigationHistory.Clear_();
-    RootNode.reset();
-    if (box) {
-        RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
-        NodeByImGuiId.clear();
-        RootNode->GenerateIds(Id);
-        NodeNavigationHistory.Push_(RootNode->ImGuiId);
+void FaustGraphs::Render() const {
+    if (Graphs.Empty()) {
+        TextUnformatted("No Faust DSPs created yet.");
+        return;
     }
-}
 
-void FaustGraph::ResetBox() {
-    if (RootNode) SetBox(RootNode->FaustTree);
+    static string PrevSelectedPath = "";
+    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
+        const fs::path selected_path = file_dialog.SelectedFilePath;
+        if (file_dialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
+            Action::Faust::Graph::SaveSvgFile{Id, selected_path}.q();
+        }
+        PrevSelectedPath = selected_path;
+    }
+
+    if (BeginTabBar("")) {
+        for (const auto *graph : Graphs) {
+            if (BeginTabItem(std::format("{}", ID(graph->DspId)).c_str())) {
+                graph->Draw();
+                EndTabItem();
+            }
+        }
+        EndTabBar();
+    }
 }

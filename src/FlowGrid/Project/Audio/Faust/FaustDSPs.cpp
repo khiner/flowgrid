@@ -137,7 +137,13 @@ void FaustDSPs::Render() const {
         TextUnformatted("No Faust DSPs created yet.");
         return;
     }
-    if (Size() == 1) {
-        front()->Draw();
+    if (BeginTabBar("")) {
+        for (const auto *faust_dsp : *this) {
+            if (BeginTabItem(std::format("{}", faust_dsp->Id).c_str())) {
+                faust_dsp->Draw();
+                EndTabItem();
+            }
+        }
+        EndTabBar();
     }
 }

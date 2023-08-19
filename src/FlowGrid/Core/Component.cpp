@@ -4,7 +4,7 @@
 #include <format>
 
 #include "Helper/String.h"
-#include "Project/Style/Style.h"
+#include "Project/ProjectContext.h"
 #include "UI/HelpMarker.h"
 
 DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio) : Component(std::move(args)), SplitRatio(split_ratio) {}
@@ -21,13 +21,15 @@ Component::Metadata Component::Metadata::Parse(string_view str) {
     return {found ? string(str.substr(0, help_split)) : string(str), found ? string(str.substr(help_split + 1)) : ""};
 }
 
-Component::Component(Store &store)
-    : RootStore(store), Parent(nullptr), PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
+Component::Component(Store &store, const ProjectContext &context)
+    : RootStore(store), RootContext(context), Parent(nullptr),
+      PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById[Id] = this;
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
     : RootStore(parent->RootStore),
+      RootContext(parent->RootContext),
       Parent(parent),
       PathSegment(path_segment),
       Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),
@@ -191,7 +193,7 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     }
 
     bool is_open = false;
-    if (highlight_label) PushStyleColor(ImGuiCol_Text, fg::style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+    if (highlight_label) PushStyleColor(ImGuiCol_Text, RootContext.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
     if (value == nullptr) {
         const auto label = string(label_view);
         is_open = TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_None);
@@ -202,7 +204,7 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     if (highlight_label) PopStyleColor();
 
     if (value != nullptr) {
-        if (highlight_value) PushStyleColor(ImGuiCol_Text, fg::style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+        if (highlight_value) PushStyleColor(ImGuiCol_Text, RootContext.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
         SameLine();
         TextUnformatted(value);
         if (highlight_value) PopStyleColor();

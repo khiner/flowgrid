@@ -2,9 +2,15 @@
 
 struct Drawable;
 struct ImFont;
+struct ImGuiSettings;
+namespace FlowGrid {
+struct Style;
+}
+
+namespace fg = FlowGrid;
 
 struct UIContext {
-    UIContext();
+    UIContext(const ImGuiSettings &, const fg::Style &);
     ~UIContext();
 
     // Main UI tick function
@@ -17,6 +23,8 @@ struct UIContext {
     };
 
     Fonts Fonts{};
+    const ImGuiSettings &Settings;
+    const fg::Style &Style;
 };
 
 extern UIContext Ui; // Created in `main.cpp`

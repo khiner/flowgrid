@@ -77,12 +77,12 @@ void Project::SetHistoryIndex(u32 index) const {
     // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
     // We don't make `ImGuiSettings` a field change listener for this because it would would end up being slower,
     // since it has many descendent fields, and we would wastefully check for changes during the forward action pass, as explained above.
-    if (LatestPatch.IsPrefixOfAnyPath(imgui_settings.Path)) imgui_settings.IsChanged = true;
+    if (LatestPatch.IsPrefixOfAnyPath(ImGuiSettings.Path)) ImGuiSettings::IsChanged = true;
     ProjectHasChanges = true;
 }
 
-Project::Project(Store &store) : Component(store) {
-    Windows.SetWindowComponents({
+Project::Project(Store &store) : Component(store, Context) {
+    Context.Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
         Audio.Style,
@@ -97,7 +97,7 @@ Project::Project(Store &store) : Component(store) {
         Debug.DebugLog,
         Debug.StackTool,
         Debug.Metrics,
-        Style,
+        Context.Style,
         Demo,
         Info,
     });
@@ -147,8 +147,8 @@ void Project::Apply(const ActionType &action) const {
         [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [this](const Audio::ActionType &a) { Audio.Apply(a); },
         [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
-        [this](const Windows::ActionType &a) { Windows.Apply(a); },
-        [this](const Style::ActionType &a) { Style.Apply(a); },
+        [this](const Windows::ActionType &a) { Context.Windows.Apply(a); },
+        [this](const Style::ActionType &a) { Context.Style.Apply(a); },
     );
 }
 
@@ -171,8 +171,8 @@ bool Project::CanApply(const ActionType &action) const {
         [this](const Store::ActionType &a) { return RootStore.CanApply(a); },
         [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
-        [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
-        [this](const Style::ActionType &a) { return Style.CanApply(a); },
+        [this](const Windows::ActionType &a) { return Context.Windows.CanApply(a); },
+        [this](const Style::ActionType &a) { return Context.Style.CanApply(a); },
     );
 }
 
@@ -223,7 +223,7 @@ void Project::Render() const {
         Debug.StackTool.Dock(debug_node_id);
         Debug.Metrics.Dock(metrics_node_id);
 
-        Style.Dock(utilities_node_id);
+        Context.Style.Dock(utilities_node_id);
         Demo.Dock(utilities_node_id);
 
         Info.Dock(info_node_id);
@@ -231,14 +231,14 @@ void Project::Render() const {
     }
     // Draw non-window children.
     for (const auto *child : Children) {
-        if (child == &Windows) continue;
-        if (!Windows.IsWindow(child->Id)) child->Draw();
+        if (child == &Context.Windows) continue;
+        if (!Context.Windows.IsWindow(child->Id)) child->Draw();
     }
-    Windows.Draw();
+    Context.Windows.Draw();
 
     if (frame_count == 1) {
         // Default focused windows.
-        Style.Focus();
+        Context.Style.Focus();
         Audio.Graph.Focus();
         Audio.Faust.Graphs.Focus();
         Audio.Faust.ParamsUis.Focus();
@@ -297,19 +297,16 @@ bool Project::Save(const fs::path &path) const {
     return true;
 }
 
-// When loading a new project, we always refresh all UI contexts.
-void MarkAllUiContextsChanged() {
-    style.ImGui.IsChanged = true;
-    style.ImPlot.IsChanged = true;
-    imgui_settings.IsChanged = true;
-}
-
 void Project::OnApplicationLaunch() const {
     Field::IsGesturing = false;
     History.Clear();
     Field::ClearChanged();
     Field::LatestChangedPaths.clear();
-    MarkAllUiContextsChanged();
+
+    // When loading a new project, we always refresh all UI contexts.
+    Context.Style.ImGui.IsChanged = true;
+    Context.Style.ImPlot.IsChanged = true;
+    ImGuiSettings::IsChanged = true;
 
     // Keep the canonical "empty" project up-to-date.
     if (!fs::exists(InternalPath)) fs::create_directory(InternalPath);
@@ -344,7 +341,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     Field::RefreshAll();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
-    imgui_settings.IsChanged = true;
+    ImGuiSettings.IsChanged = true;
     History.Clear();
 }
 
@@ -534,11 +531,11 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
             const float gesture_duration_sec = project_settings.GestureDurationSec;
             const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
             const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, RootContext.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
             const auto &ActiveGestureActions_title = "Active gesture"s + (any_gesture_actions ? " (uncompressed)" : "");
             if (TreeNodeEx(ActiveGestureActions_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (is_gesturing) FillRowItemBg(style.ImGui.Colors[ImGuiCol_FrameBgActive]);
+                if (is_gesturing) FillRowItemBg(RootContext.Style.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
                 Text("Widget gesture: %s", is_gesturing ? "true" : "false");
                 if (!is_gesturing) EndDisabled();

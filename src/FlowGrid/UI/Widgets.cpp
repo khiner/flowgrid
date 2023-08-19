@@ -5,8 +5,6 @@
 
 #include "imgui_internal.h"
 
-#include "Project/Style/Style.h"
-
 using namespace ImGui;
 
 namespace FlowGrid {
@@ -210,7 +208,7 @@ struct knob {
 
     void DrawArc(float radius_ratio, float size, float start_angle, float end_angle, const ColorSet &color_set, int segments, int bezier_count) const {
         const auto track_size = size * this->radius * 0.5f + 0.0001f;
-        fg::DrawArc(center, radius_ratio * this->radius, start_angle, end_angle, track_size, is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base), segments, bezier_count);
+        FlowGrid::DrawArc(center, radius_ratio * this->radius, start_angle, end_angle, track_size, is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base), segments, bezier_count);
     }
 };
 

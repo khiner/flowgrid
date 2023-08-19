@@ -11,13 +11,12 @@ StoreHistory &History = store_history_singleton;
 Project MainProject{store};
 // Set all global extern variables.
 const Project &project = MainProject;
-const fg::Style &fg::style = project.Style;
 const Faust &faust = project.Audio.Faust;
 const FaustGraphs &faust_graphs = faust.Graphs;
 const ImGuiSettings &imgui_settings = project.ImGuiSettings;
 const FileDialog &file_dialog = project.FileDialog;
 const ProjectSettings &project_settings = project.Settings;
-UIContext Ui{}; // Initialize UI
+UIContext Ui{project.ImGuiSettings, project.Context.Style}; // Initialize UI
 
 bool Tick() {
     static auto &io = ImGui::GetIO();

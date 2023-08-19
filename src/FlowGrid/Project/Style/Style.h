@@ -212,6 +212,4 @@ struct Style : Component, Actionable<Action::Style::Any> {
 protected:
     void Render() const override;
 };
-
-extern const Style &style;
 } // namespace FlowGrid

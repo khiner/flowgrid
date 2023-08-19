@@ -20,6 +20,7 @@ namespace fg = FlowGrid;
 using std::string, std::string_view;
 
 struct Store;
+struct ProjectContext;
 
 struct Menu : Drawable {
     using Item = std::variant<Menu, std::reference_wrapper<MenuItemDrawable>, std::function<void()>>;
@@ -71,7 +72,7 @@ struct Component : Drawable {
     // Components with at least one descendent field (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
-    Component(Store &);
+    Component(Store &, const ProjectContext &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -118,6 +119,7 @@ struct Component : Drawable {
     inline bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
 
     Store &RootStore; // Reference to the store at the root of this component's tree.
+    const ProjectContext &RootContext;
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
     const string PathSegment;

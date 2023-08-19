@@ -27,8 +27,6 @@
 // This is useful to get a sense of the best case rendering performance without project rendering overhead.
 // #define ONLY_RENDER_METRICS_WINDOW
 
-using fg::style;
-
 static SDL_Window *Window = nullptr;
 static ImGui_ImplVulkanH_Window *VulkanWindow = nullptr;
 
@@ -271,7 +269,7 @@ static void RenderFrameVulkan(ImDrawData *draw_data) {
     }
 }
 
-UIContext::UIContext() {
+UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Settings(settings), Style(style) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) {
         throw std::runtime_error(std::format("SDL_Init error: {}", SDL_GetError()));
     }
@@ -292,7 +290,6 @@ UIContext::UIContext() {
 
     // Create Window Surface
     VkSurfaceKHR surface;
-    VkResult err;
     if (SDL_Vulkan_CreateSurface(Window, g_Instance, &surface) == 0) throw std::runtime_error("Failed to create Vulkan surface.\n");
 
     // Create Framebuffers
@@ -331,7 +328,7 @@ UIContext::UIContext() {
     ImGui_ImplVulkan_Init(&init_info, VulkanWindow->RenderPass);
 
     // Setup fonts
-    io.FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
+    io.FontGlobalScale = Style.ImGui.FontScale / FontAtlasScale;
     Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
     Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
     io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * FontAtlasScale);
@@ -454,21 +451,21 @@ bool UIContext::Tick(const Drawable &drawable) {
     }
 
     // Check if new UI settings need to be applied.
-    imgui_settings.UpdateIfChanged(ImGui::GetCurrentContext());
-    style.ImGui.UpdateIfChanged(ImGui::GetCurrentContext());
-    style.ImPlot.UpdateIfChanged(ImPlot::GetCurrentContext());
+    Settings.UpdateIfChanged(ImGui::GetCurrentContext());
+    Style.ImGui.UpdateIfChanged(ImGui::GetCurrentContext());
+    Style.ImPlot.UpdateIfChanged(ImPlot::GetCurrentContext());
 
     auto &io = ImGui::GetIO();
 
     static int PrevFontIndex = 0;
     static float PrevFontScale = 1.0;
-    if (PrevFontIndex != style.ImGui.FontIndex) {
-        io.FontDefault = io.Fonts->Fonts[style.ImGui.FontIndex];
-        PrevFontIndex = style.ImGui.FontIndex;
+    if (PrevFontIndex != Style.ImGui.FontIndex) {
+        io.FontDefault = io.Fonts->Fonts[Style.ImGui.FontIndex];
+        PrevFontIndex = Style.ImGui.FontIndex;
     }
-    if (PrevFontScale != style.ImGui.FontScale) {
-        io.FontGlobalScale = style.ImGui.FontScale / FontAtlasScale;
-        PrevFontScale = style.ImGui.FontScale;
+    if (PrevFontScale != Style.ImGui.FontScale) {
+        io.FontGlobalScale = Style.ImGui.FontScale / FontAtlasScale;
+        PrevFontScale = Style.ImGui.FontScale;
     }
 
     PrepareFrame();

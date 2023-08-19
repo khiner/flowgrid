@@ -3,13 +3,12 @@
 #include "Audio/Audio.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Action/Actions.h"
-#include "Core/Windows.h"
+#include "ProjectContext.h"
 #include "Demo/Demo.h"
 #include "FileDialog/FileDialog.h"
 #include "Core/ImGuiSettings.h"
 #include "Info/Info.h"
 #include "ProjectSettings.h"
-#include "Style/Style.h"
 
 enum ProjectFormat {
     StateFormat,
@@ -135,8 +134,8 @@ struct Project : Component, Actionable<Action::Any> {
         Prop(Metrics, Metrics);
     };
 
+    Prop(ProjectContext, Context);
     Prop(ImGuiSettings, ImGuiSettings);
-    Prop(fg::Style, Style);
     Prop(Audio, Audio);
     Prop(ProjectSettings, Settings);
     Prop(FileDialog, FileDialog);
@@ -145,13 +144,11 @@ struct Project : Component, Actionable<Action::Any> {
     Prop(Demo, Demo);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
-    Prop(Windows, Windows);
-
     const Menu MainMenu{
         {
             Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, OpenRecentProjectMenuItem, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),
             Menu("Edit", {Action::Project::Undo::MenuItem, Action::Project::Redo::MenuItem}),
-            Windows,
+            Context.Windows,
         },
         true};
 

@@ -6,7 +6,7 @@
 #include "Core/Windows.h"
 #include "Demo/Demo.h"
 #include "FileDialog/FileDialog.h"
-#include "ImGuiSettings/ImGuiSettings.h"
+#include "Core/ImGuiSettings.h"
 #include "Info/Info.h"
 #include "ProjectSettings.h"
 #include "Style/Style.h"

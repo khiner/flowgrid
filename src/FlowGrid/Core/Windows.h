@@ -3,7 +3,7 @@
 #include "Core/Container/PrimitiveVector.h"
 #include "WindowsAction.h"
 
-struct Windows : Component, Actionable<Action::Windows::Any>, MenuItemDrawable {
+struct Windows : Component, Actionable<Action::Windows::Any> {
     using Component::Component;
 
     void Apply(const ActionType &) const override;
@@ -13,7 +13,9 @@ struct Windows : Component, Actionable<Action::Windows::Any>, MenuItemDrawable {
 
     bool IsWindow(ID component_id) const;
     bool IsVisible(ID component_id) const;
-    void MenuItem() const override;
+
+    void ToggleMenuItem(const Component &) const;
+    void ToggleDebugMenuItem(const Component &) const;
 
     Prop(PrimitiveVector<ID>, VisibleComponents);
 

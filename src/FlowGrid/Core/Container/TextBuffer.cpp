@@ -2,7 +2,6 @@
 
 #include "imgui.h"
 
-#include "Core/WindowsAction.h"
 #include "Project/Audio/Faust/FaustAction.h"
 #include "Project/ProjectContext.h"
 #include "Project/TextEditor/TextEditor.h"
@@ -52,9 +51,7 @@ void TextBuffer::RenderMenu() const {
                 if (MenuItem("Retro blue palette")) editor.SetPalette(TextEditor::GetRetroBluePalette());
                 EndMenu();
             }
-            if (MenuItem("Debug window", nullptr, RootContext.Windows.IsVisible(Debug.Id), true)) {
-                Action::Windows::ToggleDebug{Debug.Id}.q();
-            }
+            RootContext.Windows.ToggleDebugMenuItem(Debug);
             EndMenu();
         }
         EndMenuBar();

@@ -40,7 +40,7 @@ using namespace ImGui;
 
 void Windows::Render() const {
     for (const ID component_id : VisibleComponents) {
-        const auto *component = Component::ById[component_id];
+        const auto *component = Component::ById.at(component_id);
         ImGuiWindowFlags flags = component->WindowFlags;
         if (!component->WindowMenu.Items.empty()) flags |= ImGuiWindowFlags_MenuBar;
 
@@ -55,29 +55,14 @@ void Windows::Render() const {
     }
 }
 
-void Windows::MenuItem() const {
-    // if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, Visible)) Action::Windows::ToggleVisible{Path}.q();
+void Windows::ToggleMenuItem(const Component &component) const {
+    if (MenuItem(component.ImGuiLabel.c_str(), nullptr, IsVisible(component.Id))) {
+        Action::Windows::ToggleVisible{component.Id}.q();
+    }
+}
 
-    // Menu(
-    //     "Windows",
-    //     {
-    //         Menu(
-    //             "Faust",
-    //             {
-    //                 Menu("Editor", {Audio.Faust.Code, Audio.Faust.Code.Metrics}),
-    //                 Audio.Faust.Graph,
-    //                 Audio.Faust.Params,
-    //                 Audio.Faust.Log,
-    //             }
-    //         ),
-    //         Audio,
-    //         Style,
-    //         Demo,
-    //         Menu(
-    //             "Debug",
-    //             {Debug, Debug.Metrics, Debug.DebugLog, Debug.StackTool, Debug.StorePathUpdateFrequency, Debug.ProjectPreview}
-    //             // Debug.StateMemoryEditor,
-    //         ),
-    //     }
-    // )
+void Windows::ToggleDebugMenuItem(const Component &component) const {
+    if (MenuItem(component.ImGuiLabel.c_str(), nullptr, IsVisible(component.Id))) {
+        Action::Windows::ToggleDebug{component.Id}.q();
+    }
 }

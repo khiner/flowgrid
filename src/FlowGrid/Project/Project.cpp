@@ -260,7 +260,7 @@ void Project::Render() const {
 void Project::OpenRecentProjectMenuItem() {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (ImGui::MenuItem(recently_opened_path.filename().c_str())) Action::Project::Open{recently_opened_path}.q();
+            if (MenuItem(recently_opened_path.filename().c_str())) Action::Project::Open{recently_opened_path}.q();
         }
         EndMenu();
     }
@@ -373,6 +373,39 @@ void Project::Open(const fs::path &file_path) const {
     }
 
     SetCurrentProjectPath(file_path);
+}
+
+void Project::WindowMenuItem() const {
+    const auto &item = [this](const Component &c) { return Context.Windows.ToggleMenuItem(c); };
+    if (BeginMenu("Windows")) {
+        if (BeginMenu("Audio")) {
+            item(Audio.Graph);
+            item(Audio.Graph.Connections);
+            item(Audio.Style);
+            EndMenu();
+        }
+        if (BeginMenu("Faust")) {
+            item(Audio.Faust.FaustDsps);
+            item(Audio.Faust.Graphs);
+            item(Audio.Faust.ParamsUis);
+            item(Audio.Faust.Logs);
+            EndMenu();
+        }
+        if (BeginMenu("Debug")) {
+            item(Debug);
+            item(Debug.ProjectPreview);
+            item(Debug.StorePathUpdateFrequency);
+            item(Debug.DebugLog);
+            item(Debug.StackTool);
+            item(Debug.Metrics);
+            EndMenu();
+        }
+        item(Context.Style);
+        item(Demo);
+        item(Info);
+        item(Settings);
+        EndMenu();
+    }
 }
 
 //-----------------------------------------------------------------------------

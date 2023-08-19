@@ -4,6 +4,7 @@
 
 #include "Core/WindowsAction.h"
 #include "Project/Audio/Faust/FaustAction.h"
+#include "Project/ProjectContext.h"
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/UI.h"
 
@@ -51,9 +52,9 @@ void TextBuffer::RenderMenu() const {
                 if (MenuItem("Retro blue palette")) editor.SetPalette(TextEditor::GetRetroBluePalette());
                 EndMenu();
             }
-            // todo show checkbox showing debug window visibility. First, components need access to `Windows::VisibleComponents`.
-            //   Spiritualy, `Windows::VisibleComponents` should be a static `Component` field.
-            if (MenuItem("Toggle debug window", nullptr, false, true)) Action::Windows::ToggleDebug{Debug.Id}.q();
+            if (MenuItem("Debug window", nullptr, RootContext.Windows.IsVisible(Debug.Id), true)) {
+                Action::Windows::ToggleDebug{Debug.Id}.q();
+            }
             EndMenu();
         }
         EndMenuBar();

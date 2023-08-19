@@ -3,11 +3,11 @@
 #include "Audio/Audio.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Action/Actions.h"
-#include "ProjectContext.h"
+#include "Core/ImGuiSettings.h"
 #include "Demo/Demo.h"
 #include "FileDialog/FileDialog.h"
-#include "Core/ImGuiSettings.h"
 #include "Info/Info.h"
+#include "ProjectContext.h"
 #include "ProjectSettings.h"
 
 enum ProjectFormat {

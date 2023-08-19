@@ -12,9 +12,12 @@ struct Windows : Component, Actionable<Action::Windows::Any>, MenuItemDrawable {
     void SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &);
 
     bool IsWindow(ID component_id) const;
+    bool IsVisible(ID component_id) const;
     void MenuItem() const override;
 
     Prop(PrimitiveVector<ID>, VisibleComponents);
+
+    std::vector<ID> WindowComponentIds;
 
 protected:
     void Render() const override;

@@ -86,6 +86,7 @@ struct Field : Component {
 
     inline static std::optional<TimePoint> LatestUpdateTime(ID field_id, std::optional<StorePath> relative_path = {}) noexcept {
         if (!LatestChangedPaths.contains(field_id)) return {};
+
         const auto &[update_time, paths] = LatestChangedPaths.at(field_id);
         if (!relative_path) return update_time;
         if (paths.contains(*relative_path)) return update_time;

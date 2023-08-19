@@ -3,8 +3,8 @@
 #include "Core/Container/Vector.h"
 
 #include "FaustListener.h"
-#include "FaustParamsUIStyle.h"
 #include "FaustParamsUI.h"
+#include "FaustParamsUIStyle.h"
 
 class dsp;
 

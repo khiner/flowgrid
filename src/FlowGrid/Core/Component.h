@@ -125,8 +125,8 @@ struct Component : Drawable {
     const string Name, Help, ImGuiLabel;
     const ID Id;
 
-    // todo this should be separated after current window refactor.
-    ImGuiWindow *FindImGuiWindow() const;
+    ImGuiWindow *FindWindow() const;
+    ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
     void Dock(ID node_id) const;
     bool Focus() const;
     const Menu WindowMenu{{}};
@@ -159,10 +159,14 @@ private:
 // Minimal/base debug component.
 // Actual debug content is rendered in the parent component's `RenderDebug()`,
 // and debug components themselves can't further override `RenderDebug()`.
-// Otherwise, debug components are just like regular components - they store additional config fields, be rendered as windows, etc.
-// Override `Render` to render anything other than just the parent's debug content.
+// Otherwise, debug components are just like regular components - they store additional config fields, can be rendered as windows, etc.
+// Override and extend `Render` to render anything other than just the parent's debug content.
 struct DebugComponent : Component {
-    using Component::Component;
+    DebugComponent(ComponentArgs &&, float split_ratio = 0.25);
+    DebugComponent(ComponentArgs &&, ImGuiWindowFlags flags, Menu &&menu, float split_ratio = 0.25);
+    ~DebugComponent();
+
+    const float SplitRatio;
 
 protected:
     virtual void Render() const override { RenderDebug(); }

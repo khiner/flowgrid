@@ -7,6 +7,10 @@
 #include "Project/Style/Style.h"
 #include "UI/HelpMarker.h"
 
+DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio) : Component(std::move(args)), SplitRatio(split_ratio) {}
+DebugComponent::DebugComponent(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu, float split_ratio) : Component(std::move(args), flags, std::move(menu)), SplitRatio(split_ratio) {}
+DebugComponent::~DebugComponent() {}
+
 Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), Items(std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
@@ -129,14 +133,22 @@ void Menu::Render() const {
     }
 }
 
-ImGuiWindow *Component::FindImGuiWindow() const { return GetCurrentContext() ? FindWindowByName(ImGuiLabel.c_str()) : nullptr; }
+ImGuiWindow *Component::FindWindow() const {
+    return GetCurrentContext() ? FindWindowByName(ImGuiLabel.c_str()) : nullptr;
+}
+
+ImGuiWindow *Component::FindDockWindow() const {
+    if (!GetCurrentContext()) return nullptr;
+    auto *window = FindWindowByName(ImGuiLabel.c_str());
+    return window && window->DockId ? window : (Parent ? Parent->FindDockWindow() : nullptr);
+}
 
 void Component::Dock(ID node_id) const {
     DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);
 }
 
 bool Component::Focus() const {
-    if (auto *window = FindImGuiWindow()) {
+    if (auto *window = FindWindow()) {
         FocusWindow(window);
         return true;
     }

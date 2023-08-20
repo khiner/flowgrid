@@ -47,6 +47,8 @@ private:
     void Init(bool constructing);
     void Uninit(bool destructing);
 
+    void DestroyDsp();
+
     void NotifyBoxListeners(NotificationType) const;
     void NotifyDspListeners(NotificationType) const;
     void NotifyListeners(NotificationType) const;

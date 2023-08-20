@@ -30,10 +30,10 @@ struct FaustParam {
         Type_HRadioButtons,
     };
 
-    FaustParam(const Type type, std::string_view label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, std::vector<FaustParam> children = {})
+    FaustParam(const Type type = FaustParam::Type_None, std::string_view label = "", Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, std::vector<FaustParam> children = {})
         : type(type), id(label), label(label == "0x00" ? "" : label), zone(zone), min(min), max(max), init(init), step(step), tooltip(tooltip), children(std::move(children)) {}
 
-    const FaustParam::Type type{FaustParam::Type_None};
+    const FaustParam::Type type;
     const std::string id, label; // `id` will be the same as `label` unless it's the special empty group label of '0x00', in which case `label` will be empty.
     Real *zone; // Only meaningful for widget params (not containers)
     const Real min, max; // Only meaningful for sliders, num-entries, and bar graphs.

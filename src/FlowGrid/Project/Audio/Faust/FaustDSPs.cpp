@@ -29,6 +29,18 @@ void FaustDSP::OnFieldChanged() {
     if (Code.IsChanged()) Update();
 }
 
+void FaustDSP::DestroyDsp() {
+    if (Dsp) {
+        Dsp->instanceResetUserInterface();
+        delete Dsp;
+        Dsp = nullptr;
+    }
+    if (DspFactory) {
+        deleteDSPFactory(DspFactory);
+        DspFactory = nullptr;
+    }
+}
+
 void FaustDSP::Init(bool constructing) {
     const auto notification_type = constructing ? Added : Changed;
 
@@ -43,23 +55,21 @@ void FaustDSP::Init(bool constructing) {
     if (Box && ErrorMessage.empty()) {
         static const int optimize_level = -1;
         DspFactory = createDSPFactoryFromBoxes("FlowGrid", Box, argc, argv.data(), "", ErrorMessage, optimize_level);
-        if (DspFactory && ErrorMessage.empty()) {
-            Dsp = DspFactory->createDSPInstance();
-            if (!Dsp) ErrorMessage = "Successfully created Faust DSP factory, but could not create the Faust DSP instance.";
+        if (DspFactory) {
+            if (ErrorMessage.empty()) {
+                Dsp = DspFactory->createDSPInstance();
+                if (!Dsp) ErrorMessage = "Successfully created Faust DSP factory, but could not create the Faust DSP instance.";
+            } else {
+                deleteDSPFactory(DspFactory);
+                DspFactory = nullptr;
+            }
         }
     } else if (!Box && ErrorMessage.empty()) {
         ErrorMessage = "`DSPToBoxes` returned no error but did not produce a result.";
     }
-    if (!Box && Dsp) {
-        delete Dsp;
-        Dsp = nullptr;
-    }
-    NotifyDspListeners(notification_type);
+    if (!Box && Dsp) DestroyDsp();
 
-    if (DspFactory && !Dsp) {
-        deleteDSPFactory(DspFactory);
-        DspFactory = nullptr;
-    }
+    NotifyDspListeners(notification_type);
 
     NotifyListeners(notification_type);
 }
@@ -68,8 +78,7 @@ void FaustDSP::Uninit(bool destructing) {
     if (Dsp || Box) {
         const auto notification_type = destructing ? Removed : Changed;
         if (Dsp) {
-            delete Dsp;
-            Dsp = nullptr;
+            DestroyDsp();
             NotifyDspListeners(notification_type);
         }
         if (Box) {
@@ -77,10 +86,6 @@ void FaustDSP::Uninit(bool destructing) {
             NotifyBoxListeners(notification_type);
         }
         NotifyListeners(notification_type);
-    }
-    if (DspFactory) {
-        deleteDSPFactory(DspFactory);
-        DspFactory = nullptr;
     }
 
     ErrorMessage = "";

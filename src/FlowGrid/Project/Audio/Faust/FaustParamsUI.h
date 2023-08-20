@@ -121,8 +121,9 @@ private:
     float CalcHeight(const FaustParam &) const;
     float CalcLabelHeight(const FaustParam &) const;
 
-    // Param drawing.
     void DrawUiItem(const FaustParam &, const char *label, const float suggested_height) const;
+    void DrawGroup(const FaustParam &, const char *label, const float suggested_height) const;
+    void DrawParam(const FaustParam &, const char *label, const float suggested_height) const;
 
     FaustParam &ActiveGroup() { return Groups.empty() ? UiParam : *Groups.top(); }
 

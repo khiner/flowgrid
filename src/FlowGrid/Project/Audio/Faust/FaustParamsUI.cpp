@@ -25,6 +25,9 @@ void FaustParamsUI::SetDsp(dsp *dsp) {
     if (Dsp) Dsp->buildUserInterface(this);
 }
 
+static bool IsGroup(const FaustParam::Type type) {
+    return type == Type_None || type == Type_TGroup || type == Type_HGroup || type == Type_VGroup;
+}
 static bool IsWidthExpandable(const FaustParam::Type type) {
     return type == Type_HGroup || type == Type_VGroup || type == Type_TGroup || type == Type_NumEntry || type == Type_HSlider || type == Type_HBargraph;
 }
@@ -60,7 +63,7 @@ float FaustParamsUI::CalcWidth(const FaustParam &param, const bool include_label
                        NamesAndValues.at(param.zone).names |
                        std::views::transform([](const string &choice_name) { return CalcTextSize(choice_name).x; })
                 ) +
-                GetStyle().FramePadding.x * 2 + frame_height; // Extra frame for button
+                imgui_style.FramePadding.x * 2 + frame_height; // Extra frame for button
         }
         case Type_CheckButton: return frame_height + label_width_with_spacing;
         case Type_VBargraph:
@@ -119,149 +122,10 @@ float FaustParamsUI::CalcLabelHeight(const FaustParam &param) const {
 * The cursor position is expected to be set appropriately below the drawn contents.
 */
 void FaustParamsUI::DrawUiItem(const FaustParam &param, const char *label, const float suggested_height) const {
-    const auto &imgui_style = ImGui::GetStyle();
-    const Justify justify = {Style.AlignmentHorizontal, Style.AlignmentVertical};
     const auto type = param.type;
-    const auto &children = param.children;
-    const float frame_height = GetFrameHeight();
-    const bool has_label = strlen(label) > 0;
-    const float label_height = has_label ? CalcLabelHeight(param) : 0;
+    if (IsGroup(type)) DrawGroup(param, label, suggested_height);
+    else DrawParam(param, label, suggested_height);
 
-    if (type == Type_None || type == Type_TGroup || type == Type_HGroup || type == Type_VGroup) {
-        if (has_label) TextUnformatted(label);
-
-        if (type == Type_TGroup) {
-            const bool is_height_constrained = suggested_height != 0;
-            // In addition to the group contents, account for the tab height and the space between the tabs and the content.
-            const float group_height = max(0.f, is_height_constrained ? suggested_height - label_height : 0);
-            const float item_height = max(0.f, group_height - frame_height - imgui_style.ItemSpacing.y);
-            BeginTabBar(param.label.c_str());
-            for (const auto &child : children) {
-                if (BeginTabItem(child.label.c_str())) {
-                    DrawUiItem(child, "", item_height);
-                    EndTabItem();
-                }
-            }
-            EndTabBar();
-        } else {
-            const float cell_padding = type == Type_None ? 0 : 2 * imgui_style.CellPadding.y;
-            const bool is_h = type == Type_HGroup;
-            float suggested_item_height = 0; // Including any label height, not including cell padding
-            if (is_h) {
-                bool include_labels = !Style.HeaderTitles;
-                suggested_item_height = std::ranges::max(
-                    param.children | std::views::transform([this, include_labels](const auto &child) {
-                        return CalcHeight(child) + (include_labels ? CalcLabelHeight(child) : 0);
-                    })
-                );
-            }
-            if (type == Type_None) { // Root group (treated as a vertical group but not as a table)
-                for (const auto &child : children) DrawUiItem(child, child.label.c_str(), suggested_item_height);
-            } else {
-                if (BeginTable(param.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImGui(Style.TableFlags))) {
-                    const float row_min_height = suggested_item_height + cell_padding;
-                    if (is_h) {
-                        ParamsWidthSizingPolicy policy = Style.WidthSizingPolicy;
-                        const bool allow_fixed_width_params =
-                            policy != ParamsWidthSizingPolicy_Balanced &&
-                            (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly ||
-                             (policy == ParamsWidthSizingPolicy_StretchToFill &&
-                              std::ranges::any_of(param.children, [](const auto &child) {
-                                  return IsWidthExpandable(child.type);
-                              })));
-                        for (const auto &child : children) {
-                            ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
-                            if (allow_fixed_width_params && !IsWidthExpandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
-                            TableSetupColumn(child.label.c_str(), flags, CalcWidth(child, true));
-                        }
-                        if (Style.HeaderTitles) {
-                            // Custom headers (instead of `TableHeadersRow()`) to align column names.
-                            TableNextRow(ImGuiTableRowFlags_Headers);
-                            for (int column = 0; column < int(children.size()); column++) {
-                                TableSetColumnIndex(column);
-                                const char *column_name = TableGetColumnName(column);
-                                PushID(column);
-                                const float header_x = CalcAlignedX(justify.h, CalcTextSize(column_name).x, GetContentRegionAvail().x);
-                                SetCursorPosX(GetCursorPosX() + max(0.f, header_x));
-                                TableHeader(column_name);
-                                PopID();
-                            }
-                        }
-                        TableNextRow(ImGuiTableRowFlags_None, row_min_height);
-                    }
-                    for (const auto &child : children) {
-                        if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
-                        TableNextColumn();
-                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, GetColorU32(ImGuiCol_TitleBgActive, 0.1f));
-                        const string child_label = child.type == Type_Button || !is_h || !Style.HeaderTitles ? child.label : "";
-                        DrawUiItem(child, child_label.c_str(), suggested_item_height);
-                    }
-                    EndTable();
-                }
-            }
-        }
-    } else {
-        const float available_x = GetContentRegionAvail().x;
-        ImVec2 item_size_no_label = {CalcWidth(param, false), CalcHeight(param)};
-        ImVec2 item_size = {has_label ? CalcWidth(param, true) : item_size_no_label.x, item_size_no_label.y + label_height};
-        if (IsWidthExpandable(type) && available_x > item_size.x) {
-            const float expand_delta_max = available_x - item_size.x;
-            const float item_width_no_label_before = item_size_no_label.x;
-            item_size_no_label.x = min(Style.MaxHorizontalItemWidth * frame_height, item_size_no_label.x + expand_delta_max);
-            item_size.x += item_size_no_label.x - item_width_no_label_before;
-        }
-        if (IsHeightExpandable(type) && suggested_height > item_size.y) item_size.y = suggested_height;
-        SetNextItemWidth(item_size_no_label.x);
-
-        const auto old_cursor = GetCursorPos();
-        SetCursorPos(old_cursor + ImVec2{max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)), max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))});
-
-        Real *zone = param.zone;
-        if (type == Type_Button) {
-            Button(label);
-            if (IsItemActivated() && *zone == 0.0) *zone = 1.0;
-            else if (IsItemDeactivated() && *zone == 1.0) *zone = 0.0;
-        } else if (type == Type_CheckButton) {
-            auto value = bool(*zone);
-            if (Checkbox(label, &value)) *zone = Real(value);
-        } else if (type == Type_NumEntry) {
-            auto value = int(*zone);
-            if (InputInt(label, &value, int(param.step))) *zone = std::clamp(Real(value), param.min, param.max);
-        } else if (type == Type_HSlider || type == Type_VSlider || type == Type_HBargraph || type == Type_VBargraph) {
-            auto value = float(*zone);
-            ValueBarFlags flags = ValueBarFlags_None;
-            if (type == Type_HBargraph || type == Type_VBargraph) flags |= ValueBarFlags_ReadOnly;
-            if (type == Type_VBargraph || type == Type_VSlider) flags |= ValueBarFlags_Vertical;
-            if (!has_label) flags |= ValueBarFlags_NoTitle;
-            if (ValueBar(param.label.c_str(), &value, item_size.y - label_height, float(param.min), float(param.max), flags, justify.h)) *zone = Real(value);
-        } else if (type == Type_Knob) {
-            auto value = float(*zone);
-            KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
-            const int steps = param.step == 0 ? 0 : int((param.max - param.min) / param.step);
-            if (Knob(param.label.c_str(), &value, float(param.min), float(param.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
-                *zone = Real(value);
-            }
-        } else if (type == Type_HRadioButtons || type == Type_VRadioButtons) {
-            auto value = float(*zone);
-            RadioButtonsFlags flags = has_label ? RadioButtonsFlags_None : RadioButtonsFlags_NoTitle;
-            if (type == Type_VRadioButtons) flags |= ValueBarFlags_Vertical;
-            SetNextItemWidth(item_size.x); // Include label in param width for radio buttons (inconsistent but just makes things easier).
-            if (RadioButtons(param.label.c_str(), &value, NamesAndValues.at(zone), flags, justify)) *zone = Real(value);
-        } else if (type == Type_Menu) {
-            auto value = float(*zone);
-            const auto &names_and_values = NamesAndValues.at(zone);
-            // todo handle not present
-            const auto selected_index = find(names_and_values.values.begin(), names_and_values.values.end(), value) - names_and_values.values.begin();
-            if (BeginCombo(param.label.c_str(), names_and_values.names[selected_index].c_str())) {
-                for (int i = 0; i < int(names_and_values.names.size()); i++) {
-                    const Real choice_value = names_and_values.values[i];
-                    const bool is_selected = value == choice_value;
-                    if (Selectable(names_and_values.names[i].c_str(), is_selected)) *zone = Real(choice_value);
-                }
-                EndCombo();
-            }
-        }
-    }
     if (param.tooltip && IsItemHovered()) {
         // todo only leaf params, so group tooltips don't work.
         // todo hook up to Info pane hover info.
@@ -269,6 +133,163 @@ void FaustParamsUI::DrawUiItem(const FaustParam &param, const char *label, const
         PushTextWrapPos(GetFontSize() * 35);
         TextUnformatted(param.tooltip);
         EndTooltip();
+    }
+}
+
+void FaustParamsUI::DrawGroup(const FaustParam &param, const char *label, const float suggested_height) const {
+    const auto type = param.type;
+    if (!IsGroup(type)) return;
+
+    const auto &imgui_style = ImGui::GetStyle();
+    const auto &children = param.children;
+    const float frame_height = GetFrameHeight();
+    const bool has_label = strlen(label) > 0;
+    const float label_height = has_label ? CalcLabelHeight(param) : 0;
+
+    if (has_label) TextUnformatted(label);
+
+    if (type == Type_TGroup) {
+        const bool is_height_constrained = suggested_height != 0;
+        // In addition to the group contents, account for the tab height and the space between the tabs and the content.
+        const float group_height = max(0.f, is_height_constrained ? suggested_height - label_height : 0);
+        const float item_height = max(0.f, group_height - frame_height - imgui_style.ItemSpacing.y);
+        BeginTabBar(param.label.c_str());
+        for (const auto &child : children) {
+            if (BeginTabItem(child.label.c_str())) {
+                DrawUiItem(child, "", item_height);
+                EndTabItem();
+            }
+        }
+        EndTabBar();
+        return;
+    }
+
+    const float cell_padding = type == Type_None ? 0 : 2 * imgui_style.CellPadding.y;
+    const bool is_h = type == Type_HGroup;
+    float suggested_item_height = 0; // Including any label height, not including cell padding
+    if (is_h) {
+        const bool include_labels = !Style.HeaderTitles;
+        suggested_item_height = std::ranges::max(
+            param.children | std::views::transform([this, include_labels](const auto &child) {
+                return CalcHeight(child) + (include_labels ? CalcLabelHeight(child) : 0);
+            })
+        );
+    }
+    if (type == Type_None) { // Root group (treated as a vertical group but not as a table)
+        for (const auto &child : children) DrawUiItem(child, child.label.c_str(), suggested_item_height);
+        return;
+    }
+
+    if (BeginTable(param.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImGui(Style.TableFlags))) {
+        const float row_min_height = suggested_item_height + cell_padding;
+        if (is_h) {
+            ParamsWidthSizingPolicy policy = Style.WidthSizingPolicy;
+            const bool allow_fixed_width_params =
+                policy != ParamsWidthSizingPolicy_Balanced &&
+                (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly ||
+                 (policy == ParamsWidthSizingPolicy_StretchToFill &&
+                  std::ranges::any_of(param.children, [](const auto &child) {
+                      return IsWidthExpandable(child.type);
+                  })));
+            for (const auto &child : children) {
+                ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
+                if (allow_fixed_width_params && !IsWidthExpandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
+                TableSetupColumn(child.label.c_str(), flags, CalcWidth(child, true));
+            }
+            if (Style.HeaderTitles) {
+                // Custom headers (instead of `TableHeadersRow()`) to align column names.
+                TableNextRow(ImGuiTableRowFlags_Headers);
+                for (int column = 0; column < int(children.size()); column++) {
+                    TableSetColumnIndex(column);
+                    const char *column_name = TableGetColumnName(column);
+                    PushID(column);
+                    const float header_x = CalcAlignedX(Style.AlignmentHorizontal, CalcTextSize(column_name).x, GetContentRegionAvail().x);
+                    SetCursorPosX(GetCursorPosX() + max(0.f, header_x));
+                    TableHeader(column_name);
+                    PopID();
+                }
+            }
+            TableNextRow(ImGuiTableRowFlags_None, row_min_height);
+        }
+        for (const auto &child : children) {
+            if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
+            TableNextColumn();
+            TableSetBgColor(ImGuiTableBgTarget_RowBg0, GetColorU32(ImGuiCol_TitleBgActive, 0.1f));
+            const string child_label = child.type == Type_Button || !is_h || !Style.HeaderTitles ? child.label : "";
+            DrawUiItem(child, child_label.c_str(), suggested_item_height);
+        }
+        EndTable();
+    }
+}
+
+void FaustParamsUI::DrawParam(const FaustParam &param, const char *label, const float suggested_height) const {
+    const auto type = param.type;
+    if (IsGroup(type)) return;
+
+    const Justify justify = {Style.AlignmentHorizontal, Style.AlignmentVertical};
+    const float frame_height = GetFrameHeight();
+    const bool has_label = strlen(label) > 0;
+    const float label_height = has_label ? CalcLabelHeight(param) : 0;
+    const float available_x = GetContentRegionAvail().x;
+    ImVec2 item_size_no_label = {CalcWidth(param, false), CalcHeight(param)};
+    ImVec2 item_size = {has_label ? CalcWidth(param, true) : item_size_no_label.x, item_size_no_label.y + label_height};
+
+    if (IsWidthExpandable(type) && available_x > item_size.x) {
+        const float expand_delta_max = available_x - item_size.x;
+        const float item_width_no_label_before = item_size_no_label.x;
+        item_size_no_label.x = min(Style.MaxHorizontalItemWidth * frame_height, item_size_no_label.x + expand_delta_max);
+        item_size.x += item_size_no_label.x - item_width_no_label_before;
+    }
+    if (IsHeightExpandable(type) && suggested_height > item_size.y) item_size.y = suggested_height;
+    SetNextItemWidth(item_size_no_label.x);
+
+    const auto old_cursor = GetCursorPos();
+    SetCursorPos(old_cursor + ImVec2{max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)), max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))});
+
+    Real *zone = param.zone;
+    if (type == Type_Button) {
+        Button(label);
+        if (IsItemActivated() && *zone == 0.0) *zone = 1.0;
+        else if (IsItemDeactivated() && *zone == 1.0) *zone = 0.0;
+    } else if (type == Type_CheckButton) {
+        auto value = bool(*zone);
+        if (Checkbox(label, &value)) *zone = Real(value);
+    } else if (type == Type_NumEntry) {
+        auto value = int(*zone);
+        if (InputInt(label, &value, int(param.step))) *zone = std::clamp(Real(value), param.min, param.max);
+    } else if (type == Type_HSlider || type == Type_VSlider || type == Type_HBargraph || type == Type_VBargraph) {
+        auto value = float(*zone);
+        ValueBarFlags flags = ValueBarFlags_None;
+        if (type == Type_HBargraph || type == Type_VBargraph) flags |= ValueBarFlags_ReadOnly;
+        if (type == Type_VBargraph || type == Type_VSlider) flags |= ValueBarFlags_Vertical;
+        if (!has_label) flags |= ValueBarFlags_NoTitle;
+        if (ValueBar(param.label.c_str(), &value, item_size.y - label_height, float(param.min), float(param.max), flags, justify.h)) *zone = Real(value);
+    } else if (type == Type_Knob) {
+        auto value = float(*zone);
+        KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
+        const int steps = param.step == 0 ? 0 : int((param.max - param.min) / param.step);
+        if (Knob(param.label.c_str(), &value, float(param.min), float(param.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
+            *zone = Real(value);
+        }
+    } else if (type == Type_HRadioButtons || type == Type_VRadioButtons) {
+        auto value = float(*zone);
+        RadioButtonsFlags flags = has_label ? RadioButtonsFlags_None : RadioButtonsFlags_NoTitle;
+        if (type == Type_VRadioButtons) flags |= ValueBarFlags_Vertical;
+        SetNextItemWidth(item_size.x); // Include label in param width for radio buttons (inconsistent but just makes things easier).
+        if (RadioButtons(param.label.c_str(), &value, NamesAndValues.at(zone), flags, justify)) *zone = Real(value);
+    } else if (type == Type_Menu) {
+        auto value = float(*zone);
+        const auto &names_and_values = NamesAndValues.at(zone);
+        // todo handle not present
+        const auto selected_index = find(names_and_values.values.begin(), names_and_values.values.end(), value) - names_and_values.values.begin();
+        if (BeginCombo(param.label.c_str(), names_and_values.names[selected_index].c_str())) {
+            for (int i = 0; i < int(names_and_values.names.size()); i++) {
+                const Real choice_value = names_and_values.values[i];
+                const bool is_selected = value == choice_value;
+                if (Selectable(names_and_values.names[i].c_str(), is_selected)) *zone = Real(choice_value);
+            }
+            EndCombo();
+        }
     }
 }
 

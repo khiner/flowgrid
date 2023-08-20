@@ -6,7 +6,7 @@
 #include <regex>
 #include <string>
 
-#include "imgui.h"
+#include "imgui_internal.h"
 
 // TODO
 // - multiline comments vs single-line: latter is blocking start of a ML
@@ -647,12 +647,18 @@ bool TextEditor::IsGlyphWordChar(const Glyph &glyph) {
         glyph.Char == '_';
 }
 
+static bool IsPressed(ImGuiKey key) {
+    const auto key_index = ImGui::GetKeyIndex(key);
+    const auto window_id = ImGui::GetCurrentWindowRead()->ID;
+    ImGui::SetKeyOwner(key_index, window_id); // Prevent app from handling this key press.
+    return ImGui::IsKeyPressed(key_index, window_id);
+}
+
 void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
     if (ImGui::IsWindowFocused() || is_parent_focused) {
         if (ImGui::IsWindowHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
-        // ImGui::CaptureKeyboardFromApp(true);
 
-        ImGuiIO &io = ImGui::GetIO();
+        auto &io = ImGui::GetIO();
         auto is_osx = io.ConfigMacOSXBehaviors;
         auto alt = io.KeyAlt;
         auto ctrl = io.KeyCtrl;
@@ -669,65 +675,65 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
         io.WantCaptureKeyboard = true;
         io.WantTextInput = true;
 
-        if (!ReadOnly && is_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Z)))
+        if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Z))
             Undo();
-        else if (!ReadOnly && is_alt_only && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Backspace)))
+        else if (!ReadOnly && is_alt_only && IsPressed(ImGuiKey_Backspace))
             Undo();
-        else if (!ReadOnly && is_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Y)))
+        else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Y))
             Redo();
-        else if (!ReadOnly && is_shift_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Z)))
+        else if (!ReadOnly && is_shift_shortcut && IsPressed(ImGuiKey_Z))
             Redo();
-        else if (!alt && !ctrl && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
+        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
             MoveUp(1, shift);
-        else if (!alt && !ctrl && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
+        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_DownArrow))
             MoveDown(1, shift);
-        else if ((is_osx ? !ctrl : !alt) && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)))
+        else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_LeftArrow))
             MoveLeft(1, shift, is_wordmove_key);
-        else if ((is_osx ? !ctrl : !alt) && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow)))
+        else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
             MoveRight(1, shift, is_wordmove_key);
-        else if (!alt && !ctrl && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_PageUp)))
+        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
             MoveUp(GetPageSize() - 4, shift);
-        else if (!alt && !ctrl && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_PageDown)))
+        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
             MoveDown(GetPageSize() - 4, shift);
-        else if (ctrl && !alt && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Home)))
+        else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
             MoveTop(shift);
-        else if (ctrl && !alt && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_End)))
+        else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
             MoveBottom(shift);
-        else if (!alt && !ctrl && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Home)))
+        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_Home))
             MoveHome(shift);
-        else if (!alt && !ctrl && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_End)))
+        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_End))
             MoveEnd(shift);
-        else if (!ReadOnly && !alt && !shift && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Delete)))
+        else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Delete))
             Delete(ctrl);
-        else if (!ReadOnly && !alt && !shift && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Backspace)))
+        else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Backspace))
             Backspace(ctrl);
-        else if (!ReadOnly && !alt && ctrl && shift && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_K)))
+        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_K))
             RemoveCurrentLines();
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftBracket)))
+        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_LeftBracket))
             ChangeCurrentLinesIndentation(false);
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightBracket)))
+        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
             ChangeCurrentLinesIndentation(true);
-        else if (!alt && !ctrl && !shift && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Insert)))
+        else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
             Overwrite ^= true;
-        else if (is_ctrl_only && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Insert)))
+        else if (is_ctrl_only && IsPressed(ImGuiKey_Insert))
             Copy();
-        else if (is_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_C)))
+        else if (is_shortcut && IsPressed(ImGuiKey_C))
             Copy();
-        else if (!ReadOnly && is_shift_only && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Insert)))
+        else if (!ReadOnly && is_shift_only && IsPressed(ImGuiKey_Insert))
             Paste();
-        else if (!ReadOnly && is_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_V)))
+        else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_V))
             Paste();
-        else if (is_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_X)))
+        else if (is_shortcut && IsPressed(ImGuiKey_X))
             Cut();
-        else if (is_shift_only && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Delete)))
+        else if (is_shift_only && IsPressed(ImGuiKey_Delete))
             Cut();
-        else if (is_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_A)))
+        else if (is_shortcut && IsPressed(ImGuiKey_A))
             SelectAll();
-        else if (is_shortcut && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_D)))
+        else if (is_shortcut && IsPressed(ImGuiKey_D))
             AddCursorForNextOccurrence();
-        else if (!ReadOnly && !alt && !ctrl && !shift && !super && (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)) || ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_KeypadEnter))))
+        else if (!ReadOnly && !alt && !ctrl && !shift && !super && (IsPressed(ImGuiKey_Enter) || IsPressed(ImGuiKey_KeypadEnter)))
             EnterCharacter('\n', false);
-        else if (!ReadOnly && !alt && !ctrl && !super && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Tab)))
+        else if (!ReadOnly && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
             EnterCharacter('\t', shift);
         if (!ReadOnly && !io.InputQueueCharacters.empty() && !ctrl && !super) {
             for (int i = 0; i < io.InputQueueCharacters.Size; i++) {

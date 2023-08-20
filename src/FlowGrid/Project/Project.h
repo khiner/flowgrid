@@ -144,7 +144,6 @@ struct Project : Component, Actionable<Action::Any> {
     Prop(Demo, Demo);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
-
     const Menu MainMenu{
         {
             Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, OpenRecentProjectMenuItem, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),

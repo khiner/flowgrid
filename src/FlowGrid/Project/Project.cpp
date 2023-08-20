@@ -179,17 +179,6 @@ bool Project::CanApply(const ActionType &action) const {
 using namespace ImGui;
 
 void Project::Render() const {
-    static const auto Shortcuts = Action::Any::CreateShortcuts();
-
-    const auto &io = GetIO();
-    for (const auto &[action_id, shortcut] : Shortcuts) {
-        const auto &[mod, key] = shortcut.Parsed;
-        if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)))) {
-            const auto action = Action::Any::Create(action_id);
-            if (CanApply(action)) action.q();
-        }
-    }
-
     MainMenu.Draw();
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
@@ -246,6 +235,7 @@ void Project::Render() const {
         Debug.Focus(); // not visible by default anymore
     }
 
+    // Handle file dialog.
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
@@ -255,6 +245,16 @@ void Project::Render() const {
             else Action::Project::Open{selected_path}.q();
         }
         PrevSelectedPath = selected_path;
+    }
+
+    static const auto Shortcuts = Action::Any::CreateShortcuts();
+    const auto &io = GetIO();
+    for (const auto &[action_id, shortcut] : Shortcuts) {
+        const auto &[mod, key] = shortcut.Parsed;
+        if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)), ImGuiKeyOwner_None)) {
+            const auto action = Action::Any::Create(action_id);
+            if (CanApply(action)) action.q();
+        }
     }
 }
 

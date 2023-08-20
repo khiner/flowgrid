@@ -1,6 +1,6 @@
 #pragma once
 
-struct Drawable;
+struct Component;
 struct ImFont;
 struct ImGuiSettings;
 namespace FlowGrid {
@@ -15,7 +15,7 @@ struct UIContext {
 
     // Main UI tick function
     // Returns `true` if the app should continue running.
-    bool Tick(const Drawable &);
+    bool Tick(const Component &);
 
     struct Fonts {
         ImFont *Main{nullptr};

@@ -7,8 +7,10 @@
 #include "Project/ProjectContext.h"
 #include "UI/HelpMarker.h"
 
-DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio) : Component(std::move(args)), SplitRatio(split_ratio) {}
-DebugComponent::DebugComponent(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu, float split_ratio) : Component(std::move(args), flags, std::move(menu)), SplitRatio(split_ratio) {}
+DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio)
+    : Component(std::move(args)), SplitRatio(split_ratio) {}
+DebugComponent::DebugComponent(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu, float split_ratio)
+    : Component(std::move(args), flags, std::move(menu)), SplitRatio(split_ratio) {}
 DebugComponent::~DebugComponent() {}
 
 Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), Items(std::move(items)) {}
@@ -104,17 +106,19 @@ void Component::HelpMarker(const bool after) const {
     if (!after) ImGui::SameLine();
 }
 
+using namespace ImGui;
+
 // Currently, `Draw` is not used for anything except wrapping around `Render`,
 // but it's here in case we want to do something like monitoring or ID management in the future.
-void Drawable::Draw() const {
+void Component::Draw() const {
     // ImGui widgets all push the provided label to the ID stack,
     // but info hovering isn't complete yet, and something like this might be needed...
     // PushID(ImGuiLabel.c_str());
+    PushOverrideID(Id);
     Render();
-    // PopID();
+    PopID();
 }
 
-using namespace ImGui;
 
 void Menu::Render() const {
     if (Items.empty()) return;

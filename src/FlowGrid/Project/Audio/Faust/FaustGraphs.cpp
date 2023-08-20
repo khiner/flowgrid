@@ -11,7 +11,6 @@
 
 #include "imgui_internal.h"
 
-#include "FaustBox.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
@@ -1074,6 +1073,8 @@ static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
     return {};
 }
 
+static std::unordered_set<FaustGraphs *> AllInstances{};
+
 FaustGraphs::FaustGraphs(ComponentArgs &&args)
     : Component(
           std::move(args),
@@ -1083,8 +1084,11 @@ FaustGraphs::FaustGraphs(ComponentArgs &&args)
           })
       ) {
     Style.FoldComplexity.RegisterChangeListener(this);
+
+    AllInstances.insert(this);
 }
 FaustGraphs::~FaustGraphs() {
+    AllInstances.erase(this);
     Field::UnregisterChangeListener(this);
 }
 
@@ -1217,17 +1221,10 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
-bool IsBoxHovered(ID imgui_id) {
-    return false; // todo bring this back to work with multiple graphs.
-    // return NodeByImGuiId[imgui_id] != nullptr;
-}
-
-string GetBoxInfo(u32 id) {
-    return ""; // todo bring this back to work with multiple graphs.
-
-    // const auto *node = NodeByImGuiId[id];
-    // if (!node) return "";
-    // return GetBoxType(node->FaustTree); // Just type for now.
+std::optional<string> FaustGraph::GetBoxInfo(u32 id) const {
+    const auto *node = NodeByImGuiId[id];
+    if (!node) return {};
+    return GetBoxType(node->FaustTree); // Just type for now.
 }
 
 void FaustGraphs::OnFieldChanged() {
@@ -1358,7 +1355,7 @@ void FaustGraph::Render() const {
     focused->Place(DeviceType_ImGui);
     if (!Style.ScaleFillHeight) SetNextWindowContentSize(focused->Size * GetScale());
 
-    BeginChild(Id, {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
+    BeginChild("##RootNode", {0, 0}, false, ImGuiWindowFlags_HorizontalScrollbar);
     GetCurrentWindow()->FontWindowScale = GetScale();
     GetWindowDrawList()->AddRectFilled(GetWindowPos(), GetWindowPos() + GetWindowSize(), Style.Colors[FlowGridGraphCol_Bg]);
 
@@ -1391,4 +1388,11 @@ void FaustGraphs::Render() const {
         }
         EndTabBar();
     }
+}
+
+std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
+    for (const auto *instance : AllInstances) {
+        if (auto box_info = instance->GetBoxInfo(imgui_id)) return box_info;
+    }
+    return {};
 }

@@ -8,7 +8,6 @@
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 #include "Helper/Time.h"
-#include "UI/Drawable.h"
 
 #include "nlohmann/json.hpp"
 
@@ -22,7 +21,11 @@ using std::string, std::string_view;
 struct Store;
 struct ProjectContext;
 
-struct Menu : Drawable {
+struct MenuItemDrawable {
+    virtual void MenuItem() const = 0;
+};
+
+struct Menu {
     using Item = std::variant<Menu, std::reference_wrapper<MenuItemDrawable>, std::function<void()>>;
 
     Menu(string_view label, std::vector<const Item> &&items);
@@ -33,8 +36,10 @@ struct Menu : Drawable {
     const std::vector<const Item> Items;
     const bool IsMain{false};
 
+    void Draw() const { Render(); }
+
 protected:
-    void Render() const override;
+    void Render() const;
 };
 
 struct ImGuiWindow;
@@ -52,7 +57,7 @@ enum WindowFlags_ {
 
 struct Field;
 
-struct Component : Drawable {
+struct Component {
     struct Metadata {
         // Split the string on '?'.
         // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
@@ -148,8 +153,10 @@ struct Component : Drawable {
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
 
+    void Draw() const; // Wraps around the internal `Render` function.
+
 protected:
-    virtual void Render() const override {} // By default, components don't render anything.
+    virtual void Render() const {} // By default, components don't render anything.
 
     void OpenChanged() const; // Open this item if changed.
     void ScrollToChanged() const; // Scroll to this item if changed.

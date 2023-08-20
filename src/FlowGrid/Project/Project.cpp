@@ -229,11 +229,12 @@ void Project::Render() const {
         Info.Dock(info_node_id);
         Settings.Dock(settings_node_id);
     }
+
     // Draw non-window children.
     for (const auto *child : Children) {
-        if (child == &Context.Windows) continue;
         if (!Context.Windows.IsWindow(child->Id)) child->Draw();
     }
+
     Context.Windows.Draw();
 
     if (frame_count == 1) {

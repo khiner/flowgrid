@@ -28,6 +28,10 @@ bool Audio::CanApply(const ActionType &action) const {
 
 using namespace ImGui;
 
+void Audio::Render() const {
+    Faust.Draw();
+}
+
 void Audio::Style::Render() const {
     const auto &audio = static_cast<const Audio &>(*Parent);
     if (BeginTabBar("")) {

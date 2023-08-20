@@ -23,4 +23,7 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
     Prop_(AudioGraph, Graph, "Audio graph");
     Prop(Faust, Faust);
     Prop_(Style, Style, "Audio style");
+
+private:
+    void Render() const override;
 };

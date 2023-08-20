@@ -8,6 +8,7 @@
 #include "FaustListener.h"
 
 class dsp;
+class llvm_dsp_factory;
 
 struct FaustDSPs;
 
@@ -51,6 +52,7 @@ private:
     void NotifyListeners(NotificationType) const;
 
     FaustDSPs *ParentContainer;
+    llvm_dsp_factory *DspFactory{nullptr};
 };
 
 struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {

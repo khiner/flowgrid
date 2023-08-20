@@ -136,8 +136,8 @@ struct Component {
     ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
     void Dock(ID node_id) const;
     bool Focus() const;
-    const Menu WindowMenu{{}};
 
+    const Menu WindowMenu{{}};
     ImGuiWindowFlags WindowFlags{WindowFlags_None};
 
     // Child renderers.

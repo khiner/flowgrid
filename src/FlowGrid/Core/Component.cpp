@@ -119,7 +119,6 @@ void Component::Draw() const {
     PopID();
 }
 
-
 void Menu::Render() const {
     if (Items.empty()) return;
 

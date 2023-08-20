@@ -30,32 +30,36 @@ void FaustDSP::OnFieldChanged() {
 }
 
 void FaustDSP::Init(bool constructing) {
-    if (Dsp || !Code) return Uninit(false);
-
-    const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
-    std::vector<const char *> argv = {"-I", libraries_path};
-    if (std::is_same_v<Sample, double>) argv.push_back("-double");
-
     const auto notification_type = constructing ? Added : Changed;
 
+    static const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
+    std::vector<const char *> argv = {"-I", libraries_path};
+    if (std::is_same_v<Sample, double>) argv.push_back("-double");
     const int argc = argv.size();
     static int num_inputs, num_outputs;
     Box = DSPToBoxes("FlowGrid", string(Code), argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
-    if (!Box) destroyLibContext();
     NotifyBoxListeners(notification_type);
 
     if (Box && ErrorMessage.empty()) {
-        static llvm_dsp_factory *dsp_factory;
         static const int optimize_level = -1;
-        dsp_factory = createDSPFactoryFromBoxes("FlowGrid", Box, argc, argv.data(), "", ErrorMessage, optimize_level);
-        if (dsp_factory && ErrorMessage.empty()) {
-            Dsp = dsp_factory->createDSPInstance();
+        DspFactory = createDSPFactoryFromBoxes("FlowGrid", Box, argc, argv.data(), "", ErrorMessage, optimize_level);
+        if (DspFactory && ErrorMessage.empty()) {
+            Dsp = DspFactory->createDSPInstance();
             if (!Dsp) ErrorMessage = "Successfully created Faust DSP factory, but could not create the Faust DSP instance.";
         }
     } else if (!Box && ErrorMessage.empty()) {
         ErrorMessage = "`DSPToBoxes` returned no error but did not produce a result.";
     }
+    if (!Box && Dsp) {
+        delete Dsp;
+        Dsp = nullptr;
+    }
     NotifyDspListeners(notification_type);
+
+    if (DspFactory && !Dsp) {
+        deleteDSPFactory(DspFactory);
+        DspFactory = nullptr;
+    }
 
     NotifyListeners(notification_type);
 }
@@ -64,12 +68,9 @@ void FaustDSP::Uninit(bool destructing) {
     if (Dsp || Box) {
         const auto notification_type = destructing ? Removed : Changed;
         if (Dsp) {
+            delete Dsp;
             Dsp = nullptr;
             NotifyDspListeners(notification_type);
-            delete Dsp;
-            // todo only delete the factory if it's the last dsp.
-            // todo this is breaking.
-            deleteAllDSPFactories();
         }
         if (Box) {
             Box = nullptr;
@@ -77,6 +78,11 @@ void FaustDSP::Uninit(bool destructing) {
         }
         NotifyListeners(notification_type);
     }
+    if (DspFactory) {
+        deleteDSPFactory(DspFactory);
+        DspFactory = nullptr;
+    }
+
     ErrorMessage = "";
 }
 

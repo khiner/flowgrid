@@ -7,12 +7,14 @@
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/UI.h"
 
-static TextEditor editor; // TODO not static
-
 static const Menu FileMenu = {"File", {Action::Faust::File::ShowOpenDialog::MenuItem, Action::Faust::File::ShowSaveDialog::MenuItem}};
 
 TextBuffer::TextBuffer(ComponentArgs &&args, string_view value)
-    : PrimitiveField(std::move(args), string(value)) {}
+    : PrimitiveField(std::move(args), string(value)), Editor(std::make_unique<TextEditor>()) {
+    Editor->SetLanguageDefinition(TextEditor::LanguageDefT::CPlusPlus());
+}
+
+TextBuffer::~TextBuffer() {}
 
 void TextBuffer::Apply(const ActionType &action) const {
     Visit(
@@ -24,6 +26,7 @@ void TextBuffer::Apply(const ActionType &action) const {
 using namespace ImGui;
 
 void TextBuffer::RenderMenu() const {
+    auto &editor = *Editor;
     if (BeginMenuBar()) {
         FileMenu.Draw();
         if (BeginMenu("Edit")) {
@@ -61,15 +64,8 @@ void TextBuffer::RenderMenu() const {
 void TextBuffer::Render() const {
     RenderMenu();
 
-    static bool initialized = false;
-    static auto lang = TextEditor::LanguageDefT::CPlusPlus();
-
-    if (!initialized) {
-        initialized = true;
-        editor.SetLanguageDefinition(lang);
-    }
+    auto &editor = *Editor;
     auto cpos = editor.GetCursorPosition();
-
     const string editing_file = "no file";
     Text(
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.Line + 1, cpos.Column + 1, editor.GetTotalLines(),
@@ -94,5 +90,5 @@ void TextBuffer::Render() const {
 }
 
 void TextBuffer::RenderDebug() const {
-    editor.DebugPanel();
+    Editor->DebugPanel();
 }

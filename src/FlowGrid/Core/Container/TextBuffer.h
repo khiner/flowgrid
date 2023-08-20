@@ -3,8 +3,11 @@
 #include "Core/Primitive/PrimitiveField.h"
 #include "TextBufferAction.h"
 
+struct TextEditor;
+
 struct TextBuffer : PrimitiveField<string>, Actionable<Action::TextBuffer::Any> {
     TextBuffer(ComponentArgs &&, string_view value = "");
+    ~TextBuffer();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
@@ -19,4 +22,6 @@ struct TextBuffer : PrimitiveField<string>, Actionable<Action::TextBuffer::Any> 
 private:
     void Render() const override;
     void RenderMenu() const;
+
+    std::unique_ptr<TextEditor> Editor;
 };

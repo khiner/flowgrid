@@ -96,9 +96,9 @@ float FaustParam::CalcLabelHeight() const {
 * Items/groups are allowed to extend beyond this height to fit its contents, if necessary.
 * The cursor position is expected to be set appropriately below the drawn contents.
 */
-void FaustParam::Draw(const char *label, const float suggested_height) const {
-    if (IsGroup()) DrawGroup(label, suggested_height);
-    else DrawParam(label, suggested_height);
+void FaustParam::Draw(const float suggested_height, bool no_label) const {
+    if (IsGroup()) DrawGroup(suggested_height, no_label);
+    else DrawParam(suggested_height, no_label);
 
     if (Tooltip && IsItemHovered()) {
         // todo only leaf params, so group tooltips don't work.
@@ -110,9 +110,10 @@ void FaustParam::Draw(const char *label, const float suggested_height) const {
     }
 }
 
-void FaustParam::DrawGroup(const char *label, const float suggested_height) const {
+void FaustParam::DrawGroup(const float suggested_height, bool no_label) const {
     if (!IsGroup()) return;
 
+    const char *label = no_label ? "" : Label.c_str();
     const auto &imgui_style = ImGui::GetStyle();
     const auto &children = Children;
     const float frame_height = GetFrameHeight();
@@ -129,7 +130,7 @@ void FaustParam::DrawGroup(const char *label, const float suggested_height) cons
         BeginTabBar(Label.c_str());
         for (const auto &child : children) {
             if (BeginTabItem(child.Label.c_str())) {
-                child.Draw("", item_height);
+                child.Draw(item_height, true);
                 EndTabItem();
             }
         }
@@ -149,7 +150,7 @@ void FaustParam::DrawGroup(const char *label, const float suggested_height) cons
         );
     }
     if (Type == Type_None) { // Root group (treated as a vertical group but not as a table)
-        for (const auto &child : children) child.Draw(child.Label.c_str(), suggested_item_height);
+        for (const auto &child : children) child.Draw(suggested_item_height);
         return;
     }
 
@@ -187,15 +188,16 @@ void FaustParam::DrawGroup(const char *label, const float suggested_height) cons
             TableNextColumn();
             TableSetBgColor(ImGuiTableBgTarget_RowBg0, GetColorU32(ImGuiCol_TitleBgActive, 0.1f));
             const string child_label = child.Type == Type_Button || !is_h || !Style.HeaderTitles ? child.Label : "";
-            child.Draw(child_label.c_str(), suggested_item_height);
+            child.Draw(suggested_item_height);
         }
         EndTable();
     }
 }
 
-void FaustParam::DrawParam(const char *label, const float suggested_height) const {
+void FaustParam::DrawParam(const float suggested_height, bool no_label) const {
     if (IsGroup()) return;
 
+    const char *label = no_label ? "" : Label.c_str();
     const Justify justify = {Style.AlignmentHorizontal, Style.AlignmentVertical};
     const float frame_height = GetFrameHeight();
     const bool has_label = strlen(label) > 0;

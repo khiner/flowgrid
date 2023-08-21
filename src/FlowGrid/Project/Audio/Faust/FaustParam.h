@@ -37,7 +37,7 @@ struct FaustParam {
     FaustParam(const FaustParamsUIStyle &style, const FaustParamType type = Type_None, std::string_view label = "", Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, NamesAndValues names_and_values = {}, std::vector<FaustParam> children = {})
         : Style(style), Type(type), Id(label), Label(label == "0x00" ? "" : label), Zone(zone), Min(min), Max(max), Init(init), Step(step), Tooltip(tooltip), names_and_values(std::move(names_and_values)), Children(std::move(children)) {}
 
-    void Draw(const char *label, const float suggested_height) const;
+    void Draw(const float suggested_height, bool no_label = false) const;
 
     inline bool IsGroup() const {
         return Type == Type_None || Type == Type_TGroup || Type == Type_HGroup || Type == Type_VGroup;
@@ -63,8 +63,8 @@ struct FaustParam {
     std::vector<FaustParam> Children; // Only populated for containers (groups).
 
 private:
-    void DrawGroup(const char *label, const float suggested_height) const;
-    void DrawParam(const char *label, const float suggested_height) const;
+    void DrawGroup(const float suggested_height, bool no_label = false) const;
+    void DrawParam(const float suggested_height, bool no_label = false) const;
 
     float CalcWidth(const bool include_label) const;
     float CalcHeight() const;

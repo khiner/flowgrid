@@ -8,25 +8,8 @@
 using namespace ImGui;
 
 namespace FlowGrid {
-ColorSet GetPrimaryColorSet() { return {GetColorU32(ImGuiCol_ButtonActive), GetColorU32(ImGuiCol_ButtonHovered), GetColorU32(ImGuiCol_ButtonHovered)}; }
-ColorSet GetTrackColorSet() { return {GetColorU32(ImGuiCol_FrameBg)}; }
-
-ColorSet GetSecondaryColorSet() {
-    // todo make style color
-    const auto *colors = GetStyle().Colors;
-    const auto &active = ImColor(
-        colors[ImGuiCol_ButtonActive].x * 0.5f,
-        colors[ImGuiCol_ButtonActive].y * 0.5f,
-        colors[ImGuiCol_ButtonActive].z * 0.5f,
-        colors[ImGuiCol_ButtonActive].w
-    );
-    const auto &hovered = ImColor(
-        colors[ImGuiCol_ButtonHovered].x * 0.5f,
-        colors[ImGuiCol_ButtonHovered].y * 0.5f,
-        colors[ImGuiCol_ButtonHovered].z * 0.5f,
-        colors[ImGuiCol_ButtonHovered].w
-    );
-    return {active, hovered, hovered};
+inline static ImColor ScaleColor(const ImColor &color, const float scale) {
+    return ImColor(color.Value.x * scale, color.Value.y * scale, color.Value.z * scale, color.Value.w);
 }
 
 bool ValueBar(const char *label, float *value, const float rect_height, const float min_value, const float max_value, const ValueBarFlags flags, const HJustify h_justify) {
@@ -123,7 +106,7 @@ bool RadioButtons(const char *label, float *value, const NamesAndValues &names_a
 // Based on https://github.com/altschuler/imgui-knobs
 //-----------------------------------------------------------------------------
 
-const float PI = std::numbers::pi_v<float>;
+constexpr float PI = std::numbers::pi_v<float>;
 
 void DrawArc1(ImVec2 center, float radius, float start_angle, float end_angle, float thickness, ImColor color, int num_segments) {
     const auto &start = center + ImVec2{cosf(start_angle), sinf(start_angle)} * radius;
@@ -137,7 +120,6 @@ void DrawArc1(ImVec2 center, float radius, float start_angle, float end_angle, f
     const auto k2 = (4.f / 3.f) * (sqrtf((2.f * q1 * q2)) - q2) / (a.x * b.y - a.y * b.x);
     const auto &arc1 = center + a + ImVec2{-k2 * a.y, k2 * a.x};
     const auto &arc2 = center + b + ImVec2{k2 * b.y, -k2 * b.x};
-
     GetWindowDrawList()->AddBezierCubic(start, arc1, arc2, end, color, thickness, num_segments);
 }
 
@@ -159,64 +141,106 @@ void DrawArc(ImVec2 center, float radius, float start_angle, float end_angle, fl
 
 template<typename DataType>
 struct knob {
-    ImVec2 center;
-    bool is_active, is_hovered, value_changed;
-    float radius, t, angle_min, angle_max, angle;
-
     knob(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float speed, float radius, const char *format, KnobFlags flags)
-        : radius(radius), t(float(*p_value - v_min) / (v_max - v_min)), angle_min(PI * 0.75f), angle_max(PI * 2.25f), angle(angle_min + (angle_max - angle_min) * t) {
+        : Radius(radius), ValueRatio(float(*p_value - v_min) / (v_max - v_min)) {
         const ImVec2 &radius_2d = {radius, radius};
-        center = GetCursorScreenPos() + radius_2d;
+        Center = GetCursorScreenPos() + radius_2d;
 
         // Handle dragging
         ImGuiSliderFlags drag_flags = ImGuiSliderFlags_None;
         if (!(flags & KnobFlags_DragHorizontal)) drag_flags |= ImGuiSliderFlags_Vertical;
-        value_changed = DragBehavior(GetID(label), data_type, p_value, speed, &v_min, &v_max, format, drag_flags);
+        ValueChanged = DragBehavior(GetID(label), data_type, p_value, speed, &v_min, &v_max, format, drag_flags);
         ImGui::InvisibleButton(label, radius_2d * 2);
-        is_active = IsItemActive();
-        is_hovered = IsItemHovered();
+        IsActive = IsItemActive();
+        IsHovered = IsItemHovered();
     }
 
+    inline ImU32 GetPrimaryColor() const { return GetColorU32(IsActive ? ImGuiCol_ButtonActive : (IsHovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button)); }
+    inline ImU32 GetSecondaryColor() const { return ScaleColor(GetColorU32(IsActive ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered), 0.5); }
+    inline ImU32 GetTrackColor() const { return GetColorU32(ImGuiCol_FrameBg); }
+
+    void Draw(KnobType type, int steps) const {
+        switch (type) {
+            case KnobType_Tick: {
+                DrawCircle(0.85);
+                DrawTick(0.5, 0.85, 0.08, Angle);
+                return;
+            }
+            case KnobType_Dot: {
+                DrawCircle(0.85);
+                DrawDot(0.12, 0.6);
+                return;
+            }
+            case KnobType_Wiper: {
+                DrawCircle(0.7);
+                DrawArc(0.8, 0.41, AngleMin, AngleMax, GetTrackColor(), 16, 2);
+                if (ValueRatio > 0.01) DrawArc(0.8, 0.43, AngleMin, Angle, GetPrimaryColor(), 16, 2);
+                return;
+            }
+            case KnobType_WiperOnly: {
+                DrawArc(0.8, 0.41, AngleMin, AngleMax, GetTrackColor(), 32, 2);
+                if (ValueRatio > 0.01) DrawArc(0.8, 0.43, AngleMin, Angle, GetPrimaryColor(), 16, 2);
+                return;
+            }
+            case KnobType_WiperDot: {
+                DrawCircle(0.6);
+                DrawArc(0.85, 0.41, AngleMin, AngleMax, GetTrackColor(), 16, 2);
+                DrawDot(0.1, 0.85);
+                return;
+            }
+            case KnobType_Stepped: {
+                for (auto n = 0; n < steps; n++) DrawTick(0.7, 0.9, 0.04, AngleMin + (AngleMax - AngleMin) * (float(n) / float(steps - 1)));
+                DrawCircle(0.6);
+                DrawDot(0.12, 0.4);
+                return;
+            }
+            case KnobType_Space: {
+                DrawCircle(0.3 - ValueRatio * 0.1);
+                if (ValueRatio > 0.01) {
+                    DrawArc(0.4, 0.15, AngleMin - 1.0, Angle - 1.0, GetPrimaryColor(), 16, 2);
+                    DrawArc(0.6, 0.15, AngleMin + 1.0, Angle + 1.0, GetPrimaryColor(), 16, 2);
+                    DrawArc(0.8, 0.15, AngleMin + 3.0, Angle + 3.0, GetPrimaryColor(), 16, 2);
+                }
+                break;
+            }
+        }
+    }
+
+    static constexpr float AngleMin{PI * 0.75f}, AngleMax{PI * 2.25f};
+    float Radius, ValueRatio;
+    float Angle{AngleMin + (AngleMax - AngleMin) * ValueRatio};
+    ImVec2 Center;
+    bool IsActive, IsHovered, ValueChanged;
+
+private:
     void DrawDot(float size, float radius_ratio) const {
-        const auto &color_set = GetPrimaryColorSet();
-        GetWindowDrawList()->AddCircleFilled(
-            center + ImVec2{cosf(angle), sinf(angle)} * (radius_ratio * this->radius),
-            size * this->radius,
-            is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base),
-            12
-        );
-    }
-
-    void DrawTick(float start, float end, float width, float step_angle) const {
-        const auto &color_set = GetPrimaryColorSet();
-        const auto tick_start = start * radius;
-        const auto tick_end = end * radius;
-        const ImVec2 &angle_unit = {cosf(step_angle), sinf(step_angle)};
-
-        GetWindowDrawList()->AddLine(
-            center + angle_unit * tick_end,
-            center + angle_unit * tick_start,
-            is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base),
-            width * radius
-        );
+        GetWindowDrawList()->AddCircleFilled(Center + ImVec2{cosf(Angle), sinf(Angle)} * (radius_ratio * Radius), size * Radius, GetPrimaryColor(), 12);
     }
 
     void DrawCircle(float size) const {
-        const auto &color_set = GetSecondaryColorSet();
-        GetWindowDrawList()->AddCircleFilled(center, size * radius, is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base));
+        GetWindowDrawList()->AddCircleFilled(Center, size * Radius, GetSecondaryColor());
     }
 
-    void DrawArc(float radius_ratio, float size, float start_angle, float end_angle, const ColorSet &color_set, int segments, int bezier_count) const {
-        const auto track_size = size * this->radius * 0.5f + 0.0001f;
-        FlowGrid::DrawArc(center, radius_ratio * this->radius, start_angle, end_angle, track_size, is_active ? color_set.active : (is_hovered ? color_set.hovered : color_set.base), segments, bezier_count);
+    void DrawTick(float start, float end, float width, float step_angle) const {
+        const ImVec2 angle_unit{cosf(step_angle), sinf(step_angle)};
+        GetWindowDrawList()->AddLine(
+            Center + angle_unit * (end * Radius),
+            Center + angle_unit * (start * Radius),
+            GetPrimaryColor(), width * Radius
+        );
+    }
+
+    void DrawArc(float radius_ratio, float size, float start_angle, float end_angle, ImU32 color, int segments, int bezier_count) const {
+        const auto track_size = size * Radius * 0.5f + 0.0001f;
+        FlowGrid::DrawArc(Center, radius_ratio * Radius, start_angle, end_angle, track_size, color, segments, bezier_count);
     }
 };
 
 template<typename DataType>
-bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float _speed, const char *format, HJustify h_justify, KnobVariant variant, KnobFlags flags = KnobFlags_None, int steps = 10) {
+bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, DataType v_min, DataType v_max, float _speed, const char *format, HJustify h_justify, KnobType type, KnobFlags flags = KnobFlags_None, int steps = 10) {
     const auto speed = _speed == 0 ? (v_max - v_min) / 250.f : _speed;
-    PushID(label);
     const auto width = CalcItemWidth();
+    PushID(label);
     PushItemWidth(width);
     BeginGroup();
 
@@ -228,57 +252,8 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
     }
 
     // Draw knob
-    const knob<DataType> knob(label, data_type, p_value, v_min, v_max, speed, width * 0.5f, format, flags);
-    switch (variant) {
-        case KnobVariant_Tick: {
-            knob.DrawCircle(0.85);
-            knob.DrawTick(0.5, 0.85, 0.08, knob.angle);
-            break;
-        }
-        case KnobVariant_Dot: {
-            knob.DrawCircle(0.85);
-            knob.DrawDot(0.12, 0.6);
-            break;
-        }
-        case KnobVariant_Wiper: {
-            knob.DrawCircle(0.7);
-            knob.DrawArc(0.8, 0.41, knob.angle_min, knob.angle_max, GetTrackColorSet(), 16, 2);
-            if (knob.t > 0.01) knob.DrawArc(0.8, 0.43, knob.angle_min, knob.angle, GetPrimaryColorSet(), 16, 2);
-            break;
-        }
-        case KnobVariant_WiperOnly: {
-            knob.DrawArc(0.8, 0.41, knob.angle_min, knob.angle_max, GetTrackColorSet(), 32, 2);
-            if (knob.t > 0.01) knob.DrawArc(0.8, 0.43, knob.angle_min, knob.angle, GetPrimaryColorSet(), 16, 2);
-            break;
-        }
-        case KnobVariant_WiperDot: {
-            knob.DrawCircle(0.6);
-            knob.DrawArc(0.85, 0.41, knob.angle_min, knob.angle_max, GetTrackColorSet(), 16, 2);
-            knob.DrawDot(0.1, 0.85);
-            break;
-        }
-        case KnobVariant_Stepped: {
-            for (auto n = 0; n < steps; n++) {
-                const auto a = float(n) / float(steps - 1);
-                const auto angle = knob.angle_min + (knob.angle_max - knob.angle_min) * a;
-                knob.DrawTick(0.7, 0.9, 0.04, angle);
-            }
-
-            knob.DrawCircle(0.6);
-            knob.DrawDot(0.12, 0.4);
-            break;
-        }
-        case KnobVariant_Space: {
-            knob.DrawCircle(0.3 - knob.t * 0.1);
-            if (knob.t > 0.01) {
-                knob.DrawArc(0.4, 0.15, knob.angle_min - 1.0, knob.angle - 1.0, GetPrimaryColorSet(), 16, 2);
-                knob.DrawArc(0.6, 0.15, knob.angle_min + 1.0, knob.angle + 1.0, GetPrimaryColorSet(), 16, 2);
-                knob.DrawArc(0.8, 0.15, knob.angle_min + 3.0, knob.angle + 3.0, GetPrimaryColorSet(), 16, 2);
-            }
-            break;
-        }
-        default: break;
-    }
+    const knob<DataType> knob{label, data_type, p_value, v_min, v_max, speed, width * 0.5f, format, flags};
+    knob.Draw(type, steps);
 
     // Draw tooltip
     if (flags & KnobFlags_ValueTooltip && (IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || IsItemActive())) {
@@ -287,14 +262,14 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
         EndTooltip();
     }
 
-    bool changed = knob.value_changed; // Both the knob and the (optional) input can change the value.
-
-    // Draw input
-    if (!(flags & KnobFlags_NoInput)) {
-        ImGuiSliderFlags drag_flags = ImGuiSliderFlags_None;
-        if (!(flags & KnobFlags_DragHorizontal)) drag_flags |= ImGuiSliderFlags_Vertical;
-        if (DragScalar("###knob_drag", data_type, p_value, speed, &v_min, &v_max, format, drag_flags)) changed = true;
-    }
+    // Draw input. Both the knob and the (optional) input can change the value.
+    const bool changed =
+        (!(flags & KnobFlags_NoInput) &&
+         DragScalar(
+             "###knob_drag", data_type, p_value, speed, &v_min, &v_max, format,
+             flags & KnobFlags_DragHorizontal ? ImGuiSliderFlags(ImGuiSliderFlags_None) : ImGuiSliderFlags_Vertical
+         )) ||
+        knob.ValueChanged;
 
     EndGroup();
     PopItemWidth();
@@ -303,10 +278,10 @@ bool KnobBase(const char *label, ImGuiDataType data_type, DataType *p_value, Dat
     return changed;
 }
 
-bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed, const char *format, HJustify h_justify, KnobVariant variant, KnobFlags flags, int steps) {
+bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed, const char *format, HJustify h_justify, KnobType variant, KnobFlags flags, int steps) {
     return KnobBase(label, ImGuiDataType_Float, p_value, v_min, v_max, speed, format == nullptr ? "%.3f" : format, h_justify, variant, flags, steps);
 }
-bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed, const char *format, HJustify h_justify, KnobVariant variant, KnobFlags flags, int steps) {
+bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed, const char *format, HJustify h_justify, KnobType variant, KnobFlags flags, int steps) {
     return KnobBase(label, ImGuiDataType_S32, p_value, v_min, v_max, speed, format == nullptr ? "%i" : format, h_justify, variant, flags, steps);
 }
 }; // namespace FlowGrid

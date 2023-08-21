@@ -276,7 +276,7 @@ void FaustParamsUI::DrawParam(const FaustParam &param, const char *label, const 
         auto value = float(*zone);
         KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
         const int steps = param.step == 0 ? 0 : int((param.max - param.min) / param.step);
-        if (Knob(param.label.c_str(), &value, float(param.min), float(param.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobVariant_WiperDot : KnobVariant_Stepped, flags, steps)) {
+        if (Knob(param.label.c_str(), &value, float(param.min), float(param.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobType_WiperDot : KnobType_Stepped, flags, steps)) {
             *zone = Real(value);
         }
     } else if (type == Type_HRadioButtons || type == Type_VRadioButtons) {

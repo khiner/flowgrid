@@ -12,7 +12,7 @@
 #include "faust/gui/PathBuilder.h"
 #include "faust/gui/UI.h"
 
-class FAUST_API FaustParamsUIImpl : public UI, public MetaDataUI, public PathBuilder {
+class FaustParamsUIImpl : public UI, public MetaDataUI, public PathBuilder {
 public:
     void openHorizontalBox(const char *label) override {
         pushLabel(label);

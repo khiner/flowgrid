@@ -31,9 +31,6 @@ private:
     void DrawGroup(const FaustParam &, const char *label, const float suggested_height) const;
     void DrawParam(const FaustParam &, const char *label, const float suggested_height) const;
 
-    const std::vector<std::string> &GetNames(const FaustParam &) const;
-    const NamesAndValues &GetNamesAndValues(const FaustParam &) const;
-
     std::unique_ptr<FaustParamsUIImpl> Impl;
     const FaustParamsUIStyle &Style;
     dsp *Dsp{nullptr};

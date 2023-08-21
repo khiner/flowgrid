@@ -1,7 +1,6 @@
 #pragma once
 
 #include "FaustParam.h"
-#include "UI/NamesAndValues.h"
 
 #include <stack>
 #include <string>
@@ -59,14 +58,14 @@ public:
         else Add(is_vertical ? FaustParam::Type_VSlider : FaustParam::Type_HSlider, label, zone, min, max, init, step);
     }
     void addRadioButtons(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *text, bool is_vertical) {
-        NamesAndValues[zone] = {};
-        parseMenuList(text, NamesAndValues[zone].names, NamesAndValues[zone].values);
-        Add(is_vertical ? FaustParam::Type_VRadioButtons : FaustParam::Type_HRadioButtons, label, zone, min, max, init, step);
+        NamesAndValues names_and_values;
+        parseMenuList(text, names_and_values.names, names_and_values.values);
+        Add(is_vertical ? FaustParam::Type_VRadioButtons : FaustParam::Type_HRadioButtons, label, zone, min, max, init, step, std::move(names_and_values));
     }
     void addMenu(const char *label, Real *zone, Real init, Real min, Real max, Real step, const char *text) {
-        NamesAndValues[zone] = {};
-        parseMenuList(text, NamesAndValues[zone].names, NamesAndValues[zone].values);
-        Add(FaustParam::Type_Menu, label, zone, min, max, init, step);
+        NamesAndValues names_and_values;
+        parseMenuList(text, names_and_values.names, names_and_values.values);
+        Add(FaustParam::Type_Menu, label, zone, min, max, init, step, std::move(names_and_values));
     }
 
     // Passive widgets
@@ -85,19 +84,15 @@ public:
         MetaDataUI::declare(zone, key, value);
     }
 
-    const std::vector<std::string> &GetNames(const FaustParam &param) const { return NamesAndValues.at(param.zone).names; }
-    const NamesAndValues &GetNamesAndValues(const FaustParam &param) const { return NamesAndValues.at(param.zone); }
-
     FaustParam RootParam{};
 
 private:
-    void Add(const FaustParam::Type type, const char *label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0) {
-        ActiveGroup().children.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr);
+    void Add(const FaustParam::Type type, const char *label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0, NamesAndValues names_and_values = {}) {
+        ActiveGroup().children.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
         fFullPaths.push_back(buildPath(label));
     }
 
     FaustParam &ActiveGroup() { return Groups.empty() ? RootParam : *Groups.top(); }
 
     std::stack<FaustParam *> Groups{};
-    std::unordered_map<const Real *, NamesAndValues> NamesAndValues;
 };

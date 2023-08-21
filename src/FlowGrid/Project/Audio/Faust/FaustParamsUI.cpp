@@ -30,9 +30,6 @@ void FaustParamsUI::SetDsp(dsp *dsp) {
     }
 }
 
-const std::vector<std::string> &FaustParamsUI::GetNames(const FaustParam &param) const { return Impl->GetNames(param); }
-const NamesAndValues &FaustParamsUI::GetNamesAndValues(const FaustParam &param) const { return Impl->GetNamesAndValues(param); }
-
 static bool IsGroup(const FaustParam::Type type) {
     return type == Type_None || type == Type_TGroup || type == Type_HGroup || type == Type_VGroup;
 }
@@ -62,13 +59,13 @@ float FaustParamsUI::CalcWidth(const FaustParam &param, const bool include_label
         case Type_HBargraph: return Style.MinHorizontalItemWidth * frame_height + label_width_with_spacing;
         case Type_HRadioButtons: {
             return label_width_with_spacing +
-                ranges::accumulate(GetNames(param) | std::views::transform(CalcRadioChoiceWidth), 0.f) +
-                inner_spacing * float(GetNames(param).size());
+                ranges::accumulate(param.names_and_values.names | std::views::transform(CalcRadioChoiceWidth), 0.f) +
+                inner_spacing * float(param.names_and_values.Size());
         }
         case Type_Menu: {
             return label_width_with_spacing +
                 std::ranges::max(
-                       GetNames(param) |
+                       param.names_and_values.names |
                        std::views::transform([](const string &choice_name) { return CalcTextSize(choice_name).x; })
                 ) +
                 imgui_style.FramePadding.x * 2 + frame_height; // Extra frame for button
@@ -76,7 +73,7 @@ float FaustParamsUI::CalcWidth(const FaustParam &param, const bool include_label
         case Type_CheckButton: return frame_height + label_width_with_spacing;
         case Type_VBargraph:
         case Type_VSlider: return max(frame_height, label_width);
-        case Type_VRadioButtons: return max(std::ranges::max(GetNames(param) | std::views::transform(CalcRadioChoiceWidth)), label_width);
+        case Type_VRadioButtons: return max(std::ranges::max(param.names_and_values.names | std::views::transform(CalcRadioChoiceWidth)), label_width);
         case Type_Button: return raw_label_width + imgui_style.FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case Type_Knob: return max(Style.MinKnobItemSize * frame_height, label_width);
         default: return GetContentRegionAvail().x;
@@ -284,10 +281,10 @@ void FaustParamsUI::DrawParam(const FaustParam &param, const char *label, const 
         RadioButtonsFlags flags = has_label ? RadioButtonsFlags_None : RadioButtonsFlags_NoTitle;
         if (type == Type_VRadioButtons) flags |= ValueBarFlags_Vertical;
         SetNextItemWidth(item_size.x); // Include label in param width for radio buttons (inconsistent but just makes things easier).
-        if (RadioButtons(param.label.c_str(), &value, GetNamesAndValues(param), flags, justify)) *zone = Real(value);
+        if (RadioButtons(param.label.c_str(), &value, param.names_and_values, flags, justify)) *zone = Real(value);
     } else if (type == Type_Menu) {
         auto value = float(*zone);
-        const auto &names_and_values = GetNamesAndValues(param);
+        const auto &names_and_values = param.names_and_values;
         // todo handle not present
         const auto selected_index = find(names_and_values.values.begin(), names_and_values.values.end(), value) - names_and_values.values.begin();
         if (BeginCombo(param.label.c_str(), names_and_values.names[selected_index].c_str())) {

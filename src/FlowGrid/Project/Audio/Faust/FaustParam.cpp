@@ -13,8 +13,11 @@ using namespace fg;
 using enum FaustParamType;
 using std::min, std::max;
 
+FaustParam::FaustParam(const FaustParamsUIStyle &style, const FaustParamType type, std::string_view label, Real *zone, Real min, Real max, Real init, Real step, const char *tooltip, NamesAndValues names_and_values)
+    : Style(style), Type(type), Id(label), Label(label == "0x00" ? "" : label), Zone(zone), Min(min), Max(max), Init(init), Step(step), Tooltip(tooltip), names_and_values(std::move(names_and_values)) {}
+
 // todo config to place labels above horizontal params
-float FaustParam::CalcWidth(const bool include_label) const {
+float FaustParam::CalcWidth(bool include_label) const {
     const auto &imgui_style = ImGui::GetStyle();
     const bool has_label = include_label && !Label.empty();
     const float frame_height = GetFrameHeight();
@@ -96,7 +99,7 @@ float FaustParam::CalcLabelHeight() const {
 * Items/groups are allowed to extend beyond this height to fit its contents, if necessary.
 * The cursor position is expected to be set appropriately below the drawn contents.
 */
-void FaustParam::Draw(const float suggested_height, bool no_label) const {
+void FaustParam::Draw(float suggested_height, bool no_label) const {
     if (IsGroup()) DrawGroup(suggested_height, no_label);
     else DrawParam(suggested_height, no_label);
 
@@ -110,7 +113,7 @@ void FaustParam::Draw(const float suggested_height, bool no_label) const {
     }
 }
 
-void FaustParam::DrawGroup(const float suggested_height, bool no_label) const {
+void FaustParam::DrawGroup(float suggested_height, bool no_label) const {
     if (!IsGroup()) return;
 
     const char *label = no_label ? "" : Label.c_str();
@@ -194,7 +197,7 @@ void FaustParam::DrawGroup(const float suggested_height, bool no_label) const {
     }
 }
 
-void FaustParam::DrawParam(const float suggested_height, bool no_label) const {
+void FaustParam::DrawParam(float suggested_height, bool no_label) const {
     if (IsGroup()) return;
 
     const char *label = no_label ? "" : Label.c_str();

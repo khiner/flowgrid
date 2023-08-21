@@ -17,7 +17,7 @@ void FaustParamsUI::SetDsp(dsp *dsp) {
     if (!dsp) Impl.reset();
     Dsp = dsp;
     if (Dsp) {
-        Impl = std::make_unique<FaustParamsUIImpl>(Style);
+        Impl = std::make_unique<FaustParamsUIImpl>(*this);
         Dsp->buildUserInterface(Impl.get());
     }
 }
@@ -25,7 +25,7 @@ void FaustParamsUI::SetDsp(dsp *dsp) {
 void FaustParamsUI::Render() const {
     if (!Impl) return;
 
-    Impl->RootParam.Draw(GetContentRegionAvail().y, true);
+    RootParam.Draw(GetContentRegionAvail().y, true);
 
     // if (hovered_node) {
     //     const string label = GetUiLabel(hovered_node->tree);

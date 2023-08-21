@@ -1,8 +1,7 @@
 #pragma once
 
-#include "FaustParam.h"
-
-#include <stack>
+#include "FaustParamType.h"
+#include "FaustParamsContainer.h"
 
 #include "faust/gui/MetaDataUI.h"
 #include "faust/gui/PathBuilder.h"
@@ -12,16 +11,13 @@ struct FaustParamsUIStyle;
 
 class FaustParamsUIImpl : public UI, public MetaDataUI, public PathBuilder {
 public:
-    FaustParamsUIImpl(const FaustParamsUIStyle &style) : Style(style) {}
+    FaustParamsUIImpl(FaustParamsContainer &container) : Container(container) {}
 
     void openHorizontalBox(const char *label) override { Add(Type_HGroup, label); }
     void openVerticalBox(const char *label) override { Add(Type_VGroup, label); }
     void openTabBox(const char *label) override { Add(Type_TGroup, label); }
 
-    void closeBox() override {
-        Groups.pop();
-        if (popLabel()) computeShortNames();
-    }
+    void closeBox() override { PopGroup(); }
 
     // Active widgets
     void addButton(const char *label, Real *zone) override { Add(Type_Button, label, zone); }
@@ -62,21 +58,19 @@ public:
     // Metadata declaration
     void declare(Real *zone, const char *key, const char *value) override { MetaDataUI::declare(zone, key, value); }
 
-    const FaustParamsUIStyle &Style; // Forwarded to params.
-    FaustParam RootParam{Style};
+    FaustParamsContainer &Container; // Forwarded to params.
 
 private:
-    void Add(const FaustParamType type, const char *label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, NamesAndValues names_and_values = {}) {
-        FaustParam &active_group = Groups.empty() ? RootParam : *Groups.top();
-        if (zone == nullptr) { // Group
-            active_group.Children.emplace_back(Style, type, label);
-            Groups.push(&active_group.Children.back());
-            pushLabel(label);
-        } else { // Param
-            active_group.Children.emplace_back(Style, type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
-            fFullPaths.push_back(buildPath(label));
-        }
+    void Add(FaustParamType type, const char *label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, NamesAndValues names_and_values = {}) {
+        if (zone == nullptr) pushLabel(label);
+        else fFullPaths.push_back(buildPath(label));
+
+        Container.Add(type, label, zone, min, max, init, step, zone != nullptr && fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
     }
 
-    std::stack<FaustParam *> Groups{};
+    void PopGroup() {
+        if (popLabel()) computeShortNames();
+
+        Container.PopGroup();
+    }
 };

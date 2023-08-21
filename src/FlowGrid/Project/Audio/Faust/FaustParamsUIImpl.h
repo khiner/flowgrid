@@ -3,29 +3,30 @@
 #include "FaustParam.h"
 
 #include <stack>
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 #include "faust/gui/MetaDataUI.h"
 #include "faust/gui/PathBuilder.h"
 #include "faust/gui/UI.h"
 
+struct FaustParamsUIStyle;
+
 class FaustParamsUIImpl : public UI, public MetaDataUI, public PathBuilder {
 public:
+    FaustParamsUIImpl(const FaustParamsUIStyle &style) : Style(style) {}
+
     void openHorizontalBox(const char *label) override {
         pushLabel(label);
-        ActiveGroup().Children.emplace_back(Type_HGroup, label);
+        ActiveGroup().Children.emplace_back(Style, Type_HGroup, label);
         Groups.push(&ActiveGroup().Children.back());
     }
     void openVerticalBox(const char *label) override {
         pushLabel(label);
-        ActiveGroup().Children.emplace_back(Type_VGroup, label);
+        ActiveGroup().Children.emplace_back(Style, Type_VGroup, label);
         Groups.push(&ActiveGroup().Children.back());
     }
     void openTabBox(const char *label) override {
         pushLabel(label);
-        ActiveGroup().Children.emplace_back(Type_TGroup, label);
+        ActiveGroup().Children.emplace_back(Style, Type_TGroup, label);
         Groups.push(&ActiveGroup().Children.back());
     }
     void closeBox() override {
@@ -84,11 +85,12 @@ public:
         MetaDataUI::declare(zone, key, value);
     }
 
-    FaustParam RootParam{};
+    const FaustParamsUIStyle &Style; // Forwarded to params.
+    FaustParam RootParam{Style};
 
 private:
     void Add(const FaustParamType type, const char *label, Real *zone, Real min = 0, Real max = 0, Real init = 0, Real step = 0, NamesAndValues names_and_values = {}) {
-        ActiveGroup().Children.emplace_back(type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
+        ActiveGroup().Children.emplace_back(Style, type, label, zone, min, max, init, step, fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
         fFullPaths.push_back(buildPath(label));
     }
 

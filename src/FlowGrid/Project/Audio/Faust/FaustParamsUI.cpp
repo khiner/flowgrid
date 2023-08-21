@@ -13,7 +13,7 @@
 using namespace ImGui;
 using namespace fg;
 
-using enum FaustParam::Type;
+using enum FaustParamType;
 using std::min, std::max;
 
 FaustParamsUI::FaustParamsUI(ComponentArgs &&args, const FaustParamsUIStyle &style)
@@ -30,30 +30,30 @@ void FaustParamsUI::SetDsp(dsp *dsp) {
     }
 }
 
-static bool IsGroup(const FaustParam::Type type) {
+static bool IsGroup(const FaustParamType type) {
     return type == Type_None || type == Type_TGroup || type == Type_HGroup || type == Type_VGroup;
 }
-static bool IsWidthExpandable(const FaustParam::Type type) {
+static bool IsWidthExpandable(const FaustParamType type) {
     return type == Type_HGroup || type == Type_VGroup || type == Type_TGroup || type == Type_NumEntry || type == Type_HSlider || type == Type_HBargraph;
 }
-static bool IsHeightExpandable(const FaustParam::Type type) {
+static bool IsHeightExpandable(const FaustParamType type) {
     return type == Type_VBargraph || type == Type_VSlider || type == Type_CheckButton;
 }
-static bool IsLabelSameLine(const FaustParam::Type type) {
+static bool IsLabelSameLine(const FaustParamType type) {
     return type == Type_NumEntry || type == Type_HSlider || type == Type_HBargraph || type == Type_HRadioButtons || type == Type_Menu || type == Type_CheckButton;
 }
 
 // todo config to place labels above horizontal params
 float FaustParamsUI::CalcWidth(const FaustParam &param, const bool include_label) const {
     const auto &imgui_style = ImGui::GetStyle();
-    const bool has_label = include_label && !param.label.empty();
+    const bool has_label = include_label && !param.Label.empty();
     const float frame_height = GetFrameHeight();
     const float inner_spacing = imgui_style.ItemInnerSpacing.x;
-    const float raw_label_width = CalcTextSize(param.label.c_str()).x;
+    const float raw_label_width = CalcTextSize(param.Label.c_str()).x;
     const float label_width = has_label ? raw_label_width : 0;
     const float label_width_with_spacing = has_label ? raw_label_width + inner_spacing : 0;
 
-    switch (param.type) {
+    switch (param.Type) {
         case Type_NumEntry:
         case Type_HSlider:
         case Type_HBargraph: return Style.MinHorizontalItemWidth * frame_height + label_width_with_spacing;
@@ -82,7 +82,7 @@ float FaustParamsUI::CalcWidth(const FaustParam &param, const bool include_label
 
 float FaustParamsUI::CalcHeight(const FaustParam &param) const {
     const float frame_height = GetFrameHeight();
-    switch (param.type) {
+    switch (param.Type) {
         case Type_VBargraph:
         case Type_VSlider:
         case Type_VRadioButtons: return Style.MinVerticalItemHeight * frame_height;
@@ -100,7 +100,7 @@ float FaustParamsUI::CalcHeight(const FaustParam &param) const {
 
 // Returns _additional_ height needed to accommodate a label for the param
 float FaustParamsUI::CalcLabelHeight(const FaustParam &param) const {
-    switch (param.type) {
+    switch (param.Type) {
         case Type_VBargraph:
         case Type_VSlider:
         case Type_VRadioButtons:
@@ -127,26 +127,26 @@ float FaustParamsUI::CalcLabelHeight(const FaustParam &param) const {
 * The cursor position is expected to be set appropriately below the drawn contents.
 */
 void FaustParamsUI::DrawUiItem(const FaustParam &param, const char *label, const float suggested_height) const {
-    const auto type = param.type;
+    const auto type = param.Type;
     if (IsGroup(type)) DrawGroup(param, label, suggested_height);
     else DrawParam(param, label, suggested_height);
 
-    if (param.tooltip && IsItemHovered()) {
+    if (param.Tooltip && IsItemHovered()) {
         // todo only leaf params, so group tooltips don't work.
         // todo hook up to Info pane hover info.
         BeginTooltip();
         PushTextWrapPos(GetFontSize() * 35);
-        TextUnformatted(param.tooltip);
+        TextUnformatted(param.Tooltip);
         EndTooltip();
     }
 }
 
 void FaustParamsUI::DrawGroup(const FaustParam &param, const char *label, const float suggested_height) const {
-    const auto type = param.type;
+    const auto type = param.Type;
     if (!IsGroup(type)) return;
 
     const auto &imgui_style = ImGui::GetStyle();
-    const auto &children = param.children;
+    const auto &children = param.Children;
     const float frame_height = GetFrameHeight();
     const bool has_label = strlen(label) > 0;
     const float label_height = has_label ? CalcLabelHeight(param) : 0;
@@ -158,9 +158,9 @@ void FaustParamsUI::DrawGroup(const FaustParam &param, const char *label, const 
         // In addition to the group contents, account for the tab height and the space between the tabs and the content.
         const float group_height = max(0.f, is_height_constrained ? suggested_height - label_height : 0);
         const float item_height = max(0.f, group_height - frame_height - imgui_style.ItemSpacing.y);
-        BeginTabBar(param.label.c_str());
+        BeginTabBar(param.Label.c_str());
         for (const auto &child : children) {
-            if (BeginTabItem(child.label.c_str())) {
+            if (BeginTabItem(child.Label.c_str())) {
                 DrawUiItem(child, "", item_height);
                 EndTabItem();
             }
@@ -175,17 +175,17 @@ void FaustParamsUI::DrawGroup(const FaustParam &param, const char *label, const 
     if (is_h) {
         const bool include_labels = !Style.HeaderTitles;
         suggested_item_height = std::ranges::max(
-            param.children | std::views::transform([this, include_labels](const auto &child) {
+            param.Children | std::views::transform([this, include_labels](const auto &child) {
                 return CalcHeight(child) + (include_labels ? CalcLabelHeight(child) : 0);
             })
         );
     }
     if (type == Type_None) { // Root group (treated as a vertical group but not as a table)
-        for (const auto &child : children) DrawUiItem(child, child.label.c_str(), suggested_item_height);
+        for (const auto &child : children) DrawUiItem(child, child.Label.c_str(), suggested_item_height);
         return;
     }
 
-    if (BeginTable(param.id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImGui(Style.TableFlags))) {
+    if (BeginTable(param.Id.c_str(), is_h ? int(children.size()) : 1, TableFlagsToImGui(Style.TableFlags))) {
         const float row_min_height = suggested_item_height + cell_padding;
         if (is_h) {
             ParamsWidthSizingPolicy policy = Style.WidthSizingPolicy;
@@ -193,13 +193,13 @@ void FaustParamsUI::DrawGroup(const FaustParam &param, const char *label, const 
                 policy != ParamsWidthSizingPolicy_Balanced &&
                 (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly ||
                  (policy == ParamsWidthSizingPolicy_StretchToFill &&
-                  std::ranges::any_of(param.children, [](const auto &child) {
-                      return IsWidthExpandable(child.type);
+                  std::ranges::any_of(param.Children, [](const auto &child) {
+                      return IsWidthExpandable(child.Type);
                   })));
             for (const auto &child : children) {
                 ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
-                if (allow_fixed_width_params && !IsWidthExpandable(child.type)) flags |= ImGuiTableColumnFlags_WidthFixed;
-                TableSetupColumn(child.label.c_str(), flags, CalcWidth(child, true));
+                if (allow_fixed_width_params && !IsWidthExpandable(child.Type)) flags |= ImGuiTableColumnFlags_WidthFixed;
+                TableSetupColumn(child.Label.c_str(), flags, CalcWidth(child, true));
             }
             if (Style.HeaderTitles) {
                 // Custom headers (instead of `TableHeadersRow()`) to align column names.
@@ -220,7 +220,7 @@ void FaustParamsUI::DrawGroup(const FaustParam &param, const char *label, const 
             if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
             TableNextColumn();
             TableSetBgColor(ImGuiTableBgTarget_RowBg0, GetColorU32(ImGuiCol_TitleBgActive, 0.1f));
-            const string child_label = child.type == Type_Button || !is_h || !Style.HeaderTitles ? child.label : "";
+            const string child_label = child.Type == Type_Button || !is_h || !Style.HeaderTitles ? child.Label : "";
             DrawUiItem(child, child_label.c_str(), suggested_item_height);
         }
         EndTable();
@@ -228,7 +228,7 @@ void FaustParamsUI::DrawGroup(const FaustParam &param, const char *label, const 
 }
 
 void FaustParamsUI::DrawParam(const FaustParam &param, const char *label, const float suggested_height) const {
-    const auto type = param.type;
+    const auto type = param.Type;
     if (IsGroup(type)) return;
 
     const Justify justify = {Style.AlignmentHorizontal, Style.AlignmentVertical};
@@ -251,7 +251,7 @@ void FaustParamsUI::DrawParam(const FaustParam &param, const char *label, const 
     const auto old_cursor = GetCursorPos();
     SetCursorPos(old_cursor + ImVec2{max(0.f, CalcAlignedX(justify.h, has_label && IsLabelSameLine(type) ? item_size.x : item_size_no_label.x, available_x)), max(0.f, CalcAlignedY(justify.v, item_size.y, max(item_size.y, suggested_height)))});
 
-    Real *zone = param.zone;
+    Real *zone = param.Zone;
     if (type == Type_Button) {
         Button(label);
         if (IsItemActivated() && *zone == 0.0) *zone = 1.0;
@@ -261,19 +261,19 @@ void FaustParamsUI::DrawParam(const FaustParam &param, const char *label, const 
         if (Checkbox(label, &value)) *zone = Real(value);
     } else if (type == Type_NumEntry) {
         auto value = int(*zone);
-        if (InputInt(label, &value, int(param.step))) *zone = std::clamp(Real(value), param.min, param.max);
+        if (InputInt(label, &value, int(param.Step))) *zone = std::clamp(Real(value), param.Min, param.Max);
     } else if (type == Type_HSlider || type == Type_VSlider || type == Type_HBargraph || type == Type_VBargraph) {
         auto value = float(*zone);
         ValueBarFlags flags = ValueBarFlags_None;
         if (type == Type_HBargraph || type == Type_VBargraph) flags |= ValueBarFlags_ReadOnly;
         if (type == Type_VBargraph || type == Type_VSlider) flags |= ValueBarFlags_Vertical;
         if (!has_label) flags |= ValueBarFlags_NoTitle;
-        if (ValueBar(param.label.c_str(), &value, item_size.y - label_height, float(param.min), float(param.max), flags, justify.h)) *zone = Real(value);
+        if (ValueBar(param.Label.c_str(), &value, item_size.y - label_height, float(param.Min), float(param.Max), flags, justify.h)) *zone = Real(value);
     } else if (type == Type_Knob) {
         auto value = float(*zone);
         KnobFlags flags = has_label ? KnobFlags_None : KnobFlags_NoTitle;
-        const int steps = param.step == 0 ? 0 : int((param.max - param.min) / param.step);
-        if (Knob(param.label.c_str(), &value, float(param.min), float(param.max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobType_WiperDot : KnobType_Stepped, flags, steps)) {
+        const int steps = param.Step == 0 ? 0 : int((param.Max - param.Min) / param.Step);
+        if (Knob(param.Label.c_str(), &value, float(param.Min), float(param.Max), 0, nullptr, justify.h, steps == 0 || steps > 10 ? KnobType_WiperDot : KnobType_Stepped, flags, steps)) {
             *zone = Real(value);
         }
     } else if (type == Type_HRadioButtons || type == Type_VRadioButtons) {
@@ -281,13 +281,13 @@ void FaustParamsUI::DrawParam(const FaustParam &param, const char *label, const 
         RadioButtonsFlags flags = has_label ? RadioButtonsFlags_None : RadioButtonsFlags_NoTitle;
         if (type == Type_VRadioButtons) flags |= ValueBarFlags_Vertical;
         SetNextItemWidth(item_size.x); // Include label in param width for radio buttons (inconsistent but just makes things easier).
-        if (RadioButtons(param.label.c_str(), &value, param.names_and_values, flags, justify)) *zone = Real(value);
+        if (RadioButtons(param.Label.c_str(), &value, param.names_and_values, flags, justify)) *zone = Real(value);
     } else if (type == Type_Menu) {
         auto value = float(*zone);
         const auto &names_and_values = param.names_and_values;
         // todo handle not present
         const auto selected_index = find(names_and_values.values.begin(), names_and_values.values.end(), value) - names_and_values.values.begin();
-        if (BeginCombo(param.label.c_str(), names_and_values.names[selected_index].c_str())) {
+        if (BeginCombo(param.Label.c_str(), names_and_values.names[selected_index].c_str())) {
             for (int i = 0; i < int(names_and_values.names.size()); i++) {
                 const Real choice_value = names_and_values.values[i];
                 const bool is_selected = value == choice_value;

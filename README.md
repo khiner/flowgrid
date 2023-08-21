@@ -1,6 +1,6 @@
 # FlowGrid
 
-Faust is an immediate-mode interface for the [Faust](https://github.com/grame-cncm/faust) audio language.
+FlowGrid is an immediate-mode interface for the [Faust](https://github.com/grame-cncm/faust) audio language.
 It is backed by a persistent (as in persistent data structures), fully-undoable store, supporting navigation to any point in the project history in constant time.
 
 My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
@@ -109,7 +109,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 ### UI/UX
 
-- [ImGui](https://github.com/ocornut/imgui) + [FreeType](https://freetype.org): UI & interactions
+- [ImGui](https://github.com/ocornut/imgui) + [SDL3](https://github.com/libsdl-org/SDL) + [Vulkan](https://www.vulkan.org/) + [FreeType](https://freetype.org): UI & interactions
 - [ImPlot](https://github.com/epezent/implot): plotting
 - [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog): file selection
 - [ImGuiColorTextEdit](https://github.com/santaclose/ImGuiColorTextEdit): code/text editing

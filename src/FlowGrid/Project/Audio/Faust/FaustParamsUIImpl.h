@@ -63,9 +63,12 @@ public:
 private:
     void Add(FaustParamType type, const char *label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, NamesAndValues names_and_values = {}) {
         if (zone == nullptr) pushLabel(label);
-        else fFullPaths.push_back(buildPath(label));
+        else addFullPath(label);
 
-        Container.Add(type, label, zone, min, max, init, step, zone != nullptr && fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
+        // Replace char list copied from `PathBuilder::buildPath`.
+        // The difference is this is only applied to the new label (leaf segment) rather than the full path.
+        string short_label = replaceCharList(label, {' ', '#', '*', ',', '?', '[', ']', '{', '}', '(', ')'}, '_');
+        Container.Add(type, label, short_label, zone, min, max, init, step, zone != nullptr && fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
     }
 
     void PopGroup() {

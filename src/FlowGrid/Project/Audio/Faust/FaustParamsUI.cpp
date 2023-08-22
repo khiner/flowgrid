@@ -25,7 +25,7 @@ void FaustParamsUI::SetDsp(dsp *dsp) {
 void FaustParamsUI::Render() const {
     if (!Impl) return;
 
-    RootParam.Draw(GetContentRegionAvail().y, true);
+    RootGroup.Render(GetContentRegionAvail().y, true);
 
     // if (hovered_node) {
     //     const string label = GetUiLabel(hovered_node->tree);

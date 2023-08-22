@@ -6,14 +6,14 @@
 template<IsPrimitive T> struct PrimitiveField : Field {
     PrimitiveField(ComponentArgs &&args, T value = {}) : Field(std::move(args)), Value(value) {
         if (Exists()) Refresh();
-        else Set(value); // We treat the provided value as an initial store value.
+        else Set(value); // We treat the provided value as a default store value.
     }
     ~PrimitiveField() {
         Erase();
     }
 
-    void SetJson(json &&) const override;
     json ToJson() const override;
+    void SetJson(json &&) const override;
 
     // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
     void Refresh() override { Value = Get(); }

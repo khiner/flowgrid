@@ -2,8 +2,10 @@
 
 #include "Core/Primitive/UInt.h"
 
+#include "FaustParamGroup.h"
 #include "FaustParam.h"
 #include "FaustParamsContainer.h"
+#include "FaustParamsUIStyle.h"
 
 #include <stack>
 
@@ -27,13 +29,13 @@ struct FaustParamsUI : Component, FaustParamsContainer {
 private:
     void Render() const override;
 
-    void Add(FaustParamType type, const char *label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, NamesAndValues names_and_values = {}) override {
-        FaustParam &active_group = Groups.empty() ? RootParam : *Groups.top();
+    void Add(FaustParamType type, const char *label, string_view short_label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, NamesAndValues names_and_values = {}) override {
+        FaustParamGroup &active_group = Groups.empty() ? RootGroup : *Groups.top();
         if (zone == nullptr) { // Group
-            active_group.Children.emplace_back(Style, type, label);
-            Groups.push(&active_group.Children.back());
+            AllParams.emplace_back(std::make_unique<FaustParamGroup>(ComponentArgs{&active_group, short_label, label}, Style, type, label));
+            Groups.push((FaustParamGroup *)AllParams.back().get());
         } else { // Param
-            active_group.Children.emplace_back(Style, type, label, zone, min, max, init, step, tooltip, std::move(names_and_values));
+            AllParams.emplace_back(std::make_unique<FaustParam>(ComponentArgs{&active_group, short_label, label}, Style, type, label, zone, min, max, init, step, tooltip, std::move(names_and_values)));
         }
     }
 
@@ -41,7 +43,10 @@ private:
 
     const FaustParamsUIStyle &Style;
     std::unique_ptr<FaustParamsUIImpl> Impl;
-    FaustParam RootParam{Style};
-    std::stack<FaustParam *> Groups{};
+
+    FaustParamGroup RootGroup{ComponentArgs{this, "Param"}, Style};
+    std::stack<FaustParamGroup *> Groups{};
     dsp *Dsp{nullptr};
+
+    std::vector<std::unique_ptr<FaustParamBase>> AllParams{};
 };

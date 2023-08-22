@@ -12,7 +12,7 @@ struct Float : PrimitiveField<float>, Actionable<Action::Primitive::Float::Any> 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
-    void Refresh() override;
+    void IssueSet(const float &value) const override { Action::Primitive::Float::Set{Path, value}.q(); }
 
     const float Min, Max, DragSpeed; // If `DragSpeed` is non-zero, this is rendered as an `ImGui::DragFloat`.
     const char *Format;

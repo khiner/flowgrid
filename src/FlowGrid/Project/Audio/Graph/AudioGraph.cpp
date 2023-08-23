@@ -15,6 +15,7 @@
 #include "imgui.h"
 #include "implot.h"
 #include "implot_internal.h"
+#include "ma_channel_converter_node/ma_channel_converter_node.h"
 #include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
 #define ma_offset_ptr(p, offset) (((ma_uint8 *)(p)) + (offset))
@@ -314,7 +315,7 @@ struct OutputDeviceMaNode : DeviceMaNode {
         AudioDevice::TargetConfig &&target_config,
         const void *client_user_data
     ) : DeviceMaNode(IO_Out, std::move(callback), std::move(target_config), client_user_data) {
-        const u32 device_channels = 1; // Device->GetNativeChannels(); // todo use native device channels
+        const u32 device_channels = Device.GetClientFormat().Channels;
         if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels);
         auto node_config = ma_data_passthrough_node_config_init(device_channels, Buffer ? Buffer->Get() : nullptr);
         ma_result result = ma_data_passthrough_node_init(graph, &node_config, nullptr, &PassthroughNode);
@@ -409,6 +410,26 @@ struct GraphMaNode : MaNode {
     ma_node_graph _Graph;
 };
 
+AudioGraph::ChannelConverterNode::ChannelConverterNode(AudioGraph *graph, u32 from_channels, u32 to_channels)
+    : Graph(graph) {
+    Converter = std::make_unique<ma_channel_converter_node>();
+
+    // todo log if no-op.
+    auto config = ma_channel_converter_node_config_init(from_channels, to_channels);
+    ma_result result = ma_channel_converter_node_init(Graph->Get(), &config, nullptr, Get());
+    if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize channel converter node: {}", int(result))); }
+}
+
+AudioGraph::ChannelConverterNode::~ChannelConverterNode() {
+    ma_channel_converter_node_uninit(Get(), nullptr);
+}
+
+ma_channel_converter_node *AudioGraph::ChannelConverterNode::Get() const { return Converter.get(); }
+
+u32 AudioGraph::ChannelConverterNode::ChannelCount(IO io) const {
+    return io == IO_In ? Converter->converter.channelsIn : Converter->converter.channelsOut;
+}
+
 AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args), [this] { return CreateNode(); }) {
     IsActive = true; // The graph is always active, since it is always connected to itself.
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
@@ -433,7 +454,7 @@ AudioGraph::~AudioGraph() {
     Nodes.Clear();
 }
 
-std::unique_ptr<MaNode> AudioGraph::CreateNode() const { return std::make_unique<GraphMaNode>(1); }
+std::unique_ptr<MaNode> AudioGraph::CreateNode() const { return std::make_unique<GraphMaNode>(GetFormat().Channels); }
 
 void AudioGraph::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
@@ -497,7 +518,7 @@ void AudioGraph::Apply(const ActionType &action) const {
 }
 
 ma_node_graph *AudioGraph::Get() { return &reinterpret_cast<GraphMaNode *>(Node.get())->_Graph; }
-DeviceDataFormat AudioGraph::GetFormat() const { return {int(ma_format_f32), 1, SampleRate}; }
+DeviceDataFormat AudioGraph::GetFormat() const { return {int(ma_format_f32), 2, SampleRate}; }
 
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
     for (const auto *device_node : GetInputDeviceNodes()) {
@@ -529,7 +550,7 @@ std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
     return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
 }
 
-void AudioGraph::OnFaustDspChanged(ID id, dsp *dsp) {
+void AudioGraph::OnFaustDspChanged(ID id, dsp *) {
     for (auto &node : FindAllByPathSegment(FaustNodeTypeId)) {
         auto *faust_node = reinterpret_cast<FaustNode *>(node.get());
         if (faust_node->Id == id) faust_node->SetDsp(id);
@@ -569,6 +590,8 @@ std::unordered_set<AudioGraphNode *> AudioGraph::GetDestinationNodes(const Audio
 }
 
 void AudioGraph::UpdateConnections() {
+    ChannelConverterNodes.clear();
+
     // Always connect the primary device to the graph endpoint, and connect secondary devices with at least one input node.
     // This is the only section in the method that modifies `Connections`.
     for (auto *output_device_node : GetOutputDeviceNodes()) {
@@ -611,20 +634,20 @@ void AudioGraph::UpdateConnections() {
     }
 
     // The graph does not keep itself in its `Nodes` list.
-    // This should be a `ranges::concat` instead of making a new vector, but I couldn't get it to work.
+    // xxx This should be a `ranges::concat` instead of making a new vector, but I couldn't get it to work.
     auto destination_nodes = Nodes.View() | std::views::transform([](const auto &node) { return node.get(); }) | ranges::to<std::vector>();
     destination_nodes.emplace_back(this);
 
     for (auto *source_node : Nodes) {
         if (!source_node->IsActive || source_node->OutputBusCount() == 0) continue;
 
-        u32 destination_count = Connections.DestinationCount(source_node->Id);
+        const u32 destination_count = Connections.DestinationCount(source_node->Id);
         if (destination_count == 0) continue; // Should never hit this, since this would imply the node is inactive.
 
         if (destination_count == 1) {
             for (auto *destination_node : destination_nodes) {
                 if (Connections.IsConnected(source_node->Id, destination_node->Id)) {
-                    ma_node_attach_output_bus(source_node->OutputNode(), 0, destination_node->InputNode(), 0);
+                    Connect(source_node->OutputNode(), 0, destination_node->InputNode(), 0);
                 }
             }
         } else {
@@ -635,10 +658,22 @@ void AudioGraph::UpdateConnections() {
             u32 splitter_bus = 0;
             for (auto *destination_node : destination_nodes) {
                 if (Connections.IsConnected(source_node->Id, destination_node->Id)) {
-                    ma_node_attach_output_bus(splitter, splitter_bus++, destination_node->InputNode(), 0);
+                    Connect(splitter, splitter_bus++, destination_node->InputNode(), 0);
                 }
             }
         }
+    }
+}
+
+void AudioGraph::Connect(ma_node *source, u32 source_output_bus, ma_node *destination, u32 destination_input_bus) {
+    const u32 out_channels = ma_node_get_output_channels(source, source_output_bus);
+    const u32 in_channels = ma_node_get_input_channels(destination, destination_input_bus);
+    if (out_channels != in_channels) {
+        ChannelConverterNodes.emplace_back(std::make_unique<ChannelConverterNode>(this, out_channels, in_channels));
+        ma_node_attach_output_bus(source, source_output_bus, ChannelConverterNodes.back()->Get(), 0);
+        ma_node_attach_output_bus(ChannelConverterNodes.back()->Get(), 0, destination, destination_input_bus);
+    } else {
+        ma_node_attach_output_bus(source, source_output_bus, destination, destination_input_bus);
     }
 }
 

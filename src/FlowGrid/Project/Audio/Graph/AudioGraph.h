@@ -90,6 +90,19 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
         void Render() const override;
     };
 
+    struct ChannelConverterNode {
+        ChannelConverterNode(AudioGraph *, u32 from_channels, u32 to_channels);
+        ~ChannelConverterNode();
+
+        ma_channel_converter_node *Get() const;
+
+        u32 ChannelCount(IO) const;
+
+    private:
+        AudioGraph *Graph;
+        std::unique_ptr<ma_channel_converter_node> Converter;
+    };
+
     Prop(Vector<AudioGraphNode>, Nodes, CreateAudioGraphNode);
     Prop_(Connections, Connections, "Audio connections");
 
@@ -110,6 +123,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     );
     Prop(Style, Style);
 
+
     mutable ID SelectedNodeId{0}; // `Used for programatically navigating to nodes in the graph view.
 
 private:
@@ -117,6 +131,7 @@ private:
     void RenderNodeCreateSelector() const;
 
     void UpdateConnections();
+    void Connect(ma_node* source, u32 source_output_bus, ma_node* destination, u32 destination_input_bus);
 
     AudioGraphNode *FindByPathSegment(string_view path_segment) const {
         auto node_it = std::find_if(Nodes.begin(), Nodes.end(), [path_segment](const auto *node) { return node->PathSegment == path_segment; });
@@ -136,5 +151,6 @@ private:
             std::views::transform([](const auto &node) { return reinterpret_cast<OutputDeviceNode *>(node.get()); });
     }
 
+    std::vector<std::unique_ptr<ChannelConverterNode>> ChannelConverterNodes;
     std::unordered_map<ID, dsp *> DspById;
 };

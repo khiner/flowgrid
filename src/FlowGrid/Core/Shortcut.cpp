@@ -12,7 +12,7 @@
 // Example: 'shift+cmd+s'
 // **Case-sensitive. `shortcut` must be lowercase.**
 static Shortcut::ImGuiFlagsAndKey Parse(string_view shortcut) {
-    const static std::unordered_map<string, ImGuiModFlags> ModKeys{
+    static const std::unordered_map<string, ImGuiModFlags> ModKeys{
         {"shift", ImGuiModFlags_Shift},
         {"ctrl", ImGuiModFlags_Ctrl},
         {"alt", ImGuiModFlags_Alt},

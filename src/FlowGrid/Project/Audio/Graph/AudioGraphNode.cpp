@@ -294,7 +294,7 @@ u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(G
 u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_node_get_output_bus_count(Get()); }
 
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Get(), bus); }
-u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Get(), bus); }
+u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return  ma_node_get_output_channels(Get(), bus); }
 
 void AudioGraphNode::DisconnectOutput() {
     ma_node_detach_all_output_buses(OutputNode());

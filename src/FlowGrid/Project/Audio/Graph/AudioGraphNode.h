@@ -11,6 +11,7 @@ using ma_node = void;
 struct AudioGraph;
 
 struct ma_node_graph;
+struct ma_channel_converter_node;
 struct ma_gainer_node;
 struct ma_monitor_node;
 
@@ -205,6 +206,9 @@ protected:
     Prop(Optional<GainerNode>, OutputGainer);
     Prop(Optional<MonitorNode>, InputMonitor);
     Prop(Optional<MonitorNode>, OutputMonitor);
+
+    // For now, the only channel conversion is done by the graph between connected nodes with different channel counts.
+    // Prop(Optional<ChannelConverterNode>, ChannelConverter);
 
     struct SplitterNode;
     std::unique_ptr<SplitterNode> Splitter;

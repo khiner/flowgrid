@@ -426,6 +426,7 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args), [
     // Set up default connections.
     // The device output -> graph endpoint node connection is handled in `UpdateConnections`.
     Connections.Connect(GetInputDeviceNodes().front()->Id, GetOutputDeviceNodes().front()->Id);
+    UpdateConnections();
 }
 
 AudioGraph::~AudioGraph() {

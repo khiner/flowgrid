@@ -38,6 +38,7 @@
 [submodule "lib/miniaudio"]
 	path = lib/miniaudio
 	url = git@github.com:mackron/miniaudio.git
+	branch = dev
 [submodule "lib/date"]
 	path = lib/date
 	url = git@github.com:HowardHinnant/date.git

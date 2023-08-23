@@ -55,7 +55,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     // or the highest-priority sample rate supported by any device node if none are natively supported by all device nodes.
     u32 GetDefaultSampleRate() const;
     std::string GetSampleRateName(u32) const;
-    DeviceDataFormat GetFormat(IO) const;
+    DeviceDataFormat GetDeviceClientFormat(IO) const;
 
     std::unordered_set<AudioGraphNode *> GetSourceNodes(const AudioGraphNode *) const;
     std::unordered_set<AudioGraphNode *> GetDestinationNodes(const AudioGraphNode *) const;
@@ -123,7 +123,6 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     );
     Prop(Style, Style);
 
-
     mutable ID SelectedNodeId{0}; // `Used for programatically navigating to nodes in the graph view.
 
 private:
@@ -131,7 +130,7 @@ private:
     void RenderNodeCreateSelector() const;
 
     void UpdateConnections();
-    void Connect(ma_node* source, u32 source_output_bus, ma_node* destination, u32 destination_input_bus);
+    void Connect(ma_node *source, u32 source_output_bus, ma_node *destination, u32 destination_input_bus);
 
     AudioGraphNode *FindByPathSegment(string_view path_segment) const {
         auto node_it = std::find_if(Nodes.begin(), Nodes.end(), [path_segment](const auto *node) { return node->PathSegment == path_segment; });

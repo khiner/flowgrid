@@ -55,7 +55,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDs
     // or the highest-priority sample rate supported by any device node if none are natively supported by all device nodes.
     u32 GetDefaultSampleRate() const;
     std::string GetSampleRateName(u32) const;
-    DeviceDataFormat GetFormat() const;
+    DeviceDataFormat GetFormat(IO) const;
 
     std::unordered_set<AudioGraphNode *> GetSourceNodes(const AudioGraphNode *) const;
     std::unordered_set<AudioGraphNode *> GetDestinationNodes(const AudioGraphNode *) const;

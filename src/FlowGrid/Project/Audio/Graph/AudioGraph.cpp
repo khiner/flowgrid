@@ -87,7 +87,7 @@ struct DeviceNode : AudioGraphNode {
 
     inline void UpdateDeviceConfig() {
         auto target_native_format = Format ? std::optional<DeviceDataFormat>(Format->ToDeviceDataFormat()) : std::nullopt;
-        GetDeviceMaNode()->UpdateDeviceConfig({Graph->GetFormat(), std::move(target_native_format), Name});
+        GetDeviceMaNode()->UpdateDeviceConfig({Graph->GetFormat(Device->Type), std::move(target_native_format), Name});
         UpdateFormat();
     }
 
@@ -98,7 +98,7 @@ struct DeviceNode : AudioGraphNode {
 
     void OnSampleRateChanged() override {
         AudioGraphNode::OnSampleRateChanged();
-        auto new_client_format = Graph->GetFormat();
+        auto new_client_format = Graph->GetFormat(Device->Type);
         if (Device->GetClientFormat() != new_client_format) {
             UpdateDeviceConfig();
         }
@@ -262,7 +262,7 @@ struct InputDeviceNode : DeviceNode {
     }
 
     std::unique_ptr<MaNode> CreateNode() const {
-        return std::make_unique<InputDeviceMaNode>(Graph->Get(), AudioInputCallback, AudioDevice::TargetConfig{Graph->GetFormat(), std::nullopt, ""}, this);
+        return std::make_unique<InputDeviceMaNode>(Graph->Get(), AudioInputCallback, AudioDevice::TargetConfig{Graph->GetFormat(IO_In), std::nullopt, ""}, this);
     }
 
     // Adapted from `ma_device__handle_duplex_callback_capture`.
@@ -355,7 +355,7 @@ struct OutputDeviceNode : DeviceNode {
     }
 
     std::unique_ptr<MaNode> CreateNode() const {
-        return std::make_unique<OutputDeviceMaNode>(Graph->Get(), All.empty(), AudioOutputCallback, AudioDevice::TargetConfig{Graph->GetFormat(), std::nullopt, ""}, this);
+        return std::make_unique<OutputDeviceMaNode>(Graph->Get(), All.empty(), AudioOutputCallback, AudioDevice::TargetConfig{Graph->GetFormat(IO_Out), std::nullopt, ""}, this);
     }
 
     // todo `SetPrimary(bool)`.
@@ -454,7 +454,7 @@ AudioGraph::~AudioGraph() {
     Nodes.Clear();
 }
 
-std::unique_ptr<MaNode> AudioGraph::CreateNode() const { return std::make_unique<GraphMaNode>(GetFormat().Channels); }
+std::unique_ptr<MaNode> AudioGraph::CreateNode() const { return std::make_unique<GraphMaNode>(GetFormat(IO_Out).Channels); }
 
 void AudioGraph::OnFieldChanged() {
     AudioGraphNode::OnFieldChanged();
@@ -518,7 +518,10 @@ void AudioGraph::Apply(const ActionType &action) const {
 }
 
 ma_node_graph *AudioGraph::Get() { return &reinterpret_cast<GraphMaNode *>(Node.get())->_Graph; }
-DeviceDataFormat AudioGraph::GetFormat() const { return {int(ma_format_f32), 2, SampleRate}; }
+
+// todo Really we want the graph channel counts to follow the device channel counts,
+//   but we currently need to initialize the graph before we know the device channel counts.
+DeviceDataFormat AudioGraph::GetFormat(IO io) const { return {int(ma_format_f32), io == IO_In ? 1u : 2u, SampleRate}; }
 
 bool AudioGraph::IsNativeSampleRate(u32 sample_rate) const {
     for (const auto *device_node : GetInputDeviceNodes()) {

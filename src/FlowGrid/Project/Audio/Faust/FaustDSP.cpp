@@ -1,21 +1,10 @@
-#include "FaustDSPs.h"
+#include "FaustDSP.h"
 
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
-#include "Helper/File.h"
-#include "Project/Audio/AudioIO.h"
-#include "Project/Audio/Graph/AudioGraphAction.h"
-#include "Project/FileDialog/FileDialog.h"
-
-#include "imgui.h"
-
-using enum NotificationType;
-
-static const std::string FaustDspFileExtension = ".dsp";
-
-FaustDSP::FaustDSP(ComponentArgs &&args)
-    : Component(std::move(args)), ParentContainer(static_cast<FaustDSPs *>(Parent->Parent)) {
+FaustDSP::FaustDSP(ComponentArgs &&args, const FaustDSPContainer &container)
+    : Component(std::move(args)), Container(container) {
     Code.RegisterChangeListener(this);
     if (Code) Init(true);
 }
@@ -99,63 +88,6 @@ void FaustDSP::Update() {
     Init(false);
 }
 
-void FaustDSP::NotifyBoxListeners(NotificationType type) const { ParentContainer->NotifyBoxListeners(type, *this); }
-void FaustDSP::NotifyDspListeners(NotificationType type) const { ParentContainer->NotifyDspListeners(type, *this); }
-void FaustDSP::NotifyListeners(NotificationType type) const { ParentContainer->NotifyListeners(type, *this); }
-
-static const std::string FaustDspPathSegment = "FaustDSP";
-
-FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector<FaustDSP>(std::move(args)) {
-    createLibContext();
-    WindowFlags |= ImGuiWindowFlags_MenuBar;
-    EmplaceBack_(FaustDspPathSegment);
-}
-
-FaustDSPs::~FaustDSPs() {
-    destroyLibContext();
-}
-
-void FaustDSPs::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Faust::DSP::Create &) { EmplaceBack(FaustDspPathSegment); },
-        [this](const Action::Faust::DSP::Delete &a) { EraseId(a.id); },
-    );
-}
-
-using namespace ImGui;
-
-void FaustDSP::Render() const {
-    if (BeginMenuBar()) {
-        if (BeginMenu("DSP")) {
-            if (MenuItem("Delete")) Action::Faust::DSP::Delete{Id}.q();
-            if (MenuItem("Create audio node")) Action::AudioGraph::CreateFaustNode{Id}.q();
-            EndMenu();
-        }
-        EndMenuBar();
-    }
-    Code.Draw();
-}
-
-void FaustDSPs::Render() const {
-    if (BeginMenuBar()) {
-        if (BeginMenu("Create")) {
-            if (MenuItem("Create Faust DSP")) Action::Faust::DSP::Create().q();
-            EndMenu();
-        }
-        EndMenuBar();
-    }
-
-    if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
-    if (Size() == 1) return (*this)[0]->Draw();
-
-    if (BeginTabBar("")) {
-        for (const auto *faust_dsp : *this) {
-            if (BeginTabItem(std::format("{}", faust_dsp->Id).c_str())) {
-                faust_dsp->Draw();
-                EndTabItem();
-            }
-        }
-        EndTabBar();
-    }
-}
+void FaustDSP::NotifyBoxListeners(NotificationType type) const { Container.NotifyBoxListeners(type, *this); }
+void FaustDSP::NotifyDspListeners(NotificationType type) const { Container.NotifyDspListeners(type, *this); }
+void FaustDSP::NotifyListeners(NotificationType type) const { Container.NotifyListeners(type, *this); }

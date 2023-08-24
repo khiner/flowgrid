@@ -43,3 +43,15 @@ struct FaustChangeListener {
     virtual void OnFaustAdded(ID, const FaustDSP &) = 0;
     virtual void OnFaustRemoved(ID) = 0;
 };
+
+enum NotificationType {
+    Changed,
+    Added,
+    Removed
+};
+
+struct FaustDSPContainer {
+    virtual void NotifyListeners(NotificationType, const FaustDSP &) const = 0;
+    virtual void NotifyBoxListeners(NotificationType, const FaustDSP &) const = 0;
+    virtual void NotifyDspListeners(NotificationType, const FaustDSP &) const = 0;
+};

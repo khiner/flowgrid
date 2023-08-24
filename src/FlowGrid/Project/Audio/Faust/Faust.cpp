@@ -5,6 +5,7 @@
 #include "FaustListener.h"
 #include "Helper/File.h"
 #include "Project/Audio/AudioIO.h"
+#include "Project/Audio/Graph/AudioGraphAction.h"
 #include "Project/FileDialog/FileDialog.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
@@ -54,27 +55,6 @@ bool Faust::CanApply(const ActionType &action) const {
     );
 }
 
-using namespace ImGui;
-
-ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
-    ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingStretchProp;
-    if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
-    if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
-    if (flags & TableFlags_Hideable) imgui_flags |= ImGuiTableFlags_Hideable;
-    if (flags & TableFlags_Sortable) imgui_flags |= ImGuiTableFlags_Sortable;
-    if (flags & TableFlags_ContextMenuInBody) imgui_flags |= ImGuiTableFlags_ContextMenuInBody;
-    if (flags & TableFlags_BordersInnerH) imgui_flags |= ImGuiTableFlags_BordersInnerH;
-    if (flags & TableFlags_BordersOuterH) imgui_flags |= ImGuiTableFlags_BordersOuterH;
-    if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
-    if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
-    if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
-    if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
-    if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
-    if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
-
-    return imgui_flags;
-}
-
 void Faust::Render() const {
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != file_dialog.SelectedFilePath) {
@@ -121,22 +101,6 @@ void FaustParamsUIs::OnFaustDspAdded(ID dsp_id, dsp *dsp) {
 }
 void FaustParamsUIs::OnFaustDspRemoved(ID dsp_id) {
     if (auto *ui = FindUi(dsp_id)) EraseId_(ui->Id);
-}
-
-void FaustParamsUIs::Render() const {
-    // todo don't show empty menu bar in this case
-    if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
-    if (Size() == 1) return (*this)[0]->Draw();
-
-    if (BeginTabBar("")) {
-        for (const auto *ui : *this) {
-            if (BeginTabItem(std::format("{}", ID(ui->DspId)).c_str())) {
-                ui->Draw();
-                EndTabItem();
-            }
-        }
-        EndTabBar();
-    }
 }
 
 static std::unordered_set<FaustGraphs *> AllInstances{};
@@ -227,6 +191,85 @@ void FaustLogs::OnFaustRemoved(ID id) {
     ErrorMessageByFaustDspId.erase(id);
 }
 
+std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
+    for (const auto *instance : AllInstances) {
+        if (auto box_info = instance->GetBoxInfo(imgui_id)) return box_info;
+    }
+    return {};
+}
+
+std::unique_ptr<FaustGraph> FaustGraphs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
+    auto *graphs = static_cast<FaustGraphs *>(parent);
+    return std::make_unique<FaustGraph>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, graphs->Style, graphs->Settings);
+}
+
+#include "Project/Audio/Sample.h" // Must be included before any Faust includes.
+// `llvm-dsp` included here for `create/destroyLibContext`.
+// TODO Only include this in `FaustDSP.cpp`. (Reference count DSP instances like we do for graphs?)
+#include "faust/dsp/llvm-dsp.h"
+
+static const std::string FaustDspPathSegment = "FaustDSP";
+
+FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector<FaustDSP>(std::move(args), CreateChild) {
+    createLibContext();
+    WindowFlags |= ImGuiWindowFlags_MenuBar;
+    EmplaceBack_(FaustDspPathSegment);
+}
+
+FaustDSPs::~FaustDSPs() {
+    destroyLibContext();
+}
+
+std::unique_ptr<FaustDSP> FaustDSPs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
+    const auto *dsps = static_cast<const FaustDSPs *>(parent);
+    return std::make_unique<FaustDSP>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, *dsps);
+}
+
+void FaustDSPs::Apply(const ActionType &action) const {
+    Visit(
+        action,
+        [this](const Action::Faust::DSP::Create &) { EmplaceBack(FaustDspPathSegment); },
+        [this](const Action::Faust::DSP::Delete &a) { EraseId(a.id); },
+    );
+}
+
+using namespace ImGui;
+
+ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
+    ImGuiTableFlags imgui_flags = ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingStretchProp;
+    if (flags & TableFlags_Resizable) imgui_flags |= ImGuiTableFlags_Resizable;
+    if (flags & TableFlags_Reorderable) imgui_flags |= ImGuiTableFlags_Reorderable;
+    if (flags & TableFlags_Hideable) imgui_flags |= ImGuiTableFlags_Hideable;
+    if (flags & TableFlags_Sortable) imgui_flags |= ImGuiTableFlags_Sortable;
+    if (flags & TableFlags_ContextMenuInBody) imgui_flags |= ImGuiTableFlags_ContextMenuInBody;
+    if (flags & TableFlags_BordersInnerH) imgui_flags |= ImGuiTableFlags_BordersInnerH;
+    if (flags & TableFlags_BordersOuterH) imgui_flags |= ImGuiTableFlags_BordersOuterH;
+    if (flags & TableFlags_BordersInnerV) imgui_flags |= ImGuiTableFlags_BordersInnerV;
+    if (flags & TableFlags_BordersOuterV) imgui_flags |= ImGuiTableFlags_BordersOuterV;
+    if (flags & TableFlags_NoBordersInBody) imgui_flags |= ImGuiTableFlags_NoBordersInBody;
+    if (flags & TableFlags_PadOuterX) imgui_flags |= ImGuiTableFlags_PadOuterX;
+    if (flags & TableFlags_NoPadOuterX) imgui_flags |= ImGuiTableFlags_NoPadOuterX;
+    if (flags & TableFlags_NoPadInnerX) imgui_flags |= ImGuiTableFlags_NoPadInnerX;
+
+    return imgui_flags;
+}
+
+void FaustParamsUIs::Render() const {
+    // todo don't show empty menu bar in this case
+    if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
+    if (Size() == 1) return (*this)[0]->Draw();
+
+    if (BeginTabBar("")) {
+        for (const auto *ui : *this) {
+            if (BeginTabItem(std::format("{}", ID(ui->DspId)).c_str())) {
+                ui->Draw();
+                EndTabItem();
+            }
+        }
+        EndTabBar();
+    }
+}
+
 void FaustLogs::RenderErrorMessage(string_view error_message) const {
     if (!error_message.empty()) {
         PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
@@ -279,14 +322,37 @@ void FaustGraphs::Render() const {
     }
 }
 
-std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
-    for (const auto *instance : AllInstances) {
-        if (auto box_info = instance->GetBoxInfo(imgui_id)) return box_info;
+void FaustDSP::Render() const {
+    if (BeginMenuBar()) {
+        if (BeginMenu("DSP")) {
+            if (MenuItem("Delete")) Action::Faust::DSP::Delete{Id}.q();
+            if (MenuItem("Create audio node")) Action::AudioGraph::CreateFaustNode{Id}.q();
+            EndMenu();
+        }
+        EndMenuBar();
     }
-    return {};
+    Code.Draw();
 }
 
-std::unique_ptr<FaustGraph> FaustGraphs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    auto *graphs = static_cast<FaustGraphs *>(parent);
-    return std::make_unique<FaustGraph>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, graphs->Style, graphs->Settings);
+void FaustDSPs::Render() const {
+    if (BeginMenuBar()) {
+        if (BeginMenu("Create")) {
+            if (MenuItem("Create Faust DSP")) Action::Faust::DSP::Create().q();
+            EndMenu();
+        }
+        EndMenuBar();
+    }
+
+    if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
+    if (Size() == 1) return (*this)[0]->Draw();
+
+    if (BeginTabBar("")) {
+        for (const auto *faust_dsp : *this) {
+            if (BeginTabItem(std::format("{}", faust_dsp->Id).c_str())) {
+                faust_dsp->Draw();
+                EndTabItem();
+            }
+        }
+        EndTabBar();
+    }
 }

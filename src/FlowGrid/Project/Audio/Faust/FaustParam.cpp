@@ -1,7 +1,7 @@
 #include "FaustParam.h"
 
 #include "Core/Store/Store.h"
-#include "FaustParamsUIStyle.h"
+#include "FaustParamsStyle.h"
 #include "UI/Widgets.h"
 
 #include <range/v3/numeric/accumulate.hpp>
@@ -14,7 +14,7 @@ using namespace fg;
 using enum FaustParamType;
 using std::min, std::max;
 
-FaustParam::FaustParam(ComponentArgs &&args, const FaustParamsUIStyle &style, const FaustParamType type, std::string_view label, Real *zone, Real min, Real max, Real init, Real step, const char *tooltip, NamesAndValues names_and_values)
+FaustParam::FaustParam(ComponentArgs &&args, const FaustParamsStyle &style, const FaustParamType type, std::string_view label, Real *zone, Real min, Real max, Real init, Real step, const char *tooltip, NamesAndValues names_and_values)
     : FaustParamBase(style, type, label), Float(std::move(args), *zone), Zone(zone), Min(min), Max(max), Init(init), Step(step), Tooltip(tooltip), names_and_values(std::move(names_and_values)) {}
 
 // todo config to place labels above horizontal params

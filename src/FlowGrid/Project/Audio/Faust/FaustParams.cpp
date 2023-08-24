@@ -1,26 +1,26 @@
+#include "FaustParams.h"
 #include "FaustParamsUI.h"
-#include "FaustParamsUIImpl.h"
 
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
 #include <imgui.h>
 
-FaustParamsUI::FaustParamsUI(ComponentArgs &&args, const FaustParamsUIStyle &style)
+FaustParams::FaustParams(ComponentArgs &&args, const FaustParamsStyle &style)
     : Component(std::move(args)), Style(style) {}
 
-FaustParamsUI::~FaustParamsUI() {}
+FaustParams::~FaustParams() {}
 
-void FaustParamsUI::SetDsp(dsp *dsp) {
+void FaustParams::SetDsp(dsp *dsp) {
     if (!dsp) Impl.reset();
     Dsp = dsp;
     if (Dsp) {
-        Impl = std::make_unique<FaustParamsUIImpl>(*this);
+        Impl = std::make_unique<FaustParamsUI>(*this);
         Dsp->buildUserInterface(Impl.get());
     }
 }
 
-void FaustParamsUI::Render() const {
+void FaustParams::Render() const {
     if (!Impl) return;
 
     RootGroup.Render(ImGui::GetContentRegionAvail().y, true);

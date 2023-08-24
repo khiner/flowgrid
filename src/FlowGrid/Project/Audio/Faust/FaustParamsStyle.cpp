@@ -1,10 +1,10 @@
-#include "FaustParamsUIStyle.h"
+#include "FaustParamsStyle.h"
 
 #include "imgui.h"
 
 using namespace ImGui;
 
-void FaustParamsUIStyle::Render() const {
+void FaustParamsStyle::Render() const {
     HeaderTitles.Draw();
     MinHorizontalItemWidth.Draw();
     MaxHorizontalItemWidth.Draw();

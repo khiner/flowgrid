@@ -5,10 +5,10 @@
 #include <string>
 #include <string_view>
 
-struct FaustParamsUIStyle;
+struct FaustParamsStyle;
 
 struct FaustParamBase {
-    FaustParamBase(const FaustParamsUIStyle &style, const FaustParamType type = Type_None, std::string_view label = "")
+    FaustParamBase(const FaustParamsStyle &style, const FaustParamType type = Type_None, std::string_view label = "")
         : Style(style), Type(type), ParamId(label), Label(label == "0x00" ? "" : label) {}
     virtual ~FaustParamBase() = default;
 
@@ -34,7 +34,7 @@ struct FaustParamBase {
         return Type == Type_NumEntry || Type == Type_HSlider || Type == Type_HBargraph || Type == Type_HRadioButtons || Type == Type_Menu || Type == Type_CheckButton;
     }
 
-    const FaustParamsUIStyle &Style;
+    const FaustParamsStyle &Style;
     const FaustParamType Type;
     const std::string ParamId, Label; // `id` will be the same as `label` unless it's the special empty group label of '0x00', in which case `label` will be empty.
 

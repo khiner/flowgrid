@@ -24,7 +24,7 @@ void Faust::Apply(const ActionType &action) const {
                 [](const Action::Faust::File::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
                 [](const Action::Faust::File::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
                 [this](const Action::Faust::File::Open &a) {
-                    if (!FaustDsps.Empty())  FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
+                    if (!FaustDsps.Empty()) FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
                 },
                 [this](const Action::Faust::File::Save &a) {
                     if (!FaustDsps.Empty()) FileIO::write(a.file_path, FaustDsps.front()->Code);
@@ -57,14 +57,14 @@ void Faust::Render() const {
     }
 }
 
-FaustParamsUIs::FaustParamsUIs(ComponentArgs &&args, const FaustParamsUIStyle &style) : Vector(std::move(args), CreateChild), Style(style) {}
+FaustParamss::FaustParamss(ComponentArgs &&args, const FaustParamsStyle &style) : Vector(std::move(args), CreateChild), Style(style) {}
 
-std::unique_ptr<FaustParamsUI> FaustParamsUIs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    auto *uis = static_cast<FaustParamsUIs *>(parent);
-    return std::make_unique<FaustParamsUI>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, uis->Style);
+std::unique_ptr<FaustParams> FaustParamss::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
+    auto *uis = static_cast<FaustParamss *>(parent);
+    return std::make_unique<FaustParams>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, uis->Style);
 }
 
-FaustParamsUI *FaustParamsUIs::FindUi(ID dsp_id) const {
+FaustParams *FaustParamss::FindUi(ID dsp_id) const {
     for (auto *ui : *this) {
         if (ui->DspId == dsp_id) return ui;
     }
@@ -242,19 +242,19 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
     Box box = faust_dsp.Box;
 
     if (type == Changed) {
-        if (auto *ui = ParamsUis.FindUi(id)) ui->SetDsp(dsp);
+        if (auto *ui = Paramss.FindUi(id)) ui->SetDsp(dsp);
         if (auto *graph = Graphs.FindGraph(id)) graph->SetBox(box);
         Logs.ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
         for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(id, dsp);
     } else if (type == Added) {
         // Params
         static const string ParamsPrefixSegment = "Params";
-        ParamsUis.Refresh(); // todo Seems to be needed, but shouldn't be.
-        auto params_it = std::find_if(ParamsUis.begin(), ParamsUis.end(), [id](auto *ui) { return ui->DspId == id; });
-        if (params_it != ParamsUis.end()) {
+        Paramss.Refresh(); // todo Seems to be needed, but shouldn't be.
+        auto params_it = std::find_if(Paramss.begin(), Paramss.end(), [id](auto *ui) { return ui->DspId == id; });
+        if (params_it != Paramss.end()) {
             (*params_it)->SetDsp(dsp);
         } else {
-            ParamsUis.EmplaceBack_(ParamsPrefixSegment, [id, dsp](auto *child) {
+            Paramss.EmplaceBack_(ParamsPrefixSegment, [id, dsp](auto *child) {
                 child->DspId.Set_(id);
                 child->SetDsp(dsp);
             });
@@ -279,7 +279,7 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         // External listeners
         for (auto *listener : DspChangeListeners) listener->OnFaustDspAdded(id, faust_dsp.Dsp);
     } else if (type == Removed) {
-        if (auto *ui = ParamsUis.FindUi(id)) ParamsUis.EraseId_(ui->Id);
+        if (auto *ui = Paramss.FindUi(id)) Paramss.EraseId_(ui->Id);
         if (auto *graph = Graphs.FindGraph(id)) Graphs.EraseId_(graph->Id);
         Logs.ErrorMessageByFaustDspId.erase(id);
         for (auto *listener : DspChangeListeners) listener->OnFaustDspRemoved(id);
@@ -320,7 +320,7 @@ ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
     return imgui_flags;
 }
 
-void FaustParamsUIs::Render() const {
+void FaustParamss::Render() const {
     // todo don't show empty menu bar in this case
     if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
     if (Size() == 1) return (*this)[0]->Draw();

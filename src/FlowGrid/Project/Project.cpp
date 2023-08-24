@@ -90,7 +90,7 @@ Project::Project(Store &store) : Component(store, Context) {
         Audio.Faust.FaustDsps,
         Audio.Faust.Logs,
         Audio.Faust.Graphs,
-        Audio.Faust.ParamsUis,
+        Audio.Faust.Paramss,
         Debug,
         Debug.ProjectPreview,
         Debug.StorePathUpdateFrequency,
@@ -201,7 +201,7 @@ void Project::Render() const {
 
         Audio.Faust.FaustDsps.Dock(dockspace_id);
         Audio.Faust.Graphs.Dock(faust_graph_node_id);
-        Audio.Faust.ParamsUis.Dock(faust_tools_node_id);
+        Audio.Faust.Paramss.Dock(faust_tools_node_id);
         Audio.Faust.Logs.Dock(faust_tools_node_id);
 
         Debug.Dock(debug_node_id);
@@ -231,7 +231,7 @@ void Project::Render() const {
         Context.Style.Focus();
         Audio.Graph.Focus();
         Audio.Faust.Graphs.Focus();
-        Audio.Faust.ParamsUis.Focus();
+        Audio.Faust.Paramss.Focus();
         Debug.Focus(); // not visible by default anymore
     }
 
@@ -388,7 +388,7 @@ void Project::WindowMenuItem() const {
         if (BeginMenu("Faust")) {
             item(Audio.Faust.FaustDsps);
             item(Audio.Faust.Graphs);
-            item(Audio.Faust.ParamsUis);
+            item(Audio.Faust.Paramss);
             item(Audio.Faust.Logs);
             EndMenu();
         }

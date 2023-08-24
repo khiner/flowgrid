@@ -2,12 +2,12 @@
 
 #include "Project/Audio/Sample.h"
 
-#include "FaustParamBase.h"
 #include "Core/Primitive/Float.h"
+#include "FaustParamBase.h"
 #include "UI/NamesAndValues.h"
 
 struct FaustParam : FaustParamBase, Float {
-    FaustParam(ComponentArgs &&, const FaustParamsUIStyle &style, const FaustParamType type = Type_None, std::string_view label = "", Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, NamesAndValues names_and_values = {});
+    FaustParam(ComponentArgs &&, const FaustParamsStyle &style, const FaustParamType type = Type_None, std::string_view label = "", Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, NamesAndValues names_and_values = {});
 
     void Render(const float suggested_height, bool no_label = false) const override;
 

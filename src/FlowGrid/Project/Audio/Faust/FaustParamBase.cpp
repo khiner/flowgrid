@@ -1,6 +1,6 @@
 #include "FaustParamBase.h"
 
-#include "FaustParamsUIStyle.h"
+#include "FaustParamsStyle.h"
 
 #include <range/v3/numeric/accumulate.hpp>
 

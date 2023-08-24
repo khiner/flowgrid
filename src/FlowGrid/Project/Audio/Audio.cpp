@@ -40,11 +40,11 @@ void Audio::Style::Render() const {
             EndTabItem();
         }
         if (BeginTabItem("Faust graph", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.Graphs.Style.Draw();
+            audio.Faust.GraphStyle.Draw();
             EndTabItem();
         }
         if (BeginTabItem("Faust params", nullptr, ImGuiTabItemFlags_NoPushId)) {
-            audio.Faust.ParamsUis.Style.Draw();
+            audio.Faust.ParamsStyle.Draw();
             EndTabItem();
         }
         EndTabBar();

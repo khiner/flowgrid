@@ -8,11 +8,11 @@
 #include "FaustParamsUIStyle.h"
 
 #include "Core/Action/Actionable.h"
-#include "Core/Container/Vector.h"
 #include "Core/Container/TextBuffer.h"
+#include "Core/Container/Vector.h"
 
 struct FaustParamsUIs : Vector<FaustParamsUI>, FaustDspChangeListener {
-    FaustParamsUIs(ComponentArgs &&);
+    FaustParamsUIs(ComponentArgs &&, const FaustParamsUIStyle &);
 
     static std::unique_ptr<FaustParamsUI> CreateChild(Component *, string_view path_prefix_segment, string_view path_segment);
 
@@ -22,14 +22,14 @@ struct FaustParamsUIs : Vector<FaustParamsUI>, FaustDspChangeListener {
 
     FaustParamsUI *FindUi(ID dsp_id) const;
 
-    Prop(FaustParamsUIStyle, Style);
+    const FaustParamsUIStyle &Style;
 
 protected:
     void Render() const override;
 };
 
 struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Field::ChangeListener, FaustBoxChangeListener {
-    FaustGraphs(ComponentArgs &&);
+    FaustGraphs(ComponentArgs &&, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
 
     static std::unique_ptr<FaustGraph> CreateChild(Component *, string_view path_prefix_segment, string_view path_segment);
@@ -57,8 +57,8 @@ struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, 
 
     void UpdateNodeImGuiIds() const;
 
-    Prop(FaustGraphSettings, Settings);
-    Prop(FaustGraphStyle, Style);
+    const FaustGraphStyle &Style;
+    const FaustGraphSettings &Settings;
 
 private:
     void Render() const override;
@@ -200,8 +200,12 @@ struct Faust : Component, Actionable<Action::Faust::Any> {
 
     Prop(FaustDSPs, FaustDsps);
 
-    Prop_(FaustGraphs, Graphs, "Faust graphs");
-    Prop_(FaustParamsUIs, ParamsUis, "Faust params");
+    Prop(FaustGraphStyle, GraphStyle);
+    Prop(FaustGraphSettings, GraphSettings);
+    Prop(FaustParamsUIStyle, ParamsStyle);
+
+    Prop_(FaustGraphs, Graphs, "Faust graphs", GraphStyle, GraphSettings);
+    Prop_(FaustParamsUIs, ParamsUis, "Faust params", ParamsStyle);
     Prop_(FaustLogs, Logs, "Faust logs");
 
 protected:

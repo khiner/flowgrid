@@ -26,7 +26,7 @@ struct MenuItemDrawable {
 };
 
 struct Menu {
-    using Item = std::variant<Menu, std::reference_wrapper<MenuItemDrawable>, std::function<void()>>;
+    using Item = std::variant<Menu, std::reference_wrapper<const MenuItemDrawable>, std::function<void()>>;
 
     Menu(string_view label, std::vector<const Item> &&items);
     explicit Menu(std::vector<const Item> &&items);

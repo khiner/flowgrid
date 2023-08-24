@@ -68,7 +68,7 @@ void Faust::Render() const {
     }
 }
 
-FaustParamsUIs::FaustParamsUIs(ComponentArgs &&args) : Vector(std::move(args), CreateChild) {}
+FaustParamsUIs::FaustParamsUIs(ComponentArgs &&args, const FaustParamsUIStyle &style) : Vector(std::move(args), CreateChild), Style(style) {}
 
 std::unique_ptr<FaustParamsUI> FaustParamsUIs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
     auto *uis = static_cast<FaustParamsUIs *>(parent);
@@ -105,15 +105,15 @@ void FaustParamsUIs::OnFaustDspRemoved(ID dsp_id) {
 
 static std::unordered_set<FaustGraphs *> AllInstances{};
 
-FaustGraphs::FaustGraphs(ComponentArgs &&args)
+FaustGraphs::FaustGraphs(ComponentArgs &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)
     : Vector(
           std::move(args),
           Menu({
               Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
-              Menu("View", {Settings.HoverFlags}),
+              Menu("View", {settings.HoverFlags}),
           }),
           CreateChild
-      ) {
+      ), Style(style), Settings(settings) {
     Style.FoldComplexity.RegisterChangeListener(this);
 
     AllInstances.insert(this);
@@ -297,7 +297,7 @@ void FaustDSP::NotifyListeners(NotificationType type) const { Container.NotifyLi
 
 static const std::string FaustDspPathSegment = "FaustDSP";
 
-FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector<FaustDSP>(std::move(args), CreateChild) {
+FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector(std::move(args), CreateChild) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);

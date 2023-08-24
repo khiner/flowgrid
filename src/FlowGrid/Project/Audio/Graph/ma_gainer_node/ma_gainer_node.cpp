@@ -11,6 +11,12 @@ ma_gainer_node_config ma_gainer_node_config_init(ma_uint32 channels, float gain,
     return config;
 }
 
+ma_result ma_gainer_node_set_gain(ma_gainer_node *gainer_node, float gain) {
+    if (gainer_node == nullptr) return MA_INVALID_ARGS;
+
+    return ma_gainer_set_gain(&gainer_node->gainer, gain);
+}
+
 static void ma_gainer_node_process_pcm_frames(ma_node *node, const float **frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
     ma_gainer_node *gainer_node = (ma_gainer_node *)node;
     ma_gainer_process_pcm_frames(&gainer_node->gainer, frames_out[0], frames_in[0], *frame_count_out);
@@ -43,10 +49,4 @@ void ma_gainer_node_uninit(ma_gainer_node *gainer_node, const ma_allocation_call
 
     ma_gainer_uninit(&gainer_node->gainer, allocation_callbacks);
     ma_node_uninit(gainer_node, allocation_callbacks);
-}
-
-ma_result ma_gainer_node_set_gain(ma_gainer_node *gainer_node, float gain) {
-    if (gainer_node == nullptr) return MA_INVALID_ARGS;
-
-    return ma_gainer_set_gain(&gainer_node->gainer, gain);
 }

@@ -628,9 +628,15 @@ void AudioGraph::UpdateConnections() {
             if (auto *out_gainer = node->GetGainerNode(IO_Out)) {
                 ma_node_attach_output_bus(node->Get(), 0, out_gainer->Get(), 0);
             }
+            if (auto *panner = node->GetPannerNode()) {
+                // Apply panning after gain.
+                if (auto *out_gainer = node->GetGainerNode(IO_Out)) ma_node_attach_output_bus(out_gainer->Get(), 0, panner->Get(), 0);
+                else ma_node_attach_output_bus(node->Get(), 0, panner->Get(), 0);
+            }
             if (auto *out_monitor = node->GetMonitorNode(IO_Out)) {
-                // Monitor after applying gain.
-                if (auto *out_gainer = node->GetGainerNode(IO_Out)) ma_node_attach_output_bus(out_gainer->Get(), 0, out_monitor->Get(), 0);
+                // Monitor after applying gain and panning.
+                if (auto *panner = node->GetPannerNode()) ma_node_attach_output_bus(panner->Get(), 0, out_monitor->Get(), 0);
+                else if (auto *out_gainer = node->GetGainerNode(IO_Out)) ma_node_attach_output_bus(out_gainer->Get(), 0, out_monitor->Get(), 0);
                 else ma_node_attach_output_bus(node->Get(), 0, out_monitor->Get(), 0);
             }
         }

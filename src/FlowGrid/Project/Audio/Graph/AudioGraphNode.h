@@ -13,6 +13,7 @@ struct AudioGraph;
 struct ma_node_graph;
 struct ma_channel_converter_node;
 struct ma_gainer_node;
+struct ma_panner_node;
 struct ma_monitor_node;
 
 using WindowFunctionType = void (*)(float *, unsigned);
@@ -39,7 +40,6 @@ enum WindowType_ {
     // WindowType_Taylor,
     // WindowType_Kaiser,
 };
-
 using WindowType = int;
 
 struct MaNode {
@@ -126,15 +126,15 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         Prop_(Bool, Muted, "?This does not affect CPU load.", false);
         Prop(Float, Level, 1.0);
         Prop(Bool, Smooth, true);
-        float SmoothTimeMs = 25;
-        // Prop(Float, SmoothTimeMs, 15, 0, 50);
+
+        const float SmoothTimeMs = 25;
 
     private:
         void Render() const override;
 
         void UpdateLevel();
 
-        // When `Smooth` is toggled, we need to reset the `Gainer` node, since MA doesn't support dynamically changing smooth time.
+        // When `Smooth` is toggled, we need to reset the gainer node, since MA doesn't support dynamically changing smooth time.
         // We may be able to get around this by using `ma_gainer_set_master_volume` instead of `set_gain` when smoothing is disabled.
         // But even then, we would need to re-init when changing the smooth time via sample rate changes.
         void Init();
@@ -143,6 +143,41 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         AudioGraphNode *ParentNode;
         std::unique_ptr<ma_gainer_node> Gainer;
         u32 SampleRate;
+    };
+
+    struct PannerNode : Component, Field::ChangeListener {
+        PannerNode(ComponentArgs &&);
+        ~PannerNode();
+
+        void OnFieldChanged() override;
+
+        ma_panner_node *Get();
+
+        void SetPan(float);
+
+        enum PanMode_ {
+            PanMode_Balance = 0,
+            PanMode_Pan,
+        };
+        using PanMode = int;
+
+        Prop(Float, Pan, 0.0, -1.0, 1.0);
+        Prop_(
+            Enum, Mode,
+            "?Balance mode: Does not blend one side with the other. Technically just a balance.\n"
+            "Pan mode: The sound from one side will \"move\" to the other side and blend with it.",
+            {"Balance", "Pan"},
+            PanMode_Balance,
+        );
+
+    private:
+        void Render() const override;
+
+        void UpdatePan();
+        void UpdateMode();
+
+        AudioGraphNode *ParentNode;
+        std::unique_ptr<ma_panner_node> Panner;
     };
 
     struct MonitorNode : Component, Field::ChangeListener {
@@ -192,9 +227,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
     // Updated in `AudioGraph::UpdateConnections()`.
     bool IsActive{false};
 
-    const Optional<GainerNode> &GetGainer(IO) const;
-    const Optional<MonitorNode> &GetMonitor(IO) const;
+    const Optional<GainerNode> &GetGainer(IO) const { return IO_In ? InputGainer : OutputGainer; }
+    const Optional<PannerNode> &GetPanner() const { return Panner; }
+    const Optional<MonitorNode> &GetMonitor(IO) const { return IO_In ? InputMonitor : OutputMonitor; }
     GainerNode *GetGainerNode(IO) const;
+    PannerNode *GetPannerNode() const;
     MonitorNode *GetMonitorNode(IO) const;
 
 protected:
@@ -206,9 +243,7 @@ protected:
     Prop(Optional<GainerNode>, OutputGainer);
     Prop(Optional<MonitorNode>, InputMonitor);
     Prop(Optional<MonitorNode>, OutputMonitor);
-
-    // For now, the only channel conversion is done by the graph between connected nodes with different channel counts.
-    // Prop(Optional<ChannelConverterNode>, ChannelConverter);
+    Prop(Optional<PannerNode>, Panner);
 
     struct SplitterNode;
     std::unique_ptr<SplitterNode> Splitter;

@@ -36,7 +36,10 @@ ma_result ma_channel_converter_node_init(ma_node_graph *graph, const ma_channel_
     base_config.pOutputChannels = output_channels;
 
     result = ma_node_init(graph, &base_config, allocation_callbacks, converter_node);
-    if (result != MA_SUCCESS) return result;
+    if (result != MA_SUCCESS) {
+        ma_channel_converter_uninit(&converter_node->converter, allocation_callbacks);
+        return result;
+    }
 
     return MA_SUCCESS;
 }

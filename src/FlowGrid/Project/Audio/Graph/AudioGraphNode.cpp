@@ -11,6 +11,7 @@
 #include "ma_monitor_node/fft_data.h"
 #include "ma_monitor_node/ma_monitor_node.h"
 #include "ma_monitor_node/window_functions.h"
+#include "ma_panner_node/ma_panner_node.h"
 
 using namespace ImGui;
 
@@ -71,7 +72,40 @@ void AudioGraphNode::GainerNode::Render() const {
     Muted.Draw();
     Level.Draw();
     Smooth.Draw();
-    // SmoothTimeMs.Draw();
+}
+
+AudioGraphNode::PannerNode::PannerNode(ComponentArgs &&args)
+    : Component(std::move(args)), ParentNode(static_cast<AudioGraphNode *>(Parent->Parent)) {
+    Pan.RegisterChangeListener(this);
+    Mode.RegisterChangeListener(this);
+
+    Panner = std::make_unique<ma_panner_node>();
+
+    auto config = ma_panner_node_config_init(ParentNode->OutputChannelCount(0));
+    ma_result result = ma_panner_node_init(ParentNode->Graph->Get(), &config, nullptr, Get());
+    if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize panner node: {}", int(result))); }
+    UpdatePan();
+    UpdateMode();
+}
+
+AudioGraphNode::PannerNode::~PannerNode() {
+    ma_panner_node_uninit(Get(), nullptr);
+    Field::UnregisterChangeListener(this);
+}
+
+void AudioGraphNode::PannerNode::OnFieldChanged() {
+    if (Pan.IsChanged()) UpdatePan();
+    if (Mode.IsChanged()) UpdateMode();
+}
+
+ma_panner_node *AudioGraphNode::PannerNode::Get() { return Panner.get(); }
+
+void AudioGraphNode::PannerNode::UpdatePan() { ma_panner_node_set_pan(Get(), float(Pan)); }
+void AudioGraphNode::PannerNode::UpdateMode() { ma_panner_node_set_mode(Get(), ma_pan_mode(int(Mode))); }
+
+void AudioGraphNode::PannerNode::Render() const {
+    Pan.Draw();
+    Mode.Draw();
 }
 
 static WindowFunctionType GetWindowFunction(WindowType type) {
@@ -104,6 +138,7 @@ AudioGraphNode::MonitorNode::MonitorNode(ComponentArgs &&args)
 
 AudioGraphNode::MonitorNode::~MonitorNode() {
     Uninit();
+    Field::UnregisterChangeListener(this);
 }
 
 void AudioGraphNode::MonitorNode::Init() {
@@ -230,7 +265,7 @@ private:
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args, CreateNodeFunction create_node)
     : Component(std::move(args)), Graph(static_cast<AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)), Node(create_node()) {
-    Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, InputMonitor, OutputMonitor};
+    Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, Panner, InputMonitor, OutputMonitor};
     for (const Field &field : listened_fields) field.RegisterChangeListener(this);
 }
 
@@ -240,6 +275,7 @@ AudioGraphNode::~AudioGraphNode() {
     InputGainer.Reset();
     InputMonitor.Reset();
     OutputGainer.Reset();
+    Panner.Reset();
     OutputMonitor.Reset();
 
     Listeners.clear();
@@ -253,21 +289,17 @@ ma_node *AudioGraphNode::InputNode() const {
 }
 ma_node *AudioGraphNode::OutputNode() const {
     if (OutputMonitor) return OutputMonitor->Get();
+    if (Panner) return Panner->Get();
     if (OutputGainer) return OutputGainer->Get();
     return Get();
-}
-
-const Optional<AudioGraphNode::GainerNode> &AudioGraphNode::GetGainer(IO io) const {
-    return io == IO_In ? InputGainer : OutputGainer;
-}
-const Optional<AudioGraphNode::MonitorNode> &AudioGraphNode::GetMonitor(IO io) const {
-    return io == IO_In ? InputMonitor : OutputMonitor;
 }
 
 AudioGraphNode::GainerNode *AudioGraphNode::GetGainerNode(IO io) const {
     const auto &gainer = GetGainer(io);
     return gainer ? gainer.Get() : nullptr;
 }
+
+AudioGraphNode::PannerNode *AudioGraphNode::GetPannerNode() const { return Panner ? Panner.Get() : nullptr; }
 
 AudioGraphNode::MonitorNode *AudioGraphNode::GetMonitorNode(IO io) const {
     const auto &monitor = GetMonitor(io);
@@ -281,7 +313,7 @@ void AudioGraphNode::OnSampleRateChanged() {
 
 void AudioGraphNode::OnFieldChanged() {
     if (Graph->SampleRate.IsChanged()) OnSampleRateChanged();
-    if (InputGainer.IsChanged() || OutputGainer.IsChanged() || InputMonitor.IsChanged() || OutputMonitor.IsChanged()) {
+    if (InputGainer.IsChanged() || OutputGainer.IsChanged() || Panner.IsChanged() || InputMonitor.IsChanged() || OutputMonitor.IsChanged()) {
         NotifyConnectionsChanged(); // An inner node was added/removed.
     }
 }
@@ -294,7 +326,7 @@ u32 AudioGraphNode::InputBusCount() const { return ma_node_get_input_bus_count(G
 u32 AudioGraphNode::OutputBusCount() const { return IsGraphEndpoint() ? 0 : ma_node_get_output_bus_count(Get()); }
 
 u32 AudioGraphNode::InputChannelCount(u32 bus) const { return ma_node_get_input_channels(Get(), bus); }
-u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return  ma_node_get_output_channels(Get(), bus); }
+u32 AudioGraphNode::OutputChannelCount(u32 bus) const { return ma_node_get_output_channels(Get(), bus); }
 
 void AudioGraphNode::DisconnectOutput() {
     ma_node_detach_all_output_buses(OutputNode());
@@ -333,6 +365,14 @@ void AudioGraphNode::Render() const {
                 if (gainer) gainer->Draw();
                 TreePop();
             }
+        }
+    }
+    if (BusCount(IO_Out) > 0) {
+        if (TreeNodeEx("Panner", ImGuiTreeNodeFlags_DefaultOpen)) {
+            bool bypass = !Panner;
+            if (Checkbox("Bypass", &bypass)) Panner.IssueToggle();
+            if (Panner) Panner->Draw();
+            TreePop();
         }
     }
     for (IO io : IO_All) {
@@ -375,6 +415,7 @@ void AudioGraphNode::Render() const {
             if (BusCount(io) > 0) {
                 const string io_label = StringHelper::Capitalize(to_string(io));
                 BulletText("%s", std::format("{} gainer: {}", io_label, bool(GetGainer(io))).c_str());
+                if (io == IO_Out) BulletText("%s", std::format("{} panner: {}", io_label, bool(Panner)).c_str());
                 BulletText("%s", std::format("{} monitor: {}", io_label, bool(GetMonitor(io))).c_str());
                 if (io == IO_Out) BulletText("%s", std::format("{} splitter: {}", io_label, bool(Splitter)).c_str());
             }

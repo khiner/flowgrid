@@ -3,11 +3,11 @@
 #include "imgui.h"
 
 Audio::Audio(ComponentArgs &&args) : Component(std::move(args)) {
-    Faust.FaustDsps.RegisterDspChangeListener(&Graph);
+    Faust.RegisterDspChangeListener(&Graph);
 }
 
 Audio::~Audio() {
-    Faust.FaustDsps.UnregisterDspChangeListener(&Graph);
+    Faust.UnregisterDspChangeListener(&Graph);
 }
 
 void Audio::Apply(const ActionType &action) const {

@@ -66,9 +66,7 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
 
 FaustNode::FaustNode(ComponentArgs &&args, ID dsp_id) : AudioGraphNode(std::move(args), [this, dsp_id] { return CreateNode(dsp_id); }) {}
 
-std::unique_ptr<MaNode> FaustNode::CreateNode(ID dsp_id) {
-    return std::make_unique<FaustMaNode>(ComponentArgs{this, "Node"}, Graph, dsp_id);
-}
+std::unique_ptr<MaNode> FaustNode::CreateNode(ID dsp_id) { return std::make_unique<FaustMaNode>(ComponentArgs{this, "Node"}, Graph, dsp_id); }
 
 void FaustNode::OnSampleRateChanged() {
     AudioGraphNode::OnSampleRateChanged();

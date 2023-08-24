@@ -2,23 +2,14 @@
 
 #include "imgui.h"
 
-#include "FaustListener.h"
 #include "Helper/File.h"
-#include "Project/Audio/AudioIO.h"
 #include "Project/Audio/Graph/AudioGraphAction.h"
 #include "Project/FileDialog/FileDialog.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
 
 Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
-    FaustDsps.RegisterDspChangeListener(&ParamsUis);
-    FaustDsps.RegisterBoxChangeListener(&Graphs);
-    FaustDsps.RegisterChangeListener(&Logs);
-}
-Faust::~Faust() {
-    FaustDsps.UnregisterChangeListener(&Logs);
-    FaustDsps.UnregisterBoxChangeListener(&Graphs);
-    FaustDsps.UnregisterDspChangeListener(&ParamsUis);
+    for (auto *faust_dsp : FaustDsps) NotifyListeners(Added, *faust_dsp);
 }
 
 void Faust::Apply(const ActionType &action) const {
@@ -33,12 +24,10 @@ void Faust::Apply(const ActionType &action) const {
                 [](const Action::Faust::File::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
                 [](const Action::Faust::File::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
                 [this](const Action::Faust::File::Open &a) {
-                    if (FaustDsps.Empty()) return;
-                    FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
+                    if (!FaustDsps.Empty())  FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
                 },
                 [this](const Action::Faust::File::Save &a) {
-                    if (FaustDsps.Empty()) return;
-                    FileIO::write(a.file_path, FaustDsps.front()->Code);
+                    if (!FaustDsps.Empty()) FileIO::write(a.file_path, FaustDsps.front()->Code);
                 },
             );
         },
@@ -82,27 +71,6 @@ FaustParamsUI *FaustParamsUIs::FindUi(ID dsp_id) const {
     return nullptr;
 }
 
-void FaustParamsUIs::OnFaustDspChanged(ID dsp_id, dsp *dsp) {
-    if (auto *ui = FindUi(dsp_id)) ui->SetDsp(dsp);
-}
-void FaustParamsUIs::OnFaustDspAdded(ID dsp_id, dsp *dsp) {
-    static const string PrefixSegment = "Params";
-    Refresh(); // todo Seems to be needed, but shouldn't be.
-    auto child_it = std::find_if(begin(), end(), [dsp_id](auto *ui) { return ui->DspId == dsp_id; });
-    if (child_it != end()) {
-        (*child_it)->SetDsp(dsp);
-        return;
-    }
-
-    EmplaceBack_(PrefixSegment, [dsp_id, dsp](auto *child) {
-        child->DspId.Set_(dsp_id);
-        child->SetDsp(dsp);
-    });
-}
-void FaustParamsUIs::OnFaustDspRemoved(ID dsp_id) {
-    if (auto *ui = FindUi(dsp_id)) EraseId_(ui->Id);
-}
-
 static std::unordered_set<FaustGraphs *> AllInstances{};
 
 FaustGraphs::FaustGraphs(ComponentArgs &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)
@@ -113,7 +81,8 @@ FaustGraphs::FaustGraphs(ComponentArgs &&args, const FaustGraphStyle &style, con
               Menu("View", {settings.HoverFlags}),
           }),
           CreateChild
-      ), Style(style), Settings(settings) {
+      ),
+      Style(style), Settings(settings) {
     Style.FoldComplexity.RegisterChangeListener(this);
 
     AllInstances.insert(this);
@@ -134,27 +103,6 @@ void FaustGraphs::OnFieldChanged() {
     if (Style.FoldComplexity.IsChanged()) {
         for (auto *graph : *this) graph->ResetBox();
     }
-}
-
-void FaustGraphs::OnFaustBoxChanged(ID dsp_id, Box box) {
-    if (auto *graph = FindGraph(dsp_id)) graph->SetBox(box);
-}
-void FaustGraphs::OnFaustBoxAdded(ID dsp_id, Box box) {
-    static const string PrefixSegment = "Graph";
-    Refresh(); // todo Seems to be needed, but shouldn't be.
-    auto child_it = std::find_if(begin(), end(), [dsp_id](auto *graph) { return graph->DspId == dsp_id; });
-    if (child_it != end()) {
-        (*child_it)->SetBox(box);
-        return;
-    }
-
-    EmplaceBack_(PrefixSegment, [dsp_id, box](auto *child) {
-        child->DspId.Set_(dsp_id);
-        child->SetBox(box);
-    });
-}
-void FaustGraphs::OnFaustBoxRemoved(ID dsp_id) {
-    if (auto *graph = FindGraph(dsp_id)) EraseId_(graph->Id);
 }
 
 void FaustGraphs::Apply(const ActionType &action) const {
@@ -181,16 +129,6 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
     );
 }
 
-void FaustLogs::OnFaustChanged(ID id, const FaustDSP &faust_dsp) {
-    ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
-}
-void FaustLogs::OnFaustAdded(ID id, const FaustDSP &faust_dsp) {
-    ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
-}
-void FaustLogs::OnFaustRemoved(ID id) {
-    ErrorMessageByFaustDspId.erase(id);
-}
-
 std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
     for (const auto *instance : AllInstances) {
         if (auto box_info = instance->GetBoxInfo(imgui_id)) return box_info;
@@ -206,7 +144,7 @@ std::unique_ptr<FaustGraph> FaustGraphs::CreateChild(Component *parent, string_v
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
-FaustDSP::FaustDSP(ComponentArgs &&args, const FaustDSPContainer &container)
+FaustDSP::FaustDSP(ComponentArgs &&args, FaustDSPContainer &container)
     : Component(std::move(args)), Container(container) {
     Code.RegisterChangeListener(this);
     if (Code) Init(true);
@@ -242,7 +180,6 @@ void FaustDSP::Init(bool constructing) {
     const int argc = argv.size();
     static int num_inputs, num_outputs;
     Box = DSPToBoxes("FlowGrid", string(Code), argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
-    NotifyBoxListeners(notification_type);
 
     if (Box && ErrorMessage.empty()) {
         static const int optimize_level = -1;
@@ -261,9 +198,7 @@ void FaustDSP::Init(bool constructing) {
     }
     if (!Box && Dsp) DestroyDsp();
 
-    NotifyDspListeners(notification_type);
-
-    NotifyListeners(notification_type);
+    Container.NotifyListeners(notification_type, *this);
 }
 
 void FaustDSP::Uninit(bool destructing) {
@@ -271,13 +206,11 @@ void FaustDSP::Uninit(bool destructing) {
         const auto notification_type = destructing ? Removed : Changed;
         if (Dsp) {
             DestroyDsp();
-            NotifyDspListeners(notification_type);
         }
         if (Box) {
             Box = nullptr;
-            NotifyBoxListeners(notification_type);
         }
-        NotifyListeners(notification_type);
+        Container.NotifyListeners(notification_type, *this);
     }
 
     ErrorMessage = "";
@@ -291,10 +224,6 @@ void FaustDSP::Update() {
     Init(false);
 }
 
-void FaustDSP::NotifyBoxListeners(NotificationType type) const { Container.NotifyBoxListeners(type, *this); }
-void FaustDSP::NotifyDspListeners(NotificationType type) const { Container.NotifyDspListeners(type, *this); }
-void FaustDSP::NotifyListeners(NotificationType type) const { Container.NotifyListeners(type, *this); }
-
 static const std::string FaustDspPathSegment = "FaustDSP";
 
 FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector(std::move(args), CreateChild) {
@@ -307,9 +236,59 @@ FaustDSPs::~FaustDSPs() {
     destroyLibContext();
 }
 
+void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
+    const ID id = faust_dsp.Id;
+    dsp *dsp = faust_dsp.Dsp;
+    Box box = faust_dsp.Box;
+
+    if (type == Changed) {
+        if (auto *ui = ParamsUis.FindUi(id)) ui->SetDsp(dsp);
+        if (auto *graph = Graphs.FindGraph(id)) graph->SetBox(box);
+        Logs.ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(id, dsp);
+    } else if (type == Added) {
+        // Params
+        static const string ParamsPrefixSegment = "Params";
+        ParamsUis.Refresh(); // todo Seems to be needed, but shouldn't be.
+        auto params_it = std::find_if(ParamsUis.begin(), ParamsUis.end(), [id](auto *ui) { return ui->DspId == id; });
+        if (params_it != ParamsUis.end()) {
+            (*params_it)->SetDsp(dsp);
+        } else {
+            ParamsUis.EmplaceBack_(ParamsPrefixSegment, [id, dsp](auto *child) {
+                child->DspId.Set_(id);
+                child->SetDsp(dsp);
+            });
+        }
+
+        // Boxes
+        static const string GraphPrefixSegment = "Graph";
+        Graphs.Refresh(); // todo Seems to be needed, but shouldn't be.
+        auto graph_it = std::find_if(Graphs.begin(), Graphs.end(), [id](auto *graph) { return graph->DspId == id; });
+        if (graph_it != Graphs.end()) {
+            (*graph_it)->SetBox(box);
+        } else {
+            Graphs.EmplaceBack_(GraphPrefixSegment, [id, box](auto *child) {
+                child->DspId.Set_(id);
+                child->SetBox(box);
+            });
+        }
+
+        // Logs
+        Logs.ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
+
+        // External listeners
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspAdded(id, faust_dsp.Dsp);
+    } else if (type == Removed) {
+        if (auto *ui = ParamsUis.FindUi(id)) ParamsUis.EraseId_(ui->Id);
+        if (auto *graph = Graphs.FindGraph(id)) Graphs.EraseId_(graph->Id);
+        Logs.ErrorMessageByFaustDspId.erase(id);
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspRemoved(id);
+    }
+}
+
 std::unique_ptr<FaustDSP> FaustDSPs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    const auto *dsps = static_cast<const FaustDSPs *>(parent);
-    return std::make_unique<FaustDSP>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, *dsps);
+    auto *container = static_cast<Faust *>(parent->Parent);
+    return std::make_unique<FaustDSP>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, *container);
 }
 
 void FaustDSPs::Apply(const ActionType &action) const {

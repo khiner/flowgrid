@@ -3,7 +3,7 @@
 #include "FaustAction.h"
 #include "FaustGraph.h"
 #include "FaustGraphStyle.h"
-#include "FaustListener.h"
+#include "FaustDspListener.h"
 #include "FaustParamsUI.h"
 #include "FaustParamsUIStyle.h"
 
@@ -11,14 +11,40 @@
 #include "Core/Container/TextBuffer.h"
 #include "Core/Container/Vector.h"
 
-struct FaustParamsUIs : Vector<FaustParamsUI>, FaustDspChangeListener {
+/**
+- `Audio.Faust.FaustGraphs` (listens to `FaustDSP::Box`): Extensively configurable, live-updating block diagrams for all Faust DSP instances.
+  - By default, `FaustGraph` matches the FlowGrid style (which is ImGui's dark style), but it can be configured to exactly match the Faust SVG diagram style.
+    `FaustGraph` can also be rendered as an SVG diagram.
+    When the graph style is set to the 'Faust' preset, it should look the same as the one produced by `faust2svg` with the same DSP code.
+- `Audio.Faust.Params` (listens to `FaustDsp::Dsp`): Interfaces for the params for each Faust DSP instance. TODO: Not undoable yet.
+- `Audio.Faust.Logs` (listens to `FaustDSP`, accesses error messages): A window to display Faust compilation errors.
+
+Here is the chain of notifications/updates in response to a Faust DSP code change:
+```
+Audio.Faust.FaustDsp.Code -> Audio.Faust.FaustDsp
+    -> Audio.Faust.FaustGraphs
+    -> Audio.Faust.FaustParams
+    -> Audio.Faust.FaustLogs
+    -> Audio
+        -> Audio.Graph.Nodes.Faust
+```
+**/
+
+enum NotificationType {
+    Changed,
+    Added,
+    Removed
+};
+
+struct FaustDSP;
+struct FaustDSPContainer {
+    virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
+};
+
+struct FaustParamsUIs : Vector<FaustParamsUI> {
     FaustParamsUIs(ComponentArgs &&, const FaustParamsUIStyle &);
 
     static std::unique_ptr<FaustParamsUI> CreateChild(Component *, string_view path_prefix_segment, string_view path_segment);
-
-    void OnFaustDspChanged(ID, dsp *) override;
-    void OnFaustDspAdded(ID, dsp *) override;
-    void OnFaustDspRemoved(ID) override;
 
     FaustParamsUI *FindUi(ID dsp_id) const;
 
@@ -28,7 +54,7 @@ protected:
     void Render() const override;
 };
 
-struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Field::ChangeListener, FaustBoxChangeListener {
+struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Field::ChangeListener {
     FaustGraphs(ComponentArgs &&, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
 
@@ -51,12 +77,6 @@ struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, 
 
     void OnFieldChanged() override;
 
-    void OnFaustBoxChanged(ID, Box) override;
-    void OnFaustBoxAdded(ID, Box) override;
-    void OnFaustBoxRemoved(ID) override;
-
-    void UpdateNodeImGuiIds() const;
-
     const FaustGraphStyle &Style;
     const FaustGraphSettings &Settings;
 
@@ -64,12 +84,8 @@ private:
     void Render() const override;
 };
 
-struct FaustLogs : Component, FaustChangeListener {
+struct FaustLogs : Component {
     using Component::Component;
-
-    void OnFaustChanged(ID, const FaustDSP &) override;
-    void OnFaustAdded(ID, const FaustDSP &) override;
-    void OnFaustRemoved(ID) override;
 
     std::map<ID, std::string> ErrorMessageByFaustDspId;
 
@@ -81,12 +97,10 @@ private:
 class dsp;
 class llvm_dsp_factory;
 
-struct FaustDSPs;
-
 // `FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
 struct FaustDSP : Component, Field::ChangeListener {
-    FaustDSP(ComponentArgs &&, const FaustDSPContainer &);
+    FaustDSP(ComponentArgs &&, FaustDSPContainer &);
     ~FaustDSP();
 
     void OnFieldChanged() override;
@@ -114,15 +128,11 @@ private:
 
     void DestroyDsp();
 
-    void NotifyBoxListeners(NotificationType) const;
-    void NotifyDspListeners(NotificationType) const;
-    void NotifyListeners(NotificationType) const;
-
-    const FaustDSPContainer &Container;
+    FaustDSPContainer &Container;
     llvm_dsp_factory *DspFactory{nullptr};
 };
 
-struct FaustDSPs : Vector<FaustDSP>, FaustDSPContainer, Actionable<Action::Faust::DSP::Any> {
+struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
     FaustDSPs(ComponentArgs &&);
     ~FaustDSPs();
 
@@ -131,74 +141,29 @@ struct FaustDSPs : Vector<FaustDSP>, FaustDSPContainer, Actionable<Action::Faust
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
 
-    inline void RegisterChangeListener(FaustChangeListener *listener) const noexcept {
-        ChangeListeners.insert(listener);
-        for (auto *faust_dsp : *this) {
-            listener->OnFaustAdded(faust_dsp->Id, *faust_dsp);
-        }
-    }
-    inline void UnregisterChangeListener(FaustChangeListener *listener) const noexcept {
-        ChangeListeners.erase(listener);
-    }
-
-    inline void RegisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
-        BoxChangeListeners.insert(listener);
-        for (auto *faust_dsp : *this) {
-            listener->OnFaustBoxAdded(faust_dsp->Id, faust_dsp->Box);
-        }
-    }
-    inline void UnregisterBoxChangeListener(FaustBoxChangeListener *listener) const noexcept {
-        BoxChangeListeners.erase(listener);
-    }
-
-    inline void RegisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
-        DspChangeListeners.insert(listener);
-        for (auto *faust_dsp : *this) {
-            listener->OnFaustDspAdded(faust_dsp->Id, faust_dsp->Dsp);
-        }
-    }
-    inline void UnregisterDspChangeListener(FaustDspChangeListener *listener) const noexcept {
-        DspChangeListeners.erase(listener);
-    }
-
-    inline void NotifyListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept override {
-        for (auto *listener : ChangeListeners) {
-            if (type == Changed) listener->OnFaustChanged(faust_dsp.Id, faust_dsp);
-            else if (type == Added) listener->OnFaustAdded(faust_dsp.Id, faust_dsp);
-            else if (type == Removed) listener->OnFaustRemoved(faust_dsp.Id);
-        }
-    }
-    inline void NotifyBoxListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept override {
-        for (auto *listener : BoxChangeListeners) {
-            if (type == Changed) listener->OnFaustBoxChanged(faust_dsp.Id, faust_dsp.Box);
-            else if (type == Added) listener->OnFaustBoxAdded(faust_dsp.Id, faust_dsp.Box);
-            else if (type == Removed) listener->OnFaustBoxRemoved(faust_dsp.Id);
-        }
-    }
-    inline void NotifyDspListeners(NotificationType type, const FaustDSP &faust_dsp) const noexcept override {
-        for (auto *listener : DspChangeListeners) {
-            if (type == Changed) listener->OnFaustDspChanged(faust_dsp.Id, faust_dsp.Dsp);
-            else if (type == Added) listener->OnFaustDspAdded(faust_dsp.Id, faust_dsp.Dsp);
-            else if (type == Removed) listener->OnFaustDspRemoved(faust_dsp.Id);
-        }
-    }
-
 private:
     void Render() const override;
-
-    inline static std::unordered_set<FaustChangeListener *> ChangeListeners;
-    inline static std::unordered_set<FaustBoxChangeListener *> BoxChangeListeners;
-    inline static std::unordered_set<FaustDspChangeListener *> DspChangeListeners;
 };
 
-struct Faust : Component, Actionable<Action::Faust::Any> {
+struct Faust : Component, Actionable<Action::Faust::Any>, FaustDSPContainer {
     Faust(ComponentArgs &&);
-    ~Faust();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    Prop(FaustDSPs, FaustDsps);
+    inline void RegisterDspChangeListener(FaustDspListener *listener) const noexcept {
+        DspChangeListeners.insert(listener);
+        for (auto *faust_dsp : FaustDsps) {
+            listener->OnFaustDspAdded(faust_dsp->Id, faust_dsp->Dsp);
+        }
+    }
+    inline void UnregisterDspChangeListener(FaustDspListener *listener) const noexcept {
+        DspChangeListeners.erase(listener);
+    }
+
+    void NotifyListeners(NotificationType type, FaustDSP &faust_dsp) override;
+
+    inline static std::unordered_set<FaustDspListener *> DspChangeListeners;
 
     Prop(FaustGraphStyle, GraphStyle);
     Prop(FaustGraphSettings, GraphSettings);
@@ -207,6 +172,8 @@ struct Faust : Component, Actionable<Action::Faust::Any> {
     Prop_(FaustGraphs, Graphs, "Faust graphs", GraphStyle, GraphSettings);
     Prop_(FaustParamsUIs, ParamsUis, "Faust params", ParamsStyle);
     Prop_(FaustLogs, Logs, "Faust logs");
+
+    Prop(FaustDSPs, FaustDsps);
 
 protected:
     void Render() const override;

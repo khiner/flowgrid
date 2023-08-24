@@ -4,7 +4,7 @@
 #include "AudioGraphNode.h"
 #include "Core/Container/AdjacencyList.h"
 #include "Project/Audio/Device/DeviceDataFormat.h"
-#include "Project/Audio/Faust/FaustListener.h"
+#include "Project/Audio/Faust/FaustDspListener.h"
 
 #include "Core/Container/Vector.h"
 
@@ -18,7 +18,7 @@ inline static const std::string OutputDeviceNodeTypeId = "Output";
 inline static const std::string WaveformNodeTypeId = "Waveform";
 inline static const std::string FaustNodeTypeId = "Faust";
 
-struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDspChangeListener, AudioGraphNode::Listener {
+struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDspListener, AudioGraphNode::Listener {
     AudioGraph(ComponentArgs &&);
     ~AudioGraph();
 

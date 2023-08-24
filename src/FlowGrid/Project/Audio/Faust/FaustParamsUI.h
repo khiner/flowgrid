@@ -5,14 +5,12 @@
 #include "FaustParamGroup.h"
 #include "FaustParam.h"
 #include "FaustParamsContainer.h"
-#include "FaustParamsUIStyle.h"
 
 #include <stack>
 
 class dsp;
 class FaustParamsUIImpl;
 struct FaustParamsUIStyle;
-struct FaustParam;
 struct NamesAndValues;
 
 // Label, shortname, or complete path (to discriminate between possibly identical labels

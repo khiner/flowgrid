@@ -6,8 +6,6 @@
 
 #include <imgui.h>
 
-using namespace ImGui;
-
 FaustParamsUI::FaustParamsUI(ComponentArgs &&args, const FaustParamsUIStyle &style)
     : Component(std::move(args)), Style(style) {}
 
@@ -25,7 +23,7 @@ void FaustParamsUI::SetDsp(dsp *dsp) {
 void FaustParamsUI::Render() const {
     if (!Impl) return;
 
-    RootGroup.Render(GetContentRegionAvail().y, true);
+    RootGroup.Render(ImGui::GetContentRegionAvail().y, true);
 
     // if (hovered_node) {
     //     const string label = GetUiLabel(hovered_node->tree);

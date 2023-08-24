@@ -5,11 +5,13 @@
 #include "Helper/String.h"
 #include "Project/ProjectContext.h"
 
-Field::Field(ComponentArgs &&args) : Component(std::move(args)) {
+Field::Field(ComponentArgs &&args, Menu &&menu) : Component(std::move(args), std::move(menu)) {
     FieldById.emplace(Id, this);
     FieldIdByPath.emplace(Path, Id);
     Refresh();
 }
+
+Field::Field(ComponentArgs &&args) : Field(std::move(args), Menu{{}}) {}
 
 Field::~Field() {
     Erase();

@@ -11,8 +11,6 @@ StoreHistory &History = store_history_singleton;
 Project MainProject{store};
 // Set all global extern variables.
 const Project &project = MainProject;
-const Faust &faust = project.Audio.Faust;
-const FaustGraphs &faust_graphs = faust.Graphs;
 const ImGuiSettings &imgui_settings = project.ImGuiSettings;
 const FileDialog &file_dialog = project.FileDialog;
 const ProjectSettings &project_settings = project.Settings;

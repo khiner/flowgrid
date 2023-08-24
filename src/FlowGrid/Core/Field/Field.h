@@ -21,6 +21,7 @@ struct Field : Component {
         virtual void OnFieldChanged() = 0;
     };
 
+    Field(ComponentArgs &&, Menu &&menu);
     Field(ComponentArgs &&);
     virtual ~Field();
 

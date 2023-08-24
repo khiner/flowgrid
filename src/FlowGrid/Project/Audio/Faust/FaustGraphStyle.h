@@ -97,8 +97,18 @@ private:
     void LayoutFaust() const; // Layout Faust graphs the same way Faust does when it renders to SVG.
 };
 
-struct GraphSettings : Component {
+struct FaustGraphSettings : Component {
     using Component::Component;
 
-    Prop_(Flags, HoverFlags, "?Hovering over a node in the graph will display the selected information", {"ShowRect?Display the hovered node's bounding rectangle", "ShowType?Display the hovered node's box type", "ShowChannels?Display the hovered node's channel points and indices", "ShowChildChannels?Display the channel points and indices for each of the hovered node's children"}, FaustGraphHoverFlags_None);
+    Prop_(
+        Flags, HoverFlags,
+        "?Hovering over a node in the graph will display the selected information",
+        {
+            "ShowRect?Display the hovered node's bounding rectangle",
+            "ShowType?Display the hovered node's box type",
+            "ShowChannels?Display the hovered node's channel points and indices",
+            "ShowChildChannels?Display the channel points and indices for each of the hovered node's children",
+        },
+        FaustGraphHoverFlags_None
+    );
 };

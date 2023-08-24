@@ -40,8 +40,8 @@ template<typename ChildType> struct Vector : Field {
         return std::make_unique<ChildType>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
     };
 
-    Vector(ComponentArgs &&args, CreatorFunction creator = DefaultCreator)
-        : Field(std::move(args)), Creator(std::move(creator)) {
+    Vector(ComponentArgs &&args, Menu &&menu, CreatorFunction creator = DefaultCreator)
+        : Field(std::move(args), std::move(menu)), Creator(std::move(creator)) {
         ComponentContainerFields.insert(Id);
         ComponentContainerAuxiliaryFields.insert(ChildPrefixes.Id);
     }
@@ -49,6 +49,9 @@ template<typename ChildType> struct Vector : Field {
         ComponentContainerAuxiliaryFields.erase(ChildPrefixes.Id);
         ComponentContainerFields.erase(Id);
     }
+
+    Vector(ComponentArgs &&args, CreatorFunction creator = DefaultCreator)
+        : Vector(std::move(args), Menu{{}}, std::move(creator)) {}
 
     inline void Clear() { Value.clear(); }
     bool Empty() const { return Value.empty(); }

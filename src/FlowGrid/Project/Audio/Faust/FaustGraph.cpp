@@ -1,21 +1,19 @@
-#include "FaustGraphs.h"
+#include "FaustGraph.h"
 
 #include <range/v3/algorithm/contains.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <sstream>
-#include <stack>
-#include <unordered_map>
 
 #include "faust/dsp/libfaust-box.h"
 #include "faust/dsp/libfaust-signal.h"
 
 #include "imgui_internal.h"
 
+#include "FaustGraphStyle.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
 #include "Project/Audio/AudioIO.h"
-#include "Project/FileDialog/FileDialog.h"
 #include "UI/InvisibleButton.h"
 
 using std::min, std::max;
@@ -418,7 +416,7 @@ struct Node {
         if (B) B->Draw(device);
 
         if (flags & InteractionFlags_Hovered) {
-            const auto &flags = Context.Context.Settings.HoverFlags;
+            const auto &flags = Context.Settings.HoverFlags;
             // todo get abs pos by traversing through ancestors
             if (flags & FaustGraphHoverFlags_ShowRect) DrawRect(device);
             if (flags & FaustGraphHoverFlags_ShowType) DrawType(device);
@@ -1073,25 +1071,6 @@ static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
     return {};
 }
 
-static std::unordered_set<FaustGraphs *> AllInstances{};
-
-FaustGraphs::FaustGraphs(ComponentArgs &&args)
-    : Component(
-          std::move(args),
-          Menu({
-              Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
-              Menu("View", {Settings.HoverFlags}),
-          })
-      ) {
-    Style.FoldComplexity.RegisterChangeListener(this);
-
-    AllInstances.insert(this);
-}
-FaustGraphs::~FaustGraphs() {
-    AllInstances.erase(this);
-    Field::UnregisterChangeListener(this);
-}
-
 // Generate the inside node of a block graph according to its type.
 Node *FaustGraph::Tree2NodeInner(Tree t) const {
     if (getUserData(t) != nullptr) return new BlockNode(*this, t, xtendedArity(t), 1, xtendedName(t));
@@ -1227,68 +1206,10 @@ std::optional<string> FaustGraph::GetBoxInfo(u32 id) const {
     return GetBoxType(node->FaustTree); // Just type for now.
 }
 
-void FaustGraphs::OnFieldChanged() {
-    if (Style.FoldComplexity.IsChanged()) {
-        for (auto *graph : Graphs) graph->ResetBox();
-    }
-}
-
-void FaustGraphs::OnFaustBoxChanged(ID dsp_id, Box box) {
-    if (auto *graph = FindGraph(dsp_id)) graph->SetBox(box);
-}
-void FaustGraphs::OnFaustBoxAdded(ID dsp_id, Box box) {
-    static const string PrefixSegment = "Graph";
-    Graphs.Refresh(); // todo Seems to be needed, but shouldn't be.
-    auto child_it = std::find_if(Graphs.begin(), Graphs.end(), [dsp_id](auto *graph) { return graph->DspId == dsp_id; });
-    if (child_it != Graphs.end()) {
-        (*child_it)->SetBox(box);
-        return;
-    }
-
-    Graphs.EmplaceBack_(PrefixSegment, [dsp_id, box](auto *child) {
-        child->DspId.Set_(dsp_id);
-        child->SetBox(box);
-    });
-}
-void FaustGraphs::OnFaustBoxRemoved(ID dsp_id) {
-    if (auto *graph = FindGraph(dsp_id)) Graphs.EraseId_(graph->Id);
-}
-
-void FaustGraphs::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
-        [](const Action::Faust::Graph::ShowSaveSvgDialog &) {
-            file_dialog.Set({Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
-        },
-        [this](const Action::Faust::Graph::SaveSvgFile &a) {
-            if (const auto *graph = FindGraph(a.dsp_id)) graph->SaveBoxSvg(a.dir_path);
-        },
-    );
-}
-
-bool FaustGraphs::CanApply(const ActionType &action) const {
-    return Visit(
-        action,
-        [this](const Action::Faust::Graph::ShowSaveSvgDialog &) { return !Graphs.Empty(); },
-        [this](const Action::Faust::Graph::SaveSvgFile &a) {
-            const auto *graph = FindGraph(a.dsp_id);
-            return graph && graph->RootNode;
-        },
-    );
-}
-
-FaustGraph::FaustGraph(ComponentArgs &&args)
-    : Component(std::move(args)), Context(static_cast<const FaustGraphs &>(*Parent->Parent)), Style(Context.Style) {}
+FaustGraph::FaustGraph(ComponentArgs &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)
+    : Component(std::move(args)), Style(style), Settings(settings) {}
 
 FaustGraph::~FaustGraph() {}
-
-FaustGraph *FaustGraphs::FindGraph(ID dsp_id) const {
-    for (auto *graph : Graphs) {
-        if (graph->DspId == dsp_id) return graph;
-    }
-    return nullptr;
-}
 
 float FaustGraph::GetScale() const {
     if (!Style.ScaleFillHeight || NodeNavigationHistory.Empty() || !GetCurrentWindowRead()) return Style.Scale;
@@ -1363,36 +1284,4 @@ void FaustGraph::Render() const {
     focused->Draw(device);
 
     EndChild();
-}
-
-void FaustGraphs::Render() const {
-    if (Graphs.Empty()) return TextUnformatted("No Faust DSPs created yet.");
-
-    static string PrevSelectedPath = "";
-    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
-        const fs::path selected_path = file_dialog.SelectedFilePath;
-        if (file_dialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
-            Action::Faust::Graph::SaveSvgFile{Id, selected_path}.q();
-        }
-        PrevSelectedPath = selected_path;
-    }
-
-    if (Graphs.Size() == 1) return Graphs[0]->Draw();
-
-    if (BeginTabBar("")) {
-        for (const auto *graph : Graphs) {
-            if (BeginTabItem(std::format("{}", ID(graph->DspId)).c_str())) {
-                graph->Draw();
-                EndTabItem();
-            }
-        }
-        EndTabBar();
-    }
-}
-
-std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
-    for (const auto *instance : AllInstances) {
-        if (auto box_info = instance->GetBoxInfo(imgui_id)) return box_info;
-    }
-    return {};
 }

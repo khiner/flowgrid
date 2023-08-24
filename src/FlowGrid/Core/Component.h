@@ -137,7 +137,7 @@ struct Component {
     void Dock(ID node_id) const;
     bool Focus() const;
 
-    const Menu WindowMenu{{}};
+    Menu WindowMenu{{}};
     ImGuiWindowFlags WindowFlags{WindowFlags_None};
 
     // Child renderers.

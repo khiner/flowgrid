@@ -9,10 +9,15 @@
 FaustParams::FaustParams(ComponentArgs &&args, const FaustParamsStyle &style)
     : Component(std::move(args)), Style(style) {}
 
-FaustParams::~FaustParams() {}
+FaustParams::~FaustParams() {
+    if (Dsp) Dsp->instanceResetUserInterface();
+}
 
 void FaustParams::SetDsp(dsp *dsp) {
-    if (!dsp) Impl.reset();
+    if (Dsp) {
+        Dsp->instanceResetUserInterface();
+        if (!dsp) Impl.reset();
+    }
     Dsp = dsp;
     if (Dsp) {
         Impl = std::make_unique<FaustParamsUI>(*this);

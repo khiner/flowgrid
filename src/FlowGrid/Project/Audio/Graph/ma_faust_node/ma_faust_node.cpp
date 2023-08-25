@@ -65,7 +65,7 @@ ma_result ma_faust_node_init(ma_node_graph *node_graph, const ma_faust_node_conf
     auto *dsp = faust_node->config.faust_dsp;
     if (dsp) dsp->init(faust_node->config.sample_rate);
     static ma_node_vtable vtable = {ma_faust_node_process_pcm_frames, nullptr, MA_NODE_BUS_COUNT_UNKNOWN, MA_NODE_BUS_COUNT_UNKNOWN, 0};
-    // If dsp is not set, the node will be a passthrough node with 1 input and 1 output.
+    // If dsp is not set, createa a passthrough node with 1 input and 1 output.
     static ma_node_vtable passthrough_vtable = {ma_faust_node_process_pcm_frames, nullptr, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
 
     ma_uint32 in_channels = dsp ? dsp->getNumInputs() : 1;

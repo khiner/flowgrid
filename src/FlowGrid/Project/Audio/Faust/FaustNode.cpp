@@ -36,6 +36,8 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
     void UpdateDsp() {
         auto *new_dsp = Graph->GetFaustDsp(DspId);
         auto *current_dsp = ma_faust_node_get_dsp(&_Node);
+        if (!new_dsp && !current_dsp) return;
+
         auto new_in_channels = ma_faust_dsp_get_in_channels(new_dsp);
         auto new_out_channels = ma_faust_dsp_get_out_channels(new_dsp);
         auto current_in_channels = ma_faust_node_get_in_channels(&_Node);

@@ -8,9 +8,7 @@
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {
-    for (auto *faust_dsp : FaustDsps) NotifyListeners(Added, *faust_dsp);
-}
+Faust::Faust(ComponentArgs &&args) : Component(std::move(args)) {}
 
 void Faust::Apply(const ActionType &action) const {
     Visit(
@@ -161,7 +159,6 @@ void FaustDSP::OnFieldChanged() {
 
 void FaustDSP::DestroyDsp() {
     if (Dsp) {
-        Dsp->instanceResetUserInterface();
         delete Dsp;
         Dsp = nullptr;
     }
@@ -196,8 +193,6 @@ void FaustDSP::Init() {
     } else if (!Box && ErrorMessage.empty()) {
         ErrorMessage = "`DSPToBoxes` returned no error but did not produce a result.";
     }
-    if (!Box && Dsp) DestroyDsp();
-
     if (Box && Dsp) Container.NotifyListeners(Added, *this);
 }
 
@@ -211,14 +206,8 @@ void FaustDSP::Uninit() {
 }
 
 void FaustDSP::Update() {
-    if (!Dsp && Code) {
-        Init();
-    } else if (Dsp && !Code) {
-        Uninit();
-    } else {
-        Uninit();
-        Init();
-    }
+    Uninit();
+    Init();
 }
 
 static const string FaustDspPathSegment = "FaustDSP";
@@ -274,12 +263,12 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         Logs.ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
 
         // External listeners
-        for (auto *listener : DspChangeListeners) listener->OnFaustDspAdded(id, faust_dsp.Dsp);
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspAdded(id, dsp);
     } else if (type == Removed) {
-        if (auto *ui = Paramss.FindUi(id)) Paramss.EraseId_(ui->Id);
-        if (auto *graph = Graphs.FindGraph(id)) Graphs.EraseId_(graph->Id);
-        Logs.ErrorMessageByFaustDspId.erase(id);
         for (auto *listener : DspChangeListeners) listener->OnFaustDspRemoved(id);
+        Logs.ErrorMessageByFaustDspId.erase(id);
+        if (auto *graph = Graphs.FindGraph(id)) Graphs.EraseId_(graph->Id);
+        if (auto *ui = Paramss.FindUi(id)) Paramss.EraseId_(ui->Id);
     }
 }
 

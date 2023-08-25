@@ -15,7 +15,7 @@ using enum FaustParamType;
 using std::min, std::max;
 
 FaustParam::FaustParam(ComponentArgs &&args, const FaustParamsStyle &style, const FaustParamType type, std::string_view label, Real *zone, Real min, Real max, Real init, Real step, const char *tooltip, NamesAndValues names_and_values)
-    : FaustParamBase(style, type, label), Float(std::move(args), *zone), Zone(zone), Min(min), Max(max), Init(init), Step(step), Tooltip(tooltip), names_and_values(std::move(names_and_values)) {}
+    : FaustParamBase(style, type, label), Float(std::move(args), init), Zone(zone), Min(min), Max(max), Init(init), Step(step), Tooltip(tooltip), names_and_values(std::move(names_and_values)) {}
 
 // todo config to place labels above horizontal params
 float FaustParam::CalcWidth(bool include_label) const {
@@ -56,7 +56,7 @@ float FaustParam::CalcWidth(bool include_label) const {
 
 void FaustParam::Refresh() {
     Float::Refresh();
-    *Zone = Value;
+    *Zone = std::clamp(Real(Value), Real(Min), Real(Max));
 }
 
 void FaustParam::Render(float suggested_height, bool no_label) const {

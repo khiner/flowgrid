@@ -355,13 +355,13 @@ struct OutputDeviceNode : DeviceNode {
     }
 
     std::unique_ptr<MaNode> CreateNode() const {
-        return std::make_unique<OutputDeviceMaNode>(Graph->Get(), All.empty(), AudioOutputCallback, AudioDevice::TargetConfig{Graph->GetDeviceClientFormat(IO_Out), std::nullopt, ""}, this);
+        return std::make_unique<OutputDeviceMaNode>(Graph->Get(), IsPrimary(), AudioOutputCallback, AudioDevice::TargetConfig{Graph->GetDeviceClientFormat(IO_Out), std::nullopt, ""}, this);
     }
 
     // todo `SetPrimary(bool)`.
     // Switching from secondary to primary deletes the buffer and resets the node.
     // Switching from primary to secondary creates a buffer and resets the node.
-    bool IsPrimary() const { return this == All.front(); }
+    bool IsPrimary() const { return All.empty() || this == All.front(); }
 
     static void AudioOutputCallback(ma_device *device, void *output, const void *input, u32 frame_count) {
         auto *user_data = reinterpret_cast<AudioDevice::UserData *>(device->pUserData);

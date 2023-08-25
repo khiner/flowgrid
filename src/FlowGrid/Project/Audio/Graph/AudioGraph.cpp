@@ -552,6 +552,14 @@ std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
     return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
 }
 
+// Return the first output device's frame count, or 0 if there are no output devices.
+u32 AudioGraph::GetBufferFrames() const {
+    for (const auto *device_node : GetOutputDeviceNodes()) {
+        return device_node->Device->GetBufferFrames();
+    }
+    return 0;
+}
+
 void AudioGraph::OnFaustDspChanged(ID id, dsp *) {
     for (auto &node : FindAllByPathSegment(FaustNodeTypeId)) {
         auto *faust_node = reinterpret_cast<FaustNode *>(node.get());

@@ -23,7 +23,7 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
     }
 
     void Init(dsp *dsp, u32 sample_rate) {
-        auto config = ma_faust_node_config_init(dsp, sample_rate);
+        auto config = ma_faust_node_config_init(dsp, sample_rate, Graph->GetBufferFrames());
         ma_result result = ma_faust_node_init(Graph->Get(), &config, nullptr, &_Node);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", int(result)));
 

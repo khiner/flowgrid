@@ -8,13 +8,17 @@ struct ma_faust_node_config {
     ma_node_config node_config;
     dsp *faust_dsp;
     ma_uint32 sample_rate;
+    ma_uint32 buffer_frames;
 };
 
-ma_faust_node_config ma_faust_node_config_init(dsp *, ma_uint32 sample_rate);
+ma_faust_node_config ma_faust_node_config_init(dsp *, ma_uint32 sample_rate, ma_uint32 buffer_frames);
 
 struct ma_faust_node {
     ma_node_base base;
     ma_faust_node_config config;
+    // These deinterleaved buffers are only created if the respective direction of the Faust node is multi-channel.
+    float **in_buffer;
+    float **out_buffer;
 };
 
 ma_result ma_faust_node_init(ma_node_graph *, const ma_faust_node_config *, const ma_allocation_callbacks *, ma_faust_node *);

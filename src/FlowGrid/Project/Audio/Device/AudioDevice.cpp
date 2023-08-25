@@ -310,6 +310,14 @@ u32 AudioDevice::GetNativeChannels() const {
     return Device->playback.internalChannels;
 }
 
+u32 AudioDevice::GetBufferFrames() const {
+    if (!Device) return 0;
+    // if (IsInput()) return Device->capture.internalPeriodSizeInFrames * Device->capture.internalPeriods;
+    // return Device->playback.internalPeriodSizeInFrames * Device->playback.internalPeriods;
+    if (IsInput()) return Device->capture.internalPeriodSizeInFrames;
+    return Device->playback.internalPeriodSizeInFrames;
+}
+
 DeviceDataFormat AudioDevice::GetNativeFormat() const { return {GetNativeSampleFormat(), GetNativeChannels(), GetNativeSampleRate()}; }
 
 bool AudioDevice::IsNativeSampleRate(u32 sample_rate) const { return AudioContext->IsNativeSampleRate(Type, sample_rate); }

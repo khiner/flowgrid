@@ -58,6 +58,8 @@ struct AudioDevice {
     u32 GetNativeSampleRate() const;
     DeviceDataFormat GetNativeFormat() const;
 
+    u32 GetBufferFrames() const;
+
     const DeviceDataFormat &GetClientFormat() const { return _Config.ClientFormat; }
 
     void RenderInfo() const;

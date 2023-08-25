@@ -57,6 +57,8 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDS
     std::string GetSampleRateName(u32) const;
     DeviceDataFormat GetDeviceClientFormat(IO) const;
 
+    u32 GetBufferFrames() const;
+
     std::unordered_set<AudioGraphNode *> GetSourceNodes(const AudioGraphNode *) const;
     std::unordered_set<AudioGraphNode *> GetDestinationNodes(const AudioGraphNode *) const;
 

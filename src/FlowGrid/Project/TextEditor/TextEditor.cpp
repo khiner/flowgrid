@@ -713,6 +713,8 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
             ChangeCurrentLinesIndentation(false);
         else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
             ChangeCurrentLinesIndentation(true);
+        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
+            ToggleLineComment();
         else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
             Overwrite ^= true;
         else if (is_ctrl_only && IsPressed(ImGuiKey_Insert))
@@ -735,7 +737,7 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
             EnterCharacter('\n', false);
         else if (!ReadOnly && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
             EnterCharacter('\t', shift);
-        if (!ReadOnly && !io.InputQueueCharacters.empty() && !ctrl && !super) {
+        if (!ReadOnly && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
             for (int i = 0; i < io.InputQueueCharacters.Size; i++) {
                 auto c = io.InputQueueCharacters[i];
                 if (c != 0 && (c == '\n' || c >= 32))
@@ -751,19 +753,42 @@ void TextEditor::HandleMouseInputs() {
     auto shift = io.KeyShift;
     auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
     auto alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
+
+    // Pan with middle mouse button
+    if (ImGui::IsMouseReleased(2)) EditorState.Panning = false;
+    if (EditorState.Panning) {
+        ImVec2 scroll = {ImGui::GetScrollX(), ImGui::GetScrollY()};
+        ImVec2 current_mouse_pos = ImGui::GetMouseDragDelta(2);
+        ImVec2 mouse_delta = current_mouse_pos = EditorState.LastMousePos;
+        ImGui::SetScrollY(scroll.y - mouse_delta.y);
+        ImGui::SetScrollX(scroll.x - mouse_delta.x);
+        EditorState.LastMousePos = current_mouse_pos;
+    }
+
     if (ImGui::IsWindowHovered()) {
         auto click = ImGui::IsMouseClicked(0);
         if (!shift && !alt) {
+            // Pan with middle mouse button
+            if (!EditorState.Panning && ImGui::IsMouseDown(2)) {
+                EditorState.Panning = true;
+                EditorState.LastMousePos = ImGui::GetMouseDragDelta(2);
+            }
+
             bool is_double_click = ImGui::IsMouseDoubleClicked(0);
             auto t = ImGui::GetTime();
             bool is_triple_click = click && !is_double_click && (LastClickTime != -1.0f && (t - LastClickTime) < io.MouseDoubleClickTime);
-
             if (is_triple_click) {
                 if (ctrl) EditorState.AddCursor();
                 else EditorState.CurrentCursor = 0;
 
-                EditorState.Cursors[EditorState.CurrentCursor].CursorPosition = EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart = EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos());
-                SelectionMode = SelectionModeT::Line;
+                // EditorState.Cursors[EditorState.CurrentCursor].CursorPosition = EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart = EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos());
+                Coordinates cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos());
+                EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart = {cursor_coords.Line, 0};
+                EditorState.Cursors[EditorState.CurrentCursor].CursorPosition = EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd =
+                    cursor_coords.Line < int(Lines.size() - 1) ?
+                    Coordinates{cursor_coords.Line + 1, 0} :
+                    Coordinates{cursor_coords.Line, GetCharacterColumn(cursor_coords.Line, Lines[cursor_coords.Line].size())};
+                SelectionMode = SelectionModeT::Normal;
                 SetSelection(EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart, EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd, SelectionMode);
 
                 LastClickTime = -1.0f;
@@ -783,8 +808,17 @@ void TextEditor::HandleMouseInputs() {
                 else EditorState.CurrentCursor = 0;
 
                 bool is_over_line_number;
-                EditorState.Cursors[EditorState.CurrentCursor].CursorPosition = EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart = EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite, &is_over_line_number);
-                SelectionMode = is_over_line_number ? SelectionModeT::Line : (ctrl ? SelectionModeT::Word : SelectionModeT::Normal);
+                Coordinates cursor_coords = EditorState.Cursors[EditorState.CurrentCursor].CursorPosition = EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart = EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite, &is_over_line_number);
+                if (is_over_line_number) {
+                    EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart = {cursor_coords.Line, 0};
+                    EditorState.Cursors[EditorState.CurrentCursor].CursorPosition = EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd =
+                        cursor_coords.Line < int(Lines.size() - 1) ?
+                        Coordinates{cursor_coords.Line + 1, 0} :
+                        Coordinates{cursor_coords.Line, GetCharacterColumn(cursor_coords.Line, Lines[cursor_coords.Line].size())};
+                    SelectionMode = SelectionModeT::Normal;
+                } else {
+                    SelectionMode = ctrl ? SelectionModeT::Word : SelectionModeT::Normal;
+                }
                 SetSelection(EditorState.Cursors[EditorState.CurrentCursor].InteractiveStart, EditorState.Cursors[EditorState.CurrentCursor].InteractiveEnd, SelectionMode, -1, ctrl);
 
                 LastClickTime = (float)ImGui::GetTime();
@@ -1233,6 +1267,72 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
     if (u.Operations.size() > 0) AddUndo(u);
 }
 
+void TextEditor::ToggleLineComment() {
+    if (LanguageDef == nullptr) return;
+
+    assert(!ReadOnly);
+    const string &comment_str = LanguageDef->SingleLineComment;
+
+    UndoRecord u;
+    u.Before = EditorState;
+
+    bool should_add_comment = false;
+    for (int c = EditorState.CurrentCursor; c > -1 && !should_add_comment; c--) {
+        for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line && !should_add_comment; current_line--) {
+            if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart) // when selection ends at line start
+                continue;
+            int current_index = 0;
+            while (current_index < Lines[current_line].size() && (Lines[current_line][current_index].Char == ' ' || Lines[current_line][current_index].Char == '\t')) current_index++;
+            if (current_index == Lines[current_line].size()) continue;
+
+            int i = 0;
+            while (i < comment_str.length() && current_index + i < Lines[current_line].size() && Lines[current_line][current_index + i].Char == comment_str[i]) i++;
+            bool matched = i == comment_str.length();
+            should_add_comment |= !matched;
+        }
+    }
+
+    if (should_add_comment) {
+        for (int c = EditorState.CurrentCursor; c > -1; c--) {
+            for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
+                if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart) // when selection ends at line start
+                    continue;
+                Coordinates line_start = {current_line, 0};
+                Coordinates insertion_end = line_start;
+                InsertTextAt(insertion_end, (comment_str + ' ').c_str()); // sets insertion end
+                u.Operations.push_back({(comment_str + ' '), line_start, insertion_end, UndoOperationType::Add});
+                Colorize(line_start.Line, 1);
+            }
+        }
+    } else {
+        for (int c = EditorState.CurrentCursor; c > -1; c--) {
+            for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
+                if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart) // when selection ends at line start
+                    continue;
+                int current_index = 0;
+                while (current_index < Lines[current_line].size() && (Lines[current_line][current_index].Char == ' ' || Lines[current_line][current_index].Char == '\t')) current_index++;
+                if (current_index == Lines[current_line].size()) continue;
+
+                int i = 0;
+                while (i < comment_str.length() && current_index + i < Lines[current_line].size() && Lines[current_line][current_index + i].Char == comment_str[i]) i++;
+                bool matched = i == comment_str.length();
+                assert(matched);
+                if (current_index + i < Lines[current_line].size() && Lines[current_line][current_index + i].Char == ' ')
+                    i++;
+
+                Coordinates start = {current_line, GetCharacterColumn(current_line, current_index)};
+                Coordinates end = {current_line, GetCharacterColumn(current_line, current_index + i)};
+                u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Delete});
+                DeleteRange(start, end);
+                Colorize(current_line, 1);
+            }
+        }
+    }
+
+    u.After = EditorState;
+    AddUndo(u);
+}
+
 void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
     assert(!ReadOnly);
 
@@ -1348,6 +1448,8 @@ void TextEditor::SetCursorPosition(const Coordinates &position, int cursor) {
 
     if (EditorState.Cursors[cursor].CursorPosition != position) {
         EditorState.Cursors[cursor].CursorPosition = position;
+        EditorState.Cursors[cursor].SelectionEnd = EditorState.Cursors[cursor].SelectionStart = position;
+        EditorState.Cursors[cursor].InteractiveEnd = EditorState.Cursors[cursor].InteractiveStart = position;
         EditorState.Cursors[cursor].CursorPositionChanged = true;
         EnsureCursorVisible();
     }
@@ -1453,7 +1555,7 @@ void TextEditor::MoveUp(int amount, bool select) {
     if (HasSelection() && !select) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
             SetSelection(EditorState.Cursors[c].SelectionStart, EditorState.Cursors[c].SelectionStart, SelectionModeT::Normal, c);
-            SetCursorPosition(EditorState.Cursors[c].SelectionStart);
+            SetCursorPosition(EditorState.Cursors[c].SelectionStart, c);
         }
     } else {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
@@ -1483,7 +1585,7 @@ void TextEditor::MoveDown(int amount, bool select) {
     if (HasSelection() && !select) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
             SetSelection(EditorState.Cursors[c].SelectionEnd, EditorState.Cursors[c].SelectionEnd, SelectionModeT::Normal, c);
-            SetCursorPosition(EditorState.Cursors[c].SelectionEnd);
+            SetCursorPosition(EditorState.Cursors[c].SelectionEnd, c);
         }
     } else {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
@@ -1519,7 +1621,7 @@ void TextEditor::MoveLeft(int amount, bool select, bool is_word_mode) {
     if (HasSelection() && !select && !is_word_mode) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
             SetSelection(EditorState.Cursors[c].SelectionStart, EditorState.Cursors[c].SelectionStart, SelectionModeT::Normal, c);
-            SetCursorPosition(EditorState.Cursors[c].SelectionStart);
+            SetCursorPosition(EditorState.Cursors[c].SelectionStart, c);
         }
     } else {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
@@ -1579,7 +1681,7 @@ void TextEditor::MoveRight(int amount, bool select, bool is_word_mode) {
     if (HasSelection() && !select && !is_word_mode) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
             SetSelection(EditorState.Cursors[c].SelectionEnd, EditorState.Cursors[c].SelectionEnd, SelectionModeT::Normal, c);
-            SetCursorPosition(EditorState.Cursors[c].SelectionEnd);
+            SetCursorPosition(EditorState.Cursors[c].SelectionEnd, c);
         }
     } else {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
@@ -2131,9 +2233,9 @@ void TextEditor::MergeCursorsIfPossible() {
         // merge cursors if they overlap
         for (int c = EditorState.CurrentCursor; c > 0; c--) // iterate backwards through pairs
         {
-            int pc = c - 1;
+            int pc = c - 1; // pc for previous cursor
             bool pc_contains_c = EditorState.Cursors[pc].SelectionEnd >= EditorState.Cursors[c].SelectionEnd;
-            bool pc_contains_start_of_c = EditorState.Cursors[pc].SelectionEnd >= EditorState.Cursors[c].SelectionStart;
+            bool pc_contains_start_of_c = EditorState.Cursors[pc].SelectionEnd > EditorState.Cursors[c].SelectionStart;
             if (pc_contains_c) {
                 cursors_to_delete.insert(c);
             } else if (pc_contains_start_of_c) {

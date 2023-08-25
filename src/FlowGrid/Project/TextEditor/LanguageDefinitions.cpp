@@ -1008,7 +1008,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Jsn() {
 
         langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>("\\\"(\\\\.|[^\\\"])*\\\"", PaletteIndexT::String));
         langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>("[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>("[\\[\\]\\{\\}\\!\\%\\^\\&\\*\\(\\)\\-\\+\\=\\~\\|\\<\\>\\?\\/\\;\\,\\.]", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>("[\\[\\]\\{\\}\\!\\%\\^\\&\\*\\(\\)\\-\\+\\=\\~\\|\\<\\>\\?\\/\\;\\,\\.\\:]", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>("false|true", PaletteIndexT::Keyword));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";

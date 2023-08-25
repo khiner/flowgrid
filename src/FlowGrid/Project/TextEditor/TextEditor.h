@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <map>
 #include <memory>
 #include <regex>
@@ -77,6 +78,7 @@ struct IMGUI_API TextEditor {
         bool operator>=(const Coordinates &o) const { return Line != o.Line ? Line > o.Line : Column >= o.Column; }
 
         Coordinates operator-(const Coordinates &o) { return {Line - o.Line, Column - o.Column}; }
+        Coordinates operator+(const Coordinates &o) { return {Line + o.Line, Column + o.Column}; }
     };
 
     struct Identifier {
@@ -279,6 +281,8 @@ struct IMGUI_API TextEditor {
     };
 
     struct EditorStateT {
+        bool Panning = false;
+        ImVec2 LastMousePos;
         int CurrentCursor = 0;
         int LastAddedCursor = 0;
         std::vector<Cursor> Cursors = {{{0, 0}}};
@@ -364,6 +368,7 @@ private:
     void AddGlyphToLine(int line_number, int target_index, Glyph glyph);
     LineT &InsertLine(int line_number);
     void ChangeCurrentLinesIndentation(bool increase);
+    void ToggleLineComment();
     void EnterCharacter(ImWchar character, bool is_shift);
     void Backspace(bool is_word_mode = false);
     void DeleteSelection(int cursor = -1);

@@ -5,7 +5,8 @@
 using namespace ImGui;
 
 void TextEditor::DebugPanel() {
-    if (CollapsingHeader("Cursor info")) {
+    if (CollapsingHeader("Editor state info")) {
+        Checkbox("Panning", &EditorState.Panning);
         DragInt("Cursor count", &EditorState.CurrentCursor);
         for (int i = 0; i <= EditorState.CurrentCursor; i++) {
             DragInt2("Cursor", &EditorState.Cursors[i].CursorPosition.Line);

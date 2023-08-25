@@ -17,8 +17,9 @@ ma_faust_node_config ma_faust_node_config_init(dsp *faust_dsp, ma_uint32 sample_
     return config;
 }
 
-ma_uint32 ma_faust_dsp_get_in_channels(dsp *faust_dsp) { return faust_dsp->getNumInputs(); }
-ma_uint32 ma_faust_dsp_get_out_channels(dsp *faust_dsp) { return faust_dsp->getNumOutputs(); }
+dsp *ma_faust_node_get_dsp(ma_faust_node *faust_node) { return faust_node ? faust_node->config.faust_dsp : nullptr; }
+ma_uint32 ma_faust_dsp_get_in_channels(dsp *faust_dsp) { return faust_dsp ? faust_dsp->getNumInputs() : 1; }
+ma_uint32 ma_faust_dsp_get_out_channels(dsp *faust_dsp) { return faust_dsp ? faust_dsp->getNumOutputs() : 1; }
 
 ma_uint32 ma_faust_node_get_in_channels(ma_faust_node *faust_node) { return ma_faust_dsp_get_in_channels(faust_node->config.faust_dsp); }
 ma_uint32 ma_faust_node_get_out_channels(ma_faust_node *faust_node) { return ma_faust_dsp_get_out_channels(faust_node->config.faust_dsp); }
@@ -45,7 +46,7 @@ ma_result ma_faust_node_set_dsp(ma_faust_node *faust_node, dsp *faust_dsp) {
 }
 
 static void ma_faust_node_process_pcm_frames(ma_node *node, const float **const_frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
-    ma_faust_node *faust_node = (ma_faust_node *)node;
+    auto *faust_node = (ma_faust_node *)node;
 
     // ma_pcm_rb_init_ex()
     // ma_deinterleave_pcm_frames()
@@ -56,19 +57,26 @@ static void ma_faust_node_process_pcm_frames(ma_node *node, const float **const_
 }
 
 ma_result ma_faust_node_init(ma_node_graph *node_graph, const ma_faust_node_config *config, const ma_allocation_callbacks *allocation_callbacks, ma_faust_node *faust_node) {
-    if (faust_node == nullptr || config == nullptr || config->faust_dsp == nullptr) return MA_INVALID_ARGS;
+    if (faust_node == nullptr || config == nullptr) return MA_INVALID_ARGS;
 
     MA_ZERO_OBJECT(faust_node);
     faust_node->config = *config;
 
-    faust_node->config.faust_dsp->init(faust_node->config.sample_rate);
-    ma_uint32 in_channels = faust_node->config.faust_dsp->getNumInputs();
-    ma_uint32 out_channels = faust_node->config.faust_dsp->getNumOutputs();
-    static ma_node_vtable vtable = {ma_faust_node_process_pcm_frames, nullptr, ma_uint8(in_channels > 0 ? 1 : 0), ma_uint8(out_channels > 0 ? 1 : 0), 0};
+    auto *dsp = faust_node->config.faust_dsp;
+    if (dsp) dsp->init(faust_node->config.sample_rate);
+    static ma_node_vtable vtable = {ma_faust_node_process_pcm_frames, nullptr, MA_NODE_BUS_COUNT_UNKNOWN, MA_NODE_BUS_COUNT_UNKNOWN, 0};
+    // If dsp is not set, the node will be a passthrough node with 1 input and 1 output.
+    static ma_node_vtable passthrough_vtable = {ma_faust_node_process_pcm_frames, nullptr, 1, 1, MA_NODE_FLAG_PASSTHROUGH};
+
+    ma_uint32 in_channels = dsp ? dsp->getNumInputs() : 1;
+    ma_uint32 out_channels = dsp ? dsp->getNumOutputs() : 1;
+
     ma_node_config base_config = config->node_config;
-    base_config.vtable = &vtable;
-    base_config.pInputChannels = &in_channels;
-    base_config.pOutputChannels = &out_channels;
+    base_config.vtable = dsp ? &vtable : &passthrough_vtable;
+    base_config.inputBusCount = ma_uint8(in_channels > 0 ? 1 : 0);
+    base_config.outputBusCount = ma_uint8(out_channels > 0 ? 1 : 0);
+    base_config.pInputChannels = in_channels > 0 ? &in_channels : nullptr;
+    base_config.pOutputChannels = out_channels > 0 ? &out_channels : nullptr;
 
     return ma_node_init(node_graph, &base_config, allocation_callbacks, &faust_node->base);
 }

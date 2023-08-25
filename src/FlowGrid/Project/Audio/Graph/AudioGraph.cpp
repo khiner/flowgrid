@@ -556,7 +556,7 @@ std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
 void AudioGraph::OnFaustDspChanged(ID id, dsp *) {
     for (auto &node : FindAllByPathSegment(FaustNodeTypeId)) {
         auto *faust_node = reinterpret_cast<FaustNode *>(node.get());
-        if (faust_node->Id == id) faust_node->SetDsp(id);
+        if (faust_node->GetDspId() == id) faust_node->SetDsp(id);
     }
 }
 void AudioGraph::OnFaustDspAdded(ID id, dsp *dsp) {

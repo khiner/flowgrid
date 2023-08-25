@@ -11,6 +11,7 @@ struct FaustNode : AudioGraphNode {
 
     void OnSampleRateChanged() override;
 
+    ID GetDspId() const;
     void SetDsp(ID);
 
 private:

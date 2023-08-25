@@ -10,9 +10,7 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
     FaustMaNode(ComponentArgs &&args, AudioGraph *graph, ID dsp_id = 0)
         : MaNode(), Component(std::move(args)), Graph(graph), ParentNode(static_cast<AudioGraphNode *>(Parent)) {
         if (dsp_id != 0 && DspId == 0u) DspId.Set_(dsp_id);
-        auto *dsp = Graph->GetFaustDsp(DspId);
-        if (dsp == nullptr) throw std::runtime_error("Attempting to create a Faust node with a null DSP.");
-        Init(dsp, Graph->SampleRate);
+        Init(Graph->GetFaustDsp(DspId), Graph->SampleRate);
         DspId.RegisterChangeListener(this);
     }
     ~FaustMaNode() {
@@ -29,9 +27,6 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
         ma_result result = ma_faust_node_init(Graph->Get(), &config, nullptr, &_Node);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the Faust audio graph node: {}", int(result)));
 
-        // Cache the channels counts.
-        in_channels = ma_faust_node_get_in_channels(&_Node);
-        out_channels = ma_faust_node_get_out_channels(&_Node);
         Node = &_Node;
     }
     void Uninit() {
@@ -39,14 +34,18 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
     }
 
     void UpdateDsp() {
-        auto *dsp = Graph->GetFaustDsp(DspId);
-        if (dsp == nullptr) throw std::runtime_error("Attempting to set a Faust node to a nonexistent DSP.");
-        if (out_channels != ma_faust_dsp_get_out_channels(dsp) || in_channels != ma_faust_dsp_get_in_channels(dsp)) {
+        auto *new_dsp = Graph->GetFaustDsp(DspId);
+        auto *current_dsp = ma_faust_node_get_dsp(&_Node);
+        auto new_in_channels = ma_faust_dsp_get_in_channels(new_dsp);
+        auto new_out_channels = ma_faust_dsp_get_out_channels(new_dsp);
+        auto current_in_channels = ma_faust_node_get_in_channels(&_Node);
+        auto current_out_channels = ma_faust_node_get_out_channels(&_Node);
+        if ((new_dsp && !current_dsp) || (!new_dsp && current_dsp) || current_in_channels != new_in_channels || current_out_channels != new_out_channels) {
             Uninit();
-            Init(dsp, ma_faust_node_get_sample_rate(&_Node));
+            Init(new_dsp, ma_faust_node_get_sample_rate(&_Node));
             ParentNode->NotifyConnectionsChanged();
         } else {
-            ma_faust_node_set_dsp(&_Node, dsp);
+            ma_faust_node_set_dsp(&_Node, new_dsp);
         }
     }
 
@@ -61,7 +60,6 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
     Prop(UInt, DspId);
 
     ma_faust_node _Node;
-    u32 in_channels, out_channels;
 };
 
 FaustNode::FaustNode(ComponentArgs &&args, ID dsp_id) : AudioGraphNode(std::move(args), [this, dsp_id] { return CreateNode(dsp_id); }) {}
@@ -73,6 +71,5 @@ void FaustNode::OnSampleRateChanged() {
     ma_faust_node_set_sample_rate((ma_faust_node *)Get(), Graph->SampleRate);
 }
 
-void FaustNode::SetDsp(ID id) {
-    reinterpret_cast<FaustMaNode *>(Node.get())->SetDsp(id);
-}
+ID FaustNode::GetDspId() const { return reinterpret_cast<FaustMaNode *>(Node.get())->DspId; }
+void FaustNode::SetDsp(ID id) { reinterpret_cast<FaustMaNode *>(Node.get())->SetDsp(id); }

@@ -26,6 +26,7 @@ ma_uint32 ma_faust_node_get_in_channels(ma_faust_node *);
 ma_uint32 ma_faust_node_get_out_channels(ma_faust_node *);
 
 ma_uint32 ma_faust_node_get_sample_rate(ma_faust_node *);
+dsp *ma_faust_node_get_dsp(ma_faust_node *);
 
 ma_result ma_faust_node_set_sample_rate(ma_faust_node *, ma_uint32 sample_rate);
 ma_result ma_faust_node_set_dsp(ma_faust_node *, dsp *);

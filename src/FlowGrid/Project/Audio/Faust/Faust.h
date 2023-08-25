@@ -30,17 +30,6 @@ Audio.Faust.FaustDsp.Code -> Audio.Faust.FaustDsp
 ```
 **/
 
-enum NotificationType {
-    Changed,
-    Added,
-    Removed
-};
-
-struct FaustDSP;
-struct FaustDSPContainer {
-    virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
-};
-
 struct FaustParamss : Vector<FaustParams> {
     FaustParamss(ComponentArgs &&, const FaustParamsStyle &);
 
@@ -95,6 +84,16 @@ private:
 };
 
 class llvm_dsp_factory;
+enum NotificationType {
+    Changed, // Note: This isn't actually used yet. When the DSP changes, we always Remove/Add the FaustDSP.
+    Added,
+    Removed
+};
+
+struct FaustDSP;
+struct FaustDSPContainer {
+    virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
+};
 
 // `FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
@@ -103,8 +102,6 @@ struct FaustDSP : Component, Field::ChangeListener {
     ~FaustDSP();
 
     void OnFieldChanged() override;
-
-    void Update(); // Sets `Box`, `Dsp`, and `ErrorMessage` based on the current `Code`.
 
     Prop_(TextBuffer, Code, "Faust code", R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
@@ -122,8 +119,9 @@ process = _ : pitchshifter;)#");
 private:
     void Render() const override;
 
-    void Init(bool constructing);
-    void Uninit(bool destructing);
+    void Init();
+    void Uninit();
+    void Update(); // Sets `Box`, `Dsp`, and `ErrorMessage` based on the current `Code`.
 
     void DestroyDsp();
 

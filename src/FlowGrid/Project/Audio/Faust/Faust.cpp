@@ -147,11 +147,11 @@ std::unique_ptr<FaustGraph> FaustGraphs::CreateChild(Component *parent, string_v
 FaustDSP::FaustDSP(ComponentArgs &&args, FaustDSPContainer &container)
     : Component(std::move(args)), Container(container) {
     Code.RegisterChangeListener(this);
-    if (Code) Init(true);
+    Init();
 }
 
 FaustDSP::~FaustDSP() {
-    Uninit(true);
+    Uninit();
     Field::UnregisterChangeListener(this);
 }
 
@@ -171,8 +171,8 @@ void FaustDSP::DestroyDsp() {
     }
 }
 
-void FaustDSP::Init(bool constructing) {
-    const auto notification_type = constructing ? Added : Changed;
+void FaustDSP::Init() {
+    if (!Code) return;
 
     static const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
     std::vector<const char *> argv = {"-I", libraries_path};
@@ -198,33 +198,30 @@ void FaustDSP::Init(bool constructing) {
     }
     if (!Box && Dsp) DestroyDsp();
 
-    Container.NotifyListeners(notification_type, *this);
+    if (Box && Dsp) Container.NotifyListeners(Added, *this);
 }
 
-void FaustDSP::Uninit(bool destructing) {
+void FaustDSP::Uninit() {
+    Container.NotifyListeners(Removed, *this);
     if (Dsp || Box) {
-        const auto notification_type = destructing ? Removed : Changed;
-        if (Dsp) {
-            DestroyDsp();
-        }
-        if (Box) {
-            Box = nullptr;
-        }
-        Container.NotifyListeners(notification_type, *this);
+        if (Dsp) DestroyDsp();
+        if (Box) Box = nullptr;
     }
-
     ErrorMessage = "";
 }
 
 void FaustDSP::Update() {
-    if (!Dsp && Code) return Init(false);
-    if (Dsp && !Code) return Uninit(false);
-
-    Uninit(false);
-    Init(false);
+    if (!Dsp && Code) {
+        Init();
+    } else if (Dsp && !Code) {
+        Uninit();
+    } else {
+        Uninit();
+        Init();
+    }
 }
 
-static const std::string FaustDspPathSegment = "FaustDSP";
+static const string FaustDspPathSegment = "FaustDSP";
 
 FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector(std::move(args), CreateChild) {
     createLibContext();

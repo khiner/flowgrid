@@ -436,7 +436,6 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args), [
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 
     Nodes.EmplaceBack_(InputDeviceNodeTypeId);
-    Nodes.back()->SetMuted(true); // External input is muted by default.
     Nodes.EmplaceBack_(OutputDeviceNodeTypeId);
 
     if (SampleRate == 0u) SampleRate.Set_(GetDefaultSampleRate());
@@ -447,8 +446,8 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args), [
 
     // Set up default connections.
     // The device output -> graph endpoint node connection is handled in `UpdateConnections`.
-    Connections.Connect(GetInputDeviceNodes().front()->Id, GetOutputDeviceNodes().front()->Id);
-    UpdateConnections();
+    // Connections.Connect(GetInputDeviceNodes().front()->Id, GetOutputDeviceNodes().front()->Id);
+    // UpdateConnections();
 }
 
 AudioGraph::~AudioGraph() {

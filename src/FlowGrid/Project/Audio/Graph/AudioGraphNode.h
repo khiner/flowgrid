@@ -107,11 +107,6 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         IsActive = IsGraphEndpoint() || is_active;
     }
 
-    void SetMuted(bool muted) {
-        if (!OutputGainer) OutputGainer.Toggle_(); // Create the output gainer if it doesn't exist.
-        OutputGainer->SetMuted(muted);
-    }
-
     struct GainerNode : Component, Field::ChangeListener {
         GainerNode(ComponentArgs &&);
         ~GainerNode();

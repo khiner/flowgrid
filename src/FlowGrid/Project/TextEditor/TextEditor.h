@@ -141,7 +141,6 @@ struct IMGUI_API TextEditor {
     void SetLanguageDefinition(const LanguageDefT &);
     const char *GetLanguageDefinitionName() const;
 
-    const PaletteT &GetPalette() const { return PaletteBase; }
     void SetPalette(const PaletteT &);
 
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
@@ -149,7 +148,6 @@ struct IMGUI_API TextEditor {
     string GetText() const;
 
     void SetTextLines(const std::vector<string> &);
-    std::vector<string> GetTextLines() const;
 
     string GetClipboardText() const;
     string GetSelectedText(int cursor = -1) const;

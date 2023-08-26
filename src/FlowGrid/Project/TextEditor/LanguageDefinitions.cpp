@@ -402,7 +402,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::CPlusPlus() {
         langDef.SingleLineComment = "//";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "C++";
 
@@ -642,7 +641,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::HLSL() {
         langDef.SingleLineComment = "//";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "HLSL";
 
@@ -686,7 +684,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::GLSL() {
         langDef.SingleLineComment = "//";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "GLSL";
 
@@ -726,7 +723,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Python() {
         langDef.SingleLineComment = "#";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "Python";
 
@@ -784,7 +780,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::C() {
         langDef.SingleLineComment = "//";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "C";
 
@@ -843,7 +838,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::SQL() {
         langDef.SingleLineComment = "--";
 
         langDef.IsCaseSensitive = false;
-        langDef.AudioIndentation = false;
 
         langDef.Name = "SQL";
 
@@ -888,7 +882,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::AngelScript() {
         langDef.SingleLineComment = "//";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "AngelScript";
 
@@ -951,7 +944,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
         langDef.SingleLineComment = "--";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = false;
 
         langDef.Name = "Lua";
 
@@ -990,7 +982,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::CSharp() {
         langDef.SingleLineComment = "//";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "C#";
 
@@ -1016,7 +1007,6 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Jsn() {
         langDef.SingleLineComment = "//";
 
         langDef.IsCaseSensitive = true;
-        langDef.AudioIndentation = true;
 
         langDef.Name = "Json";
 

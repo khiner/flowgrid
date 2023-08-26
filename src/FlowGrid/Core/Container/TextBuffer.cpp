@@ -75,12 +75,13 @@ void TextBuffer::Render() const {
         editing_file.c_str()
     );
 
+    const auto prev_undo_index = editor.UndoIndex;
     PushFont(Ui.Fonts.FixedWidth);
     editor.Render("TextEditor");
     PopFont();
 
     const string text = editor.GetText();
-    if (editor.TextChanged) {
+    if (editor.UndoIndex != prev_undo_index) {
         Action::TextBuffer::Set{Path, text}.q();
     } else if (Value != text) {
         // TODO this is not the usual immediate-mode case. Only set text if the text changed.

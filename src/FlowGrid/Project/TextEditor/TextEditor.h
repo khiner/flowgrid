@@ -42,12 +42,6 @@ struct IMGUI_API TextEditor {
         Max
     };
 
-    enum class SelectionModeT {
-        Normal,
-        Word,
-        Line
-    };
-
     struct Breakpoint {
         int Line;
         bool Enabled;
@@ -119,14 +113,13 @@ struct IMGUI_API TextEditor {
         IdentifiersT PreprocIdentifiers;
         string CommentStart, CommentEnd, SingleLineComment;
         char PreprocChar;
-        bool AudioIndentation;
 
         TokenizeCallbackT Tokenize;
         TokenRegexStringsT TokenRegexStrings;
 
         bool IsCaseSensitive;
 
-        LanguageDefT() : PreprocChar('#'), AudioIndentation(true), Tokenize(nullptr), IsCaseSensitive(true) {}
+        LanguageDefT() : PreprocChar('#'), Tokenize(nullptr), IsCaseSensitive(true) {}
 
         static const LanguageDefT &CPlusPlus();
         static const LanguageDefT &HLSL();
@@ -176,29 +169,29 @@ struct IMGUI_API TextEditor {
     void OnCursorPositionChanged();
 
     Coordinates GetCursorPosition() const { return GetActualCursorCoordinates(); }
-    void SetCursorPosition(const Coordinates &position, int cursor = -1);
-    void SetCursorPosition(int line_number, int characterIndex, int cursor = -1);
+    void SetCursorPosition(const Coordinates &position, int cursor = -1, bool clear_selection = true);
+    void SetCursorPosition(int line_number, int characterIndex, int cursor = -1, bool clear_selection = true);
 
     inline void OnLineDeleted(int line_number, const std::unordered_set<int> *handled_cursors = nullptr) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.Line >= line_number) {
+            if (EditorState.Cursors[c].InteractiveEnd.Line >= line_number) {
                 if (handled_cursors == nullptr || handled_cursors->find(c) == handled_cursors->end()) // move up if has not been handled already
-                    SetCursorPosition({EditorState.Cursors[c].CursorPosition.Line - 1, EditorState.Cursors[c].CursorPosition.Column}, c);
+                    SetCursorPosition({EditorState.Cursors[c].InteractiveEnd.Line - 1, EditorState.Cursors[c].InteractiveEnd.Column}, c);
             }
         }
     }
     inline void OnLinesDeleted(int first_line_number, int last_line_number) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.Line >= first_line_number) {
-                const int target_line = std::max(0, EditorState.Cursors[c].CursorPosition.Line - (last_line_number - first_line_number));
-                SetCursorPosition({target_line, EditorState.Cursors[c].CursorPosition.Column}, c);
+            if (EditorState.Cursors[c].InteractiveEnd.Line >= first_line_number) {
+                const int target_line = std::max(0, EditorState.Cursors[c].InteractiveEnd.Line - (last_line_number - first_line_number));
+                SetCursorPosition({target_line, EditorState.Cursors[c].InteractiveEnd.Column}, c);
             }
         }
     }
     inline void OnLineAdded(int line_number) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.Line >= line_number)
-                SetCursorPosition({EditorState.Cursors[c].CursorPosition.Line + 1, EditorState.Cursors[c].CursorPosition.Column}, c);
+            if (EditorState.Cursors[c].InteractiveEnd.Line >= line_number)
+                SetCursorPosition({EditorState.Cursors[c].InteractiveEnd.Line + 1, EditorState.Cursors[c].InteractiveEnd.Column}, c);
         }
     }
 
@@ -218,6 +211,13 @@ struct IMGUI_API TextEditor {
     void InsertText(const string &, int cursor = -1);
     void InsertText(const char *, int cursor = -1);
 
+    enum class MoveDirection {
+        Right = 0,
+        Left = 1,
+        Up = 2,
+        Down = 3
+    };
+    void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, int line_count = 1) const;
     void MoveUp(int amount = 1, bool select = false);
     void MoveDown(int amount = 1, bool select = false);
     void MoveLeft(int amount = 1, bool select = false, bool is_word_mode = false);
@@ -227,11 +227,8 @@ struct IMGUI_API TextEditor {
     void MoveHome(bool select = false);
     void MoveEnd(bool select = false);
 
-    void SetSelectionStart(const Coordinates &position, int cursor = -1);
-    void SetSelectionEnd(const Coordinates &position, int cursor = -1);
-    void SetSelection(const Coordinates &start, const Coordinates &end, SelectionModeT mode = SelectionModeT::Normal, int cursor = -1, bool is_spawning_new_cursor = false);
-    void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_indexIndex, SelectionModeT mode = SelectionModeT::Normal, int cursor = -1, bool is_spawning_new_cursor = false);
-    void SelectWordUnderCursor();
+    void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_index, int cursor = -1);
+    void SetSelection(Coordinates start, Coordinates end, int cursor = -1);
     void SelectAll();
     bool HasSelection() const;
 
@@ -262,51 +259,51 @@ struct IMGUI_API TextEditor {
 
     bool ReadOnly;
     bool Overwrite;
-    bool TextChanged;
+    bool AutoIndent;
     bool ColorizerEnabled;
-    bool ShouldHandleKeyboardInputs;
-    bool ShouldHandleMouseInputs;
-    bool IgnoreImGuiChild;
     bool ShowWhitespaces;
     bool ShowShortTabGlyphs;
 
     float LineSpacing;
 
+    inline bool IsUTFSequence(char c) const { return (c & 0xC0) == 0x80; }
     using RegexListT = std::vector<std::pair<std::regex, PaletteIndexT>>;
 
     struct Cursor {
-        Coordinates CursorPosition = {0, 0};
-        Coordinates SelectionStart = {0, 0};
-        Coordinates SelectionEnd = {0, 0};
         Coordinates InteractiveStart = {0, 0};
         Coordinates InteractiveEnd = {0, 0};
-        bool CursorPositionChanged = false;
+        inline Coordinates GetSelectionStart() const { return InteractiveStart < InteractiveEnd ? InteractiveStart : InteractiveEnd; }
+        inline Coordinates GetSelectionEnd() const { return InteractiveStart > InteractiveEnd ? InteractiveStart : InteractiveEnd; }
+        inline bool HasSelection() const { return InteractiveStart != InteractiveEnd; }
     };
 
     struct EditorStateT {
         bool Panning = false;
+        bool IsDraggingSelection = false;
         ImVec2 LastMousePos;
         int CurrentCursor = 0;
         int LastAddedCursor = 0;
+        bool CursorPositionChanged = false;
         std::vector<Cursor> Cursors = {{{0, 0}}};
+
         void AddCursor() {
             // vector is never resized to smaller size, CurrentCursor points to last available cursor in vector
             CurrentCursor++;
             Cursors.resize(CurrentCursor + 1);
             LastAddedCursor = CurrentCursor;
         }
-        int GetLastAddedCursorIndex() {
-            return LastAddedCursor > CurrentCursor ? 0 : LastAddedCursor;
-        }
+
+        int GetLastAddedCursorIndex() { return LastAddedCursor > CurrentCursor ? 0 : LastAddedCursor; }
+
         void SortCursorsFromTopToBottom() {
-            Coordinates lastAddedCursorPos = Cursors[GetLastAddedCursorIndex()].CursorPosition;
+            Coordinates last_added_cursor_pos = Cursors[GetLastAddedCursorIndex()].InteractiveEnd;
             std::sort(Cursors.begin(), Cursors.begin() + (CurrentCursor + 1), [](const Cursor &a, const Cursor &b) -> bool {
-                return a.SelectionStart < b.SelectionStart;
+                return a.GetSelectionStart() < b.GetSelectionStart();
             });
-            // update last added cursor index to be valid after sort
-            for (int c = CurrentCursor; c > -1; c--)
-                if (Cursors[c].CursorPosition == lastAddedCursorPos)
-                    LastAddedCursor = c;
+            // Update last added cursor index to be valid after sort.
+            for (int c = CurrentCursor; c > -1; c--) {
+                if (Cursors[c].InteractiveEnd == last_added_cursor_pos) LastAddedCursor = c;
+            }
         }
     };
 
@@ -348,7 +345,6 @@ private:
     string GetText(const Coordinates &start, const Coordinates &end) const;
     Coordinates GetActualCursorCoordinates(int cursor = -1) const;
     Coordinates SanitizeCoordinates(const Coordinates &) const;
-    void Advance(Coordinates &coords) const;
     void DeleteRange(const Coordinates &start, const Coordinates &end);
     int InsertTextAt(Coordinates &at, const char *);
     void AddUndo(UndoRecord &);
@@ -397,9 +393,6 @@ private:
     float TextStart; // position (in pixels) where a code line starts relative to the left of the TextEditor.
     int LeftMargin;
     int ColorRangeMin, ColorRangeMax;
-    SelectionModeT SelectionMode;
-
-    bool IsDraggingSelection = false;
 
     PaletteT PalletteBase;
     PaletteT Pallette;

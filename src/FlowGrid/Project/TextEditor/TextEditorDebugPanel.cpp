@@ -7,18 +7,21 @@ using namespace ImGui;
 void TextEditor::DebugPanel() {
     if (CollapsingHeader("Editor state info")) {
         Checkbox("Panning", &EditorState.Panning);
+        Checkbox("Dragging selection", &EditorState.IsDraggingSelection);
         DragInt("Cursor count", &EditorState.CurrentCursor);
         for (int i = 0; i <= EditorState.CurrentCursor; i++) {
-            DragInt2("Cursor", &EditorState.Cursors[i].CursorPosition.Line);
-            DragInt2("Selection start", &EditorState.Cursors[i].SelectionStart.Line);
-            DragInt2("Selection end", &EditorState.Cursors[i].SelectionEnd.Line);
             DragInt2("Interactive start", &EditorState.Cursors[i].InteractiveStart.Line);
             DragInt2("Interactive end", &EditorState.Cursors[i].InteractiveEnd.Line);
         }
     }
+    if (CollapsingHeader("Lines")) {
+        for (int i = 0; i < Lines.size(); i++) {
+            Text("%d", Lines[i].size());
+        }
+    }
     if (CollapsingHeader("Undo")) {
         Text("Number of records: %lu", UndoBuffer.size());
-        DragInt("Undo index", &EditorState.CurrentCursor);
+        Text("Undo index: %d", UndoIndex);
         for (size_t i = 0; i < UndoBuffer.size(); i++) {
             if (CollapsingHeader(std::to_string(i).c_str())) {
                 TextUnformatted("Operations");

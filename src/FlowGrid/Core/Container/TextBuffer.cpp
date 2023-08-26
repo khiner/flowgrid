@@ -75,17 +75,18 @@ void TextBuffer::Render() const {
         editing_file.c_str()
     );
 
-    const auto prev_undo_index = editor.UndoIndex;
+    const string prev_text = editor.GetText();
     PushFont(Ui.Fonts.FixedWidth);
     editor.Render("TextEditor");
     PopFont();
 
-    const string text = editor.GetText();
-    if (editor.UndoIndex != prev_undo_index) {
-        Action::TextBuffer::Set{Path, text}.q();
-    } else if (Value != text) {
-        // TODO this is not the usual immediate-mode case. Only set text if the text changed.
-        //   Really what I want is to incorporate the TextEditor undo/redo system into the FlowGrid system.
+    // TODO this is not the usual immediate-mode case. Only set text if the text changed.
+    //   This strategy of computing two full copies of the text is only temporary.
+    //   Soon I'm incorporating the TextEditor state/undo/redo system into the FlowGrid system.
+    const string new_text = editor.GetText();
+    if (new_text != prev_text) {
+        Action::TextBuffer::Set{Path, new_text}.q();
+    } else if (Value != new_text) {
         editor.SetText(Value);
     }
 }

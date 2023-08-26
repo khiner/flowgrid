@@ -19,8 +19,7 @@ bool equals(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2, Bi
     return first1 == last1 && first2 == last2;
 }
 
-TextEditor::TextEditor()
-    : LineSpacing(1.0f), LongestLineLength(20.0f), UndoIndex(0), TabSize(4), Overwrite(false), ReadOnly(false), AutoIndent(true), WithinRender(false), ScrollToCursor(false), ScrollToTop(false), ColorizerEnabled(true), TextStart(20.0f), LeftMargin(10), ColorRangeMin(0), ColorRangeMax(0), ShouldCheckComments(true), ShowWhitespaces(true), StartTime(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()), LastClickTime(-1.0f) {
+TextEditor::TextEditor() {
     SetPalette(GetDarkPalette());
     Lines.push_back(LineT());
 }

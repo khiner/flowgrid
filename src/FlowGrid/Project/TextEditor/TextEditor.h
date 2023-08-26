@@ -248,14 +248,14 @@ struct IMGUI_API TextEditor {
 
     void DebugPanel();
 
-    bool ReadOnly;
-    bool Overwrite;
-    bool AutoIndent;
-    bool ColorizerEnabled;
-    bool ShowWhitespaces;
+    bool ReadOnly{false};
+    bool Overwrite{false};
+    bool AutoIndent{true};
+    bool ColorizerEnabled{true};
+    bool ShowWhitespaces{true};
 
-    float LineSpacing;
-    float LongestLineLength;
+    float LineSpacing{1};
+    float LongestLineLength{20};
 
     inline bool IsUTFSequence(char c) const { return (c & 0xC0) == 0x80; }
     using RegexListT = std::vector<std::pair<std::regex, PaletteIndexT>>;
@@ -325,7 +325,7 @@ struct IMGUI_API TextEditor {
     LinesT Lines;
     EditorState State;
     UndoBufferT UndoBuffer;
-    int UndoIndex;
+    int UndoIndex{0};
 
 private:
     void Colorize(int from_line_number = 0, int line_count = -1);
@@ -373,23 +373,21 @@ private:
 
     bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out);
 
-    int TabSize;
-    bool WithinRender;
-    bool ScrollToCursor;
-    bool ScrollToTop;
-    float TextStart; // position (in pixels) where a code line starts relative to the left of the TextEditor.
-    int LeftMargin;
-    int ColorRangeMin, ColorRangeMax;
+    int TabSize{4};
+    bool WithinRender{false};
+    bool ScrollToCursor{false};
+    bool ScrollToTop{false};
+    float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
+    int LeftMargin{10};
+    int ColorRangeMin{0}, ColorRangeMax{0};
 
     PaletteT PaletteBase;
     PaletteT Palette;
     const LanguageDefT *LanguageDef = nullptr;
     RegexListT RegexList;
 
-    bool ShouldCheckComments;
+    bool ShouldCheckComments{true};
     ImVec2 CharAdvance;
     string LineBuffer;
-    uint64_t StartTime;
-
-    float LastClickTime; // In ImGui time
+    float LastClickTime{-1}; // In ImGui time.
 };

@@ -332,44 +332,6 @@ TextEditor::Coordinates TextEditor::FindWordEnd(const Coordinates &from) const {
     return at;
 }
 
-TextEditor::Coordinates TextEditor::FindNextWord(const Coordinates &from) const {
-    Coordinates at = from;
-    if (at.Line >= (int)Lines.size()) return at;
-
-    // skip to the next non-word character
-    auto cindex = GetCharacterIndexR(from);
-    bool isword = false;
-    bool skip = false;
-    if (cindex < (int)Lines[at.Line].size()) {
-        auto &line = Lines[at.Line];
-        isword = !!isalnum(line[cindex].Char);
-        skip = isword;
-    }
-
-    while (!isword || skip) {
-        if (at.Line >= Lines.size()) {
-            auto l = std::max(0, (int)Lines.size() - 1);
-            return Coordinates(l, GetLineMaxColumn(l));
-        }
-
-        auto &line = Lines[at.Line];
-        if (cindex < (int)line.size()) {
-            isword = isalnum(line[cindex].Char);
-            if (isword && !skip) return Coordinates(at.Line, GetCharacterColumn(at.Line, cindex));
-
-            if (!isword) skip = false;
-            cindex++;
-        } else {
-            cindex = 0;
-            ++at.Line;
-            skip = false;
-            isword = false;
-        }
-    }
-
-    return at;
-}
-
 int TextEditor::GetCharacterIndexL(const Coordinates &coords) const {
     if (coords.Line >= Lines.size()) return -1;
 
@@ -417,15 +379,6 @@ int TextEditor::GetCharacterColumn(int line_number, int char_index) const {
     return col;
 }
 
-int TextEditor::GetLineCharacterCount(int line_number) const {
-    if (line_number >= Lines.size()) return 0;
-
-    auto &line = Lines[line_number];
-    int c = 0;
-    for (unsigned i = 0; i < line.size(); c++) i += UTF8CharLength(line[i].Char);
-    return c;
-}
-
 int TextEditor::GetLineMaxColumn(int line_number) const {
     if (line_number >= Lines.size()) return 0;
 
@@ -438,17 +391,6 @@ int TextEditor::GetLineMaxColumn(int line_number) const {
         i += UTF8CharLength(c);
     }
     return col;
-}
-
-bool TextEditor::IsOnWordBoundary(const Coordinates &at) const {
-    if (at.Line >= (int)Lines.size() || at.Column == 0) return true;
-
-    auto &line = Lines[at.Line];
-    auto cindex = GetCharacterIndexR(at);
-    if (cindex >= (int)line.size()) return true;
-    if (ColorizerEnabled) return line[cindex].ColorIndex != line[size_t(cindex - 1)].ColorIndex;
-
-    return isspace(line[cindex].Char) != isspace(line[cindex - 1].Char);
 }
 
 void TextEditor::RemoveLines(int start, int end) {
@@ -573,22 +515,6 @@ TextEditor::LineT &TextEditor::InsertLine(int line_number) {
     OnLineAdded(line_number);
 
     return result;
-}
-
-string TextEditor::GetWordUnderCursor() const { return GetWordAt(GetCursorPosition()); }
-
-string TextEditor::GetWordAt(const Coordinates &coords) const {
-    auto start = FindWordStart(coords);
-    auto end = FindWordEnd(coords);
-
-    string r;
-    auto start_char_index = GetCharacterIndexR(start);
-    auto end_char_index = GetCharacterIndexR(end);
-    for (auto it = start_char_index; it < end_char_index; ++it) {
-        r.push_back(Lines[coords.Line][it].Char);
-    }
-
-    return r;
 }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
@@ -1733,23 +1659,6 @@ void TextEditor::Undo(int aSteps) {
 }
 void TextEditor::Redo(int aSteps) {
     while (CanRedo() && aSteps-- > 0) UndoBuffer[UndoIndex++].Redo(this);
-}
-
-void TextEditor::ClearExtrcursors() { State.CurrentCursor = 0; }
-
-void TextEditor::ClearSelections() {
-    for (int c = State.CurrentCursor; c > -1; c--) {
-        State.Cursors[c].InteractiveEnd = State.Cursors[c].InteractiveStart = State.Cursors[c].GetSelectionEnd();
-    }
-}
-
-void TextEditor::SelectNextOccurrenceOf(const char *text, int text_size, int cursor) {
-    if (cursor == -1) cursor = State.CurrentCursor;
-
-    Coordinates next_start, next_end;
-    FindNextOccurrence(text, text_size, State.Cursors[cursor].InteractiveEnd, next_start, next_end);
-    SetSelection(next_start, next_end, cursor);
-    EnsureCursorVisible(cursor);
 }
 
 void TextEditor::AddCursorForNextOccurrence() {

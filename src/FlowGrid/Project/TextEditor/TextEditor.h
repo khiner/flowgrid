@@ -237,9 +237,6 @@ struct IMGUI_API TextEditor {
     void Undo(int aSteps = 1);
     void Redo(int aSteps = 1);
 
-    void ClearExtrcursors();
-    void ClearSelections();
-    void SelectNextOccurrenceOf(const char *text, int text_size, int cursor = -1);
     void AddCursorForNextOccurrence();
 
     static const PaletteT &GetMarianaPalette();
@@ -346,13 +343,10 @@ private:
     Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_line_number = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
-    Coordinates FindNextWord(const Coordinates &from) const;
     int GetCharacterIndexL(const Coordinates &coords) const;
     int GetCharacterIndexR(const Coordinates &coords) const;
     int GetCharacterColumn(int line_number, int char_index) const;
-    int GetLineCharacterCount(int line_number) const;
     int GetLineMaxColumn(int line_number) const;
-    bool IsOnWordBoundary(const Coordinates &at) const;
     void RemoveLines(int start, int end);
     void RemoveLine(int line_number, const std::unordered_set<int> *handled_cursors = nullptr);
     void RemoveCurrentLines();
@@ -370,8 +364,6 @@ private:
     void EnterCharacter(ImWchar character, bool is_shift);
     void Backspace(bool is_word_mode = false);
     void DeleteSelection(int cursor = -1);
-    string GetWordUnderCursor() const;
-    string GetWordAt(const Coordinates &coords) const;
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);

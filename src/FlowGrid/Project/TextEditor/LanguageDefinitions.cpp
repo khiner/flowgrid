@@ -997,10 +997,10 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Jsn() {
         langDef.Keywords.clear();
         langDef.Identifiers.clear();
 
-		langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-		langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?)##", PaletteIndexT::Number));
-		langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.\:])##", PaletteIndexT::Punctuation));
-		langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(false|true)##", PaletteIndexT::Keyword));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(\"(\\.|[^\"])*\")##", PaletteIndexT::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?)##", PaletteIndexT::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.\:])##", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(false|true)##", PaletteIndexT::Keyword));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";

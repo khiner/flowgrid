@@ -42,13 +42,6 @@ struct IMGUI_API TextEditor {
         Max
     };
 
-    struct Breakpoint {
-        int Line;
-        bool Enabled;
-
-        Breakpoint() : Line(-1), Enabled(false) {}
-    };
-
     // Represents a character coordinate from the user's point of view,
     // i. e. consider an uniform grid (assuming fixed-width font) on the
     // screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -83,8 +76,6 @@ struct IMGUI_API TextEditor {
 
     using IdentifiersT = std::unordered_map<string, Identifier>;
     using KeywordsT = std::unordered_set<string>;
-    using ErrorMarkersT = std::map<int, string>;
-    using BreakpointsT = std::unordered_set<int>;
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndexT::Max>;
     using CharT = uint8_t;
 
@@ -220,8 +211,8 @@ struct IMGUI_API TextEditor {
     void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, int line_count = 1) const;
     void MoveUp(int amount = 1, bool select = false);
     void MoveDown(int amount = 1, bool select = false);
-    void MoveLeft(int amount = 1, bool select = false, bool is_word_mode = false);
-    void MoveRight(int amount = 1, bool select = false, bool is_word_mode = false);
+    void MoveLeft(bool select = false, bool is_word_mode = false);
+    void MoveRight(bool select = false, bool is_word_mode = false);
     void MoveTop(bool select = false);
     void MoveBottom(bool select = false);
     void MoveHome(bool select = false);
@@ -230,12 +221,15 @@ struct IMGUI_API TextEditor {
     void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_index, int cursor = -1);
     void SetSelection(Coordinates start, Coordinates end, int cursor = -1);
     void SelectAll();
-    bool HasSelection() const;
+    bool AnyCursorHasSelection() const;
+    bool AllCursorsHaveSelection() const;
 
     void Copy();
     void Cut();
     void Paste();
-    void Delete(bool is_word_mode = false);
+
+    struct EditorStateT;
+    void Delete(bool is_word_mode = false, const EditorStateT *editor_state = nullptr);
 
     int GetUndoIndex() const;
     bool CanUndo() const;
@@ -262,9 +256,9 @@ struct IMGUI_API TextEditor {
     bool AutoIndent;
     bool ColorizerEnabled;
     bool ShowWhitespaces;
-    bool ShowShortTabGlyphs;
 
     float LineSpacing;
+    float LongestLineLength;
 
     inline bool IsUTFSequence(char c) const { return (c & 0xC0) == 0x80; }
     using RegexListT = std::vector<std::pair<std::regex, PaletteIndexT>>;
@@ -287,7 +281,8 @@ struct IMGUI_API TextEditor {
         std::vector<Cursor> Cursors = {{{0, 0}}};
 
         void AddCursor() {
-            // vector is never resized to smaller size, CurrentCursor points to last available cursor in vector
+            // Vector is never resized to smaller size.
+            // `CurrentCursor` points to last available cursor in vector.
             CurrentCursor++;
             Cursors.resize(CurrentCursor + 1);
             LastAddedCursor = CurrentCursor;
@@ -400,8 +395,6 @@ private:
     RegexListT RegexList;
 
     bool ShouldCheckComments;
-    BreakpointsT Breakpoints;
-    ErrorMarkersT ErrorMarkers;
     ImVec2 CharAdvance;
     string LineBuffer;
     uint64_t StartTime;

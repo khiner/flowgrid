@@ -43,7 +43,7 @@ const char *TextEditor::GetLanguageDefinitionName() const {
 }
 
 void TextEditor::SetPalette(const PaletteT &palette) {
-    PalletteBase = palette;
+    PaletteBase = palette;
 }
 
 string TextEditor::GetText(const Coordinates &start, const Coordinates &end) const {
@@ -518,13 +518,13 @@ TextEditor::LineT &TextEditor::InsertLine(int line_number) {
 }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
-    if (!ColorizerEnabled) return Pallette[(int)PaletteIndexT::Default];
-    if (glyph.IsComment) return Pallette[(int)PaletteIndexT::Comment];
-    if (glyph.IsMultiLineComment) return Pallette[(int)PaletteIndexT::MultiLineComment];
+    if (!ColorizerEnabled) return Palette[(int)PaletteIndexT::Default];
+    if (glyph.IsComment) return Palette[(int)PaletteIndexT::Comment];
+    if (glyph.IsMultiLineComment) return Palette[(int)PaletteIndexT::MultiLineComment];
 
-    const auto color = Pallette[(int)glyph.ColorIndex];
+    const auto color = Palette[(int)glyph.ColorIndex];
     if (glyph.IsPreprocessor) {
-        const auto ppcolor = Pallette[(int)PaletteIndexT::Preprocessor];
+        const auto ppcolor = Palette[(int)PaletteIndexT::Preprocessor];
         const int c0 = ((ppcolor & 0xff) + (color & 0xff)) / 2;
         const int c1 = (((ppcolor >> 8) & 0xff) + ((color >> 8) & 0xff)) / 2;
         const int c2 = (((ppcolor >> 16) & 0xff) + ((color >> 16) & 0xff)) / 2;
@@ -736,9 +736,9 @@ void TextEditor::HandleMouseInputs() {
 void TextEditor::UpdatePalette() {
     /* Update palette with the current alpha from style */
     for (int i = 0; i < (int)PaletteIndexT::Max; ++i) {
-        auto color = U32ColorToVec4(PalletteBase[i]);
+        auto color = U32ColorToVec4(PaletteBase[i]);
         color.w *= ImGui::GetStyle().Alpha;
-        Pallette[i] = ImGui::ColorConvertFloat4ToU32(color);
+        Palette[i] = ImGui::ColorConvertFloat4ToU32(color);
     }
 }
 
@@ -799,7 +799,7 @@ void TextEditor::Render(bool is_parent_focused) {
                 if (sstart != -1 && ssend != -1 && sstart < ssend) {
                     ImVec2 vstart(line_start_screen_pos.x + TextStart + sstart, line_start_screen_pos.y);
                     ImVec2 vend(line_start_screen_pos.x + TextStart + ssend, line_start_screen_pos.y + CharAdvance.y);
-                    dl->AddRectFilled(vstart, vend, Pallette[(int)PaletteIndexT::Selection]);
+                    dl->AddRectFilled(vstart, vend, Palette[(int)PaletteIndexT::Selection]);
                 }
             }
 
@@ -807,7 +807,7 @@ void TextEditor::Render(bool is_parent_focused) {
             snprintf(buf, 16, "%d  ", line_number + 1);
 
             auto line_numberWidth = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, buf, nullptr, nullptr).x;
-            dl->AddText(ImVec2(line_start_screen_pos.x + TextStart - line_numberWidth, line_start_screen_pos.y), Pallette[(int)PaletteIndexT::LineNumber], buf);
+            dl->AddText(ImVec2(line_start_screen_pos.x + TextStart - line_numberWidth, line_start_screen_pos.y), Palette[(int)PaletteIndexT::LineNumber], buf);
 
             std::vector<Coordinates> cursor_coords_in_this_line;
             for (int c = 0; c <= State.CurrentCursor; c++) {
@@ -838,13 +838,13 @@ void TextEditor::Render(bool is_parent_focused) {
                         }
                         ImVec2 cstart(text_screen_pos.x + cx, line_start_screen_pos.y);
                         ImVec2 cend(text_screen_pos.x + cx + width, line_start_screen_pos.y + CharAdvance.y);
-                        dl->AddRectFilled(cstart, cend, Pallette[(int)PaletteIndexT::Cursor]);
+                        dl->AddRectFilled(cstart, cend, Palette[(int)PaletteIndexT::Cursor]);
                     }
                 }
             }
 
             // Render colorized text
-            auto prev_color = line.empty() ? Pallette[(int)PaletteIndexT::Default] : GetGlyphColor(line[0]);
+            auto prev_color = line.empty() ? Palette[(int)PaletteIndexT::Default] : GetGlyphColor(line[0]);
             ImVec2 buffer_offset;
 
             for (int i = 0; i < line.size();) {
@@ -871,16 +871,16 @@ void TextEditor::Render(bool is_parent_focused) {
                         const float x2 = text_screen_pos.x + buffer_offset.x - 1.0f;
                         const float gap = s * 0.2;
                         ImVec2 p1 = {x1, y1}, p2 = {x2, y1}, p3 = {x2 - gap, y1 - gap}, p4 = {x2 - gap, y1 + gap};
-                        dl->AddLine(p1, p2, Pallette[(int)PaletteIndexT::ControlCharacter]);
-                        dl->AddLine(p2, p3, Pallette[(int)PaletteIndexT::ControlCharacter]);
-                        dl->AddLine(p2, p4, Pallette[(int)PaletteIndexT::ControlCharacter]);
+                        dl->AddLine(p1, p2, Palette[(int)PaletteIndexT::ControlCharacter]);
+                        dl->AddLine(p2, p3, Palette[(int)PaletteIndexT::ControlCharacter]);
+                        dl->AddLine(p2, p4, Palette[(int)PaletteIndexT::ControlCharacter]);
                     }
                 } else if (glyph.Char == ' ') {
                     if (ShowWhitespaces) {
                         const float s = ImGui::GetFontSize();
                         const float x = text_screen_pos.x + buffer_offset.x + space_size * 0.5f;
                         const float y = text_screen_pos.y + buffer_offset.y + s * 0.5f;
-                        dl->AddCircleFilled({x, y}, 1.5f, Pallette[(int)PaletteIndexT::ControlCharacter], 4);
+                        dl->AddCircleFilled({x, y}, 1.5f, Palette[(int)PaletteIndexT::ControlCharacter], 4);
                     }
                     buffer_offset.x += space_size;
                     i++;
@@ -965,7 +965,7 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
 
     UpdatePalette();
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertU32ToFloat4(Pallette[(int)PaletteIndexT::Background]));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertU32ToFloat4(Palette[(int)PaletteIndexT::Background]));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
     ImGui::BeginChild(title, size, border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
 

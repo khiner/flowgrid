@@ -141,7 +141,7 @@ struct IMGUI_API TextEditor {
     void SetLanguageDefinition(const LanguageDefT &);
     const char *GetLanguageDefinitionName() const;
 
-    const PaletteT &GetPalette() const { return PalletteBase; }
+    const PaletteT &GetPalette() const { return PaletteBase; }
     void SetPalette(const PaletteT &);
 
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
@@ -381,8 +381,8 @@ private:
     int LeftMargin;
     int ColorRangeMin, ColorRangeMax;
 
-    PaletteT PalletteBase;
-    PaletteT Pallette;
+    PaletteT PaletteBase;
+    PaletteT Palette;
     const LanguageDefT *LanguageDef = nullptr;
     RegexListT RegexList;
 

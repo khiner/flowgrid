@@ -164,25 +164,25 @@ struct IMGUI_API TextEditor {
     void SetCursorPosition(int line_number, int characterIndex, int cursor = -1, bool clear_selection = true);
 
     inline void OnLineDeleted(int line_number, const std::unordered_set<int> *handled_cursors = nullptr) {
-        for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].InteractiveEnd.Line >= line_number) {
+        for (int c = 0; c <= State.CurrentCursor; c++) {
+            if (State.Cursors[c].InteractiveEnd.Line >= line_number) {
                 if (handled_cursors == nullptr || handled_cursors->find(c) == handled_cursors->end()) // move up if has not been handled already
-                    SetCursorPosition({EditorState.Cursors[c].InteractiveEnd.Line - 1, EditorState.Cursors[c].InteractiveEnd.Column}, c);
+                    SetCursorPosition({State.Cursors[c].InteractiveEnd.Line - 1, State.Cursors[c].InteractiveEnd.Column}, c);
             }
         }
     }
     inline void OnLinesDeleted(int first_line_number, int last_line_number) {
-        for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].InteractiveEnd.Line >= first_line_number) {
-                const int target_line = std::max(0, EditorState.Cursors[c].InteractiveEnd.Line - (last_line_number - first_line_number));
-                SetCursorPosition({target_line, EditorState.Cursors[c].InteractiveEnd.Column}, c);
+        for (int c = 0; c <= State.CurrentCursor; c++) {
+            if (State.Cursors[c].InteractiveEnd.Line >= first_line_number) {
+                const int target_line = std::max(0, State.Cursors[c].InteractiveEnd.Line - (last_line_number - first_line_number));
+                SetCursorPosition({target_line, State.Cursors[c].InteractiveEnd.Column}, c);
             }
         }
     }
     inline void OnLineAdded(int line_number) {
-        for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].InteractiveEnd.Line >= line_number)
-                SetCursorPosition({EditorState.Cursors[c].InteractiveEnd.Line + 1, EditorState.Cursors[c].InteractiveEnd.Column}, c);
+        for (int c = 0; c <= State.CurrentCursor; c++) {
+            if (State.Cursors[c].InteractiveEnd.Line >= line_number)
+                SetCursorPosition({State.Cursors[c].InteractiveEnd.Line + 1, State.Cursors[c].InteractiveEnd.Column}, c);
         }
     }
 
@@ -228,8 +228,8 @@ struct IMGUI_API TextEditor {
     void Cut();
     void Paste();
 
-    struct EditorStateT;
-    void Delete(bool is_word_mode = false, const EditorStateT *editor_state = nullptr);
+    struct EditorState;
+    void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
     int GetUndoIndex() const;
     bool CanUndo() const;
@@ -271,7 +271,7 @@ struct IMGUI_API TextEditor {
         inline bool HasSelection() const { return InteractiveStart != InteractiveEnd; }
     };
 
-    struct EditorStateT {
+    struct EditorState {
         bool Panning = false;
         bool IsDraggingSelection = false;
         ImVec2 LastMousePos;
@@ -310,8 +310,8 @@ struct IMGUI_API TextEditor {
 
         UndoRecord(
             const std::vector<UndoOperation> &operations,
-            TextEditor::EditorStateT &before,
-            TextEditor::EditorStateT &after
+            TextEditor::EditorState &before,
+            TextEditor::EditorState &after
         );
 
         void Undo(TextEditor *editor);
@@ -319,14 +319,14 @@ struct IMGUI_API TextEditor {
 
         std::vector<UndoOperation> Operations;
 
-        EditorStateT Before;
-        EditorStateT After;
+        EditorState Before;
+        EditorState After;
     };
 
     using UndoBufferT = std::vector<UndoRecord>;
 
     LinesT Lines;
-    EditorStateT EditorState;
+    EditorState State;
     UndoBufferT UndoBuffer;
     int UndoIndex;
 

@@ -6,12 +6,12 @@ using namespace ImGui;
 
 void TextEditor::DebugPanel() {
     if (CollapsingHeader("Editor state info")) {
-        Checkbox("Panning", &EditorState.Panning);
-        Checkbox("Dragging selection", &EditorState.IsDraggingSelection);
-        DragInt("Cursor count", &EditorState.CurrentCursor);
-        for (int i = 0; i <= EditorState.CurrentCursor; i++) {
-            DragInt2("Interactive start", &EditorState.Cursors[i].InteractiveStart.Line);
-            DragInt2("Interactive end", &EditorState.Cursors[i].InteractiveEnd.Line);
+        Checkbox("Panning", &State.Panning);
+        Checkbox("Dragging selection", &State.IsDraggingSelection);
+        DragInt("Cursor count", &State.CurrentCursor);
+        for (int i = 0; i <= State.CurrentCursor; i++) {
+            DragInt2("Interactive start", &State.Cursors[i].InteractiveStart.Line);
+            DragInt2("Interactive end", &State.Cursors[i].InteractiveEnd.Line);
         }
     }
     if (CollapsingHeader("Lines")) {

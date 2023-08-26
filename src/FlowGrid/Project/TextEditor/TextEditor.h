@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <regex>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -188,8 +189,10 @@ struct IMGUI_API TextEditor {
     }
     inline void OnLinesDeleted(int first_line_number, int last_line_number) {
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.Line >= first_line_number)
-                SetCursorPosition({EditorState.Cursors[c].CursorPosition.Line - (last_line_number - first_line_number), EditorState.Cursors[c].CursorPosition.Column}, c);
+            if (EditorState.Cursors[c].CursorPosition.Line >= first_line_number) {
+                const int target_line = std::max(0, EditorState.Cursors[c].CursorPosition.Line - (last_line_number - first_line_number));
+                SetCursorPosition({target_line, EditorState.Cursors[c].CursorPosition.Column}, c);
+            }
         }
     }
     inline void OnLineAdded(int line_number) {
@@ -367,8 +370,12 @@ private:
     void AddGlyphsToLine(int line_number, int target_index, LineT::iterator source_start, LineT::iterator source_end);
     void AddGlyphToLine(int line_number, int target_index, Glyph glyph);
     LineT &InsertLine(int line_number);
+
     void ChangeCurrentLinesIndentation(bool increase);
+    void MoveUpCurrentLines();
+    void MoveDownCurrentLines();
     void ToggleLineComment();
+
     void EnterCharacter(ImWchar character, bool is_shift);
     void Backspace(bool is_word_mode = false);
     void DeleteSelection(int cursor = -1);

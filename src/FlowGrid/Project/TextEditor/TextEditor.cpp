@@ -543,16 +543,18 @@ void TextEditor::RemoveCurrentLines() {
     AddUndo(u);
 }
 
+// Adjusts cursor position when other cursor writes/deletes in the same line.
 void TextEditor::OnLineChanged(bool before_change, int line_number, int column, int char_count, bool is_deleted) {
     static std::unordered_map<int, int> cursor_char_indices;
     if (before_change) {
         cursor_char_indices.clear();
         for (int c = 0; c <= EditorState.CurrentCursor; c++) {
-            if (EditorState.Cursors[c].CursorPosition.Line == line_number) {
-                if (EditorState.Cursors[c].CursorPosition.Column > column) {
-                    cursor_char_indices[c] = GetCharacterIndexR({line_number, EditorState.Cursors[c].CursorPosition.Column});
-                    cursor_char_indices[c] += is_deleted ? -char_count : char_count;
-                }
+            if (EditorState.Cursors[c].CursorPosition.Line == line_number && // Cursor is at the line.
+                EditorState.Cursors[c].CursorPosition.Column > column && // Cursor is to the right of changing part.
+                EditorState.Cursors[c].SelectionEnd == EditorState.Cursors[c].SelectionStart) // Cursor does not have a selection.
+            {
+                cursor_char_indices[c] = GetCharacterIndexR({line_number, EditorState.Cursors[c].CursorPosition.Column});
+                cursor_char_indices[c] += is_deleted ? -char_count : char_count;
             }
         }
     } else {
@@ -713,6 +715,10 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
             ChangeCurrentLinesIndentation(false);
         else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
             ChangeCurrentLinesIndentation(true);
+        else if (!alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
+            MoveUpCurrentLines();
+        else if (!alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
+            MoveDownCurrentLines();
         else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
             ToggleLineComment();
         else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
@@ -1201,70 +1207,123 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
     u.Before = EditorState;
 
     for (int c = EditorState.CurrentCursor; c > -1; c--) {
-        auto start = EditorState.Cursors[c].SelectionStart;
-        auto end = EditorState.Cursors[c].SelectionEnd;
-        auto original_end = end;
-        if (start > end) std::swap(start, end);
+        for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
+            // Check if selection ends at line start.
+            if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart)
+                continue;
 
-        start.Column = 0;
-        //			end.Column = end.Line < Lines.size() ? Lines[end.Line].size() : 0;
-        if (end.Column == 0 && end.Line > 0) --end.Line;
-        if (end.Line >= (int)Lines.size()) end.Line = Lines.empty() ? 0 : (int)Lines.size() - 1;
-        end.Column = GetLineMaxColumn(end.Line);
-
-        // if (end.Column >= GetLineMaxColumn(end.Line))
-        //	end.Column = GetLineMaxColumn(end.Line) - 1;
-
-        UndoOperation remove_op = {GetText(start, end), start, end, UndoOperationType::Delete};
-
-        bool modified = false;
-        for (int i = start.Line; i <= end.Line; i++) {
-            auto &line = Lines[i];
-            if (!increase) {
-                if (!line.empty()) {
-                    if (line.front().Char == '\t') {
-                        RemoveGlyphsFromLine(i, 0, 1);
-                        modified = true;
-                    } else {
-                        for (int j = 0; j < TabSize && !line.empty() && line.front().Char == ' '; j++) {
-                            RemoveGlyphsFromLine(i, 0, 1);
-                            modified = true;
-                        }
-                    }
-                }
-            } else if (Lines[i].size() > 0) {
-                AddGlyphToLine(i, 0, Glyph('\t', TextEditor::PaletteIndexT::Background));
-                modified = true;
-            }
-        }
-
-        if (modified) {
-            start = Coordinates(start.Line, GetCharacterColumn(start.Line, 0));
-            Coordinates range_end;
-            string added_text;
-            if (original_end.Column != 0) {
-                end = Coordinates(end.Line, GetLineMaxColumn(end.Line));
-                range_end = end;
-                added_text = GetText(start, end);
+            if (increase) {
+                Coordinates line_start = {current_line, 0};
+                Coordinates insertion_end = line_start;
+                InsertTextAt(insertion_end, "\t"); // Sets insertion end.
+                u.Operations.push_back({"\t", line_start, insertion_end, UndoOperationType::Add});
+                Colorize(line_start.Line, 1);
             } else {
-                end = Coordinates(original_end.Line, 0);
-                range_end = Coordinates(end.Line - 1, GetLineMaxColumn(end.Line - 1));
-                added_text = GetText(start, range_end);
+                Coordinates start = {current_line, 0};
+                Coordinates end = {current_line, TabSize};
+                int char_index = GetCharacterIndexL(end) - 1;
+                while (char_index > -1 && (Lines[current_line][char_index].Char == ' ' || Lines[current_line][char_index].Char == '\t')) char_index--;
+                bool only_space_chars_found = char_index == -1;
+                if (only_space_chars_found) {
+                    u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Delete});
+                    DeleteRange(start, end);
+                    Colorize(current_line, 1);
+                }
             }
-
-            u.Operations.push_back(remove_op);
-            u.Operations.push_back({added_text, start, range_end, UndoOperationType::Add});
-            u.After = EditorState;
-
-            EditorState.Cursors[c].SelectionStart = start;
-            EditorState.Cursors[c].SelectionEnd = end;
-
-            TextChanged = true;
         }
     }
 
     EnsureCursorVisible();
     if (u.Operations.size() > 0) AddUndo(u);
+}
+
+void TextEditor::MoveUpCurrentLines() {
+    assert(!ReadOnly);
+
+    UndoRecord u;
+    u.Before = EditorState;
+
+    std::set<int> affected_lines;
+    int min_line = -1;
+    int max_line = -1;
+    // Cursors are expected to be sorted from top to bottom.
+    for (int c = EditorState.CurrentCursor; c > -1; c--) {
+        for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
+            // Check if selection ends at line start.
+            if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart)
+                continue;
+            affected_lines.insert(current_line);
+            min_line = min_line == -1 ? current_line : (current_line < min_line ? current_line : min_line);
+            max_line = max_line == -1 ? current_line : (current_line > max_line ? current_line : max_line);
+        }
+    }
+    if (min_line == 0) return; // Can't move up anymore.
+
+    Coordinates start = {min_line - 1, 0};
+    Coordinates end = {max_line, GetLineMaxColumn(max_line)};
+    u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Delete});
+
+    // Lines should be sorted at this point.
+    for (int line : affected_lines) std::swap(Lines[line - 1], Lines[line]);
+
+    for (int c = EditorState.CurrentCursor; c > -1; c--) {
+        EditorState.Cursors[c].CursorPosition.Line -= 1;
+        EditorState.Cursors[c].InteractiveStart.Line -= 1;
+        EditorState.Cursors[c].InteractiveEnd.Line -= 1;
+        EditorState.Cursors[c].SelectionStart.Line -= 1;
+        EditorState.Cursors[c].SelectionEnd.Line -= 1;
+        // No need to set CursorPositionChanged as cursors will remain sorted.
+    }
+
+    end = {max_line, GetLineMaxColumn(max_line)}; // This line is swapped with line above. Need to find new max column.
+    u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Add});
+    u.After = EditorState;
+    AddUndo(u);
+}
+
+void TextEditor::MoveDownCurrentLines() {
+    assert(!ReadOnly);
+
+    UndoRecord u;
+    u.Before = EditorState;
+
+    std::set<int> affected_lines;
+    int min_line = -1;
+    int max_line = -1;
+
+    // Cursors are expected to be sorted from top to bottom.
+    for (int c = 0; c <= EditorState.CurrentCursor; c++) {
+        for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
+            if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart) // when selection ends at line start
+                continue;
+            affected_lines.insert(current_line);
+            min_line = min_line == -1 ? current_line : (current_line < min_line ? current_line : min_line);
+            max_line = max_line == -1 ? current_line : (current_line > max_line ? current_line : max_line);
+        }
+    }
+    if (max_line == Lines.size() - 1) return; // Can't move down anymore.
+
+    Coordinates start = {min_line, 0};
+    Coordinates end = {max_line + 1, GetLineMaxColumn(max_line + 1)};
+    u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Delete});
+
+    // Lines should be sorted at this point.
+    std::set<int>::reverse_iterator rit;
+    for (rit = affected_lines.rbegin(); rit != affected_lines.rend(); rit++) std::swap(Lines[*rit + 1], Lines[*rit]);
+
+    for (int c = EditorState.CurrentCursor; c > -1; c--) {
+        EditorState.Cursors[c].CursorPosition.Line += 1;
+        EditorState.Cursors[c].InteractiveStart.Line += 1;
+        EditorState.Cursors[c].InteractiveEnd.Line += 1;
+        EditorState.Cursors[c].SelectionStart.Line += 1;
+        EditorState.Cursors[c].SelectionEnd.Line += 1;
+        // no need to set CursorPositionChanged as cursors will remain sorted
+    }
+
+    end = {max_line + 1, GetLineMaxColumn(max_line + 1)}; // This line is swapped with line below. Need to find new max column.
+    u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Add});
+    u.After = EditorState;
+    AddUndo(u);
 }
 
 void TextEditor::ToggleLineComment() {
@@ -1277,10 +1336,12 @@ void TextEditor::ToggleLineComment() {
     u.Before = EditorState;
 
     bool should_add_comment = false;
-    for (int c = EditorState.CurrentCursor; c > -1 && !should_add_comment; c--) {
-        for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line && !should_add_comment; current_line--) {
+    std::unordered_set<int> affected_lines;
+    for (int c = EditorState.CurrentCursor; c > -1; c--) {
+        for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
             if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart) // when selection ends at line start
                 continue;
+            affected_lines.insert(current_line);
             int current_index = 0;
             while (current_index < Lines[current_line].size() && (Lines[current_line][current_index].Char == ' ' || Lines[current_line][current_index].Char == '\t')) current_index++;
             if (current_index == Lines[current_line].size()) continue;
@@ -1293,44 +1354,34 @@ void TextEditor::ToggleLineComment() {
     }
 
     if (should_add_comment) {
-        for (int c = EditorState.CurrentCursor; c > -1; c--) {
-            for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
-                if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart) // when selection ends at line start
-                    continue;
-                Coordinates line_start = {current_line, 0};
-                Coordinates insertion_end = line_start;
-                InsertTextAt(insertion_end, (comment_str + ' ').c_str()); // sets insertion end
-                u.Operations.push_back({(comment_str + ' '), line_start, insertion_end, UndoOperationType::Add});
-                Colorize(line_start.Line, 1);
-            }
+        for (int current_line : affected_lines) {
+            Coordinates line_start = {current_line, 0};
+            Coordinates insertion_end = line_start;
+            InsertTextAt(insertion_end, (comment_str + ' ').c_str()); // sets insertion end
+            u.Operations.push_back({(comment_str + ' '), line_start, insertion_end, UndoOperationType::Add});
+            Colorize(line_start.Line, 1);
         }
     } else {
-        for (int c = EditorState.CurrentCursor; c > -1; c--) {
-            for (int current_line = EditorState.Cursors[c].SelectionEnd.Line; current_line >= EditorState.Cursors[c].SelectionStart.Line; current_line--) {
-                if (Coordinates{current_line, 0} == EditorState.Cursors[c].SelectionEnd && EditorState.Cursors[c].SelectionEnd != EditorState.Cursors[c].SelectionStart) // when selection ends at line start
-                    continue;
-                int current_index = 0;
-                while (current_index < Lines[current_line].size() && (Lines[current_line][current_index].Char == ' ' || Lines[current_line][current_index].Char == '\t')) current_index++;
-                if (current_index == Lines[current_line].size()) continue;
+        for (int current_line : affected_lines) {
+            int current_index = 0;
+            while (current_index < Lines[current_line].size() && (Lines[current_line][current_index].Char == ' ' || Lines[current_line][current_index].Char == '\t')) current_index++;
+            if (current_index == Lines[current_line].size()) continue;
 
-                int i = 0;
-                while (i < comment_str.length() && current_index + i < Lines[current_line].size() && Lines[current_line][current_index + i].Char == comment_str[i]) i++;
-                bool matched = i == comment_str.length();
-                assert(matched);
-                if (current_index + i < Lines[current_line].size() && Lines[current_line][current_index + i].Char == ' ')
-                    i++;
-
-                Coordinates start = {current_line, GetCharacterColumn(current_line, current_index)};
-                Coordinates end = {current_line, GetCharacterColumn(current_line, current_index + i)};
-                u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Delete});
-                DeleteRange(start, end);
-                Colorize(current_line, 1);
+            int i = 0;
+            while (i < comment_str.length() && current_index + i < Lines[current_line].size() && Lines[current_line][current_index + i].Char == comment_str[i]) i++;
+            bool matched = i == comment_str.length();
+            assert(matched);
+            if (current_index + i < Lines[current_line].size() && Lines[current_line][current_index + i].Char == ' ') {
+                i++;
             }
+
+            Coordinates start = {current_line, GetCharacterColumn(current_line, current_index)};
+            Coordinates end = {current_line, GetCharacterColumn(current_line, current_index + i)};
+            u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Delete});
+            DeleteRange(start, end);
+            Colorize(current_line, 1);
         }
     }
-
-    u.After = EditorState;
-    AddUndo(u);
 }
 
 void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
@@ -1976,6 +2027,7 @@ void TextEditor::SelectWordUnderCursor() {
 }
 
 void TextEditor::SelectAll() {
+    EditorState.CurrentCursor = 0;
     SetSelection(Coordinates(0, 0), Coordinates((int)Lines.size(), 0), SelectionModeT::Line);
 }
 

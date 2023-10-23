@@ -269,6 +269,27 @@ static void RenderFrameVulkan(ImDrawData *draw_data) {
     }
 }
 
+static void PresentFrameVulkan() {
+    if (g_SwapChainRebuild) return;
+
+    VkSemaphore render_complete_semaphore = VulkanWindow->FrameSemaphores[VulkanWindow->SemaphoreIndex].RenderCompleteSemaphore;
+    VkPresentInfoKHR info = {};
+    info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    info.waitSemaphoreCount = 1;
+    info.pWaitSemaphores = &render_complete_semaphore;
+    info.swapchainCount = 1;
+    info.pSwapchains = &VulkanWindow->Swapchain;
+    info.pImageIndices = &VulkanWindow->FrameIndex;
+    VkResult err = vkQueuePresentKHR(g_Queue, &info);
+    if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR) {
+        g_SwapChainRebuild = true;
+        return;
+    }
+    CheckVk(err);
+
+    VulkanWindow->SemaphoreIndex = (VulkanWindow->SemaphoreIndex + 1) % VulkanWindow->ImageCount; // Now we can use the next set of semaphores.
+}
+
 UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Settings(settings), Style(style) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) {
         throw std::runtime_error(std::format("SDL_Init error: {}", SDL_GetError()));
@@ -391,35 +412,7 @@ void RenderFrame() {
     VulkanWindow->ClearValue.color.float32[3] = clear_color.w;
     if (!main_is_minimized) {
         RenderFrameVulkan(main_draw_data);
-    }
-
-    const auto &io = ImGui::GetIO();
-    // Update and Render additional Platform Windows
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-    }
-
-    // Present Main Platform Window
-    if (!main_is_minimized) {
-        if (g_SwapChainRebuild) return;
-
-        VkSemaphore render_complete_semaphore = VulkanWindow->FrameSemaphores[VulkanWindow->SemaphoreIndex].RenderCompleteSemaphore;
-        VkPresentInfoKHR info = {};
-        info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = &render_complete_semaphore;
-        info.swapchainCount = 1;
-        info.pSwapchains = &VulkanWindow->Swapchain;
-        info.pImageIndices = &VulkanWindow->FrameIndex;
-        VkResult err = vkQueuePresentKHR(g_Queue, &info);
-        if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR) {
-            g_SwapChainRebuild = true;
-            return;
-        }
-        CheckVk(err);
-
-        VulkanWindow->SemaphoreIndex = (VulkanWindow->SemaphoreIndex + 1) % VulkanWindow->ImageCount; // Now we can use the next set of semaphores
+        PresentFrameVulkan();
     }
 }
 

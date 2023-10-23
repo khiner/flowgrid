@@ -24,7 +24,7 @@ void Info::Render() const {
     if (!hovered_id) return;
 
     auto &g = *GetCurrentContext();
-    auto *tool = &g.DebugStackTool;
+    auto *tool = &g.DebugIDStackTool;
     tool->LastActiveFrame = GetFrameCount();
 
     PushTextWrapPos(0);

@@ -15,7 +15,7 @@
 
 using std::string;
 
-struct IMGUI_API TextEditor {
+struct TextEditor {
     enum class PaletteIndexT {
         Default,
         Keyword,

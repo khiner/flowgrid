@@ -497,7 +497,7 @@ void Project::Debug::DebugLog::Render() const {
     ShowDebugLogWindow();
 }
 void Project::Debug::StackTool::Render() const {
-    ShowStackToolWindow();
+    ShowIDStackToolWindow();
 }
 
 void Project::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }

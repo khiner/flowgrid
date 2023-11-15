@@ -69,9 +69,9 @@ If that doesn't work, try the latest release in the previous LLVM major version.
 
 - Download and install the latest SDK from https://vulkan.lunarg.com/sdk/home
 - Set the `VULKAN_SDK` environment variable.
-  For example, I have the following line in my `.zshrc` file:
+  For example, add the following to your `.zshrc` file:
   ```shell
-  export VULKAN_SDK="$HOME/VulkanSDK/1.3.250.0/macOS"
+  export VULKAN_SDK="$HOME/VulkanSDK/{version}/macOS"
   ```
 
 All scripts can be run from anywhere, but to the root repo directory (clean/build).
@@ -126,7 +126,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 ### C++ extensions
 
-For C++20 features only partially/experimentally supported in Clang 16:
+For C++20 features only partially/experimentally supported in Clang 17:
 
 - [range-v3](https://github.com/ericniebler/range-v3)
   - Only still needed since `std::ranges::to` was pushed to C++23 and isn't supported by clang yet.
@@ -138,7 +138,7 @@ For C++20 features only partially/experimentally supported in Clang 16:
 ## Development
 
 I try and keep all dependencies up to date.
-LLVM version 16+ is required to build.
+LLVM version 17+ is required to build.
 
 ### Formatting
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "DeviceDataFormat.h"
 #include "Project/Audio/AudioIO.h"
 

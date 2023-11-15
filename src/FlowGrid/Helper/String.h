@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <locale>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -22,7 +24,7 @@ static constexpr string Lowercase(string copy) {
     return copy;
 }
 
-static constexpr bool IsInteger(string_view str) { return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit); }
+static constexpr bool IsInteger(string_view str) { return !str.empty() && std::ranges::all_of(str, ::isdigit); }
 
 static constexpr string Replace(string subject, string_view search, string_view replace) {
     size_t pos = 0;

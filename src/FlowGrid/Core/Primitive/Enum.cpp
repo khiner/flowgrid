@@ -5,6 +5,8 @@
 #include <__ranges/iota_view.h>
 #include <range/v3/range/conversion.hpp>
 
+#include <ranges>
+
 Enum::Enum(ComponentArgs &&args, std::vector<string> names, int value)
     : PrimitiveField(std::move(args), value), Names(std::move(names)) {}
 Enum::Enum(ComponentArgs &&args, std::function<string(int)> get_name, int value)

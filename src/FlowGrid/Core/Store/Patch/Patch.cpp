@@ -1,5 +1,6 @@
 #include "Patch.h"
 
+#include <algorithm>
 #include <filesystem>
 
 std::string to_string(PatchOp::Type patch_op_type) {

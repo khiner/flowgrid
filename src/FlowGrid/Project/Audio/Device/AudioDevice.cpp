@@ -1,5 +1,6 @@
 #include "AudioDevice.h"
 
+#include <algorithm>
 #include <format>
 #include <range/v3/range/conversion.hpp>
 #include <ranges>
@@ -59,7 +60,7 @@ struct Context {
 
     bool IsNativeSampleRate(IO type, u32 sample_rate) const {
         const auto &native_data_formats = NativeDataFormats[type];
-        return std::any_of(native_data_formats.begin(), native_data_formats.end(), [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
+        return std::ranges::any_of(native_data_formats, [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
     }
 
     DeviceDataFormat FindNativeFormatWithNearestSampleRate(IO type, u32 target) {

@@ -299,19 +299,18 @@ UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Se
     SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
 
     const auto window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    Window = SDL_CreateWindowWithPosition("FlowGrid", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    Window = SDL_CreateWindow("FlowGrid", 1280, 720, window_flags);
     if (Window == nullptr) throw std::runtime_error(std::format("SDL_CreateWindow error: {}", SDL_GetError()));
 
-    ImVector<const char *> extensions;
     uint32_t extensions_count = 0;
-    SDL_Vulkan_GetInstanceExtensions(&extensions_count, nullptr);
-    extensions.resize(extensions_count);
-    SDL_Vulkan_GetInstanceExtensions(&extensions_count, extensions.Data);
+    const char *const *instance_extensions = SDL_Vulkan_GetInstanceExtensions(&extensions_count);
+    ImVector<const char *> extensions;
+    for (uint32_t i = 0; i < extensions_count; i++) extensions.push_back(instance_extensions[i]);
     SetupVulkan(extensions);
 
     // Create Window Surface
     VkSurfaceKHR surface;
-    if (SDL_Vulkan_CreateSurface(Window, g_Instance, &surface) == 0) throw std::runtime_error("Failed to create Vulkan surface.\n");
+    if (SDL_Vulkan_CreateSurface(Window, g_Instance, g_Allocator, &surface) == 0) throw std::runtime_error("Failed to create Vulkan surface.\n");
 
     // Create Framebuffers
     int w, h;
@@ -354,31 +353,6 @@ UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Se
     Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
     io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * FontAtlasScale);
     IGFD::AddFonts();
-
-    // Upload Fonts
-    {
-        // Use any command queue
-        VkCommandPool command_pool = VulkanWindow->Frames[VulkanWindow->FrameIndex].CommandPool;
-        VkCommandBuffer command_buffer = VulkanWindow->Frames[VulkanWindow->FrameIndex].CommandBuffer;
-
-        CheckVk(vkResetCommandPool(g_Device, command_pool, 0));
-        VkCommandBufferBeginInfo begin_info = {};
-        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        CheckVk(vkBeginCommandBuffer(command_buffer, &begin_info));
-
-        ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-
-        VkSubmitInfo end_info = {};
-        end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        end_info.commandBufferCount = 1;
-        end_info.pCommandBuffers = &command_buffer;
-        CheckVk(vkEndCommandBuffer(command_buffer));
-        CheckVk(vkQueueSubmit(g_Queue, 1, &end_info, VK_NULL_HANDLE));
-
-        CheckVk(vkDeviceWaitIdle(g_Device));
-        ImGui_ImplVulkan_DestroyFontUploadObjects();
-    }
 }
 
 UIContext::~UIContext() {

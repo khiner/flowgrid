@@ -48,10 +48,10 @@ void TextBuffer::RenderMenu() const {
 
         if (BeginMenu("View")) {
             if (BeginMenu("Palette")) {
-                if (MenuItem("Mariana palette")) editor.SetPalette(TextEditor::GetMarianaPalette());
-                if (MenuItem("Dark palette")) editor.SetPalette(TextEditor::GetDarkPalette());
-                if (MenuItem("Light palette")) editor.SetPalette(TextEditor::GetLightPalette());
-                if (MenuItem("Retro blue palette")) editor.SetPalette(TextEditor::GetRetroBluePalette());
+                if (MenuItem("Mariana palette")) editor.SetPalette(TextEditor::PaletteIdT::Mariana);
+                if (MenuItem("Dark palette")) editor.SetPalette(TextEditor::PaletteIdT::Dark);
+                if (MenuItem("Light palette")) editor.SetPalette(TextEditor::PaletteIdT::Light);
+                if (MenuItem("Retro blue palette")) editor.SetPalette(TextEditor::PaletteIdT::RetroBlue);
                 EndMenu();
             }
             RootContext.Windows.ToggleDebugMenuItem(Debug);

@@ -17,6 +17,13 @@
 using std::string;
 
 struct TextEditor {
+    enum class PaletteIdT {
+        Dark,
+        Light,
+        Mariana,
+        RetroBlue
+    };
+
     enum class PaletteIndexT {
         Default,
         Keyword,
@@ -42,6 +49,10 @@ struct TextEditor {
         CurrentLineEdge,
         Max
     };
+
+    inline static const PaletteIdT DefaultPaletteId = PaletteIdT::Dark;
+    static const std::unordered_map<char, char> OpenToCloseChar;
+    static const std::unordered_map<char, char> CloseToOpenChar;
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider an uniform grid (assuming fixed-width font) on the
@@ -142,7 +153,7 @@ struct TextEditor {
     void SetLanguageDefinition(const LanguageDefT &);
     const char *GetLanguageDefinitionName() const;
 
-    void SetPalette(const PaletteT &);
+    void SetPalette(PaletteIdT);
 
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
     void SetText(const string &text);
@@ -197,6 +208,8 @@ struct TextEditor {
 
     void SetTabSize(int);
     inline int GetTabSize() const { return TabSize; }
+    void SetLineSpacing(float);
+    float GetLineSpacing() const { return LineSpacing; }
 
     void InsertText(const string &, int cursor = -1);
     void InsertText(const char *, int cursor = -1);
@@ -207,7 +220,9 @@ struct TextEditor {
         Up = 2,
         Down = 3
     };
+    bool Move(int &line, int &char_index, bool left = false, bool lock_line = false) const;
     void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, int line_count = 1) const;
+
     void MoveUp(int amount = 1, bool select = false);
     void MoveDown(int amount = 1, bool select = false);
     void MoveLeft(bool select = false, bool is_word_mode = false);
@@ -236,7 +251,7 @@ struct TextEditor {
     void Undo(int aSteps = 1);
     void Redo(int aSteps = 1);
 
-    void AddCursorForNextOccurrence();
+    void AddCursorForNextOccurrence(bool case_sensitive = true);
 
     static const PaletteT &GetMarianaPalette();
     static const PaletteT &GetDarkPalette();
@@ -268,6 +283,10 @@ struct TextEditor {
     };
 
     struct EditorState {
+        int FirstVisibleLine = 0, LastVisibleLine = 0, VisibleLineCount = 0;
+        int FirstVisibleColumn = 0, LastVisibleColumn = 0, VisibleColumnCount = 0;
+        float ContentWidth = 0, ContentHeight = 0;
+        float ScrollX = 0, ScrollY = 0;
         bool Panning = false;
         bool IsDraggingSelection = false;
         ImVec2 LastMousePos;
@@ -370,17 +389,17 @@ private:
     void UpdatePalette();
     void Render(bool is_parent_focused = false);
 
-    bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out);
+    bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
+    bool FindMatchingBracket(int line, int char_index, Coordinates &out);
 
     int TabSize{4};
-    bool WithinRender{false};
-    bool ScrollToCursor{false};
+    int LastEnsureVisibleCursor{-1};
     bool ScrollToTop{false};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
     int LeftMargin{10};
     int ColorRangeMin{0}, ColorRangeMax{0};
 
-    PaletteT PaletteBase;
+    PaletteIdT PaletteId;
     PaletteT Palette;
     const LanguageDefT *LanguageDef = nullptr;
     RegexListT RegexList;

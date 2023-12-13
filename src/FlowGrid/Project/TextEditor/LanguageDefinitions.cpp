@@ -350,9 +350,9 @@ static bool TokenizeLuaStylePunctuation(const char *in_begin, const char *in_end
     return false;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cpp() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Cpp() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const cppKeywords[] = {
             "alignas", "alignof", "and", "and_eq", "asm", "atomic_cancel", "atomic_commit", "atomic_noexcept", "auto", "bitand", "bitor", "bool", "break", "case", "catch", "char", "char16_t", "char32_t", "class",
@@ -375,8 +375,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cpp() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.Tokenize = [](const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndexT &palette_index) -> bool {
-            palette_index = PaletteIndexT::Max;
+        langDef.Tokenize = [](const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndex &palette_index) -> bool {
+            palette_index = PaletteIndex::Max;
 
             while (in_begin < in_end && isascii(*in_begin) && isblank(*in_begin))
                 in_begin++;
@@ -384,19 +384,19 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cpp() {
             if (in_begin == in_end) {
                 out_begin = in_end;
                 end_out = in_end;
-                palette_index = PaletteIndexT::Default;
+                palette_index = PaletteIndex::Default;
             } else if (TokenizeCStyleString(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::String;
+                palette_index = PaletteIndex::String;
             else if (TokenizeCStyleCharacterLiteral(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::CharLiteral;
+                palette_index = PaletteIndex::CharLiteral;
             else if (TokenizeCStyleIdentifier(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Identifier;
+                palette_index = PaletteIndex::Identifier;
             else if (TokenizeCStyleNumber(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Number;
+                palette_index = PaletteIndex::Number;
             else if (TokenizeCStylePunctuation(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Punctuation;
+                palette_index = PaletteIndex::Punctuation;
 
-            return palette_index != PaletteIndexT::Max;
+            return palette_index != PaletteIndex::Max;
         };
 
         langDef.CommentStart = "/*";
@@ -412,9 +412,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cpp() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Hlsl() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Hlsl() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "AppendStructuredBuffer",
@@ -629,15 +629,15 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Hlsl() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([ \t]*#[ \t]*[a-zA-Z_]+)##", PaletteIndexT::Preprocessor));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(\'\\?[^\']\')##", PaletteIndexT::CharLiteral));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndexT::Identifier));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([ \t]*#[ \t]*[a-zA-Z_]+)##", PaletteIndex::Preprocessor));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(\'\\?[^\']\')##", PaletteIndex::CharLiteral));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndex::Identifier));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndex::Punctuation));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";
@@ -652,9 +652,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Hlsl() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Glsl() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Glsl() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
@@ -674,15 +674,15 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Glsl() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([ \t]*#[ \t]*[a-zA-Z_]+)##", PaletteIndexT::Preprocessor));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(\'\\?[^\']\')##", PaletteIndexT::CharLiteral));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndexT::Identifier));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([ \t]*#[ \t]*[a-zA-Z_]+)##", PaletteIndex::Preprocessor));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(\'\\?[^\']\')##", PaletteIndex::CharLiteral));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndex::Identifier));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndex::Punctuation));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";
@@ -697,9 +697,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Glsl() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Python() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Python() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "False", "await", "else", "import", "pass", "None", "break", "except", "in", "raise", "True", "class", "finally", "is", "return", "and", "continue", "for", "lambda", "try", "as", "def", "from", "nonlocal", "while", "assert", "del", "global", "not", "with", "async", "elif", "if", "or", "yield"
@@ -716,14 +716,14 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Python() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##((b|u|f|r)?\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##((b|u|f|r)?'(\\.|[^'])*')##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndexT::Identifier));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.\:])##", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##((b|u|f|r)?\"(\\.|[^\"])*\")##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##((b|u|f|r)?'(\\.|[^'])*')##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndex::Identifier));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.\:])##", PaletteIndex::Punctuation));
 
         langDef.CommentStart = "\"\"\"";
         langDef.CommentEnd = "\"\"\"";
@@ -738,9 +738,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Python() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::C() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::C() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
@@ -760,8 +760,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::C() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.Tokenize = [](const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndexT &palette_index) -> bool {
-            palette_index = PaletteIndexT::Max;
+        langDef.Tokenize = [](const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndex &palette_index) -> bool {
+            palette_index = PaletteIndex::Max;
 
             while (in_begin < in_end && isascii(*in_begin) && isblank(*in_begin))
                 in_begin++;
@@ -769,19 +769,19 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::C() {
             if (in_begin == in_end) {
                 out_begin = in_end;
                 end_out = in_end;
-                palette_index = PaletteIndexT::Default;
+                palette_index = PaletteIndex::Default;
             } else if (TokenizeCStyleString(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::String;
+                palette_index = PaletteIndex::String;
             else if (TokenizeCStyleCharacterLiteral(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::CharLiteral;
+                palette_index = PaletteIndex::CharLiteral;
             else if (TokenizeCStyleIdentifier(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Identifier;
+                palette_index = PaletteIndex::Identifier;
             else if (TokenizeCStyleNumber(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Number;
+                palette_index = PaletteIndex::Number;
             else if (TokenizeCStylePunctuation(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Punctuation;
+                palette_index = PaletteIndex::Punctuation;
 
-            return palette_index != PaletteIndexT::Max;
+            return palette_index != PaletteIndex::Max;
         };
 
         langDef.CommentStart = "/*";
@@ -797,9 +797,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::C() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Sql() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Sql() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "ADD", "EXCEPT", "PERCENT", "ALL", "EXEC", "PLAN", "ALTER", "EXECUTE", "PRECISION", "AND", "EXISTS", "PRIMARY", "ANY", "EXIT", "PRINT", "AS", "FETCH", "PROC", "ASC", "FILE", "PROCEDURE",
@@ -835,14 +835,14 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Sql() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(\'[^\']*\')##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndexT::Identifier));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(\'[^\']*\')##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndex::Identifier));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndex::Punctuation));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";
@@ -857,9 +857,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Sql() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::AngelScript() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::AngelScript() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "and", "abstract", "auto", "bool", "break", "case", "cast", "class", "const", "continue", "default", "do", "double", "else", "enum", "false", "final", "float", "for",
@@ -881,14 +881,14 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::AngelScript() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(\'\\?[^\']\')##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndexT::Identifier));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(L?\"(\\.|[^\"])*\")##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(\'\\?[^\']\')##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndex::Identifier));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndex::Punctuation));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";
@@ -903,9 +903,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::AngelScript() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Lua() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while"
@@ -932,8 +932,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.Tokenize = [](const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndexT &palette_index) -> bool {
-            palette_index = PaletteIndexT::Max;
+        langDef.Tokenize = [](const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndex &palette_index) -> bool {
+            palette_index = PaletteIndex::Max;
 
             while (in_begin < in_end && isascii(*in_begin) && isblank(*in_begin))
                 in_begin++;
@@ -941,17 +941,17 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
             if (in_begin == in_end) {
                 out_begin = in_end;
                 end_out = in_end;
-                palette_index = PaletteIndexT::Default;
+                palette_index = PaletteIndex::Default;
             } else if (TokenizeLuaStyleString(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::String;
+                palette_index = PaletteIndex::String;
             else if (TokenizeLuaStyleIdentifier(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Identifier;
+                palette_index = PaletteIndex::Identifier;
             else if (TokenizeLuaStyleNumber(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Number;
+                palette_index = PaletteIndex::Number;
             else if (TokenizeLuaStylePunctuation(in_begin, in_end, out_begin, end_out))
-                palette_index = PaletteIndexT::Punctuation;
+                palette_index = PaletteIndex::Punctuation;
 
-            return palette_index != PaletteIndexT::Max;
+            return palette_index != PaletteIndex::Max;
         };
 
         langDef.CommentStart = "--[[";
@@ -967,9 +967,9 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cs() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Cs() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "in (generic modifier)", "int", "interface", "internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "out (generic modifier)", "override", "params", "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "using static", "void", "volatile", "while"
@@ -986,13 +986,13 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cs() {
             langDef.Identifiers.insert(std::make_pair(string(k), id));
         }
 
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(($|@)?\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndexT::Identifier));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndexT::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(($|@)?\"(\\.|[^\"])*\")##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[fF]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?[0-9]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[0-7]+[Uu]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(0[xX][0-9a-fA-F]+[uU]?[lL]?[lL]?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([a-zA-Z_][a-zA-Z0-9_]*)##", PaletteIndex::Identifier));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.])##", PaletteIndex::Punctuation));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";
@@ -1007,17 +1007,17 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cs() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Jsn() {
+const TextEditor::LanguageDefinition &TextEditor::LanguageDefinition::Jsn() {
     static bool inited = false;
-    static LanguageDefT langDef;
+    static LanguageDefinition langDef;
     if (!inited) {
         langDef.Keywords.clear();
         langDef.Identifiers.clear();
 
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(\"(\\.|[^\"])*\")##", PaletteIndexT::String));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?)##", PaletteIndexT::Number));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.\:])##", PaletteIndexT::Punctuation));
-        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndexT>(R"##(false|true)##", PaletteIndexT::Keyword));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(\"(\\.|[^\"])*\")##", PaletteIndex::String));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?)##", PaletteIndex::Number));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##([\[\]\{\}\!\%\^\&\*\(\)\-\+\=\~\|\<\>\?\/\;\,\.\:])##", PaletteIndex::Punctuation));
+        langDef.TokenRegexStrings.push_back(std::make_pair<string, PaletteIndex>(R"##(false|true)##", PaletteIndex::Keyword));
 
         langDef.CommentStart = "/*";
         langDef.CommentEnd = "*/";

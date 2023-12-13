@@ -33,7 +33,7 @@ void TextEditor::SetPalette(PaletteIdT palette_id) {
             break;
     }
 
-    for (int i = 0; i < int(PaletteIndexT::Max); ++i) {
+    for (int i = 0; i < int(PaletteIndex::Max); ++i) {
         ImVec4 color = U32ColorToVec4((*palette_base)[i]);
         // color.w *= ImGui::GetStyle().Alpha; todo bring this back.
         Palette[i] = ImGui::ColorConvertFloat4ToU32(color);
@@ -44,34 +44,34 @@ void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
     LanguageDefinitionId = language_def_id;
     switch (LanguageDefinitionId) {
         case LanguageDefinitionIdT::Cpp:
-            LanguageDef = &(LanguageDefT::Cpp());
+            LanguageDef = &(LanguageDefinition::Cpp());
             break;
         case LanguageDefinitionIdT::C:
-            LanguageDef = &(LanguageDefT::C());
+            LanguageDef = &(LanguageDefinition::C());
             break;
         case LanguageDefinitionIdT::Cs:
-            LanguageDef = &(LanguageDefT::Cs());
+            LanguageDef = &(LanguageDefinition::Cs());
             break;
         case LanguageDefinitionIdT::Python:
-            LanguageDef = &(LanguageDefT::Python());
+            LanguageDef = &(LanguageDefinition::Python());
             break;
         case LanguageDefinitionIdT::Lua:
-            LanguageDef = &(LanguageDefT::Lua());
+            LanguageDef = &(LanguageDefinition::Lua());
             break;
         case LanguageDefinitionIdT::Json:
-            LanguageDef = &(LanguageDefT::Jsn());
+            LanguageDef = &(LanguageDefinition::Jsn());
             break;
         case LanguageDefinitionIdT::Sql:
-            LanguageDef = &(LanguageDefT::Sql());
+            LanguageDef = &(LanguageDefinition::Sql());
             break;
         case LanguageDefinitionIdT::AngelScript:
-            LanguageDef = &(LanguageDefT::AngelScript());
+            LanguageDef = &(LanguageDefinition::AngelScript());
             break;
         case LanguageDefinitionIdT::Glsl:
-            LanguageDef = &(LanguageDefT::Glsl());
+            LanguageDef = &(LanguageDefinition::Glsl());
             break;
         case LanguageDefinitionIdT::Hlsl:
-            LanguageDef = &(LanguageDefT::Hlsl());
+            LanguageDef = &(LanguageDefinition::Hlsl());
             break;
         case LanguageDefinitionIdT::None:
             break;
@@ -95,7 +95,8 @@ void TextEditor::SetLineSpacing(float line_spacing) {
 }
 
 void TextEditor::SelectAll() {
-    State.CurrentCursor = 0;
+    ClearSelections();
+    ClearExtraCursors();
     MoveTop();
     MoveBottom(true);
 }
@@ -114,12 +115,21 @@ bool TextEditor::AllCursorsHaveSelection() const {
     return true;
 }
 
-TextEditor::Coordinates TextEditor::GetCursorPosition(int cursor) const {
-    return SanitizeCoordinates(State.Cursors[cursor == -1 ? State.CurrentCursor : cursor].InteractiveEnd);
+void TextEditor::ClearExtraCursors() { State.CurrentCursor = 0; }
+
+void TextEditor::ClearSelections() {
+    for (int c = State.CurrentCursor; c > -1; c--) {
+        auto &cursor = State.Cursors[c];
+        cursor.InteractiveEnd = cursor.InteractiveStart = cursor.GetSelectionEnd();
+    }
 }
 
 void TextEditor::SetCursorPosition(int line_number, int char_index) {
     SetCursorPosition({line_number, GetCharacterColumn(line_number, char_index)}, -1, true);
+}
+
+TextEditor::Coordinates TextEditor::GetCursorPosition(int cursor) const {
+    return SanitizeCoordinates(State.Cursors[cursor == -1 ? State.CurrentCursor : cursor].InteractiveEnd);
 }
 
 void TextEditor::Copy() {
@@ -202,16 +212,6 @@ void TextEditor::Paste() {
     }
 }
 
-bool TextEditor::CanUndo() const { return !ReadOnly && UndoIndex > 0; }
-bool TextEditor::CanRedo() const { return !ReadOnly && UndoIndex < (int)UndoBuffer.size(); }
-void TextEditor::Undo(int aSteps) {
-    while (CanUndo() && aSteps-- > 0) UndoBuffer[--UndoIndex].Undo(this);
-}
-void TextEditor::Redo(int aSteps) {
-    while (CanRedo() && aSteps-- > 0) UndoBuffer[UndoIndex++].Redo(this);
-}
-int TextEditor::GetUndoIndex() const { return UndoIndex; }
-
 void TextEditor::UndoRecord::Undo(TextEditor *editor) {
     for (int i = Operations.size() - 1; i > -1; i--) {
         const auto &op = Operations[i];
@@ -260,6 +260,13 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
     editor->EnsureCursorVisible();
 }
 
+void TextEditor::Undo(int steps) {
+    while (CanUndo() && steps-- > 0) UndoBuffer[--UndoIndex].Undo(this);
+}
+void TextEditor::Redo(int steps) {
+    while (CanRedo() && steps-- > 0) UndoBuffer[UndoIndex++].Redo(this);
+}
+
 void TextEditor::SetText(const string &text) {
     Lines.clear();
     Lines.emplace_back(LineT());
@@ -269,7 +276,7 @@ void TextEditor::SetText(const string &text) {
         } else if (chr == '\n') {
             Lines.emplace_back(LineT());
         } else {
-            Lines.back().emplace_back(Glyph(chr, PaletteIndexT::Default));
+            Lines.back().emplace_back(Glyph(chr, PaletteIndex::Default));
         }
     }
 
@@ -325,7 +332,7 @@ void TextEditor::SetTextLines(const std::vector<string> &text_lines) {
             const string &text_line = text_lines[i];
             Lines[i].reserve(text_line.size());
             for (size_t j = 0; j < text_line.size(); ++j) {
-                Lines[i].emplace_back(Glyph(text_line[j], PaletteIndexT::Default));
+                Lines[i].emplace_back(Glyph(text_line[j], PaletteIndex::Default));
             }
         }
     }
@@ -342,7 +349,7 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
     if (State.CursorPositionChanged) OnCursorPositionChanged();
     State.CursorPositionChanged = false;
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertU32ToFloat4(Palette[(int)PaletteIndexT::Background]));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertU32ToFloat4(Palette[(int)PaletteIndex::Background]));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
     ImGui::BeginChild(title, size, border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
 
@@ -370,16 +377,38 @@ static int UTF8CharLength(char c) {
     return 1;
 }
 
-const std::unordered_map<char, char> TextEditor::OpenToCloseChar = {
-    {'{', '}'},
-    {'(', ')'},
-    {'[', ']'}
-};
-const std::unordered_map<char, char> TextEditor::CloseToOpenChar = {
-    {'}', '{'},
-    {')', '('},
-    {']', '['}
-};
+// "Borrowed" from ImGui source
+static inline int ImTextCharToUtf8(char *buf, int buf_size, unsigned int c) {
+    if (c < 0x80) {
+        buf[0] = (char)c;
+        return 1;
+    }
+    if (c < 0x800) {
+        if (buf_size < 2) return 0;
+        buf[0] = (char)(0xc0 + (c >> 6));
+        buf[1] = (char)(0x80 + (c & 0x3f));
+        return 2;
+    }
+    if (c >= 0xdc00 && c < 0xe000) {
+        return 0;
+    }
+    if (c >= 0xd800 && c < 0xdc00) {
+        if (buf_size < 4) return 0;
+        buf[0] = (char)(0xf0 + (c >> 18));
+        buf[1] = (char)(0x80 + ((c >> 12) & 0x3f));
+        buf[2] = (char)(0x80 + ((c >> 6) & 0x3f));
+        buf[3] = (char)(0x80 + ((c) & 0x3f));
+        return 4;
+    }
+    // else if (c < 0x10000)
+    {
+        if (buf_size < 3) return 0;
+        buf[0] = (char)(0xe0 + (c >> 12));
+        buf[1] = (char)(0x80 + ((c >> 6) & 0x3f));
+        buf[2] = (char)(0x80 + ((c) & 0x3f));
+        return 3;
+    }
+}
 
 // TODO
 // - multiline comments vs single-line: latter is blocking start of a ML
@@ -473,7 +502,7 @@ int TextEditor::InsertTextAt(/* inout */ Coordinates &at, const char *text) {
             ++text;
         } else {
             auto d = UTF8CharLength(*text);
-            while (d-- > 0 && *text != '\0') AddGlyphToLine(at.Line, cindex++, Glyph(*text++, PaletteIndexT::Default));
+            while (d-- > 0 && *text != '\0') AddGlyphToLine(at.Line, cindex++, Glyph(*text++, PaletteIndex::Default));
             at.Column = GetCharacterColumn(at.Line, cindex);
         }
     }
@@ -779,13 +808,13 @@ TextEditor::LineT &TextEditor::InsertLine(int line_number) {
 }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
-    if (LanguageDef == nullptr) return Palette[(int)PaletteIndexT::Default];
-    if (glyph.IsComment) return Palette[(int)PaletteIndexT::Comment];
-    if (glyph.IsMultiLineComment) return Palette[(int)PaletteIndexT::MultiLineComment];
+    if (LanguageDef == nullptr) return Palette[(int)PaletteIndex::Default];
+    if (glyph.IsComment) return Palette[(int)PaletteIndex::Comment];
+    if (glyph.IsMultiLineComment) return Palette[(int)PaletteIndex::MultiLineComment];
 
     const auto color = Palette[(int)glyph.ColorIndex];
     if (glyph.IsPreprocessor) {
-        const auto ppcolor = Palette[(int)PaletteIndexT::Preprocessor];
+        const auto ppcolor = Palette[(int)PaletteIndex::Preprocessor];
         const int c0 = ((ppcolor & 0xff) + (color & 0xff)) / 2;
         const int c1 = (((ppcolor >> 8) & 0xff) + ((color >> 8) & 0xff)) / 2;
         const int c2 = (((ppcolor >> 16) & 0xff) + ((color >> 16) & 0xff)) / 2;
@@ -1050,7 +1079,7 @@ void TextEditor::Render(bool is_parent_focused) {
                 if (sstart != -1 && ssend != -1 && sstart < ssend) {
                     ImVec2 vstart(line_start_screen_pos.x + TextStart + sstart, line_start_screen_pos.y);
                     ImVec2 vend(line_start_screen_pos.x + TextStart + ssend, line_start_screen_pos.y + CharAdvance.y);
-                    dl->AddRectFilled(vstart, vend, Palette[(int)PaletteIndexT::Selection]);
+                    dl->AddRectFilled(vstart, vend, Palette[(int)PaletteIndex::Selection]);
                 }
             }
 
@@ -1058,7 +1087,7 @@ void TextEditor::Render(bool is_parent_focused) {
             snprintf(buf, 16, "%d  ", line_number + 1);
 
             auto line_numberWidth = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, buf, nullptr, nullptr).x;
-            dl->AddText(ImVec2(line_start_screen_pos.x + TextStart - line_numberWidth, line_start_screen_pos.y), Palette[(int)PaletteIndexT::LineNumber], buf);
+            dl->AddText(ImVec2(line_start_screen_pos.x + TextStart - line_numberWidth, line_start_screen_pos.y), Palette[(int)PaletteIndex::LineNumber], buf);
 
             std::vector<Coordinates> cursor_coords_in_this_line;
             for (int c = 0; c <= State.CurrentCursor; c++) {
@@ -1085,20 +1114,20 @@ void TextEditor::Render(bool is_parent_focused) {
                         }
                         ImVec2 cstart(text_screen_pos.x + cx, line_start_screen_pos.y);
                         ImVec2 cend(text_screen_pos.x + cx + width, line_start_screen_pos.y + CharAdvance.y);
-                        dl->AddRectFilled(cstart, cend, Palette[(int)PaletteIndexT::Cursor]);
+                        dl->AddRectFilled(cstart, cend, Palette[(int)PaletteIndex::Cursor]);
                         if (cindex < (int)line.size()) {
                             Coordinates matching_bracket;
                             if (FindMatchingBracket(line_number, cindex, matching_bracket)) {
                                 ImVec2 top_left = {cstart.x, cend.y + 1.0f};
                                 ImVec2 bottom_right = {cstart.x + CharAdvance.x, cend.y + 2.0f};
-                                dl->AddRectFilled(top_left, bottom_right, Palette[(int)PaletteIndexT::Cursor]);
+                                dl->AddRectFilled(top_left, bottom_right, Palette[(int)PaletteIndex::Cursor]);
                                 ImVec2 disp = {
                                     (cursor_coords.Column - matching_bracket.Column) * CharAdvance.x,
                                     (cursor_coords.Line - matching_bracket.Line) * CharAdvance.y
                                 };
                                 top_left = {top_left.x - disp.x, top_left.y - disp.y};
                                 bottom_right = {bottom_right.x - disp.x, bottom_right.y - disp.y};
-                                dl->AddRectFilled(top_left, bottom_right, Palette[(int)PaletteIndexT::Cursor]);
+                                dl->AddRectFilled(top_left, bottom_right, Palette[(int)PaletteIndex::Cursor]);
                             }
                         }
                     }
@@ -1106,7 +1135,7 @@ void TextEditor::Render(bool is_parent_focused) {
             }
 
             // Render colorized text
-            auto prev_color = line.empty() ? Palette[(int)PaletteIndexT::Default] : GetGlyphColor(line[0]);
+            auto prev_color = line.empty() ? Palette[(int)PaletteIndex::Default] : GetGlyphColor(line[0]);
             ImVec2 buffer_offset;
 
             for (int i = 0; i < line.size();) {
@@ -1133,16 +1162,16 @@ void TextEditor::Render(bool is_parent_focused) {
                         const float x2 = text_screen_pos.x + buffer_offset.x - 1.0f;
                         const float gap = s * 0.2;
                         ImVec2 p1 = {x1, y1}, p2 = {x2, y1}, p3 = {x2 - gap, y1 - gap}, p4 = {x2 - gap, y1 + gap};
-                        dl->AddLine(p1, p2, Palette[(int)PaletteIndexT::ControlCharacter]);
-                        dl->AddLine(p2, p3, Palette[(int)PaletteIndexT::ControlCharacter]);
-                        dl->AddLine(p2, p4, Palette[(int)PaletteIndexT::ControlCharacter]);
+                        dl->AddLine(p1, p2, Palette[(int)PaletteIndex::ControlCharacter]);
+                        dl->AddLine(p2, p3, Palette[(int)PaletteIndex::ControlCharacter]);
+                        dl->AddLine(p2, p4, Palette[(int)PaletteIndex::ControlCharacter]);
                     }
                 } else if (glyph.Char == ' ') {
                     if (ShowWhitespaces) {
                         const float s = ImGui::GetFontSize();
                         const float x = text_screen_pos.x + buffer_offset.x + space_size * 0.5f;
                         const float y = text_screen_pos.y + buffer_offset.y + s * 0.5f;
-                        dl->AddCircleFilled({x, y}, 1.5f, Palette[(int)PaletteIndexT::ControlCharacter], 4);
+                        dl->AddCircleFilled({x, y}, 1.5f, Palette[(int)PaletteIndex::ControlCharacter], 4);
                     }
                     buffer_offset.x += space_size;
                     i++;
@@ -1185,77 +1214,6 @@ void TextEditor::Render(bool is_parent_focused) {
         ScrollToTop = false;
         ImGui::SetScrollY(0.f);
     }
-}
-
-bool TextEditor::FindMatchingBracket(int line, int char_index, Coordinates &out) {
-    int current_line = line;
-    int current_char_index = char_index;
-    int counter = 1;
-    if (CloseToOpenChar.find(Lines[line][char_index].Char) != CloseToOpenChar.end()) {
-        char close_char = Lines[line][char_index].Char;
-        char open_char = CloseToOpenChar.at(close_char);
-        while (Move(current_line, current_char_index, true)) {
-            if (current_char_index < Lines[current_line].size()) {
-                char current_char = Lines[current_line][current_char_index].Char;
-                if (current_char == open_char) {
-                    counter--;
-                    if (counter == 0) {
-                        out = {current_line, GetCharacterColumn(current_line, current_char_index)};
-                        return true;
-                    }
-                } else if (current_char == close_char) {
-                    counter++;
-                }
-            }
-        }
-    } else if (OpenToCloseChar.find(Lines[line][char_index].Char) != OpenToCloseChar.end()) {
-        char open_char = Lines[line][char_index].Char;
-        char close_char = OpenToCloseChar.at(open_char);
-        while (Move(current_line, current_char_index)) {
-            if (current_char_index < Lines[current_line].size()) {
-                char current_char = Lines[current_line][current_char_index].Char;
-                if (current_char == close_char) {
-                    counter--;
-                    if (counter == 0) {
-                        out = {current_line, GetCharacterColumn(current_line, current_char_index)};
-                        return true;
-                    }
-                } else if (current_char == open_char) {
-                    counter++;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool TextEditor::Move(int &line, int &char_index, bool left, bool lock_line) const {
-    // assumes given char index is not in the middle of utf8 sequence
-    // char index can be line.length()
-
-    // invalid line
-    if (line >= Lines.size()) return false;
-
-    if (left) {
-        if (char_index == 0) {
-            if (lock_line || line == 0) return false;
-            line--;
-            char_index = Lines[line].size();
-        } else {
-            char_index--;
-            while (char_index > 0 && IsUTFSequence(Lines[line][char_index].Char)) char_index--;
-        }
-    } else { // right
-        if (char_index == Lines[line].size()) {
-            if (lock_line || line == Lines.size() - 1) return false;
-            line++;
-            char_index = 0;
-        } else {
-            int seq_length = UTF8CharLength(Lines[line][char_index].Char);
-            char_index = std::min(char_index + seq_length, (int)Lines[line].size());
-        }
-    }
-    return true;
 }
 
 bool TextEditor::FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive) {
@@ -1309,6 +1267,48 @@ bool TextEditor::FindNextOccurrence(const char *text, int text_size, const Coord
         if (findex == ifindex && fline == ifline) return false;
     }
 
+    return false;
+}
+
+bool TextEditor::FindMatchingBracket(int line, int char_index, Coordinates &out) {
+    int current_line = line;
+    int current_char_index = char_index;
+    int counter = 1;
+    if (CloseToOpenChar.find(Lines[line][char_index].Char) != CloseToOpenChar.end()) {
+        char close_char = Lines[line][char_index].Char;
+        char open_char = CloseToOpenChar.at(close_char);
+        while (Move(current_line, current_char_index, true)) {
+            if (current_char_index < Lines[current_line].size()) {
+                char current_char = Lines[current_line][current_char_index].Char;
+                if (current_char == open_char) {
+                    counter--;
+                    if (counter == 0) {
+                        out = {current_line, GetCharacterColumn(current_line, current_char_index)};
+                        return true;
+                    }
+                } else if (current_char == close_char) {
+                    counter++;
+                }
+            }
+        }
+    } else if (OpenToCloseChar.find(Lines[line][char_index].Char) != OpenToCloseChar.end()) {
+        char open_char = Lines[line][char_index].Char;
+        char close_char = OpenToCloseChar.at(open_char);
+        while (Move(current_line, current_char_index)) {
+            if (current_char_index < Lines[current_line].size()) {
+                char current_char = Lines[current_line][current_char_index].Char;
+                if (current_char == close_char) {
+                    counter--;
+                    if (counter == 0) {
+                        out = {current_line, GetCharacterColumn(current_line, current_char_index)};
+                        return true;
+                    }
+                } else if (current_char == open_char) {
+                    counter++;
+                }
+            }
+        }
+    }
     return false;
 }
 
@@ -1492,39 +1492,6 @@ void TextEditor::ToggleLineComment() {
     }
 }
 
-// "Borrowed" from ImGui source
-static inline int ITextCharToUtf8(char *buf, int buf_size, unsigned int c) {
-    if (c < 0x80) {
-        buf[0] = (char)c;
-        return 1;
-    }
-    if (c < 0x800) {
-        if (buf_size < 2) return 0;
-        buf[0] = (char)(0xc0 + (c >> 6));
-        buf[1] = (char)(0x80 + (c & 0x3f));
-        return 2;
-    }
-    if (c >= 0xdc00 && c < 0xe000) {
-        return 0;
-    }
-    if (c >= 0xd800 && c < 0xdc00) {
-        if (buf_size < 4) return 0;
-        buf[0] = (char)(0xf0 + (c >> 18));
-        buf[1] = (char)(0x80 + ((c >> 12) & 0x3f));
-        buf[2] = (char)(0x80 + ((c >> 6) & 0x3f));
-        buf[3] = (char)(0x80 + ((c) & 0x3f));
-        return 4;
-    }
-    // else if (c < 0x10000)
-    {
-        if (buf_size < 3) return 0;
-        buf[0] = (char)(0xe0 + (c >> 12));
-        buf[1] = (char)(0x80 + ((c >> 6) & 0x3f));
-        buf[2] = (char)(0x80 + ((c) & 0x3f));
-        return 3;
-    }
-}
-
 void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
     assert(!ReadOnly);
 
@@ -1583,7 +1550,7 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             SetCursorPosition(Coordinates(coord.Line + 1, GetCharacterColumn(coord.Line + 1, (int)whitespace_size)), c);
         } else {
             char buf[7];
-            int e = ITextCharToUtf8(buf, 7, character);
+            int e = ImTextCharToUtf8(buf, 7, character);
             if (e <= 0) continue;
 
             buf[e] = '\0';
@@ -1606,7 +1573,7 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             }
 
             for (auto p = buf; *p != '\0'; p++, ++cindex) {
-                AddGlyphToLine(coord.Line, cindex, Glyph(*p, PaletteIndexT::Default));
+                AddGlyphToLine(coord.Line, cindex, Glyph(*p, PaletteIndex::Default));
             }
             added.Text = buf;
 
@@ -1667,6 +1634,35 @@ void TextEditor::DeleteSelection(int cursor) {
     DeleteRange(State.Cursors[cursor].GetSelectionStart(), State.Cursors[cursor].GetSelectionEnd());
     SetCursorPosition(State.Cursors[cursor].GetSelectionStart(), cursor);
     Colorize(State.Cursors[cursor].GetSelectionStart().Line, 1);
+}
+
+bool TextEditor::Move(int &line, int &char_index, bool left, bool lock_line) const {
+    // assumes given char index is not in the middle of utf8 sequence
+    // char index can be line.length()
+
+    // invalid line
+    if (line >= Lines.size()) return false;
+
+    if (left) {
+        if (char_index == 0) {
+            if (lock_line || line == 0) return false;
+            line--;
+            char_index = Lines[line].size();
+        } else {
+            char_index--;
+            while (char_index > 0 && IsUTFSequence(Lines[line][char_index].Char)) char_index--;
+        }
+    } else { // right
+        if (char_index == Lines[line].size()) {
+            if (lock_line || line == Lines.size() - 1) return false;
+            line++;
+            char_index = 0;
+        } else {
+            int seq_length = UTF8CharLength(Lines[line][char_index].Char);
+            char_index = std::min(char_index + seq_length, (int)Lines[line].size());
+        }
+    }
+    return true;
 }
 
 void TextEditor::MoveCoords(Coordinates &coords, MoveDirection direction, bool is_word_mode, int line_count) const {
@@ -2067,7 +2063,7 @@ void TextEditor::ColorizeRange(int from_line_number, int to_line_number) {
         for (size_t j = 0; j < line.size(); ++j) {
             auto &col = line[j];
             buffer[j] = col.Char;
-            col.ColorIndex = PaletteIndexT::Default;
+            col.ColorIndex = PaletteIndex::Default;
         }
 
         const char *bufferBegin = &buffer.front();
@@ -2076,7 +2072,7 @@ void TextEditor::ColorizeRange(int from_line_number, int to_line_number) {
         for (auto first = bufferBegin; first != last;) {
             const char *token_begin = nullptr;
             const char *token_end = nullptr;
-            PaletteIndexT token_color = PaletteIndexT::Default;
+            PaletteIndex token_color = PaletteIndex::Default;
             bool has_tokenize_results = LanguageDef->Tokenize != nullptr && LanguageDef->Tokenize(first, last, token_begin, token_end, token_color);
             if (!has_tokenize_results) {
                 // todo : remove
@@ -2098,7 +2094,7 @@ void TextEditor::ColorizeRange(int from_line_number, int to_line_number) {
                 first++;
             } else {
                 const size_t token_length = token_end - token_begin;
-                if (token_color == PaletteIndexT::Identifier) {
+                if (token_color == PaletteIndex::Identifier) {
                     id.assign(token_begin, token_end);
 
                     // todo : allmost all language definitions use lower case to specify keywords, so shouldn't this use ::tolower ?
@@ -2106,11 +2102,11 @@ void TextEditor::ColorizeRange(int from_line_number, int to_line_number) {
                         std::transform(id.begin(), id.end(), id.begin(), ::toupper);
                     }
                     if (!line[first - bufferBegin].IsPreprocessor) {
-                        if (LanguageDef->Keywords.count(id) != 0) token_color = PaletteIndexT::Keyword;
-                        else if (LanguageDef->Identifiers.count(id) != 0) token_color = PaletteIndexT::KnownIdentifier;
-                        else if (LanguageDef->PreprocIdentifiers.count(id) != 0) token_color = PaletteIndexT::PreprocIdentifier;
+                        if (LanguageDef->Keywords.count(id) != 0) token_color = PaletteIndex::Keyword;
+                        else if (LanguageDef->Identifiers.count(id) != 0) token_color = PaletteIndex::KnownIdentifier;
+                        else if (LanguageDef->PreprocIdentifiers.count(id) != 0) token_color = PaletteIndex::PreprocIdentifier;
                     } else {
-                        if (LanguageDef->PreprocIdentifiers.count(id) != 0) token_color = PaletteIndexT::PreprocIdentifier;
+                        if (LanguageDef->PreprocIdentifiers.count(id) != 0) token_color = PaletteIndex::PreprocIdentifier;
                     }
                 }
 
@@ -2258,11 +2254,6 @@ float TextEditor::TextDistanceToLineStart(const Coordinates &from) const {
 
 void TextEditor::EnsureCursorVisible(int cursor) {
     LastEnsureVisibleCursor = cursor == -1 ? State.GetLastAddedCursorIndex() : cursor;
-}
-
-int TextEditor::GetPageSize() const {
-    auto height = ImGui::GetWindowHeight() - 20.0f; // todo should this be TextLineHeight?
-    return (int)floor(height / CharAdvance.y);
 }
 
 TextEditor::UndoRecord::UndoRecord(

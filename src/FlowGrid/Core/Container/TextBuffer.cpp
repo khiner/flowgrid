@@ -37,12 +37,9 @@ void TextBuffer::RenderMenu() const {
             Separator();
             if (MenuItem("Copy", "Ctrl-C", nullptr, editor.AnyCursorHasSelection())) editor.Copy();
             if (MenuItem("Cut", "Ctrl-X", nullptr, !editor.ReadOnly && editor.AnyCursorHasSelection())) editor.Cut();
-            if (MenuItem("Delete", "Del", nullptr, !editor.ReadOnly && editor.AnyCursorHasSelection())) editor.Delete();
             if (MenuItem("Paste", "Ctrl-V", nullptr, !editor.ReadOnly && GetClipboardText() != nullptr)) editor.Paste();
             Separator();
-            if (MenuItem("Select all", nullptr, nullptr)) {
-                editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
-            }
+            if (MenuItem("Select all", nullptr, nullptr)) editor.SelectAll();
             EndMenu();
         }
 
@@ -65,10 +62,10 @@ void TextBuffer::Render() const {
     RenderMenu();
 
     auto &editor = *Editor;
-    auto cpos = editor.GetCursorPosition();
+    const auto [cursor_line, cursor_column] = editor.GetCursorLineColumn();
     const string editing_file = "no file";
     Text(
-        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.Line + 1, cpos.Column + 1, editor.GetTotalLines(),
+        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_line + 1, cursor_column + 1, editor.GetLineCount(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
         editor.GetLanguageDefinitionName(),

@@ -235,20 +235,21 @@ private:
 
     struct UndoRecord {
         UndoRecord() {}
-        ~UndoRecord() {}
-
-        UndoRecord(
-            const std::vector<UndoOperation> &operations,
-            TextEditor::EditorState &before,
-            TextEditor::EditorState &after
-        );
+        UndoRecord(const std::vector<UndoOperation> &ops, const EditorState &before, const EditorState &after)
+            : Operations(ops), Before(before), After(after) {
+            // for (const UndoOperation &o : Operations) assert(o.Start <= o.End);
+        }
+        UndoRecord(const EditorState &before) : Before(before) {}
+        UndoRecord(std::vector<UndoOperation> &&ops, EditorState &&before, EditorState &&after)
+            : Operations(std::move(ops)), Before(std::move(before)), After(std::move(after)) {}
+        UndoRecord(EditorState &&before) : Before(std::move(before)) {}
+        ~UndoRecord() = default;
 
         void Undo(TextEditor *);
         void Redo(TextEditor *);
 
-        std::vector<UndoOperation> Operations;
-
-        EditorState Before, After;
+        std::vector<UndoOperation> Operations{};
+        EditorState Before{}, After{};
     };
 
     inline static const std::unordered_map<char, char> OpenToCloseChar = {

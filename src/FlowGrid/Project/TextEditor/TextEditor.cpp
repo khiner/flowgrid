@@ -148,22 +148,18 @@ void TextEditor::Copy() {
 }
 
 void TextEditor::Cut() {
-    if (ReadOnly) {
+    if (ReadOnly) return Copy();
+
+    if (AnyCursorHasSelection()) {
+        UndoRecord u{State};
         Copy();
-    } else {
-        if (AnyCursorHasSelection()) {
-            UndoRecord u;
-            u.Before = State;
-
-            Copy();
-            for (int c = State.CurrentCursor; c > -1; c--) {
-                u.Operations.push_back({GetSelectedText(c), State.Cursors[c].GetSelectionStart(), State.Cursors[c].GetSelectionEnd(), UndoOperationType::Delete});
-                DeleteSelection(c);
-            }
-
-            u.After = State;
-            AddUndo(u);
+        for (int c = State.CurrentCursor; c > -1; c--) {
+            u.Operations.push_back({GetSelectedText(c), State.Cursors[c].GetSelectionStart(), State.Cursors[c].GetSelectionEnd(), UndoOperationType::Delete});
+            DeleteSelection(c);
         }
+
+        u.After = State;
+        AddUndo(u);
     }
 }
 
@@ -187,9 +183,7 @@ void TextEditor::Paste() {
     }
 
     if (clip_text.length() > 0) {
-        UndoRecord u;
-        u.Before = State;
-
+        UndoRecord u{State};
         if (AnyCursorHasSelection()) {
             for (int c = State.CurrentCursor; c > -1; c--) {
                 u.Operations.push_back({GetSelectedText(c), State.Cursors[c].GetSelectionStart(), State.Cursors[c].GetSelectionEnd(), UndoOperationType::Delete});
@@ -641,8 +635,7 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
         return;
     }
 
-    UndoRecord u;
-    u.Before = State;
+    UndoRecord u{State};
     if (has_selection) {
         for (int c = State.CurrentCursor; c > -1; c--) {
             u.Operations.push_back({GetSelectedText(c), State.Cursors[c].GetSelectionStart(), State.Cursors[c].GetSelectionEnd(), UndoOperationType::Delete});
@@ -747,8 +740,7 @@ void TextEditor::Delete(bool is_word_mode, const EditorState *editor_state) {
     if (Lines.empty()) return;
 
     if (AnyCursorHasSelection()) {
-        UndoRecord u;
-        u.Before = editor_state == nullptr ? State : *editor_state;
+        UndoRecord u{editor_state == nullptr ? State : *editor_state};
         for (int c = State.CurrentCursor; c > -1; c--) {
             if (State.Cursors[c].HasSelection()) {
                 u.Operations.push_back({GetSelectedText(c), State.Cursors[c].GetSelectionStart(), State.Cursors[c].GetSelectionEnd(), UndoOperationType::Delete});
@@ -907,9 +899,7 @@ bool TextEditor::FindMatchingBracket(int line, int char_index, Coordinates &out)
 void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
     assert(!ReadOnly);
 
-    UndoRecord u;
-    u.Before = State;
-
+    UndoRecord u{State};
     for (int c = State.CurrentCursor; c > -1; c--) {
         for (int current_line = State.Cursors[c].GetSelectionEnd().Line; current_line >= State.Cursors[c].GetSelectionStart().Line; current_line--) {
             // Check if selection ends at line start.
@@ -945,9 +935,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
 void TextEditor::MoveUpCurrentLines() {
     assert(!ReadOnly);
 
-    UndoRecord u;
-    u.Before = State;
-
+    UndoRecord u{State};
     std::set<int> affected_lines;
     int min_line = -1;
     int max_line = -1;
@@ -986,9 +974,7 @@ void TextEditor::MoveUpCurrentLines() {
 void TextEditor::MoveDownCurrentLines() {
     assert(!ReadOnly);
 
-    UndoRecord u;
-    u.Before = State;
-
+    UndoRecord u{State};
     std::set<int> affected_lines;
     int min_line = -1;
     int max_line = -1;
@@ -1031,9 +1017,7 @@ void TextEditor::ToggleLineComment() {
     assert(!ReadOnly);
     const string &comment_str = LanguageDef->SingleLineComment;
 
-    UndoRecord u;
-    u.Before = State;
-
+    UndoRecord u{State};
     bool should_add_comment = false;
     std::unordered_set<int> affected_lines;
     for (int c = State.CurrentCursor; c > -1; c--) {
@@ -1084,9 +1068,7 @@ void TextEditor::ToggleLineComment() {
 }
 
 void TextEditor::RemoveCurrentLines() {
-    UndoRecord u;
-    u.Before = State;
-
+    UndoRecord u{State};
     if (AnyCursorHasSelection()) {
         for (int c = State.CurrentCursor; c > -1; c--) {
             if (State.Cursors[c].HasSelection()) {
@@ -2243,12 +2225,4 @@ const TextEditor::PaletteT &TextEditor::GetRetroBluePalette() {
         0x00000040, // Current line edge
     }};
     return p;
-}
-
-TextEditor::UndoRecord::UndoRecord(
-    const std::vector<UndoOperation> &operations,
-    TextEditor::EditorState &before,
-    TextEditor::EditorState &after
-) : Operations(operations), Before(before), After(after) {
-    for (const UndoOperation &o : Operations) assert(o.Start <= o.End);
 }

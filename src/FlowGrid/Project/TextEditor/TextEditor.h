@@ -74,6 +74,12 @@ struct TextEditor {
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
     void DebugPanel();
 
+    enum class SetViewAtLineMode {
+        FirstVisibleLine,
+        Centered,
+        LastVisibleLine
+    };
+
     bool ReadOnly{false};
     bool Overwrite{false};
     bool AutoIndent{true};
@@ -81,6 +87,8 @@ struct TextEditor {
     bool ShowLineNumbers{true};
     bool ShortTabs{true};
     float LineSpacing{1};
+    int SetViewAtLine{-1};
+    SetViewAtLineMode SetViewAtLineMode{SetViewAtLineMode::FirstVisibleLine};
 
 private:
     inline static ImVec4 U32ColorToVec4(ImU32 in) {
@@ -92,7 +100,6 @@ private:
             ((in >> IM_COL32_R_SHIFT) & 0xFF) * s
         );
     }
-    inline int TabSizeAtColumn(int column) const { return TabSize - (column % TabSize); }
 
     inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
 
@@ -301,10 +308,10 @@ private:
     void RemoveCurrentLines();
 
     float TextDistanceToLineStart(const Coordinates &from, bool sanitize_coords = true) const;
-    void EnsureCursorVisible(int cursor = -1);
+    void EnsureCursorVisible(int cursor = -1, bool start_too = false);
 
     Coordinates SanitizeCoordinates(const Coordinates &) const;
-    Coordinates GetCursorPosition(int cursor = -1) const;
+    Coordinates GetCursorPosition(int cursor = -1, bool start = false) const;
     Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_line_number = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
@@ -327,6 +334,7 @@ private:
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
     void HandleMouseInputs();
+    void UpdateViewVariables(float scroll_x, float scroll_y);
     void Render(bool is_parent_focused = false);
 
     void OnCursorPositionChanged();
@@ -338,6 +346,10 @@ private:
     void Colorize(int from_line_number = 0, int line_count = -1);
     void ColorizeRange(int from_line_number = 0, int to_line_number = 0);
     void ColorizeInternal();
+
+    inline bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
+    inline bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
+    inline int TabSizeAtColumn(int aColumn) const { return TabSize - (aColumn % TabSize); }
 
     static const PaletteT &GetDarkPalette();
     static const PaletteT &GetMarianaPalette();
@@ -351,13 +363,15 @@ private:
     int UndoIndex{0};
 
     int TabSize{4};
-    int LastEnsureVisibleCursor{-1};
+    int LastEnsureCursorVisible{-1};
+    bool LastEnsureCursorVisibleStartToo{false};
     bool ScrollToTop{false};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
     int LeftMargin{10};
     ImVec2 CharAdvance;
     float LastClickTime{-1}; // In ImGui time.
-    float CurrentSpaceWidth{20}; // Longest line length in the most recent render.
+    ImVec2 LastClickPos{-1, -1};
+    float CurrentSpaceWidth{20}, CurrentSpaceHeight{20.0f};
     int FirstVisibleLine{0}, LastVisibleLine{0}, VisibleLineCount{0};
     int FirstVisibleColumn{0}, LastVisibleColumn{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};

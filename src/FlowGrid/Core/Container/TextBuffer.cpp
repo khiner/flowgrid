@@ -11,7 +11,7 @@ static const Menu FileMenu = {"File", {Action::Faust::File::ShowOpenDialog::Menu
 
 TextBuffer::TextBuffer(ComponentArgs &&args, string_view value)
     : PrimitiveField(std::move(args), string(value)), Editor(std::make_unique<TextEditor>()) {
-    Editor->SetLanguageDefinition(TextEditor::LanguageDefT::CPlusPlus());
+    Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Cpp);
 }
 
 TextBuffer::~TextBuffer() {}

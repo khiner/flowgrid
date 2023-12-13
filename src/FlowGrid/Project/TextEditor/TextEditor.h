@@ -17,42 +17,28 @@
 using std::string;
 
 struct TextEditor {
+    TextEditor();
+    ~TextEditor();
+
     enum class PaletteIdT {
         Dark,
         Light,
         Mariana,
         RetroBlue
     };
-
-    enum class PaletteIndexT {
-        Default,
-        Keyword,
-        Number,
-        String,
-        CharLiteral,
-        Punctuation,
-        Preprocessor,
-        Identifier,
-        KnownIdentifier,
-        PreprocIdentifier,
-        Comment,
-        MultiLineComment,
-        Background,
-        Cursor,
-        Selection,
-        ErrorMarker,
-        ControlCharacter,
-        Breakpoint,
-        LineNumber,
-        CurrentLineFill,
-        CurrentLineFillInactive,
-        CurrentLineEdge,
-        Max
+    enum class LanguageDefinitionIdT {
+        None,
+        Cpp,
+        C,
+        Cs,
+        Python,
+        Lua,
+        Json,
+        Sql,
+        AngelScript,
+        Glsl,
+        Hlsl
     };
-
-    inline static const PaletteIdT DefaultPaletteId = PaletteIdT::Dark;
-    static const std::unordered_map<char, char> OpenToCloseChar;
-    static const std::unordered_map<char, char> CloseToOpenChar;
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider an uniform grid (assuming fixed-width font) on the
@@ -81,60 +67,87 @@ struct TextEditor {
         Coordinates operator+(const Coordinates &o) { return {Line + o.Line, Column + o.Column}; }
     };
 
+    void SetPalette(PaletteIdT);
+    void SetLanguageDefinition(LanguageDefinitionIdT);
+    const char *GetLanguageDefinitionName() const;
+    void SetTabSize(int);
+    void SetLineSpacing(float);
+
+    void SelectAll();
+    bool AnyCursorHasSelection() const;
+    bool AllCursorsHaveSelection() const;
+    Coordinates GetCursorPosition(int cursor = -1) const;
+    void SetCursorPosition(int line_number, int char_index);
+
+    void Copy();
+    void Cut();
+    void Paste();
+
+    bool CanUndo() const;
+    bool CanRedo() const;
+    void Undo(int aSteps = 1);
+    void Redo(int aSteps = 1);
+    int GetUndoIndex() const;
+
+    string GetText() const;
+    int GetTotalLines() const { return (int)Lines.size(); }
+    string GetClipboardText() const;
+    string GetSelectedText(int cursor = -1) const;
+    string GetCurrentLineText() const;
+
+    void SetText(const string &text);
+    void SetTextLines(const std::vector<string> &);
+
+    bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
+    void DebugPanel();
+
     struct Identifier {
         Coordinates Location;
         string Declaration;
     };
 
+    enum class PaletteIndexT {
+        Default,
+        Keyword,
+        Number,
+        String,
+        CharLiteral,
+        Punctuation,
+        Preprocessor,
+        Identifier,
+        KnownIdentifier,
+        PreprocIdentifier,
+        Comment,
+        MultiLineComment,
+        Background,
+        Cursor,
+        Selection,
+        ErrorMarker,
+        ControlCharacter,
+        Breakpoint,
+        LineNumber,
+        CurrentLineFill,
+        CurrentLineFillInactive,
+        CurrentLineEdge,
+        Max
+    };
+
     using IdentifiersT = std::unordered_map<string, Identifier>;
-    using KeywordsT = std::unordered_set<string>;
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndexT::Max>;
-    using CharT = uint8_t;
 
     struct Glyph {
-        CharT Char;
+        char Char;
         PaletteIndexT ColorIndex = PaletteIndexT::Default;
         bool IsComment : 1;
         bool IsMultiLineComment : 1;
         bool IsPreprocessor : 1;
 
-        Glyph(CharT character, PaletteIndexT color_index)
+        Glyph(char character, PaletteIndexT color_index)
             : Char(character), ColorIndex(color_index), IsComment(false), IsMultiLineComment(false), IsPreprocessor(false) {}
     };
 
     using LineT = std::vector<Glyph>;
-    using LinesT = std::vector<LineT>;
-
-    struct LanguageDefT {
-        using TokenRegexStringT = std::pair<string, PaletteIndexT>;
-        using TokenRegexStringsT = std::vector<TokenRegexStringT>;
-        using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndexT &palette_index);
-
-        string Name;
-        KeywordsT Keywords;
-        IdentifiersT Identifiers;
-        IdentifiersT PreprocIdentifiers;
-        string CommentStart, CommentEnd, SingleLineComment;
-        char PreprocChar;
-
-        TokenizeCallbackT Tokenize;
-        TokenRegexStringsT TokenRegexStrings;
-
-        bool IsCaseSensitive;
-
-        LanguageDefT() : PreprocChar('#'), Tokenize(nullptr), IsCaseSensitive(true) {}
-
-        static const LanguageDefT &CPlusPlus();
-        static const LanguageDefT &HLSL();
-        static const LanguageDefT &GLSL();
-        static const LanguageDefT &Python();
-        static const LanguageDefT &C();
-        static const LanguageDefT &SQL();
-        static const LanguageDefT &AngelScript();
-        static const LanguageDefT &Lua();
-        static const LanguageDefT &CSharp();
-        static const LanguageDefT &Jsn();
-    };
+    using RegexListT = std::vector<std::pair<std::regex, PaletteIndexT>>;
 
     enum class UndoOperationType {
         Add,
@@ -147,69 +160,10 @@ struct TextEditor {
         UndoOperationType Type;
     };
 
-    TextEditor();
-    ~TextEditor();
-
-    void SetLanguageDefinition(const LanguageDefT &);
-    const char *GetLanguageDefinitionName() const;
-
-    void SetPalette(PaletteIdT);
-
-    bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
-    void SetText(const string &text);
-    string GetText() const;
-
-    void SetTextLines(const std::vector<string> &);
-
-    string GetClipboardText() const;
-    string GetSelectedText(int cursor = -1) const;
-    string GetCurrentLineText() const;
-
-    int GetTotalLines() const { return (int)Lines.size(); }
 
     void OnCursorPositionChanged();
 
-    Coordinates GetCursorPosition() const { return GetActualCursorCoordinates(); }
     void SetCursorPosition(const Coordinates &position, int cursor = -1, bool clear_selection = true);
-    void SetCursorPosition(int line_number, int characterIndex, int cursor = -1, bool clear_selection = true);
-
-    inline void OnLineDeleted(int line_number, const std::unordered_set<int> *handled_cursors = nullptr) {
-        for (int c = 0; c <= State.CurrentCursor; c++) {
-            if (State.Cursors[c].InteractiveEnd.Line >= line_number) {
-                if (handled_cursors == nullptr || handled_cursors->find(c) == handled_cursors->end()) // move up if has not been handled already
-                    SetCursorPosition({State.Cursors[c].InteractiveEnd.Line - 1, State.Cursors[c].InteractiveEnd.Column}, c);
-            }
-        }
-    }
-    inline void OnLinesDeleted(int first_line_number, int last_line_number) {
-        for (int c = 0; c <= State.CurrentCursor; c++) {
-            if (State.Cursors[c].InteractiveEnd.Line >= first_line_number) {
-                const int target_line = std::max(0, State.Cursors[c].InteractiveEnd.Line - (last_line_number - first_line_number));
-                SetCursorPosition({target_line, State.Cursors[c].InteractiveEnd.Column}, c);
-            }
-        }
-    }
-    inline void OnLineAdded(int line_number) {
-        for (int c = 0; c <= State.CurrentCursor; c++) {
-            if (State.Cursors[c].InteractiveEnd.Line >= line_number)
-                SetCursorPosition({State.Cursors[c].InteractiveEnd.Line + 1, State.Cursors[c].InteractiveEnd.Column}, c);
-        }
-    }
-
-    inline ImVec4 U32ColorToVec4(ImU32 in) {
-        static const float s = 1.0f / 255.0f;
-        return ImVec4(
-            ((in >> IM_COL32_A_SHIFT) & 0xFF) * s,
-            ((in >> IM_COL32_B_SHIFT) & 0xFF) * s,
-            ((in >> IM_COL32_G_SHIFT) & 0xFF) * s,
-            ((in >> IM_COL32_R_SHIFT) & 0xFF) * s
-        );
-    }
-
-    void SetTabSize(int);
-    inline int GetTabSize() const { return TabSize; }
-    void SetLineSpacing(float);
-    float GetLineSpacing() const { return LineSpacing; }
 
     void InsertText(const string &, int cursor = -1);
     void InsertText(const char *, int cursor = -1);
@@ -232,24 +186,11 @@ struct TextEditor {
     void MoveHome(bool select = false);
     void MoveEnd(bool select = false);
 
-    void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_index, int cursor = -1);
     void SetSelection(Coordinates start, Coordinates end, int cursor = -1);
-    void SelectAll();
-    bool AnyCursorHasSelection() const;
-    bool AllCursorsHaveSelection() const;
-
-    void Copy();
-    void Cut();
-    void Paste();
+    void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_index, int cursor = -1);
 
     struct EditorState;
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
-
-    int GetUndoIndex() const;
-    bool CanUndo() const;
-    bool CanRedo() const;
-    void Undo(int aSteps = 1);
-    void Redo(int aSteps = 1);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
 
@@ -260,19 +201,13 @@ struct TextEditor {
 
     static bool IsGlyphWordChar(const Glyph &glyph);
 
-    void DebugPanel();
-
     bool ReadOnly{false};
     bool Overwrite{false};
     bool AutoIndent{true};
-    bool ColorizerEnabled{true};
     bool ShowWhitespaces{true};
 
     float LineSpacing{1};
     float LongestLineLength{20};
-
-    inline bool IsUTFSequence(char c) const { return (c & 0xC0) == 0x80; }
-    using RegexListT = std::vector<std::pair<std::regex, PaletteIndexT>>;
 
     struct Cursor {
         Coordinates InteractiveStart = {0, 0};
@@ -319,6 +254,37 @@ struct TextEditor {
 
     void MergeCursorsIfPossible();
 
+    std::vector<LineT> Lines;
+    EditorState State;
+
+private:
+    struct LanguageDefT {
+        using TokenRegexStringT = std::pair<string, PaletteIndexT>;
+        using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndexT &palette_index);
+
+        string Name;
+        std::unordered_set<string> Keywords;
+        IdentifiersT Identifiers;
+        IdentifiersT PreprocIdentifiers;
+        string CommentStart, CommentEnd, SingleLineComment;
+        char PreprocChar{'#'};
+
+        TokenizeCallbackT Tokenize{nullptr};
+        std::vector<TokenRegexStringT> TokenRegexStrings;
+        bool IsCaseSensitive{true};
+
+        static const LanguageDefT &Cpp();
+        static const LanguageDefT &Hlsl();
+        static const LanguageDefT &Glsl();
+        static const LanguageDefT &Python();
+        static const LanguageDefT &C();
+        static const LanguageDefT &Sql();
+        static const LanguageDefT &AngelScript();
+        static const LanguageDefT &Lua();
+        static const LanguageDefT &Cs();
+        static const LanguageDefT &Jsn();
+    };
+
     struct UndoRecord {
         UndoRecord() {}
         ~UndoRecord() {}
@@ -338,14 +304,22 @@ struct TextEditor {
         EditorState After;
     };
 
-    using UndoBufferT = std::vector<UndoRecord>;
+    static const std::unordered_map<char, char> OpenToCloseChar;
+    static const std::unordered_map<char, char> CloseToOpenChar;
+    inline static const PaletteIdT DefaultPaletteId = PaletteIdT::Dark;
 
-    LinesT Lines;
-    EditorState State;
-    UndoBufferT UndoBuffer;
-    int UndoIndex{0};
+    inline ImVec4 U32ColorToVec4(ImU32 in) {
+        static const float s = 1.0f / 255.0f;
+        return ImVec4(
+            ((in >> IM_COL32_A_SHIFT) & 0xFF) * s,
+            ((in >> IM_COL32_B_SHIFT) & 0xFF) * s,
+            ((in >> IM_COL32_G_SHIFT) & 0xFF) * s,
+            ((in >> IM_COL32_R_SHIFT) & 0xFF) * s
+        );
+    }
 
-private:
+    inline bool IsUTFSequence(char c) const { return (c & 0xC0) == 0x80; }
+
     void Colorize(int from_line_number = 0, int line_count = -1);
     void ColorizeRange(int from_line_number = 0, int to_line_number = 0);
     void ColorizeInternal();
@@ -353,7 +327,6 @@ private:
     void EnsureCursorVisible(int cursor = -1);
     int GetPageSize() const;
     string GetText(const Coordinates &start, const Coordinates &end) const;
-    Coordinates GetActualCursorCoordinates(int cursor = -1) const;
     Coordinates SanitizeCoordinates(const Coordinates &) const;
     void DeleteRange(const Coordinates &start, const Coordinates &end);
     int InsertTextAt(Coordinates &at, const char *);
@@ -365,14 +338,15 @@ private:
     int GetCharacterIndexR(const Coordinates &coords) const;
     int GetCharacterColumn(int line_number, int char_index) const;
     int GetLineMaxColumn(int line_number) const;
+
+    LineT &InsertLine(int line_number);
     void RemoveLines(int start, int end);
     void RemoveLine(int line_number, const std::unordered_set<int> *handled_cursors = nullptr);
     void RemoveCurrentLines();
-    void OnLineChanged(bool before_change, int line_number, int column, int char_count, bool is_deleted);
     void RemoveGlyphsFromLine(int line_number, int start_char_index, int end_char_index = -1);
     void AddGlyphsToLine(int line_number, int target_index, LineT::iterator source_start, LineT::iterator source_end);
     void AddGlyphToLine(int line_number, int target_index, Glyph glyph);
-    LineT &InsertLine(int line_number);
+    void OnLineChanged(bool before_change, int line_number, int column, int char_count, bool is_deleted);
 
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveUpCurrentLines();
@@ -392,6 +366,9 @@ private:
     bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
     bool FindMatchingBracket(int line, int char_index, Coordinates &out);
 
+    std::vector<UndoRecord> UndoBuffer;
+    int UndoIndex{0};
+
     int TabSize{4};
     int LastEnsureVisibleCursor{-1};
     bool ScrollToTop{false};
@@ -401,6 +378,7 @@ private:
 
     PaletteIdT PaletteId;
     PaletteT Palette;
+    LanguageDefinitionIdT LanguageDefinitionId;
     const LanguageDefT *LanguageDef = nullptr;
     RegexListT RegexList;
 

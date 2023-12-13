@@ -350,7 +350,7 @@ static bool TokenizeLuaStylePunctuation(const char *in_begin, const char *in_end
     return false;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::CPlusPlus() {
+const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cpp() {
     static bool inited = false;
     static LanguageDefT langDef;
     if (!inited) {
@@ -359,14 +359,16 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::CPlusPlus() {
             "compl", "concept", "const", "constexpr", "const_cast", "continue", "decltype", "default", "delete", "do", "double", "dynamic_cast", "else", "enum", "explicit", "export", "extern", "false", "float",
             "for", "friend", "goto", "if", "import", "inline", "int", "long", "module", "mutable", "namespace", "new", "noexcept", "not", "not_eq", "nullptr", "operator", "or", "or_eq", "private", "protected", "public",
             "register", "reinterpret_cast", "requires", "return", "short", "signed", "sizeof", "static", "static_assert", "static_cast", "struct", "switch", "synchronized", "template", "this", "thread_local",
-            "throw", "true", "try", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual", "void", "volatile", "wchar_t", "while", "xor", "xor_eq"};
+            "throw", "true", "try", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual", "void", "volatile", "wchar_t", "while", "xor", "xor_eq"
+        };
         for (auto &k : cppKeywords)
             langDef.Keywords.insert(k);
 
         static const char *const identifiers[] = {
             "abort", "abs", "acos", "asin", "atan", "atexit", "atof", "atoi", "atol", "ceil", "clock", "cosh", "ctime", "div", "exit", "fabs", "floor", "fmod", "getchar", "getenv", "isalnum", "isalpha", "isdigit", "isgraph",
             "ispunct", "isspace", "isupper", "kbhit", "log10", "log2", "log", "memcmp", "modf", "pow", "printf", "sprintf", "snprintf", "putchar", "putenv", "puts", "rand", "remove", "rename", "sinh", "sqrt", "srand", "strcat", "strcmp", "strerror", "time", "tolower", "toupper",
-            "std", "string", "vector", "map", "unordered_map", "set", "unordered_set", "min", "max"};
+            "std", "string", "vector", "map", "unordered_map", "set", "unordered_set", "min", "max"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -410,7 +412,7 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::CPlusPlus() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::HLSL() {
+const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Hlsl() {
     static bool inited = false;
     static LanguageDefT langDef;
     if (!inited) {
@@ -619,7 +621,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::HLSL() {
             "ProcessQuadTessFactorsMax", "ProcessQuadTessFactorsMin", "ProcessTriTessFactorsAvg", "ProcessTriTessFactorsMax", "ProcessTriTessFactorsMin",
             "radians", "rcp", "reflect", "refract", "reversebits", "round", "rsqrt", "saturate", "sign", "sin", "sincos", "sinh", "smoothstep", "sqrt", "step",
             "tan", "tanh", "tex1D", "tex1D", "tex1Dbias", "tex1Dgrad", "tex1Dlod", "tex1Dproj", "tex2D", "tex2D", "tex2Dbias", "tex2Dgrad", "tex2Dlod", "tex2Dproj",
-            "tex3D", "tex3D", "tex3Dbias", "tex3Dgrad", "tex3Dlod", "tex3Dproj", "texCUBE", "texCUBE", "texCUBEbias", "texCUBEgrad", "texCUBElod", "texCUBEproj", "transpose", "trunc"};
+            "tex3D", "tex3D", "tex3Dbias", "tex3Dgrad", "tex3Dlod", "tex3Dproj", "texCUBE", "texCUBE", "texCUBEbias", "texCUBEgrad", "texCUBElod", "texCUBEproj", "transpose", "trunc"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -649,20 +652,22 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::HLSL() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::GLSL() {
+const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Glsl() {
     static bool inited = false;
     static LanguageDefT langDef;
     if (!inited) {
         static const char *const keywords[] = {
             "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
             "signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary",
-            "_Noreturn", "_Static_assert", "_Thread_local"};
+            "_Noreturn", "_Static_assert", "_Thread_local"
+        };
         for (auto &k : keywords)
             langDef.Keywords.insert(k);
 
         static const char *const identifiers[] = {
             "abort", "abs", "acos", "asin", "atan", "atexit", "atof", "atoi", "atol", "ceil", "clock", "cosh", "ctime", "div", "exit", "fabs", "floor", "fmod", "getchar", "getenv", "isalnum", "isalpha", "isdigit", "isgraph",
-            "ispunct", "isspace", "isupper", "kbhit", "log10", "log2", "log", "memcmp", "modf", "pow", "putchar", "putenv", "puts", "rand", "remove", "rename", "sinh", "sqrt", "srand", "strcat", "strcmp", "strerror", "time", "tolower", "toupper"};
+            "ispunct", "isspace", "isupper", "kbhit", "log10", "log2", "log", "memcmp", "modf", "pow", "putchar", "putenv", "puts", "rand", "remove", "rename", "sinh", "sqrt", "srand", "strcat", "strcmp", "strerror", "time", "tolower", "toupper"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -697,12 +702,14 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Python() {
     static LanguageDefT langDef;
     if (!inited) {
         static const char *const keywords[] = {
-            "False", "await", "else", "import", "pass", "None", "break", "except", "in", "raise", "True", "class", "finally", "is", "return", "and", "continue", "for", "lambda", "try", "as", "def", "from", "nonlocal", "while", "assert", "del", "global", "not", "with", "async", "elif", "if", "or", "yield"};
+            "False", "await", "else", "import", "pass", "None", "break", "except", "in", "raise", "True", "class", "finally", "is", "return", "and", "continue", "for", "lambda", "try", "as", "def", "from", "nonlocal", "while", "assert", "del", "global", "not", "with", "async", "elif", "if", "or", "yield"
+        };
         for (auto &k : keywords)
             langDef.Keywords.insert(k);
 
         static const char *const identifiers[] = {
-            "abs", "aiter", "all", "any", "anext", "ascii", "bin", "bool", "breakpoint", "bytearray", "bytes", "callable", "chr", "classmethod", "compile", "complex", "delattr", "dict", "dir", "divmod", "enumerate", "eval", "exec", "filter", "float", "format", "frozenset", "getattr", "globals", "hasattr", "hash", "help", "hex", "id", "input", "int", "isinstance", "issubclass", "iter", "len", "list", "locals", "map", "max", "memoryview", "min", "next", "object", "oct", "open", "ord", "pow", "print", "property", "range", "repr", "reversed", "round", "set", "setattr", "slice", "sorted", "staticmethod", "str", "sum", "super", "tuple", "type", "vars", "zip", "__import__"};
+            "abs", "aiter", "all", "any", "anext", "ascii", "bin", "bool", "breakpoint", "bytearray", "bytes", "callable", "chr", "classmethod", "compile", "complex", "delattr", "dict", "dir", "divmod", "enumerate", "eval", "exec", "filter", "float", "format", "frozenset", "getattr", "globals", "hasattr", "hash", "help", "hex", "id", "input", "int", "isinstance", "issubclass", "iter", "len", "list", "locals", "map", "max", "memoryview", "min", "next", "object", "oct", "open", "ord", "pow", "print", "property", "range", "repr", "reversed", "round", "set", "setattr", "slice", "sorted", "staticmethod", "str", "sum", "super", "tuple", "type", "vars", "zip", "__import__"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -738,13 +745,15 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::C() {
         static const char *const keywords[] = {
             "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short",
             "signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary",
-            "_Noreturn", "_Static_assert", "_Thread_local"};
+            "_Noreturn", "_Static_assert", "_Thread_local"
+        };
         for (auto &k : keywords)
             langDef.Keywords.insert(k);
 
         static const char *const identifiers[] = {
             "abort", "abs", "acos", "asin", "atan", "atexit", "atof", "atoi", "atol", "ceil", "clock", "cosh", "ctime", "div", "exit", "fabs", "floor", "fmod", "getchar", "getenv", "isalnum", "isalpha", "isdigit", "isgraph",
-            "ispunct", "isspace", "isupper", "kbhit", "log10", "log2", "log", "memcmp", "modf", "pow", "putchar", "putenv", "puts", "rand", "remove", "rename", "sinh", "sqrt", "srand", "strcat", "strcmp", "strerror", "time", "tolower", "toupper"};
+            "ispunct", "isspace", "isupper", "kbhit", "log10", "log2", "log", "memcmp", "modf", "pow", "putchar", "putenv", "puts", "rand", "remove", "rename", "sinh", "sqrt", "srand", "strcat", "strcmp", "strerror", "time", "tolower", "toupper"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -788,7 +797,7 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::C() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::SQL() {
+const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Sql() {
     static bool inited = false;
     static LanguageDefT langDef;
     if (!inited) {
@@ -802,7 +811,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::SQL() {
             "CURRENT_TIME", "LIKE", "THEN", "CURRENT_TIMESTAMP", "LINENO", "TO", "CURRENT_USER", "LOAD", "TOP", "CURSOR", "NATIONAL", "TRAN", "DATABASE", "NOCHECK", "TRANSACTION",
             "DBCC", "NONCLUSTERED", "TRIGGER", "DEALLOCATE", "NOT", "TRUNCATE", "DECLARE", "NULL", "TSEQUAL", "DEFAULT", "NULLIF", "UNION", "DELETE", "OF", "UNIQUE", "DENY", "OFF", "UPDATE",
             "DESC", "OFFSETS", "UPDATETEXT", "DISK", "ON", "USE", "DISTINCT", "OPEN", "USER", "DISTRIBUTED", "OPENDATASOURCE", "VALUES", "DOUBLE", "OPENQUERY", "VARYING", "DROP", "OPENROWSET", "VIEW",
-            "DUMMY", "OPENXML", "WAITFOR", "DUMP", "OPTION", "WHEN", "ELSE", "OR", "WHERE", "END", "ORDER", "WHILE", "ERRLVL", "OUTER", "WITH", "ESCAPE", "OVER", "WRITETEXT"};
+            "DUMMY", "OPENXML", "WAITFOR", "DUMP", "OPTION", "WHEN", "ELSE", "OR", "WHERE", "END", "ORDER", "WHILE", "ERRLVL", "OUTER", "WITH", "ESCAPE", "OVER", "WRITETEXT"
+        };
 
         for (auto &k : keywords)
             langDef.Keywords.insert(k);
@@ -817,7 +827,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::SQL() {
             "REGEXP_REPLACE", "REGEXP_SUBSTR", "REMAINDER", "REPLACE", "ROUND", "ROWNUM", "RPAD", "RTRIM", "SESSIONTIMEZONE", "SIGN", "SIN", "SINH",
             "SOUNDEX", "SQRT", "STDDEV", "SUBSTR", "SUM", "SYS_CONTEXT", "SYSDATE", "SYSTIMESTAMP", "TAN", "TANH", "TO_CHAR", "TO_CLOB", "TO_DATE", "TO_DSINTERVAL", "TO_LOB",
             "TO_MULTI_BYTE", "TO_NCLOB", "TO_NUMBER", "TO_SINGLE_BYTE", "TO_TIMESTAMP", "TO_TIMESTAMP_TZ", "TO_YMINTERVAL", "TRANSLATE", "TRIM", "TRUNC", "TZ_OFFSET", "UID", "UPPER",
-            "USER", "USERENV", "VAR_POP", "VAR_SAMP", "VARIANCE", "VSIZE"};
+            "USER", "USERENV", "VAR_POP", "VAR_SAMP", "VARIANCE", "VSIZE"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -854,14 +865,16 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::AngelScript() {
             "and", "abstract", "auto", "bool", "break", "case", "cast", "class", "const", "continue", "default", "do", "double", "else", "enum", "false", "final", "float", "for",
             "from", "funcdef", "function", "get", "if", "import", "in", "inout", "int", "interface", "int8", "int16", "int32", "int64", "is", "mixin", "namespace", "not",
             "null", "or", "out", "override", "private", "protected", "return", "set", "shared", "super", "switch", "this ", "true", "typedef", "uint", "uint8", "uint16", "uint32",
-            "uint64", "void", "while", "xor"};
+            "uint64", "void", "while", "xor"
+        };
 
         for (auto &k : keywords)
             langDef.Keywords.insert(k);
 
         static const char *const identifiers[] = {
             "cos", "sin", "tab", "acos", "asin", "atan", "atan2", "cosh", "sinh", "tanh", "log", "log10", "pow", "sqrt", "abs", "ceil", "floor", "fraction", "closeTo", "fpFromIEEE", "fpToIEEE",
-            "complex", "opEquals", "opAddAssign", "opSubAssign", "opMulAssign", "opDivAssign", "opAdd", "opSub", "opMul", "opDiv"};
+            "complex", "opEquals", "opAddAssign", "opSubAssign", "opMulAssign", "opDivAssign", "opAdd", "opSub", "opMul", "opDiv"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -895,7 +908,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
     static LanguageDefT langDef;
     if (!inited) {
         static const char *const keywords[] = {
-            "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while"};
+            "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while"
+        };
 
         for (auto &k : keywords)
             langDef.Keywords.insert(k);
@@ -910,7 +924,8 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
             "pow", "frexp", "ldexp", "log10", "pi", "huge", "maxinteger", "mininteger", "loadlib", "searchpath", "seeall", "preload", "cpath", "path", "searchers", "loaded", "module", "require", "clock",
             "date", "difftime", "execute", "exit", "getenv", "remove", "rename", "setlocale", "time", "tmpname", "byte", "char", "dump", "find", "format", "gmatch", "gsub", "len", "lower", "match", "rep",
             "reverse", "sub", "upper", "pack", "packsize", "unpack", "concat", "maxn", "insert", "pack", "unpack", "remove", "move", "sort", "offset", "codepoint", "char", "len", "codes", "charpattern",
-            "coroutine", "table", "io", "os", "string", "utf8", "bit32", "math", "debug", "package"};
+            "coroutine", "table", "io", "os", "string", "utf8", "bit32", "math", "debug", "package"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";
@@ -952,17 +967,19 @@ const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Lua() {
     return langDef;
 }
 
-const TextEditor::LanguageDefT &TextEditor::LanguageDefT::CSharp() {
+const TextEditor::LanguageDefT &TextEditor::LanguageDefT::Cs() {
     static bool inited = false;
     static LanguageDefT langDef;
     if (!inited) {
         static const char *const keywords[] = {
-            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "in (generic modifier)", "int", "interface", "internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "out (generic modifier)", "override", "params", "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "using static", "void", "volatile", "while"};
+            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "in (generic modifier)", "int", "interface", "internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "out (generic modifier)", "override", "params", "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "using static", "void", "volatile", "while"
+        };
         for (auto &k : keywords)
             langDef.Keywords.insert(k);
 
         static const char *const identifiers[] = {
-            "add", "alias", "ascending", "async", "await", "descending", "dynamic", "from", "get", "global", "group", "into", "join", "let", "orderby", "partial", "remove", "select", "set", "value", "var", "when", "where", "yield"};
+            "add", "alias", "ascending", "async", "await", "descending", "dynamic", "from", "get", "global", "group", "into", "join", "let", "orderby", "partial", "remove", "select", "set", "value", "var", "when", "where", "yield"
+        };
         for (auto &k : identifiers) {
             Identifier id;
             id.Declaration = "Built-in function";

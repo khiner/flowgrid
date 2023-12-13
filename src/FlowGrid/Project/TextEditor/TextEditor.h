@@ -71,8 +71,6 @@ struct TextEditor {
     void SetText(const string &text);
     string GetText() const;
 
-    void SetTextLines(const std::vector<string> &);
-
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
     void DebugPanel();
 
@@ -80,6 +78,8 @@ struct TextEditor {
     bool Overwrite{false};
     bool AutoIndent{true};
     bool ShowWhitespaces{true};
+    bool ShowLineNumbers{true};
+    bool ShortTabs{true};
     float LineSpacing{1};
 
 private:
@@ -92,6 +92,7 @@ private:
             ((in >> IM_COL32_R_SHIFT) & 0xFF) * s
         );
     }
+    inline int TabSizeAtColumn(int column) const { return TabSize - (column % TabSize); }
 
     inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
 
@@ -156,39 +157,15 @@ private:
         inline bool HasSelection() const { return InteractiveStart != InteractiveEnd; }
     };
 
+    // State to be restored with undo/redo.
     struct EditorState {
-        int FirstVisibleLine = 0, LastVisibleLine = 0, VisibleLineCount = 0;
-        int FirstVisibleColumn = 0, LastVisibleColumn = 0, VisibleColumnCount = 0;
-        float ContentWidth = 0, ContentHeight = 0;
-        float ScrollX = 0, ScrollY = 0;
-        bool Panning = false;
-        bool IsDraggingSelection = false;
-        ImVec2 LastMousePos;
         int CurrentCursor = 0;
         int LastAddedCursor = 0;
-        bool CursorPositionChanged = false;
         std::vector<Cursor> Cursors = {{{0, 0}}};
 
-        void AddCursor() {
-            // Vector is never resized to smaller size.
-            // `CurrentCursor` points to last available cursor in vector.
-            CurrentCursor++;
-            Cursors.resize(CurrentCursor + 1);
-            LastAddedCursor = CurrentCursor;
-        }
-
-        int GetLastAddedCursorIndex() { return LastAddedCursor > CurrentCursor ? 0 : LastAddedCursor; }
-
-        void SortCursorsFromTopToBottom() {
-            Coordinates last_added_cursor_pos = Cursors[GetLastAddedCursorIndex()].InteractiveEnd;
-            std::sort(Cursors.begin(), Cursors.begin() + (CurrentCursor + 1), [](const Cursor &a, const Cursor &b) -> bool {
-                return a.GetSelectionStart() < b.GetSelectionStart();
-            });
-            // Update last added cursor index to be valid after sort.
-            for (int c = CurrentCursor; c > -1; c--) {
-                if (Cursors[c].InteractiveEnd == last_added_cursor_pos) LastAddedCursor = c;
-            }
-        }
+        void AddCursor();
+        int GetLastAddedCursorIndex();
+        void SortCursorsFromTopToBottom();
     };
 
     struct Glyph {
@@ -259,13 +236,12 @@ private:
             TextEditor::EditorState &after
         );
 
-        void Undo(TextEditor *editor);
-        void Redo(TextEditor *editor);
+        void Undo(TextEditor *);
+        void Redo(TextEditor *);
 
         std::vector<UndoOperation> Operations;
 
-        EditorState Before;
-        EditorState After;
+        EditorState Before, After;
     };
 
     inline static const std::unordered_map<char, char> OpenToCloseChar = {
@@ -280,22 +256,16 @@ private:
     };
 
     inline static const PaletteIdT DefaultPaletteId = PaletteIdT::Dark;
-    static bool IsGlyphWordChar(const Glyph &glyph);
 
-    static const PaletteT &GetMarianaPalette();
-    static const PaletteT &GetDarkPalette();
-    static const PaletteT &GetLightPalette();
-    static const PaletteT &GetRetroBluePalette();
-
+    string GetText(const Coordinates &start, const Coordinates &end) const;
     string GetClipboardText() const;
     string GetSelectedText(int cursor = -1) const;
-    string GetCurrentLineText() const;
 
-    void OnCursorPositionChanged();
     void SetCursorPosition(const Coordinates &position, int cursor = -1, bool clear_selection = true);
 
-    void InsertText(const string &, int cursor = -1);
-    void InsertText(const char *, int cursor = -1);
+    int InsertTextAt(Coordinates &at, const char *);
+    void InsertTextAtCursor(const string &, int cursor = -1);
+    void InsertTextAtCursor(const char *, int cursor = -1);
 
     enum class MoveDirection {
         Right = 0,
@@ -304,6 +274,7 @@ private:
         Down = 3
     };
     bool Move(int &line, int &char_index, bool left = false, bool lock_line = false) const;
+    void MoveCharIndexAndColumn(int line, int &char_index, int &column) const;
     void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, int line_count = 1) const;
     void MoveUp(int amount = 1, bool select = false);
     void MoveDown(int amount = 1, bool select = false);
@@ -313,59 +284,65 @@ private:
     void MoveBottom(bool select = false);
     void MoveHome(bool select = false);
     void MoveEnd(bool select = false);
+    void EnterCharacter(ImWchar character, bool is_shift);
+    void Backspace(bool is_word_mode = false);
+    void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
     void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_index, int cursor = -1);
     void SetSelection(Coordinates start, Coordinates end, int cursor = -1);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
+    bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
+    bool FindMatchingBracket(int line, int char_index, Coordinates &out);
+    void ChangeCurrentLinesIndentation(bool increase);
+    void MoveUpCurrentLines();
+    void MoveDownCurrentLines();
+    void ToggleLineComment();
+    void RemoveCurrentLines();
 
-    void MergeCursorsIfPossible();
-
-    void Colorize(int from_line_number = 0, int line_count = -1);
-    void ColorizeRange(int from_line_number = 0, int to_line_number = 0);
-    void ColorizeInternal();
-    float TextDistanceToLineStart(const Coordinates &from) const;
+    float TextDistanceToLineStart(const Coordinates &from, bool sanitize_coords = true) const;
     void EnsureCursorVisible(int cursor = -1);
-    string GetText(const Coordinates &start, const Coordinates &end) const;
-    Coordinates GetCursorPosition(int cursor = -1) const;
+
     Coordinates SanitizeCoordinates(const Coordinates &) const;
-    void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
-    void DeleteRange(const Coordinates &start, const Coordinates &end);
-    int InsertTextAt(Coordinates &at, const char *);
-    void AddUndo(UndoRecord &);
+    Coordinates GetCursorPosition(int cursor = -1) const;
     Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_line_number = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
     int GetCharacterIndexL(const Coordinates &coords) const;
     int GetCharacterIndexR(const Coordinates &coords) const;
     int GetCharacterColumn(int line_number, int char_index) const;
-    int GetLineMaxColumn(int line_number) const;
+    int GetFirstVisibleCharacterIndex(int line) const;
+    int GetLineMaxColumn(int line, int limit = -1) const;
 
     LineT &InsertLine(int line_number);
-    void RemoveLines(int start, int end);
     void RemoveLine(int line_number, const std::unordered_set<int> *handled_cursors = nullptr);
-    void RemoveCurrentLines();
+    void RemoveLines(int start, int end);
+    void DeleteRange(const Coordinates &start, const Coordinates &end);
+    void DeleteSelection(int cursor = -1);
+
     void RemoveGlyphsFromLine(int line_number, int start_char_index, int end_char_index = -1);
     void AddGlyphsToLine(int line_number, int target_index, LineT::iterator source_start, LineT::iterator source_end);
     void AddGlyphToLine(int line_number, int target_index, Glyph glyph);
-    void OnLineChanged(bool before_change, int line_number, int column, int char_count, bool is_deleted);
-
-    void ChangeCurrentLinesIndentation(bool increase);
-    void MoveUpCurrentLines();
-    void MoveDownCurrentLines();
-    void ToggleLineComment();
-
-    void EnterCharacter(ImWchar character, bool is_shift);
-    void Backspace(bool is_word_mode = false);
-    void DeleteSelection(int cursor = -1);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
     void HandleMouseInputs();
     void Render(bool is_parent_focused = false);
 
-    bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
-    bool FindMatchingBracket(int line, int char_index, Coordinates &out);
+    void OnCursorPositionChanged();
+    void OnLineChanged(bool before_change, int line_number, int column, int char_count, bool is_deleted);
+    void MergeCursorsIfPossible();
+
+    void AddUndo(UndoRecord &);
+
+    void Colorize(int from_line_number = 0, int line_count = -1);
+    void ColorizeRange(int from_line_number = 0, int to_line_number = 0);
+    void ColorizeInternal();
+
+    static const PaletteT &GetDarkPalette();
+    static const PaletteT &GetMarianaPalette();
+    static const PaletteT &GetLightPalette();
+    static const PaletteT &GetRetroBluePalette();
 
     std::vector<LineT> Lines;
     EditorState State;
@@ -378,17 +355,26 @@ private:
     bool ScrollToTop{false};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
     int LeftMargin{10};
-    int ColorRangeMin{0}, ColorRangeMax{0};
+    ImVec2 CharAdvance;
+    float LastClickTime{-1}; // In ImGui time.
+    float CurrentSpaceWidth{20}; // Longest line length in the most recent render.
+    int FirstVisibleLine{0}, LastVisibleLine{0}, VisibleLineCount{0};
+    int FirstVisibleColumn{0}, LastVisibleColumn{0}, VisibleColumnCount{0};
+    float ContentWidth{0}, ContentHeight{0};
+    float ScrollX{0}, ScrollY{0};
+    bool Panning{false};
+    bool IsDraggingSelection{false};
+    ImVec2 LastMousePos;
+    bool CursorPositionChanged{false};
+    bool CursorOnBracket{false};
+    Coordinates MatchingBracketCoords;
 
+    int ColorRangeMin{0}, ColorRangeMax{0};
+    bool ShouldCheckComments{true};
     PaletteIdT PaletteId;
     PaletteT Palette;
     LanguageDefinitionIdT LanguageDefinitionId;
     const LanguageDefinition *LanguageDef = nullptr;
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
-
-    bool ShouldCheckComments{true};
-    ImVec2 CharAdvance;
     string LineBuffer;
-    float LastClickTime{-1}; // In ImGui time.
-    float LongestLineLength{20}; // Longest line length in the most recent render.
 };

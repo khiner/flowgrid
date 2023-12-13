@@ -6,8 +6,8 @@ using namespace ImGui;
 
 void TextEditor::DebugPanel() {
     if (CollapsingHeader("Editor state info")) {
-        Checkbox("Panning", &State.Panning);
-        Checkbox("Dragging selection", &State.IsDraggingSelection);
+        Checkbox("Panning", &Panning);
+        Checkbox("Dragging selection", &IsDraggingSelection);
         DragInt("Cursor count", &State.CurrentCursor);
         for (int i = 0; i <= State.CurrentCursor; i++) {
             DragInt2("Interactive start", &State.Cursors[i].InteractiveStart.Line);

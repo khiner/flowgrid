@@ -54,10 +54,10 @@ struct TextEditor {
     void ClearExtraCursors();
     void ClearSelections();
 
-    void SetCursorPosition(int line_number, int char_index);
+    void SetCursorPosition(int li, int ci);
     inline std::pair<int, int> GetCursorLineColumn() const {
         const auto coords = GetCursorPosition();
-        return {coords.Line, coords.Column};
+        return {coords.L, coords.C};
     }
 
     void Copy();
@@ -87,7 +87,7 @@ struct TextEditor {
     bool ShowLineNumbers{true};
     bool ShortTabs{true};
     float LineSpacing{1};
-    int SetViewAtLine{-1};
+    int SetViewAtLineI{-1};
     SetViewAtLineMode SetViewAtLineMode{SetViewAtLineMode::FirstVisibleLine};
 
 private:
@@ -130,30 +130,27 @@ private:
     };
 
     // Represents a character coordinate from the user's point of view,
-    // i. e. consider an uniform grid (assuming fixed-width font) on the
-    // screen as it is rendered, and each cell has its own coordinate, starting from 0.
-    // Tabs are counted as [1..TabSize] u32 empty spaces, depending on
-    // how many space is necessary to reach the next tab stop.
-    // For example, coordinate (1, 5) represents the character 'B' in a line "\tABC", when TabSize = 4,
-    // because it is rendered as "    ABC" on the screen.
+    // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
+    // Tabs are counted as [1..TabSize] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
+    // For example, coordinate (1, 5) represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
     struct Coordinates {
-        int Line, Column;
-        Coordinates() : Line(0), Column(0) {}
-        Coordinates(int line_number, int column) : Line(line_number), Column(column) {
-            assert(line_number >= 0);
+        int L, C; // Line, Column
+        Coordinates() : L(0), C(0) {}
+        Coordinates(int li, int column) : L(li), C(column) {
+            assert(li >= 0);
             assert(column >= 0);
         }
         inline static Coordinates Invalid() { return {-1, -1}; }
 
-        bool operator==(const Coordinates &o) const { return Line == o.Line && Column == o.Column; }
-        bool operator!=(const Coordinates &o) const { return Line != o.Line || Column != o.Column; }
-        bool operator<(const Coordinates &o) const { return Line != o.Line ? Line < o.Line : Column < o.Column; }
-        bool operator>(const Coordinates &o) const { return Line != o.Line ? Line > o.Line : Column > o.Column; }
-        bool operator<=(const Coordinates &o) const { return Line != o.Line ? Line < o.Line : Column <= o.Column; }
-        bool operator>=(const Coordinates &o) const { return Line != o.Line ? Line > o.Line : Column >= o.Column; }
+        bool operator==(const Coordinates &o) const { return L == o.L && C == o.C; }
+        bool operator!=(const Coordinates &o) const { return L != o.L || C != o.C; }
+        bool operator<(const Coordinates &o) const { return L != o.L ? L < o.L : C < o.C; }
+        bool operator>(const Coordinates &o) const { return L != o.L ? L > o.L : C > o.C; }
+        bool operator<=(const Coordinates &o) const { return L != o.L ? L < o.L : C <= o.C; }
+        bool operator>=(const Coordinates &o) const { return L != o.L ? L > o.L : C >= o.C; }
 
-        Coordinates operator-(const Coordinates &o) { return {Line - o.Line, Column - o.Column}; }
-        Coordinates operator+(const Coordinates &o) { return {Line + o.Line, Column + o.Column}; }
+        Coordinates operator-(const Coordinates &o) { return {L - o.L, C - o.C}; }
+        Coordinates operator+(const Coordinates &o) { return {L + o.L, C + o.C}; }
     };
 
     struct Cursor {
@@ -281,8 +278,8 @@ private:
         Up = 2,
         Down = 3
     };
-    bool Move(int &line, int &char_index, bool left = false, bool lock_line = false) const;
-    void MoveCharIndexAndColumn(int line, int &char_index, int &column) const;
+    bool Move(int &line, int &ci, bool left = false, bool lock_line = false) const;
+    void MoveCharIndexAndColumn(int line, int &ci, int &column) const;
     void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, int line_count = 1) const;
     void MoveUp(int amount = 1, bool select = false);
     void MoveDown(int amount = 1, bool select = false);
@@ -296,12 +293,12 @@ private:
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
-    void SetSelection(int start_line_number, int start_char_index, int end_line_number, int end_char_index, int cursor = -1);
+    void SetSelection(int start_li, int start_ci, int end_li, int end_ci, int cursor = -1);
     void SetSelection(Coordinates start, Coordinates end, int cursor = -1);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
     bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
-    bool FindMatchingBracket(int line, int char_index, Coordinates &out);
+    bool FindMatchingBracket(int line, int ci, Coordinates &out);
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveUpCurrentLines();
     void MoveDownCurrentLines();
@@ -313,24 +310,24 @@ private:
 
     Coordinates SanitizeCoordinates(const Coordinates &) const;
     Coordinates GetCursorPosition(int cursor = -1, bool start = false) const;
-    Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_line_number = nullptr) const;
+    Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
     int GetCharacterIndexL(const Coordinates &coords) const;
     int GetCharacterIndexR(const Coordinates &coords) const;
-    int GetCharacterColumn(int line_number, int char_index) const;
+    int GetCharacterColumn(int li, int ci) const;
     int GetFirstVisibleCharacterIndex(int line) const;
     int GetLineMaxColumn(int line, int limit = -1) const;
 
-    LineT &InsertLine(int line_number);
-    void RemoveLine(int line_number, const std::unordered_set<int> *handled_cursors = nullptr);
+    LineT &InsertLine(int li);
+    void RemoveLine(int li, const std::unordered_set<int> *handled_cursors = nullptr);
     void RemoveLines(int start, int end);
     void DeleteRange(const Coordinates &start, const Coordinates &end);
     void DeleteSelection(int cursor = -1);
 
-    void RemoveGlyphsFromLine(int line_number, int start_char_index, int end_char_index = -1);
-    void AddGlyphsToLine(int line_number, int target_index, LineT::iterator source_start, LineT::iterator source_end);
-    void AddGlyphToLine(int line_number, int target_index, Glyph glyph);
+    void RemoveGlyphsFromLine(int li, int start_ci, int end_ci = -1);
+    void AddGlyphsToLine(int li, int ci, LineT::iterator source_start, LineT::iterator source_end);
+    void AddGlyphToLine(int li, int ci, Glyph glyph);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
@@ -339,13 +336,13 @@ private:
     void Render(bool is_parent_focused = false);
 
     void OnCursorPositionChanged();
-    void OnLineChanged(bool before_change, int line_number, int column, int char_count, bool is_deleted);
+    void OnLineChanged(bool before_change, int li, int column, int char_count, bool is_deleted);
     void MergeCursorsIfPossible();
 
     void AddUndo(UndoRecord &);
 
-    void Colorize(int from_line_number = 0, int line_count = -1);
-    void ColorizeRange(int from_line_number = 0, int to_line_number = 0);
+    void Colorize(int from_li = 0, int line_count = -1);
+    void ColorizeRange(int from_li = 0, int to_li = 0);
     void ColorizeInternal();
 
     inline bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
@@ -373,7 +370,7 @@ private:
     float LastClickTime{-1}; // In ImGui time.
     ImVec2 LastClickPos{-1, -1};
     float CurrentSpaceWidth{20}, CurrentSpaceHeight{20.0f};
-    int FirstVisibleLine{0}, LastVisibleLine{0}, VisibleLineCount{0};
+    int FirstVisibleLineI{0}, LastVisibleLineI{0}, VisibleLineCount{0};
     int FirstVisibleColumn{0}, LastVisibleColumn{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};
     float ScrollX{0}, ScrollY{0};

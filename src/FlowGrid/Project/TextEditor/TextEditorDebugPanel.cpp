@@ -10,8 +10,8 @@ void TextEditor::DebugPanel() {
         Checkbox("Dragging selection", &IsDraggingSelection);
         DragInt("Cursor count", &State.CurrentCursor);
         for (int i = 0; i <= State.CurrentCursor; i++) {
-            DragInt2("Interactive start", &State.Cursors[i].InteractiveStart.Line);
-            DragInt2("Interactive end", &State.Cursors[i].InteractiveEnd.Line);
+            DragInt2("Interactive start", &State.Cursors[i].InteractiveStart.L);
+            DragInt2("Interactive end", &State.Cursors[i].InteractiveEnd.L);
         }
     }
     if (CollapsingHeader("Lines")) {
@@ -28,8 +28,8 @@ void TextEditor::DebugPanel() {
                 for (size_t j = 0; j < UndoBuffer[i].Operations.size(); j++) {
                     TextUnformatted(UndoBuffer[i].Operations[j].Text.c_str());
                     TextUnformatted(UndoBuffer[i].Operations[j].Type == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
-                    DragInt2("Start", &UndoBuffer[i].Operations[j].Start.Line);
-                    DragInt2("End", &UndoBuffer[i].Operations[j].End.Line);
+                    DragInt2("Start", &UndoBuffer[i].Operations[j].Start.L);
+                    DragInt2("End", &UndoBuffer[i].Operations[j].End.L);
                     Separator();
                 }
             }

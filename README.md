@@ -55,8 +55,6 @@ Even if it's not strictly required, I will generally aim to use the latest LLVM 
 If the project does not build correctly for you, please make sure your `clang`, `lld`, and `clang-config` point to the newest available point-release of LLVM.
 If that doesn't work, try the latest release in the previous LLVM major version.
 
-**VSCode:** The `.vscode/launch.json` config has debug/release launch profiles (todo actually add release profile).
-
 ### Mac
 
 - **Install system requirements:**

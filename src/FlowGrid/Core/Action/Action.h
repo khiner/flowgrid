@@ -93,17 +93,11 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
 
     size_t GetIndex() const { return this->index(); }
 
-    const std::string &GetName() const {
-        return Call([](auto &a) -> const std::string & { return a.GetName(); });
-    }
     fs::path GetPath() const {
         return Call([](auto &a) { return a.GetPath(); });
     }
     fs::path GetFieldPath() const {
         return Call([](auto &a) { return a.GetFieldPath(); });
-    }
-    bool IsSavable() const {
-        return Call([](auto &a) { return a.IsSavable; });
     }
     void q() const {
         Call([](auto &a) { a.q(); });
@@ -158,8 +152,8 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
 
 private:
     // Call a function on the variant's active member type.
-    template<typename Callable> decltype(auto) Call(Callable func) const {
-        return std::visit([func](auto &action) -> decltype(auto) { return func(action); }, *this);
+    template<typename Callable> auto Call(Callable func) const {
+        return std::visit([&func](const auto &action) { return func(action); }, *this);
     }
 };
 

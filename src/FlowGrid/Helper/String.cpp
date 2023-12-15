@@ -40,10 +40,10 @@ string PascalToSentenceCase(string_view str, const vector<string> &skip_words, c
         if (caps_range_it != all_caps_ranges.end() && index > (*caps_range_it).second) caps_range_it++;
 
         const char ch = str[index];
-        if (
-            isupper(ch) && islower(str[index - 1]) &&
-            (skip_range_it == skip_ranges.end() || index == (*skip_range_it).first || index == (*skip_range_it).second)
-        ) sentence_case += ' ';
+        if (index > 0 && isupper(ch) && islower(str[index - 1]) &&
+            (skip_range_it == skip_ranges.end() || index == (*skip_range_it).first || index == (*skip_range_it).second)) {
+            sentence_case += ' ';
+        }
 
         const bool in_skip_range = skip_range_it != skip_ranges.end() && index >= (*skip_range_it).first && index < (*skip_range_it).second;
         const bool in_caps_range = caps_range_it != all_caps_ranges.end() && index >= (*caps_range_it).first && index < (*caps_range_it).second;

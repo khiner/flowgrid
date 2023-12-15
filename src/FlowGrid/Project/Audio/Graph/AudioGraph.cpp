@@ -233,7 +233,9 @@ struct InputDeviceMaNode : DeviceMaNode {
     ) : DeviceMaNode(IO_In, std::move(callback), std::move(target_config), client_user_data) {
         // This min/max SR approach seems to work to get both upsampling and downsampling
         // (from low device SR to high client SR and vice versa), but it doesn't seem like the best approach.
-        const auto [sr_min, sr_max] = std::minmax(Device.GetNativeSampleRate(), Device.GetClientFormat().SampleRate);
+        const u32 native_sr = Device.GetNativeSampleRate();
+        const u32 client_sr = Device.GetClientFormat().SampleRate;
+        const auto [sr_min, sr_max] = std::minmax(native_sr, client_sr);
         const ma_device *device = Device.Get();
         ma_result result = ma_duplex_rb_init(ma_format_f32, device->capture.channels, sr_max, sr_min, device->capture.internalPeriodSizeInFrames, &device->pContext->allocationCallbacks, &DuplexRb);
         if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize ring buffer: ", int(result)));

@@ -112,9 +112,9 @@ pitchshifter = vgroup("Pitch Shifter", ef.transpose(
 );
 process = _ : pitchshifter;)#");
 
-    Box Box;
-    dsp *Dsp;
-    std::string ErrorMessage;
+    Box Box{nullptr};
+    dsp *Dsp{nullptr};
+    std::string ErrorMessage{""};
 
 private:
     void Render() const override;

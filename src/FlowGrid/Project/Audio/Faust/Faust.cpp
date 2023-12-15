@@ -171,12 +171,14 @@ void FaustDSP::DestroyDsp() {
 void FaustDSP::Init() {
     if (!Code) return;
 
-    static const char *libraries_path = fs::relative("../lib/faust/libraries").c_str();
-    std::vector<const char *> argv = {"-I", libraries_path};
+    static const std::string libraries_path = fs::relative("../lib/faust/libraries");
+    std::vector<const char *> argv = {"-I", libraries_path.c_str()};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
     const int argc = argv.size();
+
+    const string code = Code;
     static int num_inputs, num_outputs;
-    Box = DSPToBoxes("FlowGrid", string(Code), argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
+    Box = DSPToBoxes("FlowGrid", code, argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
 
     if (Box && ErrorMessage.empty()) {
         static const int optimize_level = -1;

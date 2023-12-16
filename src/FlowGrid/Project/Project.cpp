@@ -682,11 +682,11 @@ void Project::Debug::Metrics::Render() const {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
-#include "blockingconcurrentqueue.h"
+void Project::Queue(ActionMoment &&action_moment) const {
+    ActionQueue.enqueue(std::move(action_moment));
+}
 
-inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
-
-void RunQueuedActions(const Project &project, Store &store, bool force_commit_gesture, bool ignore_actions) {
+void Project::RunQueuedActions(Store &store, bool force_commit_gesture, bool ignore_actions) const {
     static ActionMoment action_moment;
 
     if (ignore_actions) {
@@ -698,7 +698,7 @@ void RunQueuedActions(const Project &project, Store &store, bool force_commit_ge
 
     while (ActionQueue.try_dequeue(action_moment)) {
         auto &[action, queue_time] = action_moment;
-        if (!project.CanApply(action)) continue;
+        if (!CanApply(action)) continue;
 
         // Special cases:
         // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
@@ -710,7 +710,7 @@ void RunQueuedActions(const Project &project, Store &store, bool force_commit_ge
             std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
             std::holds_alternative<Action::FileDialog::Select>(action);
 
-        project.Apply(action);
+        Apply(action);
 
         Visit(
             action,
@@ -728,13 +728,13 @@ void RunQueuedActions(const Project &project, Store &store, bool force_commit_ge
     }
 
     if (force_commit_gesture ||
-        (!Field::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(project.Settings.GestureDurationSec) <= 0)) {
+        (!Field::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(Settings.GestureDurationSec) <= 0)) {
         CommitGesture();
     }
 }
 
 #define DefineQ(ActionType)                                                                                      \
-    void Action::ActionType::q() const { ActionQueue.enqueue({std::move(*this), Clock::now()}); }                \
+    void Action::ActionType::q() const { project.Queue({std::move(*this), Clock::now()}); }                      \
     void Action::ActionType::MenuItem() {                                                                        \
         const auto &instance = Action::ActionType{};                                                             \
         if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(instance))) { \

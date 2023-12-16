@@ -10,6 +10,8 @@
 #include "ProjectContext.h"
 #include "ProjectSettings.h"
 
+#include "blockingconcurrentqueue.h"
+
 enum ProjectFormat {
     StateFormat,
     ActionFormat
@@ -171,10 +173,15 @@ struct Project : Component, Actionable<Action::Any> {
 
     void RenderDebug() const override;
 
+    void Queue(ActionMoment &&) const;
+    void RunQueuedActions(Store &store, bool force_commit_gesture = false, bool ignore_actions = false) const;
+
 protected:
     void Render() const override;
 
 private:
+    mutable moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue{};
+
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
 
@@ -184,8 +191,6 @@ private:
 
     void WindowMenuItem() const;
 };
-
-void RunQueuedActions(const Project &project, Store &, bool force_commit_gesture = false, bool ignore_actions = false);
 
 /**
 Declare global read-only accessor for the canonical state instance `project`.

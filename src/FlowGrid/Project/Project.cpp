@@ -251,8 +251,10 @@ void Project::Render() const {
     for (const auto &[action_id, shortcut] : Shortcuts) {
         const auto &[mod, key] = shortcut.Parsed;
         if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)), ImGuiKeyOwner_None)) {
-            const auto action = Action::Any::Create(action_id);
-            if (CanApply(action)) action.q();
+            auto action = Action::Any::Create(action_id);
+            if (CanApply(action)) {
+                Visit(action, [this](auto &&a) { Queue(std::move(a)); });
+            }
         }
     }
 }
@@ -685,6 +687,9 @@ void Project::Debug::Metrics::Render() const {
 void Project::Queue(ActionMoment &&action_moment) const {
     ActionQueue.enqueue(std::move(action_moment));
 }
+void Project::Queue(Action::Any &&action) const {
+    Queue({std::move(action), Clock::now()});
+}
 
 void Project::RunQueuedActions(Store &store, bool force_commit_gesture, bool ignore_actions) const {
     static ActionMoment action_moment;
@@ -734,11 +739,11 @@ void Project::RunQueuedActions(Store &store, bool force_commit_gesture, bool ign
 }
 
 #define DefineQ(ActionType)                                                                                      \
-    void Action::ActionType::q() const { project.Queue({std::move(*this), Clock::now()}); }                      \
+    void Action::ActionType::q() const { project.Queue(std::move(*this)); }                                      \
     void Action::ActionType::MenuItem() {                                                                        \
-        const auto &instance = Action::ActionType{};                                                             \
+        auto instance = Action::ActionType{};                                                                    \
         if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(instance))) { \
-            instance.q();                                                                                        \
+            project.Queue(std::move(instance));                                                                  \
         }                                                                                                        \
     }
 

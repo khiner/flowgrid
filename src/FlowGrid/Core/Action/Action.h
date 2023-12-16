@@ -99,9 +99,6 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     fs::path GetFieldPath() const {
         return Call([](auto &a) { return a.GetFieldPath(); });
     }
-    void q() const {
-        Call([](auto &a) { a.q(); });
-    }
 
     /**
      Provided actions are assumed to be chronologically consecutive.

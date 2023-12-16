@@ -173,6 +173,7 @@ struct Project : Component, Actionable<Action::Any> {
 
     void RenderDebug() const override;
 
+    void Queue(Action::Any &&) const;
     void Queue(ActionMoment &&) const;
     void RunQueuedActions(Store &store, bool force_commit_gesture = false, bool ignore_actions = false) const;
 

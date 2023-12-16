@@ -19,8 +19,8 @@ void Faust::Apply(const ActionType &action) const {
         [this](const Action::Faust::File::Any &a) {
             Visit(
                 a,
-                [](const Action::Faust::File::ShowOpenDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
-                [](const Action::Faust::File::ShowSaveDialog &) { file_dialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
+                [](const Action::Faust::File::ShowOpenDialog &) { gFileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
+                [](const Action::Faust::File::ShowSaveDialog &) { gFileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
                 [this](const Action::Faust::File::Open &a) {
                     if (!FaustDsps.Empty()) FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
                 },
@@ -44,11 +44,11 @@ bool Faust::CanApply(const ActionType &action) const {
 
 void Faust::Render() const {
     static string PrevSelectedPath = "";
-    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
-        const fs::path selected_path = file_dialog.SelectedFilePath;
+    if (PrevSelectedPath != gFileDialog.SelectedFilePath) {
+        const fs::path selected_path = gFileDialog.SelectedFilePath;
         const string &extension = selected_path.extension();
         if (extension == FaustDspFileExtension) {
-            if (file_dialog.SaveMode) Action::Faust::File::Save{selected_path}.q();
+            if (gFileDialog.SaveMode) Action::Faust::File::Save{selected_path}.q();
             else Action::Faust::File::Open{selected_path}.q();
         }
         PrevSelectedPath = selected_path;
@@ -108,7 +108,7 @@ void FaustGraphs::Apply(const ActionType &action) const {
         action,
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
         [](const Action::Faust::Graph::ShowSaveSvgDialog &) {
-            file_dialog.Set({Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
+            gFileDialog.Set({Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
         },
         [this](const Action::Faust::Graph::SaveSvgFile &a) {
             if (const auto *graph = FindGraph(a.dsp_id)) graph->SaveBoxSvg(a.dir_path);
@@ -355,9 +355,9 @@ void FaustGraphs::Render() const {
     if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
 
     static string PrevSelectedPath = "";
-    if (PrevSelectedPath != file_dialog.SelectedFilePath) {
-        const fs::path selected_path = file_dialog.SelectedFilePath;
-        if (file_dialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && file_dialog.SaveMode) {
+    if (PrevSelectedPath != gFileDialog.SelectedFilePath) {
+        const fs::path selected_path = gFileDialog.SelectedFilePath;
+        if (gFileDialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && gFileDialog.SaveMode) {
             Action::Faust::Graph::SaveSvgFile{Id, selected_path}.q();
         }
         PrevSelectedPath = selected_path;

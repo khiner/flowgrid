@@ -11,7 +11,7 @@ StoreHistory &History = store_history_singleton;
 Project MainProject{store};
 // Set all global extern variables.
 const Project &project = MainProject;
-const FileDialog &file_dialog = project.FileDialog;
+const FileDialog &Component::gFileDialog = project.FileDialog;
 
 bool Tick(const UIContext &ui) {
     static auto &io = ImGui::GetIO();
@@ -24,7 +24,7 @@ bool Tick(const UIContext &ui) {
         // Rather than modifying the ImGui fork to not set this flag in all such cases
         // (which would likely be a rabbit hole), we just check for diffs here.
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        const auto &patch = project.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext());
+        const auto &patch = MainProject.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext());
         if (!patch.Empty()) Action::Store::ApplyPatch{patch}.q();
         io.WantSaveIniSettings = false;
     }
@@ -33,7 +33,7 @@ bool Tick(const UIContext &ui) {
 }
 
 int main() {
-    static UIContext ui{project.ImGuiSettings, project.Context.Style}; // Initialize UI
+    static UIContext ui{MainProject.ImGuiSettings, MainProject.Context.Style}; // Initialize UI
 
     Component::gFonts.Init();
     ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
@@ -54,10 +54,11 @@ int main() {
         RunQueuedActions(store, true);
     }
 
-    project.OnApplicationLaunch();
+    MainProject.OnApplicationLaunch();
 
     while (Tick(ui)) {
-        RunQueuedActions(store);
+        // Disable all actions while the file dialog is open.
+        RunQueuedActions(store, false, MainProject.FileDialog.Visible);
     }
 
     IGFD::Uninit();

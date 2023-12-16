@@ -58,8 +58,11 @@ enum WindowFlags_ {
 
 struct Field;
 
+struct FileDialog;
+
 struct Component {
     inline static Fonts gFonts;
+    static const FileDialog &gFileDialog;
 
     struct Metadata {
         // Split the string on '?'.

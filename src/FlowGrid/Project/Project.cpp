@@ -691,11 +691,10 @@ void q(const Action::Any &&action) {
     ActionQueue.enqueue({action, Clock::now()});
 }
 
-void RunQueuedActions(Store &store, bool force_commit_gesture) {
+void RunQueuedActions(Store &store, bool force_commit_gesture, bool ignore_actions) {
     static ActionMoment action_moment;
 
-    if (file_dialog.Visible) {
-        // Disable all actions while the file dialog is open.
+    if (ignore_actions) {
         while (ActionQueue.try_dequeue(action_moment)) {};
         return;
     }

@@ -48,5 +48,3 @@ void AddFonts();
 void Init();
 void Uninit();
 } // namespace IGFD
-
-extern const FileDialog &file_dialog;

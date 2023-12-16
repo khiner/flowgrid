@@ -168,7 +168,7 @@ private:
     void WindowMenuItem() const;
 };
 
-void RunQueuedActions(Store &, bool force_commit_gesture = false);
+void RunQueuedActions(Store &, bool force_commit_gesture = false, bool ignore_actions = false);
 
 /**
 Declare global read-only accessor for the canonical state instance `project`.

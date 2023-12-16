@@ -1,4 +1,4 @@
-#include "UI.h"
+#include "UIContext.h"
 
 #include "imgui.h"
 #include "implot.h"
@@ -12,8 +12,6 @@
 
 #include "Core/ImGuiSettings.h"
 #include "Project/Style/Style.h"
-
-#include "Project/FileDialog/FileDialog.h" // xxx only used for loading fonts
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>
@@ -346,13 +344,6 @@ UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Se
     init_info.Allocator = g_Allocator;
     init_info.CheckVkResultFn = CheckVk;
     ImGui_ImplVulkan_Init(&init_info, VulkanWindow->RenderPass);
-
-    // Setup fonts
-    io.FontGlobalScale = Style.ImGui.FontScale / FontAtlasScale;
-    Fonts.Main = io.Fonts->AddFontFromFileTTF("../res/fonts/AbletonSansMedium.otf", 16 * FontAtlasScale);
-    Fonts.FixedWidth = io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/Cousine-Regular.ttf", 15 * FontAtlasScale);
-    io.Fonts->AddFontFromFileTTF("../lib/imgui/misc/fonts/ProggyClean.ttf", 14 * FontAtlasScale);
-    IGFD::AddFonts();
 }
 
 UIContext::~UIContext() {
@@ -390,7 +381,7 @@ void RenderFrame() {
     }
 }
 
-bool UIContext::Tick(const Component &drawable) {
+bool UIContext::Tick(const Component &drawable) const {
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -431,7 +422,7 @@ bool UIContext::Tick(const Component &drawable) {
         PrevFontIndex = Style.ImGui.FontIndex;
     }
     if (PrevFontScale != Style.ImGui.FontScale) {
-        io.FontGlobalScale = Style.ImGui.FontScale / FontAtlasScale;
+        io.FontGlobalScale = Style.ImGui.FontScale / Fonts::AtlasScale;
         PrevFontScale = Style.ImGui.FontScale;
     }
 

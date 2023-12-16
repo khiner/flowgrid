@@ -5,7 +5,7 @@
 #include "Project/Audio/Faust/FaustAction.h"
 #include "Project/ProjectContext.h"
 #include "Project/TextEditor/TextEditor.h"
-#include "UI/UI.h"
+#include "UI/Fonts.h"
 
 static const Menu FileMenu = {"File", {Action::Faust::File::ShowOpenDialog::MenuItem, Action::Faust::File::ShowSaveDialog::MenuItem}};
 
@@ -73,7 +73,7 @@ void TextBuffer::Render() const {
     );
 
     const string prev_text = editor.GetText();
-    PushFont(Ui.Fonts.FixedWidth);
+    PushFont(gFonts.FixedWidth);
     editor.Render("TextEditor");
     PopFont();
 

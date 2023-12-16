@@ -8,6 +8,7 @@
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 #include "Helper/Time.h"
+#include "UI/Fonts.h"
 
 #include "nlohmann/json.hpp"
 
@@ -58,6 +59,8 @@ enum WindowFlags_ {
 struct Field;
 
 struct Component {
+    inline static Fonts gFonts;
+
     struct Metadata {
         // Split the string on '?'.
         // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.

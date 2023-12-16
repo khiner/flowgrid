@@ -11,7 +11,6 @@
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
 #include "Helper/Time.h"
-#include "UI/UI.h"
 
 using std::vector;
 using namespace FlowGrid;

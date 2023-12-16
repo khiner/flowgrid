@@ -1,7 +1,6 @@
 #pragma once
 
 struct Component;
-struct ImFont;
 struct ImGuiSettings;
 namespace FlowGrid {
 struct Style;
@@ -15,16 +14,8 @@ struct UIContext {
 
     // Main UI tick function
     // Returns `true` if the app should continue running.
-    bool Tick(const Component &);
+    bool Tick(const Component &) const;
 
-    struct Fonts {
-        ImFont *Main{nullptr};
-        ImFont *FixedWidth{nullptr};
-    };
-
-    Fonts Fonts{};
     const ImGuiSettings &Settings;
     const fg::Style &Style;
 };
-
-extern UIContext Ui; // Created in `main.cpp`

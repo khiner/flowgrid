@@ -3,7 +3,7 @@
 #include "FlowGrid/Core/Store/Store.h"
 #include "FlowGrid/Core/Store/StoreHistory.h"
 #include "FlowGrid/Project/Project.h"
-#include "UI/UI.h"
+#include "UI/UIContext.h"
 
 Store store{};
 StoreHistory store_history_singleton{store}; // xxx temporary state of affairs.
@@ -12,12 +12,11 @@ Project MainProject{store};
 // Set all global extern variables.
 const Project &project = MainProject;
 const FileDialog &file_dialog = project.FileDialog;
-UIContext Ui{project.ImGuiSettings, project.Context.Style}; // Initialize UI
 
-bool Tick() {
+bool Tick(const UIContext &ui) {
     static auto &io = ImGui::GetIO();
 
-    bool running = Ui.Tick(project);
+    bool running = ui.Tick(project);
     if (running && io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not actually changed.
         // E.g. if you press and hold a window-resize bar, it will set this flag every frame,
@@ -34,6 +33,11 @@ bool Tick() {
 }
 
 int main() {
+    static UIContext ui{project.ImGuiSettings, project.Context.Style}; // Initialize UI
+
+    Component::gFonts.Init();
+    ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
+
     // Initialize the global canonical store with all project state values set during project initialization.
     store.Commit();
 
@@ -44,15 +48,15 @@ int main() {
 
     {
         // Relying on these rendering side effects up front is not great.
-        Tick(); // Rendering the first frame has side effects like creating dockspaces & windows.
+        Tick(ui); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        Tick(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        Tick(ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
         RunQueuedActions(store, true);
     }
 
     project.OnApplicationLaunch();
 
-    while (Tick()) {
+    while (Tick(ui)) {
         RunQueuedActions(store);
     }
 

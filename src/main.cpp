@@ -10,8 +10,8 @@ StoreHistory store_history_singleton{store}; // xxx temporary state of affairs.
 StoreHistory &History = store_history_singleton;
 Project MainProject{store};
 // Set all global extern variables.
+const FileDialog &Component::gFileDialog = MainProject.FileDialog;
 const Project &project = MainProject;
-const FileDialog &Component::gFileDialog = project.FileDialog;
 
 bool Tick(const UIContext &ui) {
     static auto &io = ImGui::GetIO();
@@ -51,14 +51,14 @@ int main() {
         Tick(ui); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
         Tick(ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        RunQueuedActions(store, true);
+        RunQueuedActions(MainProject, store, true);
     }
 
     MainProject.OnApplicationLaunch();
 
     while (Tick(ui)) {
         // Disable all actions while the file dialog is open.
-        RunQueuedActions(store, false, MainProject.FileDialog.Visible);
+        RunQueuedActions(MainProject, store, false, MainProject.FileDialog.Visible);
     }
 
     IGFD::Uninit();

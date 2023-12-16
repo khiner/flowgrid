@@ -46,26 +46,40 @@ struct Project : Component, Actionable<Action::Any> {
             Field::UnregisterChangeListener(this);
         }
 
-        struct Metrics : Component {
+        struct ProjectDebugChild : Component {
             using Component::Component;
 
-            struct FlowGridMetrics : Component {
+            const Debug *GetDebug() const { return static_cast<const Debug *>(Parent); }
+            const Project *GetProject() const { return GetDebug()->GetProject(); }
+        };
+
+        struct Metrics : ProjectDebugChild {
+            using ProjectDebugChild::ProjectDebugChild;
+
+            struct ProjectMetricsChild : Component {
                 using Component::Component;
+                const Metrics *GetMetrics() const { return static_cast<const Metrics *>(Parent); }
+                const Project *GetProject() const { return GetMetrics()->GetProject(); }
+            };
+
+            struct FlowGridMetrics : ProjectMetricsChild {
+                using ProjectMetricsChild::ProjectMetricsChild;
+
                 Prop(Bool, ShowRelativePaths, true);
 
             protected:
                 void Render() const override;
             };
 
-            struct ImGuiMetrics : Component {
-                using Component::Component;
+            struct ImGuiMetrics : ProjectMetricsChild {
+                using ProjectMetricsChild::ProjectMetricsChild;
 
             protected:
                 void Render() const override;
             };
 
-            struct ImPlotMetrics : Component {
-                using Component::Component;
+            struct ImPlotMetrics : ProjectMetricsChild {
+                using ProjectMetricsChild::ProjectMetricsChild;
 
             protected:
                 void Render() const override;
@@ -79,8 +93,8 @@ struct Project : Component, Actionable<Action::Any> {
             void Render() const override;
         };
 
-        struct ProjectPreview : Component {
-            using Component::Component;
+        struct ProjectPreview : ProjectDebugChild {
+            using ProjectDebugChild::ProjectDebugChild;
 
             Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
             Prop(Bool, Raw);
@@ -90,22 +104,22 @@ struct Project : Component, Actionable<Action::Any> {
         };
 
         // StateMemoryEditor, WindowFlags_NoScrollbar
-        struct StorePathUpdateFrequency : Component {
-            using Component::Component;
+        struct StorePathUpdateFrequency : ProjectDebugChild {
+            using ProjectDebugChild::ProjectDebugChild;
 
         protected:
             void Render() const override;
         };
 
-        struct DebugLog : Component {
-            using Component::Component;
+        struct DebugLog : ProjectDebugChild {
+            using ProjectDebugChild::ProjectDebugChild;
 
         protected:
             void Render() const override;
         };
 
-        struct StackTool : Component {
-            using Component::Component;
+        struct StackTool : ProjectDebugChild {
+            using ProjectDebugChild::ProjectDebugChild;
 
         protected:
             void Render() const override;
@@ -115,6 +129,8 @@ struct Project : Component, Actionable<Action::Any> {
             Annotated,
             Raw
         };
+
+        const Project *GetProject() const { return static_cast<const Project *>(Parent); }
 
         void OnFieldChanged() override;
 
@@ -150,7 +166,8 @@ struct Project : Component, Actionable<Action::Any> {
             Menu("Edit", {Action::Project::Undo::MenuItem, Action::Project::Redo::MenuItem}),
             [this] { return WindowMenuItem(); },
         },
-        true};
+        true
+    };
 
     void RenderDebug() const override;
 
@@ -168,7 +185,7 @@ private:
     void WindowMenuItem() const;
 };
 
-void RunQueuedActions(Store &, bool force_commit_gesture = false, bool ignore_actions = false);
+void RunQueuedActions(const Project &project, Store &, bool force_commit_gesture = false, bool ignore_actions = false);
 
 /**
 Declare global read-only accessor for the canonical state instance `project`.

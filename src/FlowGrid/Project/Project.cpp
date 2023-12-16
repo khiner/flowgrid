@@ -37,7 +37,6 @@ static const fs::path DefaultProjectPath = InternalPath / ("default" + Extension
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
-static const ProjectSettings &project_settings = project.Settings;
 
 std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();
@@ -362,7 +361,7 @@ void Project::Open(const fs::path &file_path) const {
             for (const auto &action_moment : gesture.Actions) {
                 Visit(
                     action_moment.Action,
-                    [](const Project::ActionType &a) { project.Apply(a); },
+                    [this](const Project::ActionType &a) { Apply(a); },
                 );
                 LatestPatch = RootStore.CheckedCommit();
                 Field::RefreshChanged(LatestPatch);
@@ -524,7 +523,7 @@ void Project::Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    json project_json = project.GetProjectJson(ProjectFormat(int(Format)));
+    json project_json = GetProject()->GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {
@@ -562,7 +561,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         const bool any_gesture_actions = !ActiveGestureActions.empty();
         if (any_gesture_actions || is_gesturing) {
             // Gesture completion progress bar (full-width to empty).
-            const float gesture_duration_sec = project_settings.GestureDurationSec;
+            const float gesture_duration_sec = GetProject()->Settings.GestureDurationSec;
             const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
             const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, RootContext.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
@@ -687,11 +686,7 @@ void Project::Debug::Metrics::Render() const {
 
 inline static moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue;
 
-void q(const Action::Any &&action) {
-    ActionQueue.enqueue({action, Clock::now()});
-}
-
-void RunQueuedActions(Store &store, bool force_commit_gesture, bool ignore_actions) {
+void RunQueuedActions(const Project &project, Store &store, bool force_commit_gesture, bool ignore_actions) {
     static ActionMoment action_moment;
 
     if (ignore_actions) {
@@ -733,17 +728,18 @@ void RunQueuedActions(Store &store, bool force_commit_gesture, bool ignore_actio
     }
 
     if (force_commit_gesture ||
-        (!Field::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(project_settings.GestureDurationSec) <= 0)) {
+        (!Field::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(project.Settings.GestureDurationSec) <= 0)) {
         CommitGesture();
     }
 }
 
-#define DefineQ(ActionType)                                                                                                  \
-    void Action::ActionType::q() const { ::q(*this); }                                                                       \
-    void Action::ActionType::MenuItem() {                                                                                    \
-        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(Action::ActionType{}))) { \
-            Action::ActionType{}.q();                                                                                        \
-        }                                                                                                                    \
+#define DefineQ(ActionType)                                                                                      \
+    void Action::ActionType::q() const { ActionQueue.enqueue({std::move(*this), Clock::now()}); }                \
+    void Action::ActionType::MenuItem() {                                                                        \
+        const auto &instance = Action::ActionType{};                                                             \
+        if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(instance))) { \
+            instance.q();                                                                                        \
+        }                                                                                                        \
     }
 
 DefineQ(Windows::ToggleVisible);

@@ -10,5 +10,3 @@ struct ProjectSettings : Component {
 protected:
     void Render() const override;
 };
-
-extern const ProjectSettings &project_settings;

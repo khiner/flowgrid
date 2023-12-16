@@ -11,9 +11,7 @@ StoreHistory &History = store_history_singleton;
 Project MainProject{store};
 // Set all global extern variables.
 const Project &project = MainProject;
-const ImGuiSettings &imgui_settings = project.ImGuiSettings;
 const FileDialog &file_dialog = project.FileDialog;
-const ProjectSettings &project_settings = project.Settings;
 UIContext Ui{project.ImGuiSettings, project.Context.Style}; // Initialize UI
 
 bool Tick() {
@@ -27,7 +25,7 @@ bool Tick() {
         // Rather than modifying the ImGui fork to not set this flag in all such cases
         // (which would likely be a rabbit hole), we just check for diffs here.
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        const auto &patch = imgui_settings.CreatePatch(ImGui::GetCurrentContext());
+        const auto &patch = project.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext());
         if (!patch.Empty()) Action::Store::ApplyPatch{patch}.q();
         io.WantSaveIniSettings = false;
     }

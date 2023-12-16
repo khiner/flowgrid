@@ -38,6 +38,7 @@ static const fs::path DefaultProjectPath = InternalPath / ("default" + Extension
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
+static const ProjectSettings &project_settings = project.Settings;
 
 std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();

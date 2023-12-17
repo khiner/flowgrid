@@ -48,14 +48,14 @@ int main() {
         Tick(ui); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
         Tick(ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        MainProject.RunQueuedActions(store, true);
+        MainProject.RunQueuedActions(true);
     }
 
     MainProject.OnApplicationLaunch();
 
     while (Tick(ui)) {
         // Disable all actions while the file dialog is open.
-        MainProject.RunQueuedActions(store, false, MainProject.FileDialog.Visible);
+        MainProject.RunQueuedActions(false, MainProject.FileDialog.Visible);
     }
 
     IGFD::Uninit();

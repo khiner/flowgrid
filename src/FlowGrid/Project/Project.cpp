@@ -50,6 +50,30 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return ret;
 }
 
+Project::Project(Store &store) : Component(store, Context), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+    Context.Windows.SetWindowComponents({
+        Audio.Graph,
+        Audio.Graph.Connections,
+        Audio.Style,
+        Settings,
+        Audio.Faust.FaustDsps,
+        Audio.Faust.Logs,
+        Audio.Faust.Graphs,
+        Audio.Faust.Paramss,
+        Debug,
+        Debug.ProjectPreview,
+        Debug.StorePathUpdateFrequency,
+        Debug.DebugLog,
+        Debug.StackTool,
+        Debug.Metrics,
+        Context.Style,
+        Demo,
+        Info,
+    });
+}
+
+Project::~Project() = default;
+
 void Project::CommitGesture() const {
     Field::GestureChangedPaths.clear();
     if (ActiveGestureActions.empty()) return;
@@ -79,30 +103,6 @@ void Project::SetHistoryIndex(u32 index) const {
     if (LatestPatch.IsPrefixOfAnyPath(ImGuiSettings.Path)) ImGuiSettings::IsChanged = true;
     ProjectHasChanges = true;
 }
-
-Project::Project(Store &store) : Component(store, Context), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
-    Context.Windows.SetWindowComponents({
-        Audio.Graph,
-        Audio.Graph.Connections,
-        Audio.Style,
-        Settings,
-        Audio.Faust.FaustDsps,
-        Audio.Faust.Logs,
-        Audio.Faust.Graphs,
-        Audio.Faust.Paramss,
-        Debug,
-        Debug.ProjectPreview,
-        Debug.StorePathUpdateFrequency,
-        Debug.DebugLog,
-        Debug.StackTool,
-        Debug.Metrics,
-        Context.Style,
-        Demo,
-        Info,
-    });
-}
-
-Project::~Project() = default;
 
 json Project::GetProjectJson(const ProjectFormat format) const {
     switch (format) {
@@ -689,7 +689,7 @@ void Project::Queue(Action::Any &&action) const {
     Queue({std::move(action), Clock::now()});
 }
 
-void Project::RunQueuedActions(Store &store, bool force_commit_gesture, bool ignore_actions) const {
+void Project::RunQueuedActions(bool force_commit_gesture, bool ignore_actions) const {
     static ActionMoment action_moment;
 
     if (ignore_actions) {
@@ -717,7 +717,7 @@ void Project::RunQueuedActions(Store &store, bool force_commit_gesture, bool ign
 
         Visit(
             action,
-            [&store, &queue_time](const Action::Savable &a) {
+            [&store = RootStore, &queue_time](const Action::Savable &a) {
                 LatestPatch = store.CheckedCommit();
                 if (!LatestPatch.Empty()) {
                     Field::RefreshChanged(LatestPatch, true);

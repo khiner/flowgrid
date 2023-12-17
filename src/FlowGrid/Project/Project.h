@@ -155,7 +155,7 @@ struct Project : Component, Actionable<Action::Any> {
     };
 
     std::unique_ptr<StoreHistory> HistoryPtr;
-    StoreHistory &History;
+    StoreHistory &History; // A reference to the above unique_ptr for convenience.
 
     Prop(ProjectContext, Context);
     Prop(ImGuiSettings, ImGuiSettings);
@@ -180,7 +180,7 @@ struct Project : Component, Actionable<Action::Any> {
 
     void Queue(Action::Any &&) const;
     void Queue(ActionMoment &&) const;
-    void RunQueuedActions(Store &store, bool force_commit_gesture = false, bool ignore_actions = false) const;
+    void RunQueuedActions(bool force_commit_gesture = false, bool ignore_actions = false) const;
 
 protected:
     void Render() const override;

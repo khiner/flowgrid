@@ -24,6 +24,13 @@ enum ProjectFormat {
 struct Project : Component, Actionable<Action::Any> {
     Project(Store &);
 
+    // A `ProjectComponent` is a `Component` that can cast the `Root` component pointer to its true `Project` type.
+    struct ProjectComponent : Component {
+        using Component::Component;
+
+        const Project &GetProject() const { return static_cast<const Project &>(*Root); }
+    };
+
     static void OpenRecentProjectMenuItem();
 
     void OnApplicationLaunch() const;
@@ -48,24 +55,11 @@ struct Project : Component, Actionable<Action::Any> {
             Field::UnregisterChangeListener(this);
         }
 
-        struct ProjectDebugChild : Component {
-            using Component::Component;
+        struct Metrics : ProjectComponent {
+            using ProjectComponent::ProjectComponent;
 
-            const Debug *GetDebug() const { return static_cast<const Debug *>(Parent); }
-            const Project *GetProject() const { return GetDebug()->GetProject(); }
-        };
-
-        struct Metrics : ProjectDebugChild {
-            using ProjectDebugChild::ProjectDebugChild;
-
-            struct ProjectMetricsChild : Component {
-                using Component::Component;
-                const Metrics *GetMetrics() const { return static_cast<const Metrics *>(Parent); }
-                const Project *GetProject() const { return GetMetrics()->GetProject(); }
-            };
-
-            struct FlowGridMetrics : ProjectMetricsChild {
-                using ProjectMetricsChild::ProjectMetricsChild;
+            struct FlowGridMetrics : ProjectComponent {
+                using ProjectComponent::ProjectComponent;
 
                 Prop(Bool, ShowRelativePaths, true);
 
@@ -73,15 +67,15 @@ struct Project : Component, Actionable<Action::Any> {
                 void Render() const override;
             };
 
-            struct ImGuiMetrics : ProjectMetricsChild {
-                using ProjectMetricsChild::ProjectMetricsChild;
+            struct ImGuiMetrics : ProjectComponent {
+                using ProjectComponent::ProjectComponent;
 
             protected:
                 void Render() const override;
             };
 
-            struct ImPlotMetrics : ProjectMetricsChild {
-                using ProjectMetricsChild::ProjectMetricsChild;
+            struct ImPlotMetrics : ProjectComponent {
+                using ProjectComponent::ProjectComponent;
 
             protected:
                 void Render() const override;
@@ -95,8 +89,8 @@ struct Project : Component, Actionable<Action::Any> {
             void Render() const override;
         };
 
-        struct ProjectPreview : ProjectDebugChild {
-            using ProjectDebugChild::ProjectDebugChild;
+        struct ProjectPreview : ProjectComponent {
+            using ProjectComponent::ProjectComponent;
 
             Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
             Prop(Bool, Raw);
@@ -106,22 +100,22 @@ struct Project : Component, Actionable<Action::Any> {
         };
 
         // StateMemoryEditor, WindowFlags_NoScrollbar
-        struct StorePathUpdateFrequency : ProjectDebugChild {
-            using ProjectDebugChild::ProjectDebugChild;
+        struct StorePathUpdateFrequency : ProjectComponent {
+            using ProjectComponent::ProjectComponent;
 
         protected:
             void Render() const override;
         };
 
-        struct DebugLog : ProjectDebugChild {
-            using ProjectDebugChild::ProjectDebugChild;
+        struct DebugLog : ProjectComponent {
+            using ProjectComponent::ProjectComponent;
 
         protected:
             void Render() const override;
         };
 
-        struct StackTool : ProjectDebugChild {
-            using ProjectDebugChild::ProjectDebugChild;
+        struct StackTool : ProjectComponent {
+            using ProjectComponent::ProjectComponent;
 
         protected:
             void Render() const override;
@@ -131,8 +125,6 @@ struct Project : Component, Actionable<Action::Any> {
             Annotated,
             Raw
         };
-
-        const Project *GetProject() const { return static_cast<const Project *>(Parent); }
 
         void OnFieldChanged() override;
 

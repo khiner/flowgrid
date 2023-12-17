@@ -1,7 +1,8 @@
 #include "Component.h"
 
-#include "imgui_internal.h"
 #include <format>
+
+#include "imgui_internal.h"
 
 #include "Helper/String.h"
 #include "Project/ProjectContext.h"
@@ -24,7 +25,7 @@ Component::Metadata Component::Metadata::Parse(string_view str) {
 }
 
 Component::Component(Store &store, const ProjectContext &context)
-    : RootStore(store), RootContext(context), Parent(nullptr),
+    : RootStore(store), RootContext(context), Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById[Id] = this;
 }
@@ -32,6 +33,7 @@ Component::Component(Store &store, const ProjectContext &context)
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
     : RootStore(parent->RootStore),
       RootContext(parent->RootContext),
+      Root(parent->Root),
       Parent(parent),
       PathSegment(path_segment),
       Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),

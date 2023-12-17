@@ -157,6 +157,7 @@ struct Component {
 
     Store &RootStore; // Reference to the store at the root of this component's tree.
     const ProjectContext &RootContext;
+    Component *Root; // The root (project) component.
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
     const string PathSegment;

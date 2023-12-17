@@ -525,7 +525,7 @@ void Project::Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    json project_json = GetProject()->GetProjectJson(ProjectFormat(int(Format)));
+    json project_json = GetProject().GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {
@@ -563,7 +563,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         const bool any_gesture_actions = !ActiveGestureActions.empty();
         if (any_gesture_actions || is_gesturing) {
             // Gesture completion progress bar (full-width to empty).
-            const float gesture_duration_sec = GetProject()->Settings.GestureDurationSec;
+            const float gesture_duration_sec = GetProject().Settings.GestureDurationSec;
             const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
             const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, GetFlowGridStyle().Colors[FlowGridCol_GestureIndicator]);

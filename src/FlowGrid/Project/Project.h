@@ -1,15 +1,17 @@
 #pragma once
 
 #include "Audio/Audio.h"
+#include "Core/Action/ActionConsumer.h"
 #include "Core/Action/ActionQueue.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Action/Actions.h"
 #include "Core/ImGuiSettings.h"
+#include "Core/Windows.h"
 #include "Demo/Demo.h"
 #include "FileDialog/FileDialog.h"
 #include "Info/Info.h"
-#include "ProjectContext.h"
 #include "ProjectSettings.h"
+#include "Style/Style.h"
 
 enum ProjectFormat {
     StateFormat,
@@ -27,7 +29,7 @@ struct Plottable {
  * This class fully describes the project at any point in time.
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
  */
-struct Project : Component, Actionable<Action::Any> {
+struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any> {
     Project(Store &, ActionQueue<ActionType> &);
     ~Project();
 
@@ -108,7 +110,6 @@ struct Project : Component, Actionable<Action::Any> {
             void Render() const override;
         };
 
-        // StateMemoryEditor, WindowFlags_NoScrollbar
         struct StorePathUpdateFrequency : ProjectComponent {
             using ProjectComponent::ProjectComponent;
 
@@ -146,7 +147,6 @@ struct Project : Component, Actionable<Action::Any> {
               true);
 
         Prop(ProjectPreview, ProjectPreview);
-        // Prop(StateMemoryEditor, StateMemoryEditor);
         Prop(StorePathUpdateFrequency, StorePathUpdateFrequency);
         Prop(DebugLog, DebugLog);
         Prop(StackTool, StackTool);
@@ -156,8 +156,9 @@ struct Project : Component, Actionable<Action::Any> {
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
 
-    Prop(FileDialog, FileDialog);
-    Prop(ProjectContext, Context);
+    ProducerProp(FileDialog, FileDialog);
+    ProducerProp(fg::Style, Style);
+    ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(Audio, Audio, FileDialog);
     Prop(ProjectSettings, Settings);
@@ -177,16 +178,12 @@ struct Project : Component, Actionable<Action::Any> {
 
     void RenderDebug() const override;
 
-    void Q(ActionType &&) const;
-    void Q(ActionMoment<ActionType> &&) const;
-    void RunQueuedActions(bool force_commit_gesture = false, bool ignore_actions = false) const;
+    void ApplyQueuedActions(bool force_commit_gesture = false, bool ignore_actions = false) const;
 
 protected:
     void Render() const override;
 
 private:
-    ActionQueue<ActionType> &ActionQueue;
-
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
 

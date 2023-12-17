@@ -14,12 +14,8 @@ void FileDialog::Apply(const ActionType &action) const {
     // `SelectedFilePath` mutations are non-stateful side effects.
     Visit(
         action,
-        [this](const Action::FileDialog::Open &a) {
-            Set(json::parse(a.dialog_json));
-        },
-        [](const Action::FileDialog::Select &a) {
-            SelectedFilePath = a.file_path;
-        },
+        [this](const Action::FileDialog::Open &a) { Set(json::parse(a.dialog_json)); },
+        [](const Action::FileDialog::Select &a) { SelectedFilePath = a.file_path; },
     );
 }
 
@@ -104,7 +100,7 @@ void FileDialog::Render() const {
     Dialog->OpenDialog(DialogKey, Title, Filters.c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
         Visible = false;
-        if (Dialog->IsOk()) Action::FileDialog::Select{Dialog->GetFilePathName()}.q();
+        if (Dialog->IsOk()) q(Action::FileDialog::Select{Dialog->GetFilePathName()});
     }
 }
 

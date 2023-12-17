@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Colors.h"
+#include "Core/ActionableComponent.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
@@ -28,6 +29,13 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
+using StyleAction = Action::Style::Any;
+
+struct StyleChild : Component {
+    using Component::Component;
+    bool q(StyleAction &&) const; // Delegates to parent `Style::q`.
+};
+
 struct FlowGridStyle : Component {
     FlowGridStyle(ComponentArgs &&);
 
@@ -45,8 +53,8 @@ protected:
 };
 
 namespace FlowGrid {
-struct Style : Component, Actionable<Action::Style::Any> {
-    using Component::Component;
+struct Style : ActionableComponent<Action::Style::Any> {
+    using ActionableComponent::ActionableComponent;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;

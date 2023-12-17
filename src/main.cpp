@@ -24,7 +24,7 @@ bool Tick(const UIContext &ui) {
         // (which would likely be a rabbit hole), we just check for diffs here.
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
         const auto &patch = MainProject.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext());
-        if (!patch.Empty()) Action::Store::ApplyPatch{patch}.q();
+        if (!patch.Empty()) MainProject.Q(Action::Store::ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }
 
@@ -32,7 +32,7 @@ bool Tick(const UIContext &ui) {
 }
 
 int main() {
-    const UIContext ui{MainProject.ImGuiSettings, MainProject.Context.Style}; // Initialize ImGui and other UI state.
+    const UIContext ui{MainProject.ImGuiSettings, MainProject.Style}; // Initialize ImGui and other UI state.
     Component::gFonts.Init(); // Must be done after initializing ImGui.
     ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
 
@@ -49,14 +49,14 @@ int main() {
         Tick(ui); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
         Tick(ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        MainProject.RunQueuedActions(true);
+        MainProject.ApplyQueuedActions(true);
     }
 
     MainProject.OnApplicationLaunch();
 
     while (Tick(ui)) {
         // Disable all actions while the file dialog is open.
-        MainProject.RunQueuedActions(false, MainProject.FileDialog.Visible);
+        MainProject.ApplyQueuedActions(false, MainProject.FileDialog.Visible);
     }
 
     IGFD::Uninit();

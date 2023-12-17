@@ -3,6 +3,7 @@
 #include "FileDialogAction.h"
 #include "FileDialogData.h"
 
+#include "Core/ActionableComponent.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Int.h"
 #include "Core/Primitive/String.h"
@@ -10,8 +11,8 @@
 using ImGuiFileDialogFlags = int;
 
 // `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-struct FileDialog : Component, Actionable<Action::FileDialog::Any> {
-    using Component::Component;
+struct FileDialog : ActionableComponent<Action::FileDialog::Any> {
+    using ActionableComponent::ActionableComponent;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;

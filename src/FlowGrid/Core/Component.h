@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ComponentArgs.h"
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 #include "Helper/Time.h"
@@ -18,9 +19,13 @@ namespace fg = FlowGrid;
 
 using std::string, std::string_view;
 
+namespace FlowGrid {
+struct Style;
+}
+
 struct Store;
-struct ProjectContext;
 struct FlowGridStyle;
+struct Windows;
 
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;
@@ -71,18 +76,11 @@ struct Component {
         const string Name, Help;
     };
 
-    struct ComponentArgs {
-        Component *Parent; // Must be present for non-empty constructor.
-        string_view PathSegment = "";
-        string_view MetaStr = "";
-        string_view PathSegmentPrefix = "";
-    };
-
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
     // Components with at least one descendent field (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
-    Component(Store &, const ProjectContext &);
+    Component(Store &, const Windows &, const fg::Style &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -133,9 +131,6 @@ struct Component {
     void Dock(ID node_id) const;
     bool Focus() const;
 
-    Menu WindowMenu{{}};
-    ImGuiWindowFlags WindowFlags{WindowFlags_None};
-
     // Child renderers.
     void RenderTabs() const;
     void RenderTreeNodes(ImGuiTreeNodeFlags flags = 0) const;
@@ -154,7 +149,8 @@ struct Component {
     const FlowGridStyle &GetFlowGridStyle() const;
 
     Store &RootStore; // Reference to the store at the root of this component's tree.
-    const ProjectContext &RootContext;
+    const Windows &gWindows;
+    const fg::Style &gStyle;
     Component *Root; // The root (project) component.
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
@@ -162,6 +158,9 @@ struct Component {
     const StorePath Path;
     const string Name, Help, ImGuiLabel;
     const ID Id;
+
+    Menu WindowMenu{{}};
+    ImGuiWindowFlags WindowFlags{WindowFlags_None};
 
 protected:
     virtual void Render() const {} // By default, components don't render anything.
@@ -233,3 +232,5 @@ todo Try out replacing semicolon separators by e.g. commas.
 
 #define Prop(PropType, PropName, ...) PropType PropName{{this, #PropName, ""}, __VA_ARGS__};
 #define Prop_(PropType, PropName, MetaStr, ...) PropType PropName{{this, #PropName, MetaStr}, __VA_ARGS__};
+
+#define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateConsumer<::PropType>()}, __VA_ARGS__};

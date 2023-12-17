@@ -14,23 +14,25 @@
 using json = nlohmann::json;
 
 /**
-An action is an immutable representation of a user interaction event.
-Each action stores all information needed to apply the action to a `Store` instance.
-An `ActionMoment` is a combination of any action (of variant type `Action::Any`) and the `TimePoint` at which the action was queued.
+An action is an immutable and complete representation of a user interaction event affecting application state.
+Each action stores all the information needed to apply it to a `Store` instance.
+An `ActionMoment` is a combination of an action and the `TimePoint` when action was queued.
 
 Actions are grouped into `ActionVariant`s, which wrap around `std::variant`.
-Thus, the byte size of `Action::Any` is large enough to hold its biggest type.
+Thus, `Action::Any` has enough bytes to hold the application's largest action type.
 - For actions holding very large structured data, using a JSON string is a good approach to keep the size low
-  (at the expense of losing type safety and storing the string contents in heap memory).
+  (at the expense of losing type safety, incurring (de-)serialization costs, and storing the string contents in heap memory).
 - Note that adding static members does not increase the size of the variant(s) it belongs to.
-  (You can verify this by looking at the 'Action variant size' in the Metrics->FlowGrid window.)
+- Metrics->FlowGrid->'Action variant size' shows the byte size of `Action::Any`.
 */
 namespace Action {
 struct Metadata {
-    // `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required)
-    // Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
-    // (or added to the gesture history, or saved in a `.fga` (FlowGridAction) project).
-    // This is used for actions with only non-state-updating side effects, like saving a file.
+    /**
+    `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required).
+    Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
+    (or added to the gesture history, or saved in a `.fga` (FlowGridAction) project).
+    This is used for actions with only non-state-updating side effects, like saving a file.
+    */
     Metadata(std::string_view path_leaf, std::string_view meta_str = "");
 
     const std::string PathLeaf; // E.g. "Set"
@@ -65,11 +67,11 @@ template<IsAction T> struct IsNotSavable {
 };
 
 template<IsAction... T> struct ActionVariant : std::variant<T...> {
-    using variant_t = std::variant<T...>; // Alias to the base variant type.
-    using variant_t::variant; // Inherit the base variant's constructors.
+    using variant_t = std::variant<T...>; // Alias for the base variant type.
+    using variant_t::variant; // Inherit the base variant's ctors.
 
-    // Note that even though these maps are declared to be instantiated for each `ActionVariant` type,
-    // the compiler only instantiates them for the types with references to the map.
+    // Note: these maps are declared to be instantiated for each `ActionVariant` type,
+    // but the compiler only instantiates them for the types with references to the map.
     template<size_t I = 0> static auto CreatePathToIndex() {
         if constexpr (I < std::variant_size_v<variant_t>) {
             using MemberType = std::variant_alternative_t<I, variant_t>;
@@ -79,7 +81,6 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
         }
         return std::unordered_map<fs::path, size_t, PathHash>{};
     }
-
     template<size_t I = 0> static auto CreateShortcuts() {
         if constexpr (I < std::variant_size_v<variant_t>) {
             using MemberType = std::variant_alternative_t<I, variant_t>;
@@ -159,7 +160,8 @@ template<typename... Vars> struct CombineImpl;
 template<typename Var> struct CombineImpl<Var> {
     using type = Var;
 };
-template<typename... Ts1, typename... Ts2, typename... Vars> struct CombineImpl<ActionVariant<Ts1...>, ActionVariant<Ts2...>, Vars...> {
+template<typename... Ts1, typename... Ts2, typename... Vars>
+struct CombineImpl<ActionVariant<Ts1...>, ActionVariant<Ts2...>, Vars...> {
     using type = CombineImpl<ActionVariant<Ts1..., Ts2...>, Vars...>::type;
 };
 template<typename... Vars> using Combine = typename CombineImpl<Vars...>::type;

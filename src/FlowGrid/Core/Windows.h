@@ -1,10 +1,11 @@
 #pragma once
 
+#include "ActionableComponent.h"
 #include "Core/Container/PrimitiveVector.h"
 #include "WindowsAction.h"
 
-struct Windows : Component, Actionable<Action::Windows::Any> {
-    using Component::Component;
+struct Windows : ActionableComponent<Action::Windows::Any> {
+    using ActionableComponent::ActionableComponent;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }

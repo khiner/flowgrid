@@ -3,7 +3,7 @@
 #include "imgui.h"
 
 #include "Helper/String.h"
-#include "Project/ProjectContext.h"
+#include "Project/Style/Style.h"
 
 Field::Field(ComponentArgs &&args, Menu &&menu) : Component(std::move(args), std::move(menu)) {
     FieldById.emplace(Id, this);
@@ -123,8 +123,9 @@ void Field::UpdateGesturing() {
 
 void Field::FlashUpdateRecencyBackground(std::optional<StorePath> relative_path) const {
     if (const auto latest_update_time = LatestUpdateTime(Id, relative_path)) {
-        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / GetFlowGridStyle().FlashDurationSec;
-        ImColor flash_color = GetFlowGridStyle().Colors[FlowGridCol_Flash];
+        const auto &style = GetFlowGridStyle();
+        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / style.FlashDurationSec;
+        ImColor flash_color = style.Colors[FlowGridCol_Flash];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }

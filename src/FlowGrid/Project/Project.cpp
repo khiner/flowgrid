@@ -5,6 +5,7 @@
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/join.hpp>
 #include <set>
+#include <format>
 
 #include "Application/ApplicationPreferences.h"
 #include "Core/Store/Store.h"
@@ -50,8 +51,10 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return ret;
 }
 
-Project::Project(Store &store, ::ActionQueue<ActionType> &action_queue) : Component(store, Context), ActionQueue(action_queue), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
-    Context.Windows.SetWindowComponents({
+Project::Project(Store &store, ActionQueue<ActionType> &action_queue)
+    : Component(store, Windows, Style), ActionConsumer(action_queue),
+      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+    Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
         Audio.Style,
@@ -66,7 +69,7 @@ Project::Project(Store &store, ::ActionQueue<ActionType> &action_queue) : Compon
         Debug.DebugLog,
         Debug.StackTool,
         Debug.Metrics,
-        Context.Style,
+        Style,
         Demo,
         Info,
     });
@@ -148,8 +151,8 @@ void Project::Apply(const ActionType &action) const {
         [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [this](const Audio::ActionType &a) { Audio.Apply(a); },
         [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
-        [this](const Windows::ActionType &a) { Context.Windows.Apply(a); },
-        [this](const Style::ActionType &a) { Context.Style.Apply(a); },
+        [this](const Windows::ActionType &a) { Windows.Apply(a); },
+        [this](const Style::ActionType &a) { Style.Apply(a); },
     );
 }
 
@@ -172,8 +175,8 @@ bool Project::CanApply(const ActionType &action) const {
         [this](const Store::ActionType &a) { return RootStore.CanApply(a); },
         [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
-        [this](const Windows::ActionType &a) { return Context.Windows.CanApply(a); },
-        [this](const Style::ActionType &a) { return Context.Style.CanApply(a); },
+        [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
+        [this](const Style::ActionType &a) { return Style.CanApply(a); },
     );
 }
 
@@ -207,13 +210,12 @@ void Project::Render() const {
 
         Debug.Dock(debug_node_id);
         Debug.ProjectPreview.Dock(debug_node_id);
-        // Debug.StateMemoryEditor.Dock(debug_node_id);
         Debug.StorePathUpdateFrequency.Dock(debug_node_id);
         Debug.DebugLog.Dock(debug_node_id);
         Debug.StackTool.Dock(debug_node_id);
         Debug.Metrics.Dock(metrics_node_id);
 
-        Context.Style.Dock(utilities_node_id);
+        Style.Dock(utilities_node_id);
         Demo.Dock(utilities_node_id);
 
         Info.Dock(info_node_id);
@@ -222,14 +224,14 @@ void Project::Render() const {
 
     // Draw non-window children.
     for (const auto *child : Children) {
-        if (!Context.Windows.IsWindow(child->Id)) child->Draw();
+        if (!Windows.IsWindow(child->Id) && child != &Windows) child->Draw();
     }
 
-    Context.Windows.Draw();
+    Windows.Draw();
 
     if (frame_count == 1) {
         // Default focused windows.
-        Context.Style.Focus();
+        Style.Focus();
         Audio.Graph.Focus();
         Audio.Faust.Graphs.Focus();
         Audio.Faust.Paramss.Focus();
@@ -308,8 +310,8 @@ void Project::OnApplicationLaunch() const {
     Field::LatestChangedPaths.clear();
 
     // When loading a new project, we always refresh all UI contexts.
-    Context.Style.ImGui.IsChanged = true;
-    Context.Style.ImPlot.IsChanged = true;
+    Style.ImGui.IsChanged = true;
+    Style.ImPlot.IsChanged = true;
     ImGuiSettings::IsChanged = true;
 
     // Keep the canonical "empty" project up-to-date.
@@ -380,7 +382,7 @@ void Project::Open(const fs::path &file_path) const {
 }
 
 void Project::WindowMenuItem() const {
-    const auto &item = [this](const Component &c) { return Context.Windows.ToggleMenuItem(c); };
+    const auto &item = [this](const Component &c) { return Windows.ToggleMenuItem(c); };
     if (BeginMenu("Windows")) {
         if (BeginMenu("Audio")) {
             item(Audio.Graph);
@@ -404,7 +406,7 @@ void Project::WindowMenuItem() const {
             item(Debug.Metrics);
             EndMenu();
         }
-        item(Context.Style);
+        item(Style);
         item(Demo);
         item(Info);
         item(Settings);
@@ -566,9 +568,9 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
             const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, GetFlowGridStyle().Colors[FlowGridCol_GestureIndicator]);
 
-            const auto &ActiveGestureActions_title = "Active gesture"s + (any_gesture_actions ? " (uncompressed)" : "");
-            if (TreeNodeEx(ActiveGestureActions_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (is_gesturing) FillRowItemBg(RootContext.Style.ImGui.Colors[ImGuiCol_FrameBgActive]);
+            const string active_gesture_title = std::format("Active gesture{}", any_gesture_actions ? " (uncompressed)" : "");
+            if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (is_gesturing) FillRowItemBg(gStyle.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
                 Text("Widget gesture: %s", is_gesturing ? "true" : "false");
                 if (!is_gesturing) EndDisabled();
@@ -663,44 +665,17 @@ void Project::Debug::Metrics::Render() const {
     RenderTabs();
 }
 
-// #include "imgui_memory_editor.h"
-
-// todo need to rethink this with the store system
-// void Project::Debug::StateMemoryEditor::Render() const {
-//     static MemoryEditor memory_editor;
-//     static bool first_render{true};
-//     if (first_render) {
-//         memory_editor.OptShowDataPreview = true;
-//         //        memory_editor.WriteFn = ...; todo write_state_bytes action
-//         first_render = false;
-//     }
-
-//     const void *mem_data{&s};
-//     memory_editor.DrawContents(mem_data, sizeof(s));
-// }
-
-//-----------------------------------------------------------------------------
-// [SECTION] Action queueing
-//-----------------------------------------------------------------------------
-
-void Project::Q(ActionMoment<ActionType> &&action_moment) const {
-    ActionQueue.Enqueue(std::move(action_moment));
-}
-void Project::Q(ActionType &&action) const {
-    Q({std::move(action), Clock::now()});
-}
-
-void Project::RunQueuedActions(bool force_commit_gesture, bool ignore_actions) const {
-    static ActionMoment<ActionType> action_moment;
+void Project::ApplyQueuedActions(bool force_commit_gesture, bool ignore_actions) const {
+    static ActionMoment<ActionType> action_moment; // For dequeuing.
 
     if (ignore_actions) {
-        while (ActionQueue.TryDequeue(action_moment)) {};
+        while (DQ(action_moment)) {};
         return;
     }
 
     const bool gesture_actions_already_present = !ActiveGestureActions.empty();
 
-    while (ActionQueue.TryDequeue(action_moment)) {
+    while (DQ(action_moment)) {
         auto &[action, queue_time] = action_moment;
         if (!CanApply(action)) continue;
 

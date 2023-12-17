@@ -4,10 +4,11 @@
 
 #include "imgui_internal.h"
 
+#include "Core/Windows.h"
 #include "Helper/String.h"
-#include "Project/ProjectContext.h"
-#include "UI/HelpMarker.h"
+#include "Project/Style/Style.h"
 #include "UI/Fonts.h"
+#include "UI/HelpMarker.h"
 
 Fonts Component::gFonts{};
 
@@ -27,15 +28,16 @@ Component::Metadata Component::Metadata::Parse(string_view str) {
     return {found ? string(str.substr(0, help_split)) : string(str), found ? string(str.substr(help_split + 1)) : ""};
 }
 
-Component::Component(Store &store, const ProjectContext &context)
-    : RootStore(store), RootContext(context), Root(this), Parent(nullptr),
+Component::Component(Store &store, const Windows &windows, const fg::Style &style)
+    : RootStore(store), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById[Id] = this;
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
     : RootStore(parent->RootStore),
-      RootContext(parent->RootContext),
+      gWindows(parent->gWindows),
+      gStyle(parent->gStyle),
       Root(parent->Root),
       Parent(parent),
       PathSegment(path_segment),
@@ -111,7 +113,7 @@ void Component::HelpMarker(const bool after) const {
     if (!after) ImGui::SameLine();
 }
 
-const FlowGridStyle &Component::GetFlowGridStyle() const { return RootContext.Style.FlowGrid; }
+const FlowGridStyle &Component::GetFlowGridStyle() const { return gStyle.FlowGrid; }
 
 using namespace ImGui;
 

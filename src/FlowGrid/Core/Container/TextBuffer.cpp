@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
+#include "Core/Windows.h"
 #include "Project/Audio/Faust/FaustAction.h"
-#include "Project/ProjectContext.h"
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/Fonts.h"
 
@@ -51,7 +51,7 @@ void TextBuffer::RenderMenu() const {
                 if (MenuItem("Retro blue palette")) editor.SetPalette(TextEditor::PaletteIdT::RetroBlue);
                 EndMenu();
             }
-            RootContext.Windows.ToggleDebugMenuItem(Debug);
+            gWindows.ToggleDebugMenuItem(Debug);
             EndMenu();
         }
         EndMenuBar();

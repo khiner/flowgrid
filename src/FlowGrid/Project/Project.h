@@ -157,11 +157,11 @@ struct Project : Component, Actionable<Action::Any> {
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
 
+    Prop(FileDialog, FileDialog);
     Prop(ProjectContext, Context);
     Prop(ImGuiSettings, ImGuiSettings);
-    Prop(Audio, Audio);
+    Prop(Audio, Audio, FileDialog);
     Prop(ProjectSettings, Settings);
-    Prop(FileDialog, FileDialog);
     Prop(Info, Info);
 
     Prop(Demo, Demo);

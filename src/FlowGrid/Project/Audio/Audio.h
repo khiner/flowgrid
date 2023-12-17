@@ -8,7 +8,7 @@
 struct ma_device;
 
 struct Audio : Component, Actionable<Action::Audio::Any> {
-    Audio(ComponentArgs &&);
+    Audio(ComponentArgs &&, const FileDialog &);
     ~Audio();
 
     void Apply(const ActionType &) const override;
@@ -20,8 +20,10 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
         void Render() const override;
     };
 
+    const FileDialog &FileDialog;
+
     Prop_(AudioGraph, Graph, "Audio graph");
-    Prop(Faust, Faust);
+    Prop(Faust, Faust, FileDialog);
     Prop_(Style, Style, "Audio style");
 
 private:

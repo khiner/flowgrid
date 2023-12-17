@@ -62,7 +62,6 @@ struct Fonts;
 
 struct Component {
     static Fonts gFonts;
-    static const FileDialog &gFileDialog;
 
     struct Metadata {
         // Split the string on '?'.

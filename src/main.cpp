@@ -8,7 +8,6 @@
 Store store{};
 Project MainProject{store};
 // Set all global extern variables.
-const FileDialog &Component::gFileDialog = MainProject.FileDialog;
 const Project &project = MainProject;
 
 bool Tick(const UIContext &ui) {

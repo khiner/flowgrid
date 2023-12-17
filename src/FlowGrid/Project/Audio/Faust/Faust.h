@@ -11,6 +11,8 @@
 #include "Core/Container/TextBuffer.h"
 #include "Core/Container/Vector.h"
 
+struct FileDialog;
+
 /**
 - `Audio.Faust.FaustGraphs` (listens to `FaustDSP::Box`): Extensively configurable, live-updating block diagrams for all Faust DSP instances.
   - By default, `FaustGraph` matches the FlowGrid style (which is ImGui's dark style), but it can be configured to exactly match the Faust SVG diagram style.
@@ -44,7 +46,7 @@ protected:
 };
 
 struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Field::ChangeListener {
-    FaustGraphs(ComponentArgs &&, const FaustGraphStyle &, const FaustGraphSettings &);
+    FaustGraphs(ComponentArgs &&, const FileDialog &, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
 
     static std::unique_ptr<FaustGraph> CreateChild(Component *, string_view path_prefix_segment, string_view path_segment);
@@ -66,6 +68,7 @@ struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, 
 
     void OnFieldChanged() override;
 
+    const FileDialog &FileDialog;
     const FaustGraphStyle &Style;
     const FaustGraphSettings &Settings;
 
@@ -143,7 +146,7 @@ private:
 };
 
 struct Faust : Component, Actionable<Action::Faust::Any>, FaustDSPContainer {
-    Faust(ComponentArgs &&);
+    Faust(ComponentArgs &&, const FileDialog &);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
@@ -162,11 +165,13 @@ struct Faust : Component, Actionable<Action::Faust::Any>, FaustDSPContainer {
 
     inline static std::unordered_set<FaustDSPListener *> DspChangeListeners;
 
+    const FileDialog &FileDialog;
+
     Prop(FaustGraphStyle, GraphStyle);
     Prop(FaustGraphSettings, GraphSettings);
     Prop(FaustParamsStyle, ParamsStyle);
 
-    Prop_(FaustGraphs, Graphs, "Faust graphs", GraphStyle, GraphSettings);
+    Prop_(FaustGraphs, Graphs, "Faust graphs", FileDialog, GraphStyle, GraphSettings);
     Prop_(FaustParamss, Paramss, "Faust params", ParamsStyle);
     Prop_(FaustLogs, Logs, "Faust logs");
 

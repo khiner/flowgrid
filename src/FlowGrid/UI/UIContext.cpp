@@ -11,6 +11,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Core/ImGuiSettings.h"
+#include "Fonts.h"
 #include "Project/Style/Style.h"
 
 #ifdef TRACING_ENABLED

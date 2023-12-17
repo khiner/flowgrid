@@ -4,8 +4,6 @@
 
 #include "Core/Primitive/Scalar.h"
 
-#include "Fonts.h"
-
 using std::string;
 struct ImVec2;
 

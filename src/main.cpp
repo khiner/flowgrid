@@ -2,6 +2,7 @@
 
 #include "FlowGrid/Core/Store/Store.h"
 #include "FlowGrid/Project/Project.h"
+#include "UI/Fonts.h"
 #include "UI/UIContext.h"
 
 Store store{};

@@ -8,7 +8,6 @@
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 #include "Helper/Time.h"
-#include "UI/Fonts.h"
 
 #include "nlohmann/json.hpp"
 
@@ -58,11 +57,11 @@ enum WindowFlags_ {
 };
 
 struct Field;
-
 struct FileDialog;
+struct Fonts;
 
 struct Component {
-    inline static Fonts gFonts;
+    static Fonts gFonts;
     static const FileDialog &gFileDialog;
 
     struct Metadata {

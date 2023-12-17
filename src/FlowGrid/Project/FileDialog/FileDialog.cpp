@@ -6,6 +6,7 @@
 #include "FileDialogDataJson.h"
 #include "Helper/File.h"
 #include "ImGuiFileDialog.h"
+#include "UI/Fonts.h"
 #include "UI/HelpMarker.h"
 #include "UI/Styling.h"
 

@@ -1,3 +1,5 @@
+#include "Fonts.h"
+
 #include "Project/FileDialog/FileDialog.h" // xxx only used for loading fonts
 
 #include "imgui.h"

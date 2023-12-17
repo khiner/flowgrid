@@ -6,8 +6,10 @@
 #include "UI/UIContext.h"
 
 Store store{};
-Project MainProject{store};
-// Set all global extern variables.
+ActionQueue<Action::Any> action_queue{};
+Project MainProject{store, action_queue};
+// `project` is the only remaining global variable.
+// I "just" need to finish refactoring action queueing to get rid of this.
 const Project &project = MainProject;
 
 bool Tick(const UIContext &ui) {
@@ -30,9 +32,8 @@ bool Tick(const UIContext &ui) {
 }
 
 int main() {
-    static UIContext ui{MainProject.ImGuiSettings, MainProject.Context.Style}; // Initialize UI
-
-    Component::gFonts.Init();
+    const UIContext ui{MainProject.ImGuiSettings, MainProject.Context.Style}; // Initialize ImGui and other UI state.
+    Component::gFonts.Init(); // Must be done after initializing ImGui.
     ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
 
     // Initialize the global canonical store with all project state values set during project initialization.

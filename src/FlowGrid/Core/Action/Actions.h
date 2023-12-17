@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ActionMoment.h"
+
 #include "Core/Field/FieldAction.h"
 #include "Core/Store/StoreAction.h"
 #include "Core/WindowsAction.h"
@@ -8,8 +10,6 @@
 #include "Project/ProjectAction.h"
 #include "Project/Style/StyleAction.h"
 
-#include "Helper/Time.h"
-
 namespace Action {
 // `Any` holds all action types.
 using Any = Combine<Project::Any, Field::Any, Store::Any, Audio::Any, FileDialog::Any, Windows::Any, Style::Any>;
@@ -17,17 +17,7 @@ using Savable = Filter<Action::IsSavable, Any>;
 using NonSavable = Filter<Action::IsNotSavable, Any>;
 } // namespace Action
 
-// Action moments are actions paired with the time they were queued.
-struct ActionMoment {
-    Action::Any Action;
-    TimePoint QueueTime;
-};
-
-struct SavableActionMoment {
-    Action::Savable Action;
-    TimePoint QueueTime;
-};
-
+using SavableActionMoment = ActionMoment<Action::Savable>;
 using SavableActionMoments = std::vector<SavableActionMoment>;
 
 struct Gesture {

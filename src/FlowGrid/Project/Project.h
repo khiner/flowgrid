@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Audio/Audio.h"
+#include "Core/Action/ActionQueue.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Action/Actions.h"
 #include "Core/ImGuiSettings.h"
@@ -9,8 +10,6 @@
 #include "Info/Info.h"
 #include "ProjectContext.h"
 #include "ProjectSettings.h"
-
-#include "blockingconcurrentqueue.h"
 
 enum ProjectFormat {
     StateFormat,
@@ -29,7 +28,7 @@ struct Plottable {
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
  */
 struct Project : Component, Actionable<Action::Any> {
-    Project(Store &);
+    Project(Store &, ActionQueue<ActionType> &);
     ~Project();
 
     // A `ProjectComponent` is a `Component` that can cast the `Root` component pointer to its true `Project` type.
@@ -39,7 +38,7 @@ struct Project : Component, Actionable<Action::Any> {
         const Project &GetProject() const { return static_cast<const Project &>(*Root); }
     };
 
-    static void OpenRecentProjectMenuItem();
+    void OpenRecentProjectMenuItem() const;
 
     void OnApplicationLaunch() const;
 
@@ -169,7 +168,7 @@ struct Project : Component, Actionable<Action::Any> {
 
     const Menu MainMenu{
         {
-            Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, OpenRecentProjectMenuItem, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),
+            Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, [this]() { OpenRecentProjectMenuItem(); }, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),
             Menu("Edit", {Action::Project::Undo::MenuItem, Action::Project::Redo::MenuItem}),
             [this] { return WindowMenuItem(); },
         },
@@ -178,15 +177,15 @@ struct Project : Component, Actionable<Action::Any> {
 
     void RenderDebug() const override;
 
-    void Queue(Action::Any &&) const;
-    void Queue(ActionMoment &&) const;
+    void Q(ActionType &&) const;
+    void Q(ActionMoment<ActionType> &&) const;
     void RunQueuedActions(bool force_commit_gesture = false, bool ignore_actions = false) const;
 
 protected:
     void Render() const override;
 
 private:
-    mutable moodycamel::BlockingConcurrentQueue<ActionMoment> ActionQueue{};
+    ActionQueue<ActionType> &ActionQueue;
 
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;

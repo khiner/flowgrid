@@ -50,7 +50,7 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return ret;
 }
 
-Project::Project(Store &store) : Component(store, Context), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+Project::Project(Store &store, ::ActionQueue<ActionType> &action_queue) : Component(store, Context), ActionQueue(action_queue), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
     Context.Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -242,29 +242,29 @@ void Project::Render() const {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         const string &extension = selected_path.extension();
         if (std::ranges::find(AllProjectExtensions, extension) != AllProjectExtensions.end()) {
-            if (FileDialog.SaveMode) Action::Project::Save{selected_path}.q();
-            else Action::Project::Open{selected_path}.q();
+            if (FileDialog.SaveMode) Q(Action::Project::Save{selected_path});
+            else Q(Action::Project::Open{selected_path});
         }
         PrevSelectedPath = selected_path;
     }
 
-    static const auto Shortcuts = Action::Any::CreateShortcuts();
+    static const auto Shortcuts = ActionType::CreateShortcuts();
     const auto &io = GetIO();
     for (const auto &[action_id, shortcut] : Shortcuts) {
         const auto &[mod, key] = shortcut.Parsed;
         if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)), ImGuiKeyOwner_None)) {
-            auto action = Action::Any::Create(action_id);
+            auto action = ActionType::Create(action_id);
             if (CanApply(action)) {
-                Visit(action, [this](auto &&a) { Queue(std::move(a)); });
+                Visit(action, [this](auto &&a) { Q(std::move(a)); });
             }
         }
     }
 }
 
-void Project::OpenRecentProjectMenuItem() {
+void Project::OpenRecentProjectMenuItem() const {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (MenuItem(recently_opened_path.filename().c_str())) Action::Project::Open{recently_opened_path}.q();
+            if (MenuItem(recently_opened_path.filename().c_str())) Q(Action::Project::Open{recently_opened_path});
         }
         EndMenu();
     }
@@ -554,13 +554,14 @@ ImRect RowItemRatioRect(float ratio) {
 }
 
 void Project::Debug::Metrics::FlowGridMetrics::Render() const {
+    const auto &project = GetProject();
     {
         // Active (uncompressed) gesture
         const bool is_gesturing = Field::IsGesturing;
         const bool any_gesture_actions = !ActiveGestureActions.empty();
         if (any_gesture_actions || is_gesturing) {
             // Gesture completion progress bar (full-width to empty).
-            const float gesture_duration_sec = GetProject().Settings.GestureDurationSec;
+            const float gesture_duration_sec = project.Settings.GestureDurationSec;
             const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
             const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, GetFlowGridStyle().Colors[FlowGridCol_GestureIndicator]);
@@ -584,14 +585,14 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     }
     Separator();
     {
-        const auto &history = GetProject().History;
+        const auto &history = project.History;
         const bool no_history = history.Empty();
         if (no_history) BeginDisabled();
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", history.Size() - 1, history.Index)) {
             if (!no_history) {
-                int edited_history_index = int(history.Index);
-                if (SliderInt("History index", &edited_history_index, 0, int(history.Size() - 1))) {
-                    Action::Project::SetHistoryIndex{u32(edited_history_index)}.q();
+                uint edited_history_index = history.Index;
+                if (SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
+                    project.Q(Action::Project::SetHistoryIndex{edited_history_index});
                 }
             }
             for (u32 i = 1; i < history.Size(); i++) {
@@ -682,24 +683,24 @@ void Project::Debug::Metrics::Render() const {
 // [SECTION] Action queueing
 //-----------------------------------------------------------------------------
 
-void Project::Queue(ActionMoment &&action_moment) const {
-    ActionQueue.enqueue(std::move(action_moment));
+void Project::Q(ActionMoment<ActionType> &&action_moment) const {
+    ActionQueue.Enqueue(std::move(action_moment));
 }
-void Project::Queue(Action::Any &&action) const {
-    Queue({std::move(action), Clock::now()});
+void Project::Q(ActionType &&action) const {
+    Q({std::move(action), Clock::now()});
 }
 
 void Project::RunQueuedActions(bool force_commit_gesture, bool ignore_actions) const {
-    static ActionMoment action_moment;
+    static ActionMoment<ActionType> action_moment;
 
     if (ignore_actions) {
-        while (ActionQueue.try_dequeue(action_moment)) {};
+        while (ActionQueue.TryDequeue(action_moment)) {};
         return;
     }
 
     const bool gesture_actions_already_present = !ActiveGestureActions.empty();
 
-    while (ActionQueue.try_dequeue(action_moment)) {
+    while (ActionQueue.TryDequeue(action_moment)) {
         auto &[action, queue_time] = action_moment;
         if (!CanApply(action)) continue;
 
@@ -737,11 +738,11 @@ void Project::RunQueuedActions(bool force_commit_gesture, bool ignore_actions) c
 }
 
 #define DefineQ(ActionType)                                                                                      \
-    void Action::ActionType::q() const { project.Queue(std::move(*this)); }                                      \
+    void Action::ActionType::q() const { project.Q(std::move(*this)); }                                          \
     void Action::ActionType::MenuItem() {                                                                        \
         auto instance = Action::ActionType{};                                                                    \
         if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(instance))) { \
-            project.Queue(std::move(instance));                                                                  \
+            project.Q(std::move(instance));                                                                      \
         }                                                                                                        \
     }
 

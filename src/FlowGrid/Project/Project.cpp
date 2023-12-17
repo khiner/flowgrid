@@ -50,7 +50,7 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return ret;
 }
 
-void CommitGesture() {
+void Project::CommitGesture() const {
     Field::GestureChangedPaths.clear();
     if (ActiveGestureActions.empty()) return;
 
@@ -80,7 +80,7 @@ void Project::SetHistoryIndex(u32 index) const {
     ProjectHasChanges = true;
 }
 
-Project::Project(Store &store) : Component(store, Context) {
+Project::Project(Store &store) : Component(store, Context), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
     Context.Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -101,6 +101,8 @@ Project::Project(Store &store) : Component(store, Context) {
         Info,
     });
 }
+
+Project::~Project() = default;
 
 json Project::GetProjectJson(const ProjectFormat format) const {
     switch (format) {
@@ -154,11 +156,11 @@ void Project::Apply(const ActionType &action) const {
 bool Project::CanApply(const ActionType &action) const {
     return Visit(
         action,
-        [](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
-        [](const Action::Project::Redo &) { return History.CanRedo(); },
-        [](const Action::Project::SetHistoryIndex &a) { return a.index < History.Size(); },
-        [](const Action::Project::Save &) { return !History.Empty(); },
-        [](const Action::Project::SaveDefault &) { return !History.Empty(); },
+        [this](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
+        [this](const Action::Project::Redo &) { return History.CanRedo(); },
+        [this](const Action::Project::SetHistoryIndex &a) { return a.index < History.Size(); },
+        [this](const Action::Project::Save &) { return !History.Empty(); },
+        [this](const Action::Project::SaveDefault &) { return !History.Empty(); },
         [](const Action::Project::ShowOpenDialog &) { return true; },
         [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
         [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
@@ -425,12 +427,7 @@ void Project::WindowMenuItem() const {
 #include "UI/HelpMarker.h"
 #include "UI/JsonTree.h"
 
-struct Plottable {
-    std::vector<std::string> Labels;
-    std::vector<ImU64> Values;
-};
-
-Plottable StorePathChangeFrequencyPlottable() {
+Plottable Project::StorePathChangeFrequencyPlottable() const {
     if (History.GetChangedPathsCount() == 0 && Field::GestureChangedPaths.empty()) return {};
 
     std::map<StorePath, u32> gesture_change_counts;
@@ -467,7 +464,7 @@ Plottable StorePathChangeFrequencyPlottable() {
 }
 
 void Project::Debug::StorePathUpdateFrequency::Render() const {
-    auto [labels, values] = StorePathChangeFrequencyPlottable();
+    auto [labels, values] = GetProject().StorePathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;
@@ -587,19 +584,20 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     }
     Separator();
     {
-        const bool no_history = History.Empty();
+        const auto &history = GetProject().History;
+        const bool no_history = history.Empty();
         if (no_history) BeginDisabled();
-        if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", History.Size() - 1, History.Index)) {
+        if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", history.Size() - 1, history.Index)) {
             if (!no_history) {
-                int edited_history_index = int(History.Index);
-                if (SliderInt("History index", &edited_history_index, 0, int(History.Size() - 1))) {
+                int edited_history_index = int(history.Index);
+                if (SliderInt("History index", &edited_history_index, 0, int(history.Size() - 1))) {
                     Action::Project::SetHistoryIndex{u32(edited_history_index)}.q();
                 }
             }
-            for (u32 i = 1; i < History.Size(); i++) {
+            for (u32 i = 1; i < history.Size(); i++) {
                 // todo button to navitate to this history index.
-                if (TreeNodeEx(to_string(i).c_str(), i == History.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[store_record, gesture] = History.RecordAt(i);
+                if (TreeNodeEx(to_string(i).c_str(), i == history.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                    const auto &[store_record, gesture] = history.RecordAt(i);
                     BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", gesture.CommitTime).c_str());
                     if (TreeNode("Actions")) {
                         ShowActions(gesture.Actions);
@@ -607,7 +605,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                     }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
-                        const auto &patch = History.CreatePatch(i);
+                        const auto &patch = history.CreatePatch(i);
                         for (const auto &[partial_path, op] : patch.Ops) {
                             const auto &path = patch.BasePath / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

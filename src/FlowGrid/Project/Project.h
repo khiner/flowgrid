@@ -17,12 +17,20 @@ enum ProjectFormat {
     ActionFormat
 };
 
+struct StoreHistory;
+
+struct Plottable {
+    std::vector<std::string> Labels;
+    std::vector<u64> Values;
+};
+
 /**
  * This class fully describes the project at any point in time.
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
  */
 struct Project : Component, Actionable<Action::Any> {
     Project(Store &);
+    ~Project();
 
     // A `ProjectComponent` is a `Component` that can cast the `Root` component pointer to its true `Project` type.
     struct ProjectComponent : Component {
@@ -37,6 +45,8 @@ struct Project : Component, Actionable<Action::Any> {
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
+    void CommitGesture() const;
+    Plottable StorePathChangeFrequencyPlottable() const;
 
     json GetProjectJson(const ProjectFormat) const;
 
@@ -143,6 +153,9 @@ struct Project : Component, Actionable<Action::Any> {
         Prop(StackTool, StackTool);
         Prop(Metrics, Metrics);
     };
+
+    std::unique_ptr<StoreHistory> HistoryPtr;
+    StoreHistory &History;
 
     Prop(ProjectContext, Context);
     Prop(ImGuiSettings, ImGuiSettings);

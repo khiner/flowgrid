@@ -1,13 +1,10 @@
 #include "imgui.h"
 
 #include "FlowGrid/Core/Store/Store.h"
-#include "FlowGrid/Core/Store/StoreHistory.h"
 #include "FlowGrid/Project/Project.h"
 #include "UI/UIContext.h"
 
 Store store{};
-StoreHistory store_history_singleton{store}; // xxx temporary state of affairs.
-StoreHistory &History = store_history_singleton;
 Project MainProject{store};
 // Set all global extern variables.
 const FileDialog &Component::gFileDialog = MainProject.FileDialog;

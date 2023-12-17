@@ -55,5 +55,3 @@ private:
 };
 
 Json(StoreHistory::IndexedGestures, Gestures, Index);
-
-extern StoreHistory &History; // One store checkpoint for every gesture.

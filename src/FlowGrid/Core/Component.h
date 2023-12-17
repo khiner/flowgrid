@@ -21,6 +21,7 @@ using std::string, std::string_view;
 
 struct Store;
 struct ProjectContext;
+struct FlowGridStyle;
 
 struct MenuItemDrawable {
     virtual void MenuItem() const = 0;
@@ -129,15 +130,6 @@ struct Component {
     bool IsChanged(bool include_descendents = false) const noexcept;
     inline bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
 
-    Store &RootStore; // Reference to the store at the root of this component's tree.
-    const ProjectContext &RootContext;
-    Component *Parent; // Only null for the root component.
-    std::vector<Component *> Children{};
-    const string PathSegment;
-    const StorePath Path;
-    const string Name, Help, ImGuiLabel;
-    const ID Id;
-
     ImGuiWindow *FindWindow() const;
     ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
     void Dock(ID node_id) const;
@@ -160,6 +152,17 @@ struct Component {
     void HelpMarker(bool after = true) const;
 
     void Draw() const; // Wraps around the internal `Render` function.
+
+    const FlowGridStyle &GetFlowGridStyle() const;
+
+    Store &RootStore; // Reference to the store at the root of this component's tree.
+    const ProjectContext &RootContext;
+    Component *Parent; // Only null for the root component.
+    std::vector<Component *> Children{};
+    const string PathSegment;
+    const StorePath Path;
+    const string Name, Help, ImGuiLabel;
+    const ID Id;
 
 protected:
     virtual void Render() const {} // By default, components don't render anything.

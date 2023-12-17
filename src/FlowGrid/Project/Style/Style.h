@@ -28,28 +28,28 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
+struct FlowGridStyle : Component {
+    FlowGridStyle(ComponentArgs &&);
+
+    Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
+    Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
+
+    void ColorsDark() const;
+    void ColorsLight() const;
+    void ColorsClassic() const;
+
+    static const char *GetColorName(FlowGridCol idx);
+
+protected:
+    void Render() const override;
+};
+
 namespace FlowGrid {
 struct Style : Component, Actionable<Action::Style::Any> {
     using Component::Component;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
-
-    struct FlowGridStyle : Component {
-        FlowGridStyle(ComponentArgs &&);
-
-        Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
-        Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
-
-        void ColorsDark() const;
-        void ColorsLight() const;
-        void ColorsClassic() const;
-
-        static const char *GetColorName(FlowGridCol idx);
-
-    protected:
-        void Render() const override;
-    };
 
     struct ImGuiStyle : Component, Field::ChangeListener {
         ImGuiStyle(ComponentArgs &&);

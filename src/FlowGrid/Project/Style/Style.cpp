@@ -5,11 +5,11 @@
 #include "implot.h"
 #include "implot_internal.h"
 
+using namespace ImGui;
+
 namespace FlowGrid {
 std::vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
-
-using namespace ImGui;
 
 void Style::Apply(const ActionType &action) const {
     Visit(
@@ -42,10 +42,6 @@ void Style::Apply(const ActionType &action) const {
 
 bool Style::CanApply(const ActionType &) const { return true; }
 
-Style::FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : Component(std::move(args)) {
-    ColorsDark();
-}
-
 Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : Component(std::move(args)) {
     for (const auto *child : Children) {
         const auto *field = static_cast<const Field *>(child);
@@ -66,15 +62,6 @@ Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : Component(std::move(args
 }
 Style::ImPlotStyle::~ImPlotStyle() {
     Field::UnregisterChangeListener(this);
-}
-
-const char *Style::FlowGridStyle::GetColorName(FlowGridCol idx) {
-    switch (idx) {
-        case FlowGridCol_GestureIndicator: return "GestureIndicator";
-        case FlowGridCol_HighlightText: return "HighlightText";
-        case FlowGridCol_Flash: return "Flash";
-        default: return "Unknown";
-    }
 }
 
 void Style::ImGuiStyle::UpdateIfChanged(ImGuiContext *ctx) const {
@@ -199,34 +186,6 @@ void Style::ImPlotStyle::ColorsClassic() const {
     ImPlot::StyleColorsClassic(&ColorPresetBuffer[0]);
     Colors.Set(ColorPresetBuffer);
     MinorAlpha.Set(0.5f);
-}
-
-void Style::FlowGridStyle::ColorsDark() const {
-    Colors.Set(
-        {
-            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-            {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.67}},
-        }
-    );
-}
-void Style::FlowGridStyle::ColorsLight() const {
-    Colors.Set(
-        {
-            {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
-            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-            {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.4}},
-        }
-    );
-}
-void Style::FlowGridStyle::ColorsClassic() const {
-    Colors.Set(
-        {
-            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-            {FlowGridCol_Flash, {0.47, 0.47, 0.69, 0.4}},
-        }
-    );
 }
 
 Style::ImGuiStyle::ImGuiColors::ImGuiColors(ComponentArgs &&args)
@@ -418,7 +377,53 @@ void Style::ImPlotStyle::Render() const {
     }
 }
 
-void Style::FlowGridStyle::Render() const {
+void Style::Render() const {
+    RenderTabs();
+}
+} // namespace FlowGrid
+
+FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : Component(std::move(args)) {
+    ColorsDark();
+}
+
+const char *FlowGridStyle::GetColorName(FlowGridCol idx) {
+    switch (idx) {
+        case FlowGridCol_GestureIndicator: return "GestureIndicator";
+        case FlowGridCol_HighlightText: return "HighlightText";
+        case FlowGridCol_Flash: return "Flash";
+        default: return "Unknown";
+    }
+}
+
+void FlowGridStyle::ColorsDark() const {
+    Colors.Set(
+        {
+            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.67}},
+        }
+    );
+}
+void FlowGridStyle::ColorsLight() const {
+    Colors.Set(
+        {
+            {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
+            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.4}},
+        }
+    );
+}
+void FlowGridStyle::ColorsClassic() const {
+    Colors.Set(
+        {
+            {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
+            {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+            {FlowGridCol_Flash, {0.47, 0.47, 0.69, 0.4}},
+        }
+    );
+}
+
+void FlowGridStyle::Render() const {
     static int colors_idx = -1;
     if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) Action::Style::SetFlowGridColorPreset{colors_idx}.q();
     FlashDurationSec.Draw();
@@ -431,9 +436,3 @@ void Style::FlowGridStyle::Render() const {
         EndTabBar();
     }
 }
-
-void Style::Render() const {
-    RenderTabs();
-}
-
-} // namespace FlowGrid

@@ -106,6 +106,8 @@ void Component::HelpMarker(const bool after) const {
     if (!after) ImGui::SameLine();
 }
 
+const FlowGridStyle &Component::GetFlowGridStyle() const { return RootContext.Style.FlowGrid; }
+
 using namespace ImGui;
 
 // Currently, `Draw` is not used for anything except wrapping around `Render`,
@@ -196,7 +198,7 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     }
 
     bool is_open = false;
-    if (highlight_label) PushStyleColor(ImGuiCol_Text, RootContext.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+    if (highlight_label) PushStyleColor(ImGuiCol_Text, GetFlowGridStyle().Colors[FlowGridCol_HighlightText]);
     if (value == nullptr) {
         const auto label = string(label_view);
         is_open = TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_None);
@@ -207,7 +209,7 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     if (highlight_label) PopStyleColor();
 
     if (value != nullptr) {
-        if (highlight_value) PushStyleColor(ImGuiCol_Text, RootContext.Style.FlowGrid.Colors[FlowGridCol_HighlightText]);
+        if (highlight_value) PushStyleColor(ImGuiCol_Text, GetFlowGridStyle().Colors[FlowGridCol_HighlightText]);
         SameLine();
         TextUnformatted(value);
         if (highlight_value) PopStyleColor();

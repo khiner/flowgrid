@@ -566,7 +566,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
             const float gesture_duration_sec = GetProject()->Settings.GestureDurationSec;
             const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
             const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, RootContext.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, GetFlowGridStyle().Colors[FlowGridCol_GestureIndicator]);
 
             const auto &ActiveGestureActions_title = "Active gesture"s + (any_gesture_actions ? " (uncompressed)" : "");
             if (TreeNodeEx(ActiveGestureActions_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

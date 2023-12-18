@@ -8,28 +8,29 @@ template<typename T> struct Navigable : Field, Actionable<typename Action::Navig
     using Field::Field;
 
     // See note in `PrimitiveVector` for an explanation of this `using`.
-    using typename Actionable<typename Action::Navigable<T>::Any>::ActionType;
+    using ActionT = typename Action::Navigable<T>;
+    using typename Actionable<typename ActionT::Any>::ActionType;
 
     void Apply(const ActionType &action) const override {
         Visit(
             action,
-            [this](const Action::Navigable<T>::Push &a) { Push(a.value); },
-            [this](const Action::Navigable<T>::MoveTo &a) { MoveTo(a.index); },
+            [this](const ActionT::Push &a) { Push(a.value); },
+            [this](const ActionT::MoveTo &a) { MoveTo(a.index); },
         );
     }
 
     bool CanApply(const ActionType &action) const override {
         return Visit(
             action,
-            [](const Action::Navigable<T>::Push &) { return true; },
-            [this](const Action::Navigable<T>::MoveTo &a) { return CanMoveTo(a.index); },
+            [](const ActionT::Push &) { return true; },
+            [this](const ActionT::MoveTo &a) { return CanMoveTo(a.index); },
         );
     }
 
-    template<typename U> void IssuePush(U &&value) const { typename Action::Navigable<T>::Push{Path, std::forward<U>(value)}.q(); }
-    void IssueMoveTo(u32 index) const { typename Action::Navigable<T>::MoveTo{Path, index}.q(); }
-    void IssueStepForward() const { typename Action::Navigable<T>::MoveTo{Path, u32(Cursor) + 1}.q(); }
-    void IssueStepBackward() const { typename Action::Navigable<T>::MoveTo{Path, u32(Cursor) - 1}.q(); }
+    template<typename U> void IssuePush(U &&value) const { typename ActionT::Push{Path, std::forward<U>(value)}.q(); }
+    void IssueMoveTo(u32 index) const { typename ActionT::MoveTo{Path, index}.q(); }
+    void IssueStepForward() const { typename ActionT::MoveTo{Path, u32(Cursor) + 1}.q(); }
+    void IssueStepBackward() const { typename ActionT::MoveTo{Path, u32(Cursor) - 1}.q(); }
 
     inline auto begin() { return Value.begin(); }
     inline auto end() { return Value.end(); }

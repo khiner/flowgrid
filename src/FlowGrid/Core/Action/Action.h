@@ -55,7 +55,6 @@ template<typename T>
 concept IsAction = requires(T t) {
     { T::_Meta } -> std::same_as<const Metadata &>;
     { T::IsSavable } -> std::same_as<const bool &>;
-    { t.q() } -> std::same_as<void>;
 };
 
 template<IsAction T> struct IsSavable {

@@ -7,12 +7,13 @@
 template<IsPrimitive T> struct PrimitiveVector2D : Field, Actionable<typename Action::PrimitiveVector2D<T>::Any> {
     using Field::Field;
 
-    using typename Actionable<typename Action::PrimitiveVector2D<T>::Any>::ActionType; // See note in `PrimitiveVector.h`.
+    using ActionT = typename Action::PrimitiveVector2D<T>;
+    using typename Actionable<typename ActionT::Any>::ActionType; // See note in `PrimitiveVector.h`.
 
     void Apply(const ActionType &action) const override {
         Visit(
             action,
-            [this](const Action::PrimitiveVector2D<T>::Set &a) { Set(a.value); },
+            [this](const ActionT::Set &a) { Set(a.value); },
         );
     }
     bool CanApply(const ActionType &) const override { return true; }

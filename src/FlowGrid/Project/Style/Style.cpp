@@ -42,8 +42,7 @@ void Style::Apply(const ActionType &action) const {
 
 bool Style::CanApply(const ActionType &) const { return true; }
 
-Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args, Enqueue q)
-    : Component(std::move(args)), ActionProducer(std::move(q)) {
+Style::ImGuiStyle::ImGuiStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
     for (const auto *child : Children) {
         const auto *field = static_cast<const Field *>(child);
         field->RegisterChangeListener(this);
@@ -54,8 +53,7 @@ Style::ImGuiStyle::~ImGuiStyle() {
     Field::UnregisterChangeListener(this);
 }
 
-Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args, Enqueue q)
-    : Component(std::move(args)), ActionProducer(std::move(q)) {
+Style::ImPlotStyle::ImPlotStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
     for (const auto *child : Children) {
         const auto *field = static_cast<const Field *>(child);
         field->RegisterChangeListener(this);
@@ -385,8 +383,7 @@ void Style::Render() const {
 }
 } // namespace FlowGrid
 
-FlowGridStyle::FlowGridStyle(ComponentArgs &&args, Enqueue q)
-    : Component(std::move(args)), ActionProducer(std::move(q)) {
+FlowGridStyle::FlowGridStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
     ColorsDark();
 }
 

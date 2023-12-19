@@ -234,3 +234,4 @@ todo Try out replacing semicolon separators by e.g. commas.
 #define Prop_(PropType, PropName, MetaStr, ...) PropType PropName{{this, #PropName, MetaStr}, __VA_ARGS__};
 
 #define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateConsumer<PropType::ProducedActionType>()}, __VA_ARGS__};
+#define ProducerProp_(PropType, PropName, MetaStr, QQ, ...) PropType PropName{{{this, #PropName, MetaStr}, QQ}, __VA_ARGS__};

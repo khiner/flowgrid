@@ -2,6 +2,7 @@
 
 #include "Colors.h"
 #include "Core/ActionableComponent.h"
+#include "Core/ActionProducerComponent.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
@@ -32,8 +33,8 @@ using FlowGridCol = int;
 
 using StyleProducedAction = Action::Combine<Action::Style::Any, Action::Primitive::Any>;
 
-struct FlowGridStyle : Component, ActionProducer<StyleProducedAction> {
-    FlowGridStyle(ComponentArgs &&, Enqueue);
+struct FlowGridStyle : ActionProducerComponent<StyleProducedAction> {
+    FlowGridStyle(ArgsT &&);
 
     Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
     Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
@@ -55,8 +56,8 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    struct ImGuiStyle : Component, ActionProducer<StyleProducedAction>, Field::ChangeListener {
-        ImGuiStyle(ComponentArgs &&, Enqueue);
+    struct ImGuiStyle : ActionProducerComponent<StyleProducedAction>, Field::ChangeListener {
+        ImGuiStyle(ArgsT &&);
         ~ImGuiStyle();
 
         inline static bool IsChanged{false};
@@ -142,8 +143,8 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
         void Render() const override;
     };
 
-    struct ImPlotStyle : Component, ActionProducer<StyleProducedAction>, Field::ChangeListener {
-        ImPlotStyle(ComponentArgs &&, Enqueue);
+    struct ImPlotStyle : ActionProducerComponent<StyleProducedAction>, Field::ChangeListener {
+        ImPlotStyle(ArgsT &&);
         ~ImPlotStyle();
 
         inline static bool IsChanged{false};
@@ -209,9 +210,9 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
         void Render() const override;
     };
 
-    Prop_(ImGuiStyle, ImGui, "?Configure style for base UI", q);
-    Prop_(ImPlotStyle, ImPlot, "?Configure style for plots", q);
-    Prop_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style", q);
+    ProducerProp_(ImGuiStyle, ImGui, "?Configure style for base UI", q);
+    ProducerProp_(ImPlotStyle, ImPlot, "?Configure style for plots", q);
+    ProducerProp_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style", q);
 
 protected:
     void Render() const override;

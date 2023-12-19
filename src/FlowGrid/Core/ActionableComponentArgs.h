@@ -4,7 +4,7 @@
 #include "Action/ActionProducer.h"
 #include "ComponentArgs.h"
 
-template<typename ActionType> struct ActionableComponentArgs {
+template<typename ActionType, typename ProducedActionType = ActionType> struct ActionableComponentArgs {
     ComponentArgs &&Args;
-    ActionProducer<ActionType>::Enqueue &&Q;
+    ActionProducer<ProducedActionType>::EnqueueFn &&Q;
 };

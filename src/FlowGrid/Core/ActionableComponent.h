@@ -8,7 +8,7 @@
 // `ActionType` is the type of actions that can be applied to the component.
 template<typename ActionType, typename ProducedActionType = ActionType>
 struct ActionableComponent : Component, Actionable<ActionType>, ActionProducer<ProducedActionType> {
-    ActionableComponent(ActionableComponentArgs<ActionType> &&args)
+    ActionableComponent(ActionableComponentArgs<ActionType, ProducedActionType> &&args)
         : Component(std::move(args.Args)), ActionProducer<ProducedActionType>(std::move(args.Q)) {}
 
     virtual ~ActionableComponent() = default;

@@ -51,18 +51,18 @@ void Windows::Render() const {
         }
         End();
 
-        if (!open) q(Action::Windows::ToggleVisible{component_id});
+        if (!open) Q(Action::Windows::ToggleVisible{component_id});
     }
 }
 
 void Windows::ToggleMenuItem(const Component &component) const {
     if (MenuItem(component.ImGuiLabel.c_str(), nullptr, IsVisible(component.Id))) {
-        q(Action::Windows::ToggleVisible{component.Id});
+        Q(Action::Windows::ToggleVisible{component.Id});
     }
 }
 
 void Windows::ToggleDebugMenuItem(const Component &component) const {
     if (MenuItem(component.ImGuiLabel.c_str(), nullptr, IsVisible(component.Id))) {
-        q(Action::Windows::ToggleDebug{component.Id});
+        Q(Action::Windows::ToggleDebug{component.Id});
     }
 }

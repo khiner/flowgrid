@@ -13,7 +13,7 @@ template<typename ActionType> struct ActionConsumer {
 
     // `SubConsumer` supports action producers that only know about a subset action type (an action variant composed
     // only of members also in `ActionType`) to queue their actions into this superset-consumer's `Queue`.
-    // An instance of `SubConsumer<ActionSubType>` can be used as an `Actionable<ActionSubType>::Enqueue` function.
+    // An instance of `SubConsumer<ActionSubType>` can be used as an `ActionProducer<ActionSubType>::EnqueueFn`.
     template<typename ActionSubType> struct SubConsumer {
         SubConsumer(const ActionConsumer<ActionType> *queuer) : Queuer(queuer) {}
 
@@ -24,8 +24,8 @@ template<typename ActionType> struct ActionConsumer {
         const ActionConsumer<ActionType> *Queuer;
     };
 
-    template<typename ActionableType> SubConsumer<typename ActionableType::ActionType> CreateConsumer() const {
-        return SubConsumer<typename ActionableType::ActionType>(this);
+    template<typename SubActionType> SubConsumer<SubActionType> CreateConsumer() const {
+        return SubConsumer<SubActionType>(this);
     }
 
 private:

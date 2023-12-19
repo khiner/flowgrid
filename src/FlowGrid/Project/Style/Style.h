@@ -6,6 +6,7 @@
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/Int.h"
+#include "Core/Primitive/PrimitiveAction.h"
 #include "StyleAction.h"
 #include "UI/Styling.h"
 
@@ -29,15 +30,10 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
-using StyleAction = Action::Style::Any;
+using StyleProducedAction = Action::Combine<Action::Style::Any, Action::Primitive::Any>;
 
-struct StyleChild : Component {
-    using Component::Component;
-    bool q(StyleAction &&) const; // Delegates to parent `Style::q`.
-};
-
-struct FlowGridStyle : Component {
-    FlowGridStyle(ComponentArgs &&);
+struct FlowGridStyle : Component, ActionProducer<StyleProducedAction> {
+    FlowGridStyle(ComponentArgs &&, Enqueue);
 
     Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
     Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
@@ -53,14 +49,14 @@ protected:
 };
 
 namespace FlowGrid {
-struct Style : ActionableComponent<Action::Style::Any> {
+struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
     using ActionableComponent::ActionableComponent;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    struct ImGuiStyle : Component, Field::ChangeListener {
-        ImGuiStyle(ComponentArgs &&);
+    struct ImGuiStyle : Component, ActionProducer<StyleProducedAction>, Field::ChangeListener {
+        ImGuiStyle(ComponentArgs &&, Enqueue);
         ~ImGuiStyle();
 
         inline static bool IsChanged{false};
@@ -146,8 +142,8 @@ struct Style : ActionableComponent<Action::Style::Any> {
         void Render() const override;
     };
 
-    struct ImPlotStyle : Component, Field::ChangeListener {
-        ImPlotStyle(ComponentArgs &&);
+    struct ImPlotStyle : Component, ActionProducer<StyleProducedAction>, Field::ChangeListener {
+        ImPlotStyle(ComponentArgs &&, Enqueue);
         ~ImPlotStyle();
 
         inline static bool IsChanged{false};
@@ -213,9 +209,9 @@ struct Style : ActionableComponent<Action::Style::Any> {
         void Render() const override;
     };
 
-    Prop_(ImGuiStyle, ImGui, "?Configure style for base UI");
-    Prop_(ImPlotStyle, ImPlot, "?Configure style for plots");
-    Prop_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style");
+    Prop_(ImGuiStyle, ImGui, "?Configure style for base UI", q);
+    Prop_(ImPlotStyle, ImPlot, "?Configure style for plots", q);
+    Prop_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style", q);
 
 protected:
     void Render() const override;

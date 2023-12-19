@@ -152,7 +152,7 @@ void Project::Apply(const ActionType &action) const {
         [this](const Audio::ActionType &a) { Audio.Apply(a); },
         [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
         [this](const Windows::ActionType &a) { Windows.Apply(a); },
-        [this](const Style::ActionType &a) { Style.Apply(a); },
+        [this](const fg::Style::ActionType &a) { Style.Apply(a); },
     );
 }
 
@@ -176,7 +176,7 @@ bool Project::CanApply(const ActionType &action) const {
         [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
         [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
-        [this](const Style::ActionType &a) { return Style.CanApply(a); },
+        [this](const fg::Style::ActionType &a) { return Style.CanApply(a); },
     );
 }
 

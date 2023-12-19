@@ -42,7 +42,8 @@ void Style::Apply(const ActionType &action) const {
 
 bool Style::CanApply(const ActionType &) const { return true; }
 
-Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args) : Component(std::move(args)) {
+Style::ImGuiStyle::ImGuiStyle(ComponentArgs &&args, Enqueue q)
+    : Component(std::move(args)), ActionProducer(std::move(q)) {
     for (const auto *child : Children) {
         const auto *field = static_cast<const Field *>(child);
         field->RegisterChangeListener(this);
@@ -53,7 +54,8 @@ Style::ImGuiStyle::~ImGuiStyle() {
     Field::UnregisterChangeListener(this);
 }
 
-Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args) : Component(std::move(args)) {
+Style::ImPlotStyle::ImPlotStyle(ComponentArgs &&args, Enqueue q)
+    : Component(std::move(args)), ActionProducer(std::move(q)) {
     for (const auto *child : Children) {
         const auto *field = static_cast<const Field *>(child);
         field->RegisterChangeListener(this);
@@ -190,12 +192,13 @@ void Style::ImPlotStyle::ColorsClassic() const {
 
 Style::ImGuiStyle::ImGuiColors::ImGuiColors(ComponentArgs &&args)
     : Colors(std::move(args), ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
+
 Style::ImPlotStyle::ImPlotColors::ImPlotColors(ComponentArgs &&args)
     : Colors(std::move(args), ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::ImGuiStyle::Render() const {
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) Action::Style::SetImGuiColorPreset{style_idx}.q();
+    if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) Q(Action::Style::SetImGuiColorPreset{style_idx});
 
     const auto &io = GetIO();
     const auto *font_current = GetFont();
@@ -203,7 +206,7 @@ void Style::ImGuiStyle::Render() const {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) Action::Primitive::Int::Set{FontIndex.Path, n}.q();
+            if (Selectable(font->GetDebugName(), font == font_current)) Q(Action::Primitive::Int::Set{FontIndex.Path, n});
             PopID();
         }
         EndCombo();
@@ -212,17 +215,17 @@ void Style::ImGuiStyle::Render() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) Action::Primitive::Float::Set{WindowBorderSize.Path, border ? 1.f : 0.f}.q();
+        if (Checkbox("WindowBorder", &border)) Q(Action::Primitive::Float::Set{WindowBorderSize.Path, border ? 1.f : 0.f});
     }
     SameLine();
     {
         bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) Action::Primitive::Float::Set{FrameBorderSize.Path, border ? 1.f : 0.f}.q();
+        if (Checkbox("FrameBorder", &border)) Q(Action::Primitive::Float::Set{FrameBorderSize.Path, border ? 1.f : 0.f});
     }
     SameLine();
     {
         bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) Action::Primitive::Float::Set{PopupBorderSize.Path, border ? 1.f : 0.f}.q();
+        if (Checkbox("PopupBorder", &border)) Q(Action::Primitive::Float::Set{PopupBorderSize.Path, border ? 1.f : 0.f});
     }
 
     Separator();
@@ -331,7 +334,7 @@ void Style::ImGuiStyle::Render() const {
 
 void Style::ImPlotStyle::Render() const {
     static int style_idx = -1;
-    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) Action::Style::SetImPlotColorPreset{style_idx}.q();
+    if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) Q(Action::Style::SetImPlotColorPreset{style_idx});
 
     if (BeginTabBar("")) {
         if (BeginTabItem("Variables", nullptr, ImGuiTabItemFlags_NoPushId)) {
@@ -382,7 +385,8 @@ void Style::Render() const {
 }
 } // namespace FlowGrid
 
-FlowGridStyle::FlowGridStyle(ComponentArgs &&args) : Component(std::move(args)) {
+FlowGridStyle::FlowGridStyle(ComponentArgs &&args, Enqueue q)
+    : Component(std::move(args)), ActionProducer(std::move(q)) {
     ColorsDark();
 }
 
@@ -425,7 +429,7 @@ void FlowGridStyle::ColorsClassic() const {
 
 void FlowGridStyle::Render() const {
     static int colors_idx = -1;
-    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) Action::Style::SetFlowGridColorPreset{colors_idx}.q();
+    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) Q(Action::Style::SetFlowGridColorPreset{colors_idx});
     FlashDurationSec.Draw();
 
     if (BeginTabBar("")) {

@@ -100,7 +100,7 @@ void FileDialog::Render() const {
     Dialog->OpenDialog(DialogKey, Title, Filters.c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
         Visible = false;
-        if (Dialog->IsOk()) q(Action::FileDialog::Select{Dialog->GetFilePathName()});
+        if (Dialog->IsOk()) Q(Action::FileDialog::Select{Dialog->GetFilePathName()});
     }
 }
 

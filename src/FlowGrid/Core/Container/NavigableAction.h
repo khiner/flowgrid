@@ -15,6 +15,6 @@ DefineTemplatedActionType(
     using Any = ActionVariant<Push, MoveTo>;
 );
 
-Json(Navigable<u32>::Push, path, value);
-Json(Navigable<u32>::MoveTo, path, index);
+ComponentActionJson(Navigable<u32>::Push, value);
+ComponentActionJson(Navigable<u32>::MoveTo, index);
 } // namespace Action

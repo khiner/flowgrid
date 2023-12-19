@@ -1,15 +1,15 @@
 #pragma once
 
 #include "Action.h"
-
-// Not actually used in this file, but included as a convenience for action definitions.
 #include "Core/Json.h"
-#include "Core/Primitive/Scalar.h"
+#include "Core/Primitive/Scalar.h" // Not actually used in this file, but included as a convenience for action definitions.
+
+// Component actions hold a `path` to the component they act on.
+#define ComponentActionJson(ActionType, ...) Json(ActionType, path __VA_OPT__(, ) __VA_ARGS__);
 
 template<class...> constexpr bool always_false_v = false;
 
-// A set of macros for defining actions.
-
+/* Macros for defining actions */
 #define MergeType_NoMerge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &) const { return false; }
 #define MergeType_Merge(ActionType) \

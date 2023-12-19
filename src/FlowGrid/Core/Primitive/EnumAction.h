@@ -5,7 +5,7 @@
 DefineNestedActionType(
     Primitive, Enum,
     DefineComponentAction(Set, "", int value;);
-    Json(Set, path, value);
+    ComponentActionJson(Set, value);
 
     using Any = ActionVariant<Set>;
 );

@@ -36,8 +36,8 @@ DefineTemplatedActionType(
     using Any = ActionVariant<Set>;
 );
 
-Json(PrimitiveVector2D<bool>::Set, path, value);
-Json(PrimitiveVector2D<int>::Set, path, value);
-Json(PrimitiveVector2D<u32>::Set, path, value);
-Json(PrimitiveVector2D<float>::Set, path, value);
+ComponentActionJson(PrimitiveVector2D<bool>::Set, value);
+ComponentActionJson(PrimitiveVector2D<int>::Set, value);
+ComponentActionJson(PrimitiveVector2D<u32>::Set, value);
+ComponentActionJson(PrimitiveVector2D<float>::Set, value);
 } // namespace Action

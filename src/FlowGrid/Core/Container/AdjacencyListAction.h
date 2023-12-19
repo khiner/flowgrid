@@ -6,7 +6,7 @@ DefineActionType(
     AdjacencyList,
     DefineUnmergableComponentAction(ToggleConnection, ID source; ID destination;);
 
-    Json(ToggleConnection, path, source, destination);
+    ComponentActionJson(ToggleConnection, source, destination);
 
     using Any = ActionVariant<ToggleConnection>;
 );

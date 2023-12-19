@@ -6,7 +6,7 @@ DefineNestedActionType(
     Primitive, Flags,
     // todo toggle bit action instead of set
     DefineComponentAction(Set, "", int value;);
-    Json(Set, path, value);
+    ComponentActionJson(Set,  value);
 
     using Any = ActionVariant<Set>;
 );

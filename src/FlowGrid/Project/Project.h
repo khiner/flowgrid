@@ -5,7 +5,6 @@
 #include "Core/Action/ActionQueue.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Action/Actions.h"
-#include "Core/Field/FieldActionHandler.h"
 #include "Core/ImGuiSettings.h"
 #include "Core/Windows.h"
 #include "Demo/Demo.h"
@@ -13,6 +12,9 @@
 #include "Info/Info.h"
 #include "ProjectSettings.h"
 #include "Style/Style.h"
+
+#include "Core/Container/ContainerAction.h"
+#include "Core/Primitive/PrimitiveAction.h"
 
 enum ProjectFormat {
     StateFormat,
@@ -47,6 +49,7 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
+
     void CommitGesture() const;
     Plottable StorePathChangeFrequencyPlottable() const;
 
@@ -156,7 +159,6 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
 
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
-    FieldActionHandler FieldActionHandler;
 
     ProducerProp(FileDialog, FileDialog);
     ProducerProp(fg::Style, Style);
@@ -186,6 +188,9 @@ protected:
     void Render() const override;
 
 private:
+    void ApplyPrimitiveAction(const Action::Primitive::Any &) const;
+    void ApplyContainerAction(const Action::Container::Any &) const;
+
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
 

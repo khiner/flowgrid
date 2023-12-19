@@ -2,10 +2,10 @@
 #include "Project.h"
 
 #include "imgui_internal.h"
+#include <format>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/join.hpp>
 #include <set>
-#include <format>
 
 #include "Application/ApplicationPreferences.h"
 #include "Core/Store/Store.h"
@@ -114,9 +114,53 @@ json Project::GetProjectJson(const ProjectFormat format) const {
     }
 }
 
+// Note: If/when we support arbitrary json actions, we'll need to check primitive/container types.
+//   Maybe with a separate `Find` for each type?
+//   Could also have each primitive accept an `Action::Primitive::Any`,
+//   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
+void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
+    const auto *primitive = Field::Find(action.GetComponentPath());
+    if (primitive == nullptr) throw std::runtime_error(std::format("Primitive not found: {}", action.GetComponentPath().string()));
+
+    Visit(
+        action,
+        [&primitive](const Bool::ActionType &a) { static_cast<const Bool *>(primitive)->Apply(a); },
+        [&primitive](const Int::ActionType &a) { static_cast<const Int *>(primitive)->Apply(a); },
+        [&primitive](const UInt::ActionType &a) { static_cast<const UInt *>(primitive)->Apply(a); },
+        [&primitive](const Float::ActionType &a) { static_cast<const Float *>(primitive)->Apply(a); },
+        [&primitive](const String::ActionType &a) { static_cast<const String *>(primitive)->Apply(a); },
+        [&primitive](const Enum::ActionType &a) { static_cast<const Enum *>(primitive)->Apply(a); },
+        [&primitive](const Flags::ActionType &a) { static_cast<const Flags *>(primitive)->Apply(a); },
+    );
+}
+void Project::ApplyContainerAction(const Action::Container::Any &action) const {
+    const auto *container = Field::Find(action.GetComponentPath());
+    if (container == nullptr) throw std::runtime_error(std::format("Container not found: {}", action.GetComponentPath().string()));
+
+    Visit(
+        action,
+        [&container](const TextBuffer::ActionType &a) { static_cast<const TextBuffer *>(container)->Apply(a); },
+        [&container](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(container)->Apply(a); },
+        [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
+        [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
+        [&container](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector2D<bool>::ActionType &a) { static_cast<const PrimitiveVector2D<bool> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector2D<int>::ActionType &a) { static_cast<const PrimitiveVector2D<int> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector2D<u32>::ActionType &a) { static_cast<const PrimitiveVector2D<u32> *>(container)->Apply(a); },
+        [&container](const PrimitiveVector2D<float>::ActionType &a) { static_cast<const PrimitiveVector2D<float> *>(container)->Apply(a); },
+    );
+}
+
 void Project::Apply(const ActionType &action) const {
     Visit(
         action,
+        [this](const Action::Primitive::Any &a) { ApplyPrimitiveAction(a); },
+        [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
+
         [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
         [this](const Action::Project::Open &a) { Open(a.file_path); },
         [this](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
@@ -145,7 +189,6 @@ void Project::Apply(const ActionType &action) const {
         [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
         [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
 
-        [this](const ::FieldActionHandler::ActionType &a) { FieldActionHandler.Apply(a); },
         [this](const Store::ActionType &a) { RootStore.Apply(a); },
         [this](const Action::Project::ShowOpenDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
@@ -159,6 +202,9 @@ void Project::Apply(const ActionType &action) const {
 bool Project::CanApply(const ActionType &action) const {
     return Visit(
         action,
+        [](const Action::Primitive::Any &) { return true; },
+        [](const Action::Container::Any &) { return true; },
+
         [this](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
         [this](const Action::Project::Redo &) { return History.CanRedo(); },
         [this](const Action::Project::SetHistoryIndex &a) { return a.index < History.Size(); },
@@ -171,7 +217,6 @@ bool Project::CanApply(const ActionType &action) const {
         [](const Action::Project::OpenEmpty &) { return true; },
         [](const Action::Project::Open &) { return true; },
 
-        [this](const ::FieldActionHandler::ActionType &a) { return FieldActionHandler.CanApply(a); },
         [this](const Store::ActionType &a) { return RootStore.CanApply(a); },
         [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },

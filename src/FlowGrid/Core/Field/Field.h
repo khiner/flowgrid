@@ -1,8 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-#include <unordered_set>
-
 #include "Core/Component.h"
 #include "Core/Store/Patch/PatchOp.h"
 #include "FieldActionHandler.h"
@@ -10,6 +7,7 @@
 
 struct Patch;
 
+// todo next up: Get rid of `Field` class and move all its functionality into `Component`.
 // A `Field` is a component that wraps around a value backed by the owning project's `Store`.
 // Leafs in a component tree are always fields, but fields may have nested components/fields.
 struct Field : Component {

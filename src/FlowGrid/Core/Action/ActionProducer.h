@@ -7,7 +7,7 @@ template<typename T> struct ActionProducer {
     using ProducedActionType = T;
     using EnqueueFn = std::function<bool(ProducedActionType &&)>;
 
-    // Store either an owned `EnqueueFn` or a reference to one.
+    // Either an owned `EnqueueFn` or a const-ref to one.
     using Enqueue = std::variant<EnqueueFn, std::reference_wrapper<const EnqueueFn>>;
 
     ActionProducer(EnqueueFn &&owned_q) : q(std::move(owned_q)) {}
@@ -25,5 +25,5 @@ template<typename T> struct ActionProducer {
     }
 
 protected:
-    Enqueue q; // Protected so derived classes can pass it to child producers.
+    Enqueue q; // Protected to support passing to child producers.
 };

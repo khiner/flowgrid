@@ -20,7 +20,7 @@ void FieldActionHandler::Apply(const ActionType &action) const {
 
     // Note: If/when we support arbitrary json actions, we'll need to check field types.
     //   Maybe with a separate `Find` for each type?
-    //   Could also have each field primitive field type accept an `Action::Field::Any`,
+    //   Could also have each field primitive field type accept an `Action::Primitive::Any`,
     //   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
     Visit(
         action,

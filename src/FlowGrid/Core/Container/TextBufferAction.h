@@ -4,7 +4,7 @@
 
 DefineActionType(
     TextBuffer,
-    DefineFieldAction(Set, "", std::string value;);
+    DefineComponentAction(Set, "", std::string value;);
     Json(Set, path, value);
 
     using Any = ActionVariant<Set>;

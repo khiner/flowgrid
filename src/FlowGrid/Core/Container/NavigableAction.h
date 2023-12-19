@@ -9,8 +9,8 @@ template<typename T> struct Navigable {
 
 DefineTemplatedActionType(
     Navigable, UInt, u32,
-    DefineUnmergableFieldAction(Push, u32 value;);
-    DefineFieldAction(MoveTo, "", u32 index;);
+    DefineUnmergableComponentAction(Push, u32 value;);
+    DefineComponentAction(MoveTo, "", u32 index;);
 
     using Any = ActionVariant<Push, MoveTo>;
 );

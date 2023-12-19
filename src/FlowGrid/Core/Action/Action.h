@@ -96,8 +96,8 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     fs::path GetPath() const {
         return Call([](auto &a) { return a.GetPath(); });
     }
-    fs::path GetFieldPath() const {
-        return Call([](auto &a) { return a.GetFieldPath(); });
+    fs::path GetComponentPath() const {
+        return Call([](auto &a) { return a.GetComponentPath(); });
     }
 
     /**

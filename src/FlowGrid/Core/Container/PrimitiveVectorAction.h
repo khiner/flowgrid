@@ -10,35 +10,35 @@ template<IsPrimitive T> struct PrimitiveVector {
 
 DefineTemplatedActionType(
     PrimitiveVector, Bool, bool,
-    DefineFieldAction(SetAt, "", u32 i; bool value;);
+    DefineComponentAction(SetAt, "", u32 i; bool value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     PrimitiveVector, Int, int,
-    DefineFieldAction(SetAt, "", u32 i; int value;);
+    DefineComponentAction(SetAt, "", u32 i; int value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     PrimitiveVector, UInt, u32,
-    DefineFieldAction(SetAt, "", u32 i; u32 value;);
+    DefineComponentAction(SetAt, "", u32 i; u32 value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     PrimitiveVector, Float, float,
-    DefineFieldAction(SetAt, "", u32 i; float value;);
+    DefineComponentAction(SetAt, "", u32 i; float value;);
 
     using Any = ActionVariant<SetAt>;
 );
 
 DefineTemplatedActionType(
     PrimitiveVector, String, std::string,
-    DefineFieldAction(SetAt, "", u32 i; std::string value;);
+    DefineComponentAction(SetAt, "", u32 i; std::string value;);
 
     using Any = ActionVariant<SetAt>;
 );

@@ -4,7 +4,7 @@
 
 DefineNestedActionType(
     Primitive, Bool,
-    DefineFieldAction(Toggle, "");
+    DefineComponentAction(Toggle, "");
     Json(Toggle, path);
 
     using Any = ActionVariant<Toggle>;

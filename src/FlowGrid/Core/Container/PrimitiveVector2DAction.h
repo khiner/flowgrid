@@ -10,28 +10,28 @@ template<IsPrimitive T> struct PrimitiveVector2D {
 
 DefineTemplatedActionType(
     PrimitiveVector2D, Bool, bool,
-    DefineFieldAction(Set, "", std::vector<std::vector<bool>> value;);
+    DefineComponentAction(Set, "", std::vector<std::vector<bool>> value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
     PrimitiveVector2D, Int, int,
-    DefineFieldAction(Set, "", std::vector<std::vector<int>> value;);
+    DefineComponentAction(Set, "", std::vector<std::vector<int>> value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
     PrimitiveVector2D, UInt, u32,
-    DefineFieldAction(Set, "", std::vector<std::vector<u32>> value;);
+    DefineComponentAction(Set, "", std::vector<std::vector<u32>> value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
     PrimitiveVector2D, Float, float,
-    DefineFieldAction(Set, "", std::vector<std::vector<float>> value;);
+    DefineComponentAction(Set, "", std::vector<std::vector<float>> value;);
 
     using Any = ActionVariant<Set>;
 );

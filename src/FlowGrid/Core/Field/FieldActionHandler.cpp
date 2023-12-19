@@ -15,8 +15,8 @@
 #include "Core/Primitive/UInt.h"
 
 void FieldActionHandler::Apply(const ActionType &action) const {
-    const auto *field = Field::Find(action.GetFieldPath());
-    if (field == nullptr) throw std::runtime_error(std::format("Field not found: {}", action.GetFieldPath().string()));
+    const auto *field = Field::Find(action.GetComponentPath());
+    if (field == nullptr) throw std::runtime_error(std::format("Field not found: {}", action.GetComponentPath().string()));
 
     // Note: If/when we support arbitrary json actions, we'll need to check field types.
     //   Maybe with a separate `Find` for each type?

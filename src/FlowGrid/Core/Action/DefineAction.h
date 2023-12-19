@@ -1,8 +1,10 @@
 #pragma once
 
 #include "Action.h"
+
+// Not actually used in this file, but included as a convenience for action definitions.
 #include "Core/Json.h"
-#include "Core/Primitive/Scalar.h" // Not actually used in this file, but added as a convenience for action implementations.
+#include "Core/Primitive/Scalar.h"
 
 template<class...> constexpr bool always_false_v = false;
 

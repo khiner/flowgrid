@@ -1,9 +1,9 @@
 #pragma once
 
-#include "NamesAndValues.h"
 #include "Styling.h"
 
 struct ImVec2;
+struct NamesAndValues;
 
 enum KnobFlags_ {
     KnobFlags_None = 0,
@@ -64,5 +64,5 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
 // Assumes the current cursor position is either the desired top-left of the rectangle (or the beginning of the label for a vertical bar with a title).
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
 bool RadioButtons(const char *label, float *value, const NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Justify justify = {HJustify_Middle, VJustify_Middle});
-float CalcRadioChoiceWidth(const string &choice_name);
+float CalcRadioChoiceWidth(const std::string &choice_name);
 } // namespace FlowGrid

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/Actions.h"
-#include "Helper/Paths.h"
+#include "Helper/Path.h"
 
 struct Store;
 struct StoreImpl;

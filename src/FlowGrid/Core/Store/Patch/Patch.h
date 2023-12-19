@@ -5,22 +5,7 @@
 
 #include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
-
-// todo use `IsPrimitive` concept instead of holding `Primitive` values.
-// Need to think about how.
-struct PatchOp {
-    enum Type {
-        Add,
-        Remove,
-        Replace,
-    };
-
-    Type Op{};
-    std::optional<Primitive> Value{}; // Present for add/replace
-    std::optional<Primitive> Old{}; // Present for remove/replace
-};
-
-std::string to_string(PatchOp::Type);
+#include "PatchOp.h"
 
 using PatchOps = std::unordered_map<StorePath, PatchOp, PathHash>;
 PatchOps Merge(const PatchOps &a, const PatchOps &b);

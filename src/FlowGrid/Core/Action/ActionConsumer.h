@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ActionQueue.h"
-#include "Helper/Variant.h"
 
 template<typename ActionType> struct ActionConsumer {
     ActionConsumer(ActionQueue<ActionType> &queue) : Queue(queue) {}
@@ -18,7 +17,7 @@ template<typename ActionType> struct ActionConsumer {
         SubConsumer(const ActionConsumer<ActionType> *queuer) : Queuer(queuer) {}
 
         bool operator()(ActionSubType &&action) {
-            return Visit(std::move(action), [this](auto &&a) { return Queuer->Q(std::move(a)); });
+            return std::visit([this](auto &&a) -> bool { return Queuer->Q(std::move(a)); }, std::move(action));
         }
 
         const ActionConsumer<ActionType> *Queuer;

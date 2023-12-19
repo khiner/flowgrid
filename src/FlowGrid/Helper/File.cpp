@@ -1,14 +1,13 @@
 #include "File.h"
-#include "fstream"
 
-using std::string, std::vector;
+#include "fstream"
 
 // TODO handle errors
 
-string FileIO::read(const fs::path &path) {
+std::string FileIO::read(const fs::path &path) {
     std::ifstream f(path, std::ios::in | std::ios::binary);
     const auto size = fs::file_size(path);
-    string result(size, '\0');
+    std::string result(size, '\0');
     f.read(result.data(), long(size));
     return result;
 }
@@ -25,7 +24,7 @@ bool FileIO::write(const fs::path &path, std::string_view contents) {
     return false;
 }
 
-bool FileIO::write(const fs::path &path, const vector<std::uint8_t> &contents) {
+bool FileIO::write(const fs::path &path, const std::vector<std::uint8_t> &contents) {
     std::fstream out_file(path, std::ios::out | std::ios::binary);
     if (out_file) {
         out_file.write(reinterpret_cast<const char *>(contents.data()), std::streamsize(contents.size()));

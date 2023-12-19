@@ -6,9 +6,8 @@
 #include <vector>
 
 #include "ComponentArgs.h"
-#include "Core/Primitive/Primitive.h"
+#include "Core/Primitive/Scalar.h"
 #include "Helper/Path.h"
-#include "Helper/Time.h"
 
 #include "nlohmann/json.hpp"
 

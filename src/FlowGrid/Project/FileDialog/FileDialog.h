@@ -4,9 +4,6 @@
 #include "FileDialogData.h"
 
 #include "Core/ActionableComponent.h"
-#include "Core/Primitive/Bool.h"
-#include "Core/Primitive/Int.h"
-#include "Core/Primitive/String.h"
 
 using ImGuiFileDialogFlags = int;
 

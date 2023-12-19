@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 
+#include "Core/Store/Patch/Patch.h"
 #include "Helper/String.h"
 #include "Project/Style/Style.h"
 

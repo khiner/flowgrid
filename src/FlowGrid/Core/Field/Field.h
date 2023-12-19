@@ -3,11 +3,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "Core/Action/Actionable.h"
 #include "Core/Component.h"
-#include "Core/Store/Patch/Patch.h"
+#include "Core/Store/Patch/PatchOp.h"
 #include "FieldActionHandler.h"
 #include "Helper/Paths.h"
+
+struct Patch;
 
 // A `Field` is a component that wraps around a value backed by the owning project's `Store`.
 // Leafs in a component tree are always fields, but fields may have nested components/fields.

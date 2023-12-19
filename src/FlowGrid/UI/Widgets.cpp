@@ -5,6 +5,8 @@
 
 #include "imgui_internal.h"
 
+#include "NamesAndValues.h"
+
 using namespace ImGui;
 
 namespace FlowGrid {

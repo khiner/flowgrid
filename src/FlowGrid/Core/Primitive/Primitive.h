@@ -2,7 +2,6 @@
 
 #include <concepts>
 #include <string>
-#include <vector>
 
 #include "Helper/Variant.h"
 #include "Scalar.h"

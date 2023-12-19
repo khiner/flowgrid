@@ -2,6 +2,7 @@
 
 struct Component;
 struct ImGuiSettings;
+
 namespace FlowGrid {
 struct Style;
 }

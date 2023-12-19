@@ -2,7 +2,6 @@
 
 #include "Core/Component.h"
 #include "Core/Store/Patch/PatchOp.h"
-#include "FieldActionHandler.h"
 #include "Helper/Paths.h"
 
 struct Patch;
@@ -25,8 +24,6 @@ struct Field : Component {
     virtual ~Field();
 
     Field &operator=(const Field &) = delete;
-
-    inline static FieldActionHandler ActionHandler;
 
     inline static bool IsGesturing{};
     static void UpdateGesturing();

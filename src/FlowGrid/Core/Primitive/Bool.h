@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BoolAction.h"
+#include "Core/Action/Actionable.h"
 #include "PrimitiveField.h"
 
 struct Bool : PrimitiveField<bool>, Actionable<Action::Primitive::Bool::Any>, MenuItemDrawable {

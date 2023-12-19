@@ -145,7 +145,7 @@ void Project::Apply(const ActionType &action) const {
         [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
         [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
 
-        [](const FieldActionHandler::ActionType &a) { Field::ActionHandler.Apply(a); },
+        [this](const ::FieldActionHandler::ActionType &a) { FieldActionHandler.Apply(a); },
         [this](const Store::ActionType &a) { RootStore.Apply(a); },
         [this](const Action::Project::ShowOpenDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
         [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
@@ -171,7 +171,7 @@ bool Project::CanApply(const ActionType &action) const {
         [](const Action::Project::OpenEmpty &) { return true; },
         [](const Action::Project::Open &) { return true; },
 
-        [](const FieldActionHandler::ActionType &a) { return Field::ActionHandler.CanApply(a); },
+        [this](const ::FieldActionHandler::ActionType &a) { return FieldActionHandler.CanApply(a); },
         [this](const Store::ActionType &a) { return RootStore.CanApply(a); },
         [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
         [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },

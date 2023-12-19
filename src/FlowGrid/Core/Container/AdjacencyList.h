@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AdjacencyListAction.h"
+#include "Core/Action/Actionable.h"
 #include "Core/Field/Field.h"
 #include "Core/Store/IdPair.h"
 

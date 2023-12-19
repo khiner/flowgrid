@@ -5,6 +5,7 @@
 #include "Core/Action/ActionQueue.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Action/Actions.h"
+#include "Core/Field/FieldActionHandler.h"
 #include "Core/ImGuiSettings.h"
 #include "Core/Windows.h"
 #include "Demo/Demo.h"
@@ -155,6 +156,7 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
 
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
+    FieldActionHandler FieldActionHandler;
 
     ProducerProp(FileDialog, FileDialog);
     ProducerProp(fg::Style, Style);

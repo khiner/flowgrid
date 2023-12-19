@@ -388,7 +388,8 @@ struct Node {
     virtual ImVec2 Point(IO io, u32 channel) const {
         return {
             ((io == IO_In && IsLr()) || (io == IO_Out && !IsLr()) ? 0 : W()),
-            Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()};
+            Size.y / 2 - WireGap() * (float(IoCount(io) - 1) / 2 - float(channel)) * OrientationUnit()
+        };
     }
     // IO point relative to parent.
     ImVec2 ChildPoint(IO io, u32 channel) const { return Position + Point(io, channel); }

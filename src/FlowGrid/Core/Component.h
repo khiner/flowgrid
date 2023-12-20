@@ -154,7 +154,9 @@ struct Component {
 
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
-    inline static void RefreshAll() { for (auto &[id, field] : FieldById) field->Refresh(); }
+    inline static void RefreshAll() {
+        for (auto &[id, field] : FieldById) field->Refresh();
+    }
 
     // todo gesturing should be project-global, not component-static.
     inline static bool IsGesturing{};
@@ -316,4 +318,12 @@ todo Try out replacing semicolon separators by e.g. commas.
 #define Prop_(PropType, PropName, MetaStr, ...) PropType PropName{{this, #PropName, MetaStr}, __VA_ARGS__};
 
 #define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateConsumer<PropType::ProducedActionType>()}, __VA_ARGS__};
-#define ProducerProp_(PropType, PropName, MetaStr, QQ, ...) PropType PropName{{{this, #PropName, MetaStr}, QQ}, __VA_ARGS__};
+#define ProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, CreateConsumer<PropType::ProducedActionType>()}, __VA_ARGS__};
+
+// Child producers produce the same action type as their parent, so they can simply use their parent's `q` function.
+#define ChildProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, q}, __VA_ARGS__};
+#define ChildProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, q}, __VA_ARGS__};
+
+// Sub-producers produce a subset action type, so they need a new producer generated from the parent.
+#define SubProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
+#define SubProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};

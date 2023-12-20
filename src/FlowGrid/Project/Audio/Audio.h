@@ -1,14 +1,14 @@
 #pragma once
 
 #include "AudioAction.h"
-#include "Core/Action/Actionable.h"
+#include "Core/ActionableComponent.h"
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
 
 struct ma_device;
 
-struct Audio : Component, Actionable<Action::Audio::Any> {
-    Audio(ComponentArgs &&, const FileDialog &);
+struct Audio : ActionableComponent<Action::Audio::Any> {
+    Audio(ArgsT &&, const FileDialog &);
     ~Audio();
 
     void Apply(const ActionType &) const override;
@@ -22,7 +22,7 @@ struct Audio : Component, Actionable<Action::Audio::Any> {
 
     const FileDialog &FileDialog;
 
-    Prop_(AudioGraph, Graph, "Audio graph");
+    SubProducerProp_(AudioGraph, Graph, "Audio graph");
     Prop(Faust, Faust, FileDialog);
     Prop_(Style, Style, "Audio style");
 

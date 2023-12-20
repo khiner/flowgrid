@@ -182,7 +182,7 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
     ProducerProp(fg::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
-    Prop(Audio, Audio, FileDialog);
+    ProducerProp(Audio, Audio, FileDialog);
     Prop(ProjectSettings, Settings);
     Prop(Info, Info);
 

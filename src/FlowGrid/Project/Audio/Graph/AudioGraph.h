@@ -2,7 +2,9 @@
 
 #include "AudioGraphAction.h"
 #include "AudioGraphNode.h"
+#include "Core/Action/ActionProducer.h"
 #include "Core/Container/AdjacencyList.h"
+#include "Core/ProducerComponentArgs.h"
 #include "Project/Audio/Device/DeviceDataFormat.h"
 #include "Project/Audio/Faust/FaustDSPListener.h"
 
@@ -18,8 +20,13 @@ inline static const std::string OutputDeviceNodeTypeId = "Output";
 inline static const std::string WaveformNodeTypeId = "Waveform";
 inline static const std::string FaustNodeTypeId = "Faust";
 
-struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDSPListener, AudioGraphNode::Listener {
-    AudioGraph(ComponentArgs &&);
+struct AudioGraph
+    : AudioGraphNode,
+      Actionable<Action::AudioGraph::Any>,
+      ActionProducer<Action::AudioGraph::Any>,
+      FaustDSPListener,
+      AudioGraphNode::Listener {
+    AudioGraph(ProducerComponentArgs<ProducedActionType> &&);
     ~AudioGraph();
 
     // Node overrides.

@@ -210,9 +210,9 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
         void Render() const override;
     };
 
-    ProducerProp_(ImGuiStyle, ImGui, "?Configure style for base UI", q);
-    ProducerProp_(ImPlotStyle, ImPlot, "?Configure style for plots", q);
-    ProducerProp_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style", q);
+    ChildProducerProp_(ImGuiStyle, ImGui, "?Configure style for base UI");
+    ChildProducerProp_(ImPlotStyle, ImPlot, "?Configure style for plots");
+    ChildProducerProp_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style");
 
 protected:
     void Render() const override;

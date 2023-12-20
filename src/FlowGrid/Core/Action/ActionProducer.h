@@ -3,6 +3,7 @@
 #include <functional>
 #include <variant>
 
+// todo use `Emit` instead of `Q` for producers.
 template<typename T> struct ActionProducer {
     using ProducedActionType = T;
     using EnqueueFn = std::function<bool(ProducedActionType &&)>;
@@ -22,6 +23,23 @@ template<typename T> struct ActionProducer {
     }
     bool Q(const ProducedActionType &action) const {
         return std::visit([&action](auto &&q) -> bool { return q(action); }, q);
+    }
+
+    // `SubProducer` supports action producers that only know about a subset action type (an action variant composed
+    // only of members also in `ActionType`) to queue their actions into this superset-producer's `q`.
+    // An instance of `SubProducer<ActionSubType>` can be used as an `ActionProducer<ActionSubType>::EnqueueFn`.
+    template<typename ActionSubType> struct SubProducer {
+        SubProducer(const ActionProducer<ProducedActionType> *queuer) : Queuer(queuer) {}
+
+        bool operator()(ActionSubType &&action) {
+            return std::visit([this](auto &&a) -> bool { return Queuer->Q(std::move(a)); }, std::move(action));
+        }
+
+        const ActionProducer<ProducedActionType> *Queuer;
+    };
+
+    template<typename SubActionType> SubProducer<SubActionType> CreateProducer() const {
+        return SubProducer<SubActionType>(this);
     }
 
 protected:

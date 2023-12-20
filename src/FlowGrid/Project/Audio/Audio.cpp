@@ -2,7 +2,8 @@
 
 #include "imgui.h"
 
-Audio::Audio(ComponentArgs &&args, const ::FileDialog &file_dialog) : Component(std::move(args)), FileDialog(file_dialog) {
+Audio::Audio(ArgsT &&args, const ::FileDialog &file_dialog)
+    : ActionableComponent(std::move(args)), FileDialog(file_dialog) {
     Faust.RegisterDspChangeListener(&Graph);
 }
 

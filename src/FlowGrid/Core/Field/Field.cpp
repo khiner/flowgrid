@@ -102,7 +102,7 @@ void Field::RefreshChanged(const Patch &patch, bool add_to_gesture) {
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
-    for (auto *listener : affected_listeners) listener->OnFieldChanged();
+    for (auto *listener : affected_listeners) listener->OnComponentChanged();
     affected_listeners.clear();
 
     // Update gesture paths.

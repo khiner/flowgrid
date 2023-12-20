@@ -56,7 +56,7 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    struct ImGuiStyle : ActionProducerComponent<StyleProducedAction>, Field::ChangeListener {
+    struct ImGuiStyle : ActionProducerComponent<StyleProducedAction>, Component::ChangeListener {
         ImGuiStyle(ArgsT &&);
         ~ImGuiStyle();
 
@@ -68,7 +68,7 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
             ImGuiColors(ComponentArgs &&);
         };
 
-        void OnFieldChanged() override { IsChanged = true; }
+        void OnComponentChanged() override { IsChanged = true; }
         void UpdateIfChanged(ImGuiContext *ctx) const;
         void ColorsDark() const;
         void ColorsLight() const;
@@ -143,7 +143,7 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
         void Render() const override;
     };
 
-    struct ImPlotStyle : ActionProducerComponent<StyleProducedAction>, Field::ChangeListener {
+    struct ImPlotStyle : ActionProducerComponent<StyleProducedAction>, Component::ChangeListener {
         ImPlotStyle(ArgsT &&);
         ~ImPlotStyle();
 
@@ -155,7 +155,7 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
             ImPlotColors(ComponentArgs &&);
         };
 
-        void OnFieldChanged() override { IsChanged = true; }
+        void OnComponentChanged() override { IsChanged = true; }
         void UpdateIfChanged(ImPlotContext *ctx) const;
         void ColorsAuto() const;
         void ColorsDark() const;

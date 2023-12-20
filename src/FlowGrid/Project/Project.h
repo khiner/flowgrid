@@ -55,7 +55,7 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
 
     json GetProjectJson(const ProjectFormat) const;
 
-    struct Debug : DebugComponent, Field::ChangeListener {
+    struct Debug : DebugComponent, Component::ChangeListener {
         Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
             : DebugComponent(
                   std::move(args), flags,
@@ -140,7 +140,7 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
             Raw
         };
 
-        void OnFieldChanged() override;
+        void OnComponentChanged() override;
 
         Prop_(Enum, LabelMode, "?'Raw' mode shows plain data structures and 'Annotated' mode shows (highlighted) human-readable labels in some cases.\n"
                                "For example, colors are stored as lists with a separate label mapping."

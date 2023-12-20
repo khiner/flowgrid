@@ -104,8 +104,8 @@ struct DeviceNode : AudioGraphNode {
         }
     }
 
-    void OnFieldChanged() override {
-        AudioGraphNode::OnFieldChanged();
+    void OnComponentChanged() override {
+        AudioGraphNode::OnComponentChanged();
         if (Name.IsChanged() || Format.IsChanged(true)) {
             // If format-follow was just toggled on and the format values have never been set,
             // update `Format` to reflect the current native device format.
@@ -458,8 +458,8 @@ AudioGraph::~AudioGraph() {
 
 std::unique_ptr<MaNode> AudioGraph::CreateNode() const { return std::make_unique<GraphMaNode>(); }
 
-void AudioGraph::OnFieldChanged() {
-    AudioGraphNode::OnFieldChanged();
+void AudioGraph::OnComponentChanged() {
+    AudioGraphNode::OnComponentChanged();
 
     if (Nodes.IsChanged() || Connections.IsChanged()) {
         UpdateConnections();

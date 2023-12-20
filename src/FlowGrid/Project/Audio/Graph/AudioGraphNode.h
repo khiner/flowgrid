@@ -51,7 +51,7 @@ struct MaNode {
 
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
-struct AudioGraphNode : Component, Field::ChangeListener {
+struct AudioGraphNode : Component, Component::ChangeListener {
     using CreateNodeFunction = std::function<std::unique_ptr<MaNode>()>;
 
     AudioGraphNode(ComponentArgs &&, CreateNodeFunction);
@@ -68,7 +68,7 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
     }
 
-    void OnFieldChanged() override;
+    void OnComponentChanged() override;
 
     // If `Allow...ConnectionChange` returns `true`, users can dynamically change the input/output connections.
     // Nodes whose connections are managed and enforced by the `AudioGraph` return `false` (the graph endpoint node and device IO nodes).
@@ -107,11 +107,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         IsActive = IsGraphEndpoint() || is_active;
     }
 
-    struct GainerNode : Component, Field::ChangeListener {
+    struct GainerNode : Component, Component::ChangeListener {
         GainerNode(ComponentArgs &&);
         ~GainerNode();
 
-        void OnFieldChanged() override;
+        void OnComponentChanged() override;
 
         ma_gainer_node *Get();
 
@@ -140,11 +140,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         u32 SampleRate;
     };
 
-    struct PannerNode : Component, Field::ChangeListener {
+    struct PannerNode : Component, Component::ChangeListener {
         PannerNode(ComponentArgs &&);
         ~PannerNode();
 
-        void OnFieldChanged() override;
+        void OnComponentChanged() override;
 
         ma_panner_node *Get();
 
@@ -175,11 +175,11 @@ struct AudioGraphNode : Component, Field::ChangeListener {
         std::unique_ptr<ma_panner_node> Panner;
     };
 
-    struct MonitorNode : Component, Field::ChangeListener {
+    struct MonitorNode : Component, Component::ChangeListener {
         MonitorNode(ComponentArgs &&);
         ~MonitorNode();
 
-        void OnFieldChanged() override;
+        void OnComponentChanged() override;
 
         ma_monitor_node *Get();
 

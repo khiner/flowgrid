@@ -12,13 +12,6 @@ struct Patch;
 struct Field : Component {
     using References = std::vector<std::reference_wrapper<const Field>>;
 
-    struct ChangeListener {
-        // Called when at least one of the listened fields has changed.
-        // Changed field(s) are not passed to the callback, but it's called while the fields are still marked as changed,
-        // so listeners can use `field.IsChanged()` to check which listened fields were changed if they wish.
-        virtual void OnFieldChanged() = 0;
-    };
-
     Field(ComponentArgs &&, Menu &&menu);
     Field(ComponentArgs &&);
     virtual ~Field();

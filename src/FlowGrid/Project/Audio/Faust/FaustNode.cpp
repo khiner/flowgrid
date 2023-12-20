@@ -6,7 +6,7 @@
 
 #include "Project/Audio/Graph/ma_faust_node/ma_faust_node.h"
 
-struct FaustMaNode : MaNode, Component, Field::ChangeListener {
+struct FaustMaNode : MaNode, Component, Component::ChangeListener {
     FaustMaNode(ComponentArgs &&args, AudioGraph *graph, ID dsp_id = 0)
         : MaNode(), Component(std::move(args)), Graph(graph), ParentNode(static_cast<AudioGraphNode *>(Parent)) {
         if (dsp_id != 0 && DspId == 0u) DspId.Set_(dsp_id);
@@ -18,7 +18,7 @@ struct FaustMaNode : MaNode, Component, Field::ChangeListener {
         Uninit();
     }
 
-    void OnFieldChanged() override {
+    void OnComponentChanged() override {
         if (DspId.IsChanged()) UpdateDsp();
     }
 

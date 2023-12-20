@@ -5,7 +5,7 @@
 struct WaveformNode : AudioGraphNode {
     WaveformNode(ComponentArgs &&);
 
-    void OnFieldChanged() override;
+    void OnComponentChanged() override;
     void OnSampleRateChanged() override;
 
     Prop(Float, Frequency, 440.0, 20.0, 16000.0);

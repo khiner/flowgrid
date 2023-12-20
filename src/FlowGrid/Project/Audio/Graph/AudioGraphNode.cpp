@@ -39,7 +39,7 @@ void AudioGraphNode::GainerNode::Uninit() {
     ma_gainer_node_uninit(Get(), nullptr);
 }
 
-void AudioGraphNode::GainerNode::OnFieldChanged() {
+void AudioGraphNode::GainerNode::OnComponentChanged() {
     if (Smooth.IsChanged()) {
         Uninit();
         Init();
@@ -93,7 +93,7 @@ AudioGraphNode::PannerNode::~PannerNode() {
     Field::UnregisterChangeListener(this);
 }
 
-void AudioGraphNode::PannerNode::OnFieldChanged() {
+void AudioGraphNode::PannerNode::OnComponentChanged() {
     if (Pan.IsChanged()) UpdatePan();
     if (Mode.IsChanged()) UpdateMode();
 }
@@ -153,7 +153,7 @@ void AudioGraphNode::MonitorNode::Uninit() {
     ma_monitor_node_uninit(Get(), nullptr);
 }
 
-void AudioGraphNode::MonitorNode::OnFieldChanged() {
+void AudioGraphNode::MonitorNode::OnComponentChanged() {
     if (WindowType.IsChanged()) UpdateWindowType();
     if (WindowLength.IsChanged()) UpdateWindowLength();
 }
@@ -311,7 +311,7 @@ void AudioGraphNode::OnSampleRateChanged() {
     if (OutputGainer) OutputGainer->SetSampleRate(Graph->SampleRate);
 }
 
-void AudioGraphNode::OnFieldChanged() {
+void AudioGraphNode::OnComponentChanged() {
     if (Graph->SampleRate.IsChanged()) OnSampleRateChanged();
     if (InputGainer.IsChanged() || OutputGainer.IsChanged() || Panner.IsChanged() || InputMonitor.IsChanged() || OutputMonitor.IsChanged()) {
         NotifyConnectionsChanged(); // An inner node was added/removed.

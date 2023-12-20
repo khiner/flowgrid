@@ -45,7 +45,7 @@ protected:
     void Render() const override;
 };
 
-struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Field::ChangeListener {
+struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Component::ChangeListener {
     FaustGraphs(ComponentArgs &&, const FileDialog &, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
 
@@ -66,7 +66,7 @@ struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, 
 
     static std::optional<std::string> FindBoxInfo(u32 imgui_id);
 
-    void OnFieldChanged() override;
+    void OnComponentChanged() override;
 
     const FileDialog &FileDialog;
     const FaustGraphStyle &Style;
@@ -100,11 +100,11 @@ struct FaustDSPContainer {
 
 // `FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
-struct FaustDSP : Component, Field::ChangeListener {
+struct FaustDSP : Component, Component::ChangeListener {
     FaustDSP(ComponentArgs &&, FaustDSPContainer &);
     ~FaustDSP();
 
-    void OnFieldChanged() override;
+    void OnComponentChanged() override;
 
     Prop_(TextBuffer, Code, "Faust code", R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(

@@ -36,7 +36,7 @@ struct AudioGraph : AudioGraphNode, Actionable<Action::AudioGraph::Any>, FaustDS
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
 
-    void OnFieldChanged() override;
+    void OnComponentChanged() override;
 
     void OnFaustDspChanged(ID, dsp *) override;
     void OnFaustDspAdded(ID, dsp *) override;

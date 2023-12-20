@@ -76,8 +76,15 @@ struct Component {
     };
 
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
-    // Components with at least one descendent field (excluding itself) updated during the latest action pass.
+    // Components with at least one descendent (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
+
+    struct ChangeListener {
+        // Called when at least one of the listened components has changed.
+        // Changed component(s) are not passed to the callback, but it's called while the components are still marked as changed,
+        // so listeners can use `component.IsChanged()` to check which listened components were changed if they wish.
+        virtual void OnComponentChanged() = 0;
+    };
 
     Component(Store &, const Windows &, const fg::Style &);
     Component(ComponentArgs &&);
@@ -97,7 +104,7 @@ struct Component {
     }
 
     // Refresh the component's cached value(s) based on the main store.
-    // Should be called for each affected field after a state change to avoid stale values.
+    // Should be called for each affected component after a state change to avoid stale values.
     // This is overriden by `Field`s to update their `Value` members after a state change.
     virtual void Refresh() {
         for (auto *child : Children) child->Refresh();

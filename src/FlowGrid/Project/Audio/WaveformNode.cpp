@@ -39,8 +39,8 @@ void WaveformNode::UpdateType() {
     ma_waveform_set_type(&((ma_waveform_node *)Get())->waveform, ma_waveform_type(int(Type)));
 }
 
-void WaveformNode::OnFieldChanged() {
-    AudioGraphNode::OnFieldChanged();
+void WaveformNode::OnComponentChanged() {
+    AudioGraphNode::OnComponentChanged();
 
     if (Frequency.IsChanged()) UpdateFrequency();
     if (Type.IsChanged()) UpdateType();

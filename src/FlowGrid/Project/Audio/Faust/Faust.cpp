@@ -99,7 +99,7 @@ FaustGraph *FaustGraphs::FindGraph(ID dsp_id) const {
     return nullptr;
 }
 
-void FaustGraphs::OnFieldChanged() {
+void FaustGraphs::OnComponentChanged() {
     if (Style.FoldComplexity.IsChanged()) {
         for (auto *graph : *this) graph->ResetBox();
     }
@@ -155,7 +155,7 @@ FaustDSP::~FaustDSP() {
     Field::UnregisterChangeListener(this);
 }
 
-void FaustDSP::OnFieldChanged() {
+void FaustDSP::OnComponentChanged() {
     if (Code.IsChanged()) Update();
 }
 

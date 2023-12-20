@@ -2,7 +2,7 @@
 
 #include "AdjacencyListAction.h"
 #include "Core/Action/Actionable.h"
-#include "Core/Field/Field.h"
+#include "Core/Component.h"
 #include "Core/Store/IdPair.h"
 
 struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {

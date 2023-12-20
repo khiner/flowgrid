@@ -68,7 +68,23 @@ Component::~Component() {
 }
 
 bool Component::IsChanged(bool include_descendents) const noexcept {
-    return Field::ChangedFieldIds.contains(Id) || (include_descendents && IsDescendentChanged());
+    return ChangedFieldIds.contains(Id) || (include_descendents && IsDescendentChanged());
+}
+
+Field *Component::FindComponentContainerFieldByPath(const StorePath &search_path) {
+    StorePath subpath = search_path;
+    while (subpath != "/") {
+        if (FieldIdByPath.contains(subpath)) {
+            const auto field_id = FieldIdByPath.at(subpath);
+            if (ComponentContainerFields.contains(field_id)) return FieldById[field_id];
+        }
+        subpath = subpath.parent_path();
+    }
+    return nullptr;
+}
+
+void Component::RefreshAll() {
+    for (auto &[id, field] : FieldById) field->Refresh();
 }
 
 // By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,
@@ -100,7 +116,7 @@ json Component::ToJson() const {
 void Component::SetJson(json &&j) const {
     auto &&flattened = std::move(j).flatten(); // Don't inline this - it breaks `SetJson`.
     for (auto &&[key, value] : flattened.items()) {
-        Field::ByPath(std::move(key))->SetJson(std::move(value));
+        FieldByPath(std::move(key))->SetJson(std::move(value));
     }
 }
 
@@ -145,6 +161,11 @@ void Menu::Render() const {
         else if (is_menu_bar) EndMenuBar();
         else EndMenu();
     }
+}
+
+void Component::UpdateGesturing() {
+    if (ImGui::IsItemActivated()) IsGesturing = true;
+    if (ImGui::IsItemDeactivated()) IsGesturing = false;
 }
 
 ImGuiWindow *Component::FindWindow() const {
@@ -239,4 +260,29 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
         }
         TreePop();
     }
+}
+
+void Component::FlashUpdateRecencyBackground(std::optional<StorePath> relative_path) const {
+    if (const auto latest_update_time = LatestUpdateTime(Id, relative_path)) {
+        const auto &style = GetFlowGridStyle();
+        const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / style.FlashDurationSec;
+        ImColor flash_color = style.Colors[FlowGridCol_Flash];
+        flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
+        FillRowItemBg(flash_color);
+    }
+}
+
+Field::Field(ComponentArgs &&args, Menu &&menu) : Component(std::move(args), std::move(menu)) {
+    FieldById.emplace(Id, this);
+    FieldIdByPath.emplace(Path, Id);
+    Refresh();
+}
+
+Field::Field(ComponentArgs &&args) : Field(std::move(args), Menu{{}}) {}
+
+Field::~Field() {
+    Erase();
+    FieldIdByPath.erase(Path);
+    FieldById.erase(Id);
+    ChangeListenersByFieldId.erase(Id);
 }

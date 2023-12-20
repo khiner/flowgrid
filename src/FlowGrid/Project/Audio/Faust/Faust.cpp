@@ -89,7 +89,7 @@ FaustGraphs::FaustGraphs(ComponentArgs &&args, const ::FileDialog &file_dialog, 
 
 FaustGraphs::~FaustGraphs() {
     AllInstances.erase(this);
-    Field::UnregisterChangeListener(this);
+    UnregisterChangeListener(this);
 }
 
 FaustGraph *FaustGraphs::FindGraph(ID dsp_id) const {
@@ -152,7 +152,7 @@ FaustDSP::FaustDSP(ComponentArgs &&args, FaustDSPContainer &container)
 
 FaustDSP::~FaustDSP() {
     Uninit();
-    Field::UnregisterChangeListener(this);
+    UnregisterChangeListener(this);
 }
 
 void FaustDSP::OnComponentChanged() {

@@ -50,7 +50,7 @@ Style::ImGuiStyle::ImGuiStyle(ArgsT &&args) : ActionProducerComponent(std::move(
     ColorsDark();
 }
 Style::ImGuiStyle::~ImGuiStyle() {
-    Field::UnregisterChangeListener(this);
+    UnregisterChangeListener(this);
 }
 
 Style::ImPlotStyle::ImPlotStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
@@ -61,7 +61,7 @@ Style::ImPlotStyle::ImPlotStyle(ArgsT &&args) : ActionProducerComponent(std::mov
     ColorsAuto();
 }
 Style::ImPlotStyle::~ImPlotStyle() {
-    Field::UnregisterChangeListener(this);
+    UnregisterChangeListener(this);
 }
 
 void Style::ImGuiStyle::UpdateIfChanged(ImGuiContext *ctx) const {

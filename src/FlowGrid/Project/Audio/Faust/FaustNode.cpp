@@ -14,7 +14,7 @@ struct FaustMaNode : MaNode, Component, Component::ChangeListener {
         DspId.RegisterChangeListener(this);
     }
     ~FaustMaNode() {
-        Field::UnregisterChangeListener(this);
+        UnregisterChangeListener(this);
         Uninit();
     }
 

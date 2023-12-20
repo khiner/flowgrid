@@ -90,7 +90,7 @@ AudioGraphNode::PannerNode::PannerNode(ComponentArgs &&args)
 
 AudioGraphNode::PannerNode::~PannerNode() {
     ma_panner_node_uninit(Get(), nullptr);
-    Field::UnregisterChangeListener(this);
+    UnregisterChangeListener(this);
 }
 
 void AudioGraphNode::PannerNode::OnComponentChanged() {
@@ -138,7 +138,7 @@ AudioGraphNode::MonitorNode::MonitorNode(ComponentArgs &&args)
 
 AudioGraphNode::MonitorNode::~MonitorNode() {
     Uninit();
-    Field::UnregisterChangeListener(this);
+    UnregisterChangeListener(this);
 }
 
 void AudioGraphNode::MonitorNode::Init() {
@@ -279,7 +279,7 @@ AudioGraphNode::~AudioGraphNode() {
     OutputMonitor.Reset();
 
     Listeners.clear();
-    Field::UnregisterChangeListener(this);
+    UnregisterChangeListener(this);
 }
 
 ma_node *AudioGraphNode::InputNode() const {

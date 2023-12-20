@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/Actionable.h"
-#include "Core/Field/Field.h"
+#include "Core/Component.h"
 #include "PrimitiveVector2DAction.h"
 
 // PrimitiveVector of vectors. Inner vectors may have different sizes.

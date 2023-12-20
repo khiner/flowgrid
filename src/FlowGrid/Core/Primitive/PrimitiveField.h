@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Field/Field.h"
+#include "Core/Component.h"
 
 template<IsPrimitive T> struct PrimitiveField : Field {
     PrimitiveField(ComponentArgs &&args, T value = {}) : Field(std::move(args)), Value(value) {

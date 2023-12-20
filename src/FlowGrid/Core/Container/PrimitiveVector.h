@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/Actionable.h"
-#include "Core/Field/Field.h"
+#include "Core/Component.h"
 #include "PrimitiveVectorAction.h"
 
 template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Action::PrimitiveVector<T>::Any> {

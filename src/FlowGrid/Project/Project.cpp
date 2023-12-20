@@ -11,6 +11,7 @@
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
+#include "Helper/String.h"
 #include "Helper/Time.h"
 
 using std::vector;
@@ -77,8 +78,88 @@ Project::Project(Store &store, ActionQueue<ActionType> &action_queue)
 
 Project::~Project() = default;
 
+void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
+    MarkAllChanged(patch);
+    static std::unordered_set<ChangeListener *> affected_listeners;
+
+    // Find field listeners to notify.
+    for (const auto changed_id : ChangedFieldIds) {
+        if (!FieldById.contains(changed_id)) continue; // The field was deleted.
+
+        auto *changed_field = FieldById.at(changed_id);
+        changed_field->Refresh();
+
+        const auto &listeners = ChangeListenersByFieldId[changed_id];
+        affected_listeners.insert(listeners.begin(), listeners.end());
+    }
+
+    // Find ancestor listeners to notify.
+    // (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
+    for (const auto changed_id : ChangedAncestorComponentIds) {
+        if (!ById.contains(changed_id)) continue; // The component was deleted.
+
+        const auto &listeners = ChangeListenersByFieldId[changed_id];
+        affected_listeners.insert(listeners.begin(), listeners.end());
+    }
+
+    for (auto *listener : affected_listeners) listener->OnComponentChanged();
+    affected_listeners.clear();
+
+    // Update gesture paths.
+    if (add_to_gesture) {
+        for (const auto &[field_id, paths_moment] : ChangedPaths) {
+            GestureChangedPaths[field_id].push_back(paths_moment);
+        }
+    }
+}
+
+Field *Project::FindChanged(const StorePath &path, PatchOp::Type op) {
+    if ((op == PatchOp::Add || op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
+        // Do not mark any fields as added/removed if they are within a component container.
+        // The container's auxiliary field is marked as changed instead (and its path will be in same patch).
+        if (auto *component_container = FindComponentContainerFieldByPath(path)) return nullptr;
+    }
+    auto *field = Find(path);
+    if (field && ComponentContainerAuxiliaryFields.contains(field->Id)) {
+        // When a container's auxiliary field is changed, mark the container as changed instead.
+        return static_cast<Field *>(field->Parent);
+    }
+
+    return field;
+}
+
+void Project::MarkAllChanged(const Patch &patch) {
+    const auto change_time = Clock::now();
+    ClearChanged();
+
+    for (const auto &[partial_path, op] : patch.Ops) {
+        const auto path = patch.BasePath / partial_path;
+        if (auto *changed_field = FindChanged(path, op.Op)) {
+            // if (!changed_field) throw std::runtime_error(std::format("Could not find a field to attribute for op: {} at path: {}", to_string(op.Op), path.string()));
+            if (!changed_field) continue;
+
+            const ID id = changed_field->Id;
+            const StorePath relative_path = path == changed_field->Path ? "" : path.lexically_relative(changed_field->Path);
+            ChangedPaths[id].first = change_time;
+            ChangedPaths[id].second.insert(relative_path);
+
+            // Mark the changed field and all its ancestors.
+            ChangedFieldIds.insert(id);
+            const Component *ancestor = changed_field->Parent;
+            while (ancestor != nullptr) {
+                ChangedAncestorComponentIds.insert(ancestor->Id);
+                ancestor = ancestor->Parent;
+            }
+        }
+    }
+
+    // Copy `ChangedPaths` over to `LatestChangedPaths`.
+    // (`ChangedPaths` is cleared at the end of each action, while `LatestChangedPaths` is retained for the lifetime of the application.)
+    for (const auto &[field_id, paths_moment] : ChangedPaths) LatestChangedPaths[field_id] = paths_moment;
+}
+
 void Project::CommitGesture() const {
-    Field::GestureChangedPaths.clear();
+    GestureChangedPaths.clear();
     if (ActiveGestureActions.empty()) return;
 
     const auto merged_actions = MergeActions(ActiveGestureActions);
@@ -91,12 +172,12 @@ void Project::CommitGesture() const {
 void Project::SetHistoryIndex(u32 index) const {
     if (index == History.Index) return;
 
-    Field::GestureChangedPaths.clear();
+    GestureChangedPaths.clear();
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
     LatestPatch = RootStore.CheckedSet(History.CurrentStore());
-    Field::RefreshChanged(LatestPatch);
+    RefreshChanged(LatestPatch);
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
@@ -119,7 +200,7 @@ json Project::GetProjectJson(const ProjectFormat format) const {
 //   Could also have each primitive accept an `Action::Primitive::Any`,
 //   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
 void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
-    const auto *primitive = Field::Find(action.GetComponentPath());
+    const auto *primitive = Find(action.GetComponentPath());
     if (primitive == nullptr) throw std::runtime_error(std::format("Primitive not found: {}", action.GetComponentPath().string()));
 
     Visit(
@@ -134,7 +215,7 @@ void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
     );
 }
 void Project::ApplyContainerAction(const Action::Container::Any &action) const {
-    const auto *container = Field::Find(action.GetComponentPath());
+    const auto *container = Find(action.GetComponentPath());
     if (container == nullptr) throw std::runtime_error(std::format("Container not found: {}", action.GetComponentPath().string()));
 
     Visit(
@@ -349,10 +430,10 @@ bool Project::Save(const fs::path &path) const {
 }
 
 void Project::OnApplicationLaunch() const {
-    Field::IsGesturing = false;
+    Component::IsGesturing = false;
     History.Clear();
-    Field::ClearChanged();
-    Field::LatestChangedPaths.clear();
+    ClearChanged();
+    LatestChangedPaths.clear();
 
     // When loading a new project, we always refresh all UI contexts.
     Style.ImGui.IsChanged = true;
@@ -371,8 +452,8 @@ json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(f
 void Project::OpenStateFormatProject(const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
     // First, refresh all component container fields to ensure the dynamically managed component instances match the JSON.
-    for (const ID auxiliary_field_id : Field::ComponentContainerAuxiliaryFields) {
-        auto *auxiliary_field = Field::ById.at(auxiliary_field_id);
+    for (const ID auxiliary_field_id : ComponentContainerAuxiliaryFields) {
+        auto *auxiliary_field = FieldById.at(auxiliary_field_id);
         if (j.contains(auxiliary_field->JsonPointer())) {
             auxiliary_field->SetJson(std::move(j.at(auxiliary_field->JsonPointer())));
             auxiliary_field->Refresh();
@@ -383,13 +464,13 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     // Now, every flattened JSON pointer is 1:1 with a field instance path.
     SetJson(std::move(j));
 
-    // We could do `Field::RefreshChanged(RootStore.CheckedCommit())`, and only refresh the changed fields,
+    // We could do `RefreshChanged(RootStore.CheckedCommit())`, and only refresh the changed fields,
     // but this gets tricky with component container fields, since the store patch will contain added/removed paths
     // that have already been accounted for above.
     RootStore.Commit();
-    Field::ClearChanged();
-    Field::LatestChangedPaths.clear();
-    Field::RefreshAll();
+    ClearChanged();
+    LatestChangedPaths.clear();
+    RefreshAll();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     ImGuiSettings.IsChanged = true;
@@ -400,7 +481,7 @@ void Project::Open(const fs::path &file_path) const {
     const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 
-    Field::IsGesturing = false;
+    Component::IsGesturing = false;
 
     if (format == StateFormat) {
         OpenStateFormatProject(file_path);
@@ -415,12 +496,12 @@ void Project::Open(const fs::path &file_path) const {
                     [this](const Project::ActionType &a) { Apply(a); },
                 );
                 LatestPatch = RootStore.CheckedCommit();
-                Field::RefreshChanged(LatestPatch);
+                RefreshChanged(LatestPatch);
             }
             History.AddGesture(std::move(gesture));
         }
         SetHistoryIndex(indexed_gestures.Index);
-        Field::LatestChangedPaths.clear();
+        LatestChangedPaths.clear();
     }
 
     SetCurrentProjectPath(file_path);
@@ -475,11 +556,11 @@ void Project::WindowMenuItem() const {
 #include "UI/JsonTree.h"
 
 Plottable Project::StorePathChangeFrequencyPlottable() const {
-    if (History.GetChangedPathsCount() == 0 && Field::GestureChangedPaths.empty()) return {};
+    if (History.GetChangedPathsCount() == 0 && GestureChangedPaths.empty()) return {};
 
     std::map<StorePath, u32> gesture_change_counts;
-    for (const auto &[field_id, changed_paths] : Field::GestureChangedPaths) {
-        const auto &field = Field::ById[field_id];
+    for (const auto &[field_id, changed_paths] : GestureChangedPaths) {
+        const auto &field = FieldById[field_id];
         for (const PathsMoment &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
                 gesture_change_counts[path == "" ? field->Path : field->Path / path]++;
@@ -604,7 +685,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     const auto &project = GetProject();
     {
         // Active (uncompressed) gesture
-        const bool is_gesturing = Field::IsGesturing;
+        const bool is_gesturing = Component::IsGesturing;
         const bool any_gesture_actions = !ActiveGestureActions.empty();
         if (any_gesture_actions || is_gesturing) {
             // Gesture completion progress bar (full-width to empty).
@@ -741,7 +822,7 @@ void Project::ApplyQueuedActions(bool force_commit_gesture, bool ignore_actions)
             [&store = RootStore, &queue_time](const Action::Savable &a) {
                 LatestPatch = store.CheckedCommit();
                 if (!LatestPatch.Empty()) {
-                    Field::RefreshChanged(LatestPatch, true);
+                    RefreshChanged(LatestPatch, true);
                     ActiveGestureActions.emplace_back(a, queue_time);
                     ProjectHasChanges = true;
                 }
@@ -752,7 +833,7 @@ void Project::ApplyQueuedActions(bool force_commit_gesture, bool ignore_actions)
     }
 
     if (force_commit_gesture ||
-        (!Field::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(Settings.GestureDurationSec) <= 0)) {
+        (!Component::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(Settings.GestureDurationSec) <= 0)) {
         CommitGesture();
     }
 }

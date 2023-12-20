@@ -54,7 +54,7 @@ json Vec2::ToJson() const { return json(Value).dump(); }
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, Min, Max, Format, flags);
-    Field::UpdateGesturing();
+    Component::UpdateGesturing();
     if (edited) Action::Vec2::Set{Path, {values.x, values.y}}.q();
     HelpMarker();
 }
@@ -127,7 +127,7 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
 
     ImVec2 xy = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, Min, Max, Format, flags);
-    Field::UpdateGesturing();
+    Component::UpdateGesturing();
     if (edited) {
         if (Linked) {
             const float changed_value = xy.x != X() ? xy.x : xy.y;

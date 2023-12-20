@@ -2,9 +2,9 @@
 
 #include "Core/Action/Actionable.h"
 #include "EnumAction.h"
-#include "PrimitiveField.h"
+#include "Primitive.h"
 
-struct Enum : PrimitiveField<int>, Actionable<Action::Primitive::Enum::Any>, MenuItemDrawable {
+struct Enum : Primitive<int>, Actionable<Action::Primitive::Enum::Any>, MenuItemDrawable {
     Enum(ComponentArgs &&, std::vector<string> names, int value = 0);
     Enum(ComponentArgs &&, std::function<string(int)> get_name, int value = 0);
 

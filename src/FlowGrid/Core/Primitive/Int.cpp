@@ -3,7 +3,7 @@
 #include "imgui.h"
 
 Int::Int(ComponentArgs &&args, int value, int min, int max)
-    : PrimitiveField(std::move(args), value), Min(min), Max(max) {}
+    : Primitive(std::move(args), value), Min(min), Max(max) {}
 
 void Int::Apply(const ActionType &action) const {
     Visit(

@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 
-String::String(ComponentArgs &&args, string_view value) : PrimitiveField(std::move(args), string(value)) {}
+String::String(ComponentArgs &&args, string_view value) : Primitive(std::move(args), string(value)) {}
 
 void String::Apply(const ActionType &action) const {
     Visit(

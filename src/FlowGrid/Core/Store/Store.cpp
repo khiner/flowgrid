@@ -24,10 +24,10 @@ void Store::Apply(const ActionType &action) const {
     );
 }
 
-Primitive Store::Get(const StorePath &path) const { return TransientImpl->PrimitiveByPath.at(path); }
+PrimitiveVariant Store::Get(const StorePath &path) const { return TransientImpl->PrimitiveByPath.at(path); }
 u32 Store::CountAt(const StorePath &path) const { return TransientImpl->PrimitiveByPath.count(path); }
 
-void Store::Set(const StorePath &path, const Primitive &value) const { TransientImpl->PrimitiveByPath.set(path, value); }
+void Store::Set(const StorePath &path, const PrimitiveVariant &value) const { TransientImpl->PrimitiveByPath.set(path, value); }
 void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.erase(path); }
 
 #include <algorithm>

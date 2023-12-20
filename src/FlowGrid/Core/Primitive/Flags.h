@@ -2,10 +2,10 @@
 
 #include "Core/Action/Actionable.h"
 #include "FlagsAction.h"
-#include "PrimitiveField.h"
+#include "Primitive.h"
 
 // todo in state viewer, make `Annotated` label mode expand out each integer flag into a string list
-struct Flags : PrimitiveField<int>, Actionable<Action::Primitive::Flags::Any>, MenuItemDrawable {
+struct Flags : Primitive<int>, Actionable<Action::Primitive::Flags::Any>, MenuItemDrawable {
     struct Item {
         Item(const char *name_and_help);
         string Name, Help;

@@ -222,7 +222,7 @@ private:
 /**
 Declare global read-only accessor for the canonical state instance `project`.
 
-`project` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, Primitive>`).
+`project` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, PrimitiveVariant>`).
 It provides a complete nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
 Basically, it contains all data for each state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
 (Actually, each primitive leaf value is cached on its respective `Field`, but this is a technicality - the `Store` is conceptually the source of truth.)

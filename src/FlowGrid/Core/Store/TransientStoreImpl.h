@@ -8,14 +8,14 @@
 #include "immer/set.hpp"
 #include "immer/set_transient.hpp"
 
-#include "Core/Primitive/Primitive.h"
+#include "Core/Primitive/PrimitiveVariant.h"
 #include "Helper/Path.h"
 #include "IdPair.h"
 
 struct StoreImpl;
 
 struct TransientStoreImpl {
-    using PrimitiveMap = immer::map_transient<StorePath, Primitive, PathHash>;
+    using PrimitiveMap = immer::map_transient<StorePath, PrimitiveVariant, PathHash>;
     using IdPairs = immer::set_transient<IdPair, IdPairHash>;
     using IdPairsMap = std::unordered_map<StorePath, IdPairs, PathHash>;
 

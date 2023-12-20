@@ -3,7 +3,6 @@
 #include <ranges>
 #include <unordered_map>
 
-#include "Core/Primitive/Primitive.h"
 #include "Helper/Path.h"
 #include "PatchOp.h"
 

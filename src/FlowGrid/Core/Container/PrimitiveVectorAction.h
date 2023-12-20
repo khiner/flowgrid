@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/DefineAction.h"
-#include "Core/Primitive/Primitive.h"
+#include "Core/Primitive/PrimitiveVariant.h"
 
 namespace Action {
 template<IsPrimitive T> struct PrimitiveVector {

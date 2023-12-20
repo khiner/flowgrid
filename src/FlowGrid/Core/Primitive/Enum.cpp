@@ -8,9 +8,9 @@
 #include <ranges>
 
 Enum::Enum(ComponentArgs &&args, std::vector<string> names, int value)
-    : PrimitiveField(std::move(args), value), Names(std::move(names)) {}
+    : Primitive(std::move(args), value), Names(std::move(names)) {}
 Enum::Enum(ComponentArgs &&args, std::function<string(int)> get_name, int value)
-    : PrimitiveField(std::move(args), value), Names({}), GetName(std::move(get_name)) {}
+    : Primitive(std::move(args), value), Names({}), GetName(std::move(get_name)) {}
 
 void Enum::Apply(const ActionType &action) const {
     Visit(

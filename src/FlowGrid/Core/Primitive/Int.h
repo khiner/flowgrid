@@ -2,9 +2,9 @@
 
 #include "Core/Action/Actionable.h"
 #include "IntAction.h"
-#include "PrimitiveField.h"
+#include "Primitive.h"
 
-struct Int : PrimitiveField<int>, Actionable<Action::Primitive::Int::Any> {
+struct Int : Primitive<int>, Actionable<Action::Primitive::Int::Any> {
     Int(ComponentArgs &&, int value = 0, int min = 0, int max = 100);
 
     void Apply(const ActionType &) const override;

@@ -5,7 +5,7 @@
 #include "UI/HelpMarker.h"
 
 Flags::Flags(ComponentArgs &&args, std::vector<Item> items, int value)
-    : PrimitiveField(std::move(args), value), Items(std::move(items)) {}
+    : Primitive(std::move(args), value), Items(std::move(items)) {}
 
 Flags::Item::Item(const char *name_and_help) {
     const auto meta = Component::Metadata::Parse(name_and_help);

@@ -5,7 +5,7 @@
 using std::string;
 
 namespace nlohmann {
-void to_json(json &j, const Primitive &value) {
+void to_json(json &j, const PrimitiveVariant &value) {
     if (std::holds_alternative<u32>(value)) {
         j = std::format("{:#08X}", std::get<u32>(value));
     } else if (std::holds_alternative<float>(value) && std::isnan(std::get<float>(value))) {
@@ -19,7 +19,7 @@ void to_json(json &j, const Primitive &value) {
         );
     }
 }
-void from_json(const json &j, Primitive &field) {
+void from_json(const json &j, PrimitiveVariant &field) {
     if (j.is_boolean()) field = j.get<bool>();
     else if (j.is_number_integer()) field = j.get<int>();
     else if (j.is_number_float()) field = j.get<float>();
@@ -32,4 +32,4 @@ void from_json(const json &j, Primitive &field) {
 }
 } // namespace nlohmann
 
-string to_string(const Primitive &primitive) { return json(primitive).dump(); }
+string to_string(const PrimitiveVariant &primitive) { return json(primitive).dump(); }

@@ -778,7 +778,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     {
         // Various internals
         Text("Action variant size: %lu bytes", sizeof(Action::Savable));
-        Text("Primitive variant size: %lu bytes", sizeof(Primitive));
+        Text("Primitive variant size: %lu bytes", sizeof(PrimitiveVariant));
         SameLine();
         fg::HelpMarker(
             "All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "

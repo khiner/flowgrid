@@ -2,10 +2,10 @@
 
 #include "BoolAction.h"
 #include "Core/Action/Actionable.h"
-#include "PrimitiveField.h"
+#include "Primitive.h"
 
-struct Bool : PrimitiveField<bool>, Actionable<Action::Primitive::Bool::Any>, MenuItemDrawable {
-    using PrimitiveField::PrimitiveField;
+struct Bool : Primitive<bool>, Actionable<Action::Primitive::Bool::Any>, MenuItemDrawable {
+    using Primitive::Primitive;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };

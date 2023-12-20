@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Core/Action/Actionable.h"
-#include "PrimitiveField.h"
+#include "Primitive.h"
 #include "TextBufferAction.h"
 
 struct TextEditor;
 
-struct TextBuffer : PrimitiveField<string>, Actionable<Action::TextBuffer::Any> {
+struct TextBuffer : Primitive<string>, Actionable<Action::TextBuffer::Any> {
     TextBuffer(ComponentArgs &&, string_view value = "");
     ~TextBuffer();
 

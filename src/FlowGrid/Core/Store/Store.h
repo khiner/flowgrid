@@ -15,10 +15,10 @@ struct Store : Actionable<Action::Store::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
 
-    Primitive Get(const StorePath &) const;
+    PrimitiveVariant Get(const StorePath &) const;
     u32 CountAt(const StorePath &) const;
 
-    void Set(const StorePath &, const Primitive &) const;
+    void Set(const StorePath &, const PrimitiveVariant &) const;
     void Erase(const StorePath &) const;
 
     bool Exists(const StorePath &) const;

@@ -3,9 +3,9 @@
 #include "imgui.h"
 
 UInt::UInt(ComponentArgs &&args, u32 value, u32 min, u32 max)
-    : PrimitiveField(std::move(args), value), Min(min), Max(max) {}
+    : Primitive(std::move(args), value), Min(min), Max(max) {}
 UInt::UInt(ComponentArgs &&args, std::function<const string(u32)> get_name, u32 value)
-    : PrimitiveField(std::move(args), value), Min(0), Max(100), GetName(std::move(get_name)) {}
+    : Primitive(std::move(args), value), Min(0), Max(100), GetName(std::move(get_name)) {}
 
 UInt::operator ImColor() const { return Value; }
 

@@ -1,12 +1,12 @@
 #pragma once
 
+#include "Container.h"
 #include "Core/Action/Actionable.h"
-#include "Core/Component.h"
 #include "PrimitiveVector2DAction.h"
 
 // PrimitiveVector of vectors. Inner vectors may have different sizes.
-template<IsPrimitive T> struct PrimitiveVector2D : Field, Actionable<typename Action::PrimitiveVector2D<T>::Any> {
-    using Field::Field;
+template<IsPrimitive T> struct PrimitiveVector2D : Container, Actionable<typename Action::PrimitiveVector2D<T>::Any> {
+    using Container::Container;
 
     using ActionT = typename Action::PrimitiveVector2D<T>;
     using typename Actionable<typename ActionT::Any>::ActionType; // See note in `PrimitiveVector.h`.

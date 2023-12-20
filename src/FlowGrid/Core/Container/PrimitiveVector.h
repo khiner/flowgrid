@@ -1,11 +1,11 @@
 #pragma once
 
+#include "Container.h"
 #include "Core/Action/Actionable.h"
-#include "Core/Component.h"
 #include "PrimitiveVectorAction.h"
 
-template<IsPrimitive T> struct PrimitiveVector : Field, Actionable<typename Action::PrimitiveVector<T>::Any> {
-    using Field::Field;
+template<IsPrimitive T> struct PrimitiveVector : Container, Actionable<typename Action::PrimitiveVector<T>::Any> {
+    using Container::Container;
 
     // `ActionType` is a type alias in `Actionable`, but it is not accessible here.
     // `Actionable` is templated on `Action::PrimitiveVector::Type<T>::type`, which is a dependent type (it depends on `T`),

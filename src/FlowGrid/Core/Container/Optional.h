@@ -1,20 +1,21 @@
 #pragma once
 
+#include "Container.h"
 #include "Core/Primitive/Bool.h"
 
 /*
 A component that is created/destroyed dynamically.
 Think of it like a store-backed `std::unique_ptr<ComponentType>`.
 */
-template<typename ComponentType> struct Optional : Field {
-    Optional(ComponentArgs &&args) : Field(std::move(args)) {
-        ComponentContainerFields.insert(Id);
-        ComponentContainerAuxiliaryFields.insert(HasValue.Id);
+template<typename ComponentType> struct Optional : Container {
+    Optional(ComponentArgs &&args) : Container(std::move(args)) {
+        ContainerIds.insert(Id);
+        ContainerAuxiliaryIds.insert(HasValue.Id);
         Refresh();
     }
     ~Optional() {
-        ComponentContainerAuxiliaryFields.erase(HasValue.Id);
-        ComponentContainerFields.erase(Id);
+        ContainerAuxiliaryIds.erase(HasValue.Id);
+        ContainerIds.erase(Id);
     }
 
     operator bool() const { return bool(Value); }

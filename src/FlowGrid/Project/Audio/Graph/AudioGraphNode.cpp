@@ -17,8 +17,8 @@ using namespace ImGui;
 
 AudioGraphNode::GainerNode::GainerNode(ComponentArgs &&args)
     : Component(std::move(args)), ParentNode(static_cast<AudioGraphNode *>(Parent->Parent)), SampleRate(ParentNode->Graph->SampleRate) {
-    Field::References listened_fields = {Muted, Level, Smooth};
-    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+    Component::References listening_to = {Muted, Level, Smooth};
+    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
 
     Gainer = std::make_unique<ma_gainer_node>();
     Init();
@@ -129,8 +129,8 @@ static WindowFunctionType GetWindowFunction(WindowType type) {
 AudioGraphNode::MonitorNode::MonitorNode(ComponentArgs &&args)
     : Component(std::move(args)), ParentNode(static_cast<AudioGraphNode *>(Parent->Parent)),
       Type(PathSegment.starts_with(to_string(IO_In)) ? IO_In : IO_Out) {
-    Field::References listened_fields = {WindowType, WindowLength};
-    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+    Component::References listening_to = {WindowType, WindowLength};
+    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
 
     Monitor = std::make_unique<ma_monitor_node>();
     Init();
@@ -265,8 +265,8 @@ private:
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args, CreateNodeFunction create_node)
     : Component(std::move(args)), Graph(static_cast<AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)), Node(create_node()) {
-    Field::References listened_fields = {Graph->SampleRate, InputGainer, OutputGainer, Panner, InputMonitor, OutputMonitor};
-    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+    Component::References listening_to = {Graph->SampleRate, InputGainer, OutputGainer, Panner, InputMonitor, OutputMonitor};
+    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
 }
 
 AudioGraphNode::~AudioGraphNode() {

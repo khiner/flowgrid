@@ -1,11 +1,12 @@
 #pragma once
 
+#include "Container.h"
 #include "Core/Container/PrimitiveVector.h"
 #include "Core/Primitive/UInt.h"
 #include "NavigableAction.h"
 
-template<typename T> struct Navigable : Field, Actionable<typename Action::Navigable<T>::Any> {
-    using Field::Field;
+template<typename T> struct Navigable : Container, Actionable<typename Action::Navigable<T>::Any> {
+    using Container::Container;
 
     // See note in `PrimitiveVector` for an explanation of this `using`.
     using ActionT = typename Action::Navigable<T>;

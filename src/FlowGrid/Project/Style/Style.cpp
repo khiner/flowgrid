@@ -43,10 +43,7 @@ void Style::Apply(const ActionType &action) const {
 bool Style::CanApply(const ActionType &) const { return true; }
 
 Style::ImGuiStyle::ImGuiStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
-    for (const auto *child : Children) {
-        const auto *field = static_cast<const Field *>(child);
-        field->RegisterChangeListener(this);
-    }
+    for (const auto *child : Children) child->RegisterChangeListener(this);
     ColorsDark();
 }
 Style::ImGuiStyle::~ImGuiStyle() {
@@ -54,10 +51,7 @@ Style::ImGuiStyle::~ImGuiStyle() {
 }
 
 Style::ImPlotStyle::ImPlotStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
-    for (const auto *child : Children) {
-        const auto *field = static_cast<const Field *>(child);
-        field->RegisterChangeListener(this);
-    }
+    for (const auto *child : Children) child->RegisterChangeListener(this);
     ColorsAuto();
 }
 Style::ImPlotStyle::~ImPlotStyle() {

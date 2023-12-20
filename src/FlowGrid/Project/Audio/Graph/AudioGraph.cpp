@@ -77,8 +77,8 @@ struct DeviceNode : AudioGraphNode {
         Name.Set_(GetConfigName(Device->GetInfo()));
         UpdateFormat();
 
-        const Field::References listened_fields{Name, Format};
-        for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+        const Component::References listening_to{Name, Format};
+        for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
     }
 
     virtual ~DeviceNode() = default;
@@ -443,8 +443,8 @@ AudioGraph::AudioGraph(ComponentArgs &&args) : AudioGraphNode(std::move(args), [
     if (SampleRate == 0u) SampleRate.Set_(GetDefaultSampleRate());
     Nodes.EmplaceBack_(WaveformNodeTypeId);
 
-    const Field::References listened_fields = {Nodes, Connections};
-    for (const Field &field : listened_fields) field.RegisterChangeListener(this);
+    const Component::References listening_to = {Nodes, Connections};
+    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
 
     // Set up default connections.
     // The device output -> graph endpoint node connection is handled in `UpdateConnections`.

@@ -49,17 +49,17 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
 
     inline static void ClearChanged() noexcept {
         ChangedPaths.clear();
-        ChangedFieldIds.clear();
+        ChangedIds.clear();
         ChangedAncestorComponentIds.clear();
     }
 
     // Find and mark fields that are made stale with the provided patch.
-    // If `Refresh()` is called on every field marked in `ChangedFieldIds`, the component tree will be fully refreshed.
+    // If `Refresh()` is called on every field marked in `ChangedIds`, the component tree will be fully refreshed.
     // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
     static void MarkAllChanged(const Patch &);
 
     // Find the field whose `Refresh()` should be called in response to a patch with this path and op type.
-    static Field *FindChanged(const StorePath &, PatchOp::Type);
+    static Component *FindChanged(const StorePath &, PatchOp::Type);
 
     void OpenRecentProjectMenuItem() const;
 

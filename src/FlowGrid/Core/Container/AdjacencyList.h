@@ -1,12 +1,12 @@
 #pragma once
 
 #include "AdjacencyListAction.h"
+#include "Container.h"
 #include "Core/Action/Actionable.h"
-#include "Core/Component.h"
 #include "Core/Store/IdPair.h"
 
-struct AdjacencyList : Field, Actionable<Action::AdjacencyList::Any> {
-    using Field::Field;
+struct AdjacencyList : Container, Actionable<Action::AdjacencyList::Any> {
+    using Container::Container;
 
     using Edge = IdPair; // Source, destination
 

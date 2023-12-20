@@ -82,23 +82,23 @@ void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     MarkAllChanged(patch);
     static std::unordered_set<ChangeListener *> affected_listeners;
 
-    // Find field listeners to notify.
-    for (const auto changed_id : ChangedFieldIds) {
-        if (!FieldById.contains(changed_id)) continue; // The field was deleted.
+    // Find listeners to notify.
+    for (const auto id : ChangedIds) {
+        if (!FieldById.contains(id)) continue; // The component was deleted.
 
-        auto *changed_field = FieldById.at(changed_id);
-        changed_field->Refresh();
+        auto *changed = FieldById.at(id);
+        changed->Refresh();
 
-        const auto &listeners = ChangeListenersByFieldId[changed_id];
+        const auto &listeners = ChangeListenersById[id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
     // Find ancestor listeners to notify.
     // (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
-    for (const auto changed_id : ChangedAncestorComponentIds) {
-        if (!ById.contains(changed_id)) continue; // The component was deleted.
+    for (const auto id : ChangedAncestorComponentIds) {
+        if (!ById.contains(id)) continue; // The component was deleted.
 
-        const auto &listeners = ChangeListenersByFieldId[changed_id];
+        const auto &listeners = ChangeListenersById[id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
@@ -113,19 +113,19 @@ void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     }
 }
 
-Field *Project::FindChanged(const StorePath &path, PatchOp::Type op) {
+Component *Project::FindChanged(const StorePath &path, PatchOp::Type op) {
     if ((op == PatchOp::Add || op == PatchOp::Remove) && !StringHelper::IsInteger(path.filename().string())) {
-        // Do not mark any fields as added/removed if they are within a component container.
-        // The container's auxiliary field is marked as changed instead (and its path will be in same patch).
-        if (auto *component_container = FindComponentContainerFieldByPath(path)) return nullptr;
+        // Do not mark any components as added/removed if they are within a container.
+        // The container's auxiliary component is marked as changed instead (and its path will be in same patch).
+        if (auto *component_container = FindContainerByPath(path)) return nullptr;
     }
-    auto *field = Find(path);
-    if (field && ComponentContainerAuxiliaryFields.contains(field->Id)) {
-        // When a container's auxiliary field is changed, mark the container as changed instead.
-        return static_cast<Field *>(field->Parent);
+    auto *component = Find(path);
+    if (component && ContainerAuxiliaryIds.contains(component->Id)) {
+        // When a container's auxiliary component is changed, mark the container as changed instead.
+        return component->Parent;
     }
 
-    return field;
+    return component;
 }
 
 void Project::MarkAllChanged(const Patch &patch) {
@@ -134,18 +134,18 @@ void Project::MarkAllChanged(const Patch &patch) {
 
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto path = patch.BasePath / partial_path;
-        if (auto *changed_field = FindChanged(path, op.Op)) {
-            // if (!changed_field) throw std::runtime_error(std::format("Could not find a field to attribute for op: {} at path: {}", to_string(op.Op), path.string()));
-            if (!changed_field) continue;
+        if (auto *changed = FindChanged(path, op.Op)) {
+            // if (!changed) throw std::runtime_error(std::format("Could not find a component to attribute for op: {} at path: {}", to_string(op.Op), path.string()));
+            if (!changed) continue;
 
-            const ID id = changed_field->Id;
-            const StorePath relative_path = path == changed_field->Path ? "" : path.lexically_relative(changed_field->Path);
+            const ID id = changed->Id;
+            const StorePath relative_path = path == changed->Path ? "" : path.lexically_relative(changed->Path);
             ChangedPaths[id].first = change_time;
             ChangedPaths[id].second.insert(relative_path);
 
             // Mark the changed field and all its ancestors.
-            ChangedFieldIds.insert(id);
-            const Component *ancestor = changed_field->Parent;
+            ChangedIds.insert(id);
+            const Component *ancestor = changed->Parent;
             while (ancestor != nullptr) {
                 ChangedAncestorComponentIds.insert(ancestor->Id);
                 ancestor = ancestor->Parent;
@@ -181,9 +181,9 @@ void Project::SetHistoryIndex(u32 index) const {
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
-    // However, style changes need to be applied to the ImGui context in all cases, since these are issued from Field changes.
-    // We don't make `ImGuiSettings` a field change listener for this because it would would end up being slower,
-    // since it has many descendent fields, and we would wastefully check for changes during the forward action pass, as explained above.
+    // However, style changes need to be applied to the ImGui context in all cases, since these are issued from component changes.
+    // We don't make `ImGuiSettings` a component change listener for this because it would would end up being slower,
+    // since it has many descendents, and we would wastefully check for changes during the forward action pass, as explained above.
     if (LatestPatch.IsPrefixOfAnyPath(ImGuiSettings.Path)) ImGuiSettings::IsChanged = true;
     ProjectHasChanges = true;
 }
@@ -209,9 +209,10 @@ void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
         [&primitive](const Int::ActionType &a) { static_cast<const Int *>(primitive)->Apply(a); },
         [&primitive](const UInt::ActionType &a) { static_cast<const UInt *>(primitive)->Apply(a); },
         [&primitive](const Float::ActionType &a) { static_cast<const Float *>(primitive)->Apply(a); },
-        [&primitive](const String::ActionType &a) { static_cast<const String *>(primitive)->Apply(a); },
         [&primitive](const Enum::ActionType &a) { static_cast<const Enum *>(primitive)->Apply(a); },
         [&primitive](const Flags::ActionType &a) { static_cast<const Flags *>(primitive)->Apply(a); },
+        [&primitive](const String::ActionType &a) { static_cast<const String *>(primitive)->Apply(a); },
+        [&primitive](const TextBuffer::ActionType &a) { static_cast<const TextBuffer *>(primitive)->Apply(a); },
     );
 }
 void Project::ApplyContainerAction(const Action::Container::Any &action) const {
@@ -220,7 +221,6 @@ void Project::ApplyContainerAction(const Action::Container::Any &action) const {
 
     Visit(
         action,
-        [&container](const TextBuffer::ActionType &a) { static_cast<const TextBuffer *>(container)->Apply(a); },
         [&container](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(container)->Apply(a); },
         [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
         [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
@@ -451,9 +451,9 @@ json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(f
 // Modifies the active transient store.
 void Project::OpenStateFormatProject(const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
-    // First, refresh all component container fields to ensure the dynamically managed component instances match the JSON.
-    for (const ID auxiliary_field_id : ComponentContainerAuxiliaryFields) {
-        auto *auxiliary_field = FieldById.at(auxiliary_field_id);
+    // First, refresh all component containers to ensure the dynamically managed component instances match the JSON.
+    for (const ID auxiliary_id : ContainerAuxiliaryIds) {
+        auto *auxiliary_field = FieldById.at(auxiliary_id);
         if (j.contains(auxiliary_field->JsonPointer())) {
             auxiliary_field->SetJson(std::move(j.at(auxiliary_field->JsonPointer())));
             auxiliary_field->Refresh();
@@ -461,11 +461,11 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
         }
     }
 
-    // Now, every flattened JSON pointer is 1:1 with a field instance path.
+    // Now, every flattened JSON pointer is 1:1 with an instance path.
     SetJson(std::move(j));
 
-    // We could do `RefreshChanged(RootStore.CheckedCommit())`, and only refresh the changed fields,
-    // but this gets tricky with component container fields, since the store patch will contain added/removed paths
+    // We could do `RefreshChanged(RootStore.CheckedCommit())`, and only refresh the changed components,
+    // but this gets tricky with component containers, since the store patch will contain added/removed paths
     // that have already been accounted for above.
     RootStore.Commit();
     ClearChanged();
@@ -559,8 +559,8 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
     if (History.GetChangedPathsCount() == 0 && GestureChangedPaths.empty()) return {};
 
     std::map<StorePath, u32> gesture_change_counts;
-    for (const auto &[field_id, changed_paths] : GestureChangedPaths) {
-        const auto &field = FieldById[field_id];
+    for (const auto &[id, changed_paths] : GestureChangedPaths) {
+        const auto &field = FieldById[id];
         for (const PathsMoment &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
                 gesture_change_counts[path == "" ? field->Path : field->Path / path]++;

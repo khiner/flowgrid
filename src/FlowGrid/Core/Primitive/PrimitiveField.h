@@ -2,13 +2,15 @@
 
 #include "Core/Component.h"
 
-template<IsPrimitive T> struct PrimitiveField : Field {
-    PrimitiveField(ComponentArgs &&args, T value = {}) : Field(std::move(args)), Value(value) {
+template<IsPrimitive T> struct PrimitiveField : Component {
+    PrimitiveField(ComponentArgs &&args, T value = {}) : Component(std::move(args)), Value(value) {
+        FieldById.emplace(Id, this);
         if (Exists()) Refresh();
         else Set(value); // We treat the provided value as a default store value.
     }
-    ~PrimitiveField() {
+    virtual ~PrimitiveField() {
         Erase();
+        FieldById.erase(Id);
     }
 
     json ToJson() const override;

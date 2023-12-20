@@ -67,6 +67,8 @@ struct FileDialog;
 struct Fonts;
 
 struct Component {
+    using References = std::vector<std::reference_wrapper<const Component>>;
+
     static Fonts gFonts;
 
     struct Metadata {
@@ -85,39 +87,39 @@ struct Component {
     };
 
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
+    inline static std::unordered_map<StorePath, ID, PathHash> IdByPath;
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
-    inline static std::unordered_map<ID, Field *> FieldById;
-    inline static std::unordered_map<StorePath, ID, PathHash> FieldIdByPath;
+    inline static std::unordered_map<ID, Component *> FieldById; // Only "field" components (containers/primitives).
 
     // Use when you expect a field with exactly this path to exist.
-    inline static Field *FieldByPath(const StorePath &path) noexcept { return FieldById.at(FieldIdByPath.at(path)); }
-    inline static Field *FieldByPath(StorePath &&path) noexcept { return FieldById.at(FieldIdByPath.at(std::move(path))); }
+    inline static Component *ByPath(const StorePath &path) noexcept { return FieldById.at(IdByPath.at(path)); }
+    inline static Component *ByPath(StorePath &&path) noexcept { return FieldById.at(IdByPath.at(std::move(path))); }
 
-    inline static Field *Find(const StorePath &search_path) noexcept {
-        if (FieldIdByPath.contains(search_path)) return FieldByPath(search_path);
+    inline static Component *Find(const StorePath &search_path) noexcept {
+        if (IdByPath.contains(search_path)) return ByPath(search_path);
         // Search for container fields.
-        if (FieldIdByPath.contains(search_path.parent_path())) return FieldByPath(search_path.parent_path());
-        if (FieldIdByPath.contains(search_path.parent_path().parent_path())) return FieldByPath(search_path.parent_path().parent_path());
+        if (IdByPath.contains(search_path.parent_path())) return ByPath(search_path.parent_path());
+        if (IdByPath.contains(search_path.parent_path().parent_path())) return ByPath(search_path.parent_path().parent_path());
         return nullptr;
     }
 
     // Component containers are fields that dynamically create/destroy child components.
     // Each component container has a single auxiliary field as a direct child which tracks the presence/ordering of its child component(s).
-    inline static std::unordered_set<ID> ComponentContainerFields;
-    inline static std::unordered_set<ID> ComponentContainerAuxiliaryFields;
+    inline static std::unordered_set<ID> ContainerIds;
+    inline static std::unordered_set<ID> ContainerAuxiliaryIds;
 
-    static Field *FindComponentContainerFieldByPath(const StorePath &search_path);
+    static Component *FindContainerByPath(const StorePath &search_path);
 
-    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersByFieldId;
+    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
 
     inline static void RegisterChangeListener(ChangeListener *listener, const Component &component) noexcept {
-        ChangeListenersByFieldId[component.Id].insert(listener);
+        ChangeListenersById[component.Id].insert(listener);
     }
     inline static void UnregisterChangeListener(ChangeListener *listener) noexcept {
-        for (auto &[component_id, listeners] : ChangeListenersByFieldId) listeners.erase(listener);
-        std::erase_if(ChangeListenersByFieldId, [](const auto &entry) { return entry.second.empty(); });
+        for (auto &[component_id, listeners] : ChangeListenersById) listeners.erase(listener);
+        std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); });
     }
     inline void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
@@ -127,7 +129,7 @@ struct Component {
     // All values are appended to `GestureChangedPaths` if the change occurred during a runtime action batch (as opposed to undo/redo, initialization, or project load).
     // `ChangedPaths` is cleared after each action (after refreshing all affected fields), and can thus be used to determine which fields were affected by the latest action.
     // (`LatestChangedPaths` is retained for the lifetime of the application.)
-    // These same key IDs are also stored in the `ChangedFieldIds` set, which also includes IDs for all ancestor component of all changed fields.
+    // These same key IDs are also stored in the `ChangedIds` set, which also includes IDs for all ancestor component of all changed components.
     inline static std::unordered_map<ID, PathsMoment> ChangedPaths;
 
     // Latest (unique-field-relative-paths, store-commit-time) pair for each field over the lifetime of the application.
@@ -139,7 +141,7 @@ struct Component {
 
     // IDs of all fields to which `ChangedPaths` are attributed.
     // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
-    inline static std::unordered_set<ID> ChangedFieldIds;
+    inline static std::unordered_set<ID> ChangedIds;
 
     inline static std::optional<TimePoint> LatestUpdateTime(ID field_id, std::optional<StorePath> relative_path = {}) noexcept {
         if (!LatestChangedPaths.contains(field_id)) return {};
@@ -152,7 +154,7 @@ struct Component {
 
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
-    static void RefreshAll();
+    inline static void RefreshAll() { for (auto &[id, field] : FieldById) field->Refresh(); }
 
     // todo gesturing should be project-global, not component-static.
     inline static bool IsGesturing{};
@@ -250,20 +252,6 @@ protected:
 
 private:
     Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
-};
-
-// A `Field` is a component that wraps around a value backed by the owning project's `Store`.
-// Leafs in a component tree are always fields, but fields may have nested components/fields.
-struct Field : Component {
-    using References = std::vector<std::reference_wrapper<const Field>>;
-
-    Field(ComponentArgs &&, Menu &&menu);
-    Field(ComponentArgs &&);
-    virtual ~Field();
-
-    Field &operator=(const Field &) = delete;
-
-    virtual void RenderValueTree(bool annotate, bool auto_select) const override = 0;
 };
 
 // Minimal/base debug component.

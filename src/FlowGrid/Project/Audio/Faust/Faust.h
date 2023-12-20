@@ -8,8 +8,8 @@
 #include "FaustParamsStyle.h"
 
 #include "Core/Action/Actionable.h"
-#include "Core/Container/TextBuffer.h"
 #include "Core/Container/Vector.h"
+#include "Core/Primitive/TextBuffer.h"
 
 struct FileDialog;
 

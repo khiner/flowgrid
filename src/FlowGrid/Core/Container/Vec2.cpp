@@ -7,7 +7,7 @@
 using namespace ImGui;
 
 Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
-    : Field(std::move(args)), Min(min), Max(max), Format(fmt), Value(std::move(value)) {
+    : Container(std::move(args)), Min(min), Max(max), Format(fmt), Value(std::move(value)) {
     Set(Value);
 }
 

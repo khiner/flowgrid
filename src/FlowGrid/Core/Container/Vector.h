@@ -32,7 +32,7 @@ The path prefix strategy is as follows:
 Child order is tracked with a separate `ChildPrefixes` vector.
 We need to store this in an auxiliary store member since child component members are stored in a persistent map without key ordering.
 */
-template<typename ChildType> struct Vector : Field {
+template<typename ChildType> struct Vector : Container {
     using CreatorFunction = std::function<std::unique_ptr<ChildType>(Component *, string_view path_prefix_segment, string_view path_segment)>;
     using ChildInitializerFunction = std::function<void(ChildType *)>;
 
@@ -41,13 +41,11 @@ template<typename ChildType> struct Vector : Field {
     };
 
     Vector(ComponentArgs &&args, Menu &&menu, CreatorFunction creator = DefaultCreator)
-        : Field(std::move(args), std::move(menu)), Creator(std::move(creator)) {
-        ComponentContainerFields.insert(Id);
-        ComponentContainerAuxiliaryFields.insert(ChildPrefixes.Id);
+        : Container(std::move(args), std::move(menu)), Creator(std::move(creator)) {
+        ContainerAuxiliaryIds.insert(ChildPrefixes.Id);
     }
     ~Vector() {
-        ComponentContainerAuxiliaryFields.erase(ChildPrefixes.Id);
-        ComponentContainerFields.erase(Id);
+        ContainerAuxiliaryIds.erase(ChildPrefixes.Id);
     }
 
     Vector(ComponentArgs &&args, CreatorFunction creator = DefaultCreator)

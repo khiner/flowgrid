@@ -48,7 +48,8 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
       Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent->Id)),
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {
-    ById[Id] = this;
+    ById.emplace(Id, this);
+    IdByPath.emplace(Path, Id);
     parent->Children.emplace_back(this);
 }
 
@@ -65,26 +66,24 @@ Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu)
 Component::~Component() {
     if (Parent) std::erase_if(Parent->Children, [this](const auto *child) { return child == this; });
     ById.erase(Id);
+    IdByPath.erase(Path);
+    ChangeListenersById.erase(Id);
 }
 
 bool Component::IsChanged(bool include_descendents) const noexcept {
-    return ChangedFieldIds.contains(Id) || (include_descendents && IsDescendentChanged());
+    return ChangedIds.contains(Id) || (include_descendents && IsDescendentChanged());
 }
 
-Field *Component::FindComponentContainerFieldByPath(const StorePath &search_path) {
+Component *Component::FindContainerByPath(const StorePath &search_path) {
     StorePath subpath = search_path;
     while (subpath != "/") {
-        if (FieldIdByPath.contains(subpath)) {
-            const auto field_id = FieldIdByPath.at(subpath);
-            if (ComponentContainerFields.contains(field_id)) return FieldById[field_id];
+        if (IdByPath.contains(subpath)) {
+            const auto id = IdByPath.at(subpath);
+            if (ContainerIds.contains(id)) return ById[id];
         }
         subpath = subpath.parent_path();
     }
     return nullptr;
-}
-
-void Component::RefreshAll() {
-    for (auto &[id, field] : FieldById) field->Refresh();
 }
 
 // By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,
@@ -116,7 +115,7 @@ json Component::ToJson() const {
 void Component::SetJson(json &&j) const {
     auto &&flattened = std::move(j).flatten(); // Don't inline this - it breaks `SetJson`.
     for (auto &&[key, value] : flattened.items()) {
-        FieldByPath(std::move(key))->SetJson(std::move(value));
+        ByPath(std::move(key))->SetJson(std::move(value));
     }
 }
 
@@ -270,19 +269,4 @@ void Component::FlashUpdateRecencyBackground(std::optional<StorePath> relative_p
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
-}
-
-Field::Field(ComponentArgs &&args, Menu &&menu) : Component(std::move(args), std::move(menu)) {
-    FieldById.emplace(Id, this);
-    FieldIdByPath.emplace(Path, Id);
-    Refresh();
-}
-
-Field::Field(ComponentArgs &&args) : Field(std::move(args), Menu{{}}) {}
-
-Field::~Field() {
-    Erase();
-    FieldIdByPath.erase(Path);
-    FieldById.erase(Id);
-    ChangeListenersByFieldId.erase(Id);
 }

@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 
-FaustGraphStyle::FaustGraphStyle(ComponentArgs &&args) : Component(std::move(args)) {
+FaustGraphStyle::FaustGraphStyle(ArgsT &&args) : ActionableComponent(std::move(args)) {
     ColorsDark();
     LayoutFlowGrid();
 }
@@ -176,7 +176,7 @@ void FaustGraphStyle::Render() const {
     if (BeginTabBar(ImGuiLabel.c_str(), ImGuiTabBarFlags_None)) {
         if (BeginTabItem("Layout")) {
             static int graph_layout_idx = -1;
-            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) Action::Faust::GraphStyle::ApplyLayoutPreset{graph_layout_idx}.q();
+            if (Combo("Preset", &graph_layout_idx, "FlowGrid\0Faust\0")) Q(Action::Faust::GraphStyle::ApplyLayoutPreset{graph_layout_idx});
 
             FoldComplexity.Draw();
             const bool scale_fill = ScaleFillHeight;
@@ -225,7 +225,7 @@ void FaustGraphStyle::Render() const {
         }
         if (BeginTabItem(Colors.ImGuiLabel.c_str())) {
             static int graph_colors_idx = -1;
-            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) Action::Faust::GraphStyle::ApplyColorPreset{graph_colors_idx}.q();
+            if (Combo("Preset", &graph_colors_idx, "Dark\0Light\0Classic\0Faust\0")) Q(Action::Faust::GraphStyle::ApplyColorPreset{graph_colors_idx});
 
             Colors.Draw();
             EndTabItem();

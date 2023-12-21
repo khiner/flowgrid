@@ -23,7 +23,7 @@ struct Audio : ActionableComponent<Action::Audio::Any> {
     const FileDialog &FileDialog;
 
     SubProducerProp_(AudioGraph, Graph, "Audio graph");
-    Prop(Faust, Faust, FileDialog);
+    SubProducerProp(Faust, Faust, FileDialog);
     Prop_(Style, Style, "Audio style");
 
 private:

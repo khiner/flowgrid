@@ -3,12 +3,11 @@
 #include "imgui.h"
 
 #include "Helper/File.h"
-#include "Project/Audio/Graph/AudioGraphAction.h"
 #include "Project/FileDialog/FileDialog.h"
 
 static const std::string FaustDspFileExtension = ".dsp";
 
-Faust::Faust(ComponentArgs &&args, const ::FileDialog &file_dialog) : Component(std::move(args)), FileDialog(file_dialog) {}
+Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionableComponent(std::move(args)), FileDialog(file_dialog) {}
 
 void Faust::Apply(const ActionType &action) const {
     Visit(
@@ -48,8 +47,8 @@ void Faust::Render() const {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         const string &extension = selected_path.extension();
         if (extension == FaustDspFileExtension) {
-            if (FileDialog.SaveMode) Action::Faust::File::Save{selected_path}.q();
-            else Action::Faust::File::Open{selected_path}.q();
+            if (FileDialog.SaveMode) Q(Action::Faust::File::Save{selected_path});
+            else Q(Action::Faust::File::Open{selected_path});
         }
         PrevSelectedPath = selected_path;
     }
@@ -72,9 +71,9 @@ FaustParams *FaustParamss::FindUi(ID dsp_id) const {
 
 static std::unordered_set<FaustGraphs *> AllInstances{};
 
-FaustGraphs::FaustGraphs(ComponentArgs &&args, const ::FileDialog &file_dialog, const FaustGraphStyle &style, const FaustGraphSettings &settings)
+FaustGraphs::FaustGraphs(ArgsT &&args, const ::FileDialog &file_dialog, const FaustGraphStyle &style, const FaustGraphSettings &settings)
     : Vector(
-          std::move(args),
+          std::move(args.Args),
           Menu({
               Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
               Menu("View", {settings.HoverFlags}),
@@ -84,6 +83,7 @@ FaustGraphs::FaustGraphs(ComponentArgs &&args, const ::FileDialog &file_dialog, 
               return std::make_unique<FaustGraph>(std::move(child_args), graphs->Style, graphs->Settings);
           }
       ),
+      ActionProducer(std::move(args.Q)),
       FileDialog(file_dialog),
       Style(style), Settings(settings) {
     Style.FoldComplexity.RegisterChangeListener(this);
@@ -142,8 +142,8 @@ std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
-FaustDSP::FaustDSP(ComponentArgs &&args, FaustDSPContainer &container)
-    : Component(std::move(args)), Container(container) {
+FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container)
+    : ActionProducerComponent(std::move(args)), Container(container) {
     Code.RegisterChangeListener(this);
     Init();
 }
@@ -214,11 +214,11 @@ void FaustDSP::Update() {
 
 static const string FaustDspPathSegment = "FaustDSP";
 
-FaustDSPs::FaustDSPs(ComponentArgs &&args)
-    : Vector(std::move(args), [](auto &&child_args) {
+FaustDSPs::FaustDSPs(ArgsT &&args)
+    : Vector(std::move(args.Args), [this](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
-          return std::make_unique<FaustDSP>(std::move(child_args), *container);
-      }) {
+          return std::make_unique<FaustDSP>(FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container);
+      }), ActionProducer(std::move(args.Q)) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);
@@ -357,7 +357,7 @@ void FaustGraphs::Render() const {
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         if (FileDialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && FileDialog.SaveMode) {
-            Action::Faust::Graph::SaveSvgFile{Id, selected_path}.q();
+            Q(Action::Faust::Graph::SaveSvgFile{Id, selected_path});
         }
         PrevSelectedPath = selected_path;
     }
@@ -378,8 +378,8 @@ void FaustGraphs::Render() const {
 void FaustDSP::Render() const {
     if (BeginMenuBar()) {
         if (BeginMenu("DSP")) {
-            if (MenuItem("Delete")) Action::Faust::DSP::Delete{Id}.q();
-            if (MenuItem("Create audio node")) Action::AudioGraph::CreateFaustNode{Id}.q();
+            if (MenuItem("Delete")) Q(Action::Faust::DSP::Delete{Id});
+            if (MenuItem("Create audio node")) Q(Action::AudioGraph::CreateFaustNode{Id});
             EndMenu();
         }
         EndMenuBar();
@@ -390,7 +390,7 @@ void FaustDSP::Render() const {
 void FaustDSPs::Render() const {
     if (BeginMenuBar()) {
         if (BeginMenu("Create")) {
-            if (MenuItem("Create Faust DSP")) Action::Faust::DSP::Create().q();
+            if (MenuItem("Create Faust DSP")) Q(Action::Faust::DSP::Create());
             EndMenu();
         }
         EndMenuBar();

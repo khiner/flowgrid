@@ -6,8 +6,10 @@
 #include "FaustGraphStyle.h"
 #include "FaustParams.h"
 #include "FaustParamsStyle.h"
+#include "Project/Audio/Graph/AudioGraphAction.h"
 
-#include "Core/Action/Actionable.h"
+#include "Core/ActionableComponent.h"
+#include "Core/ActionProducerComponent.h"
 #include "Core/Container/Vector.h"
 #include "Core/Primitive/TextBuffer.h"
 
@@ -43,8 +45,14 @@ protected:
     void Render() const override;
 };
 
-struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Component::ChangeListener {
-    FaustGraphs(ComponentArgs &&, const FileDialog &, const FaustGraphStyle &, const FaustGraphSettings &);
+struct FaustGraphs
+    : Vector<FaustGraph>,
+      Actionable<Action::Faust::Graph::Any>,
+      ActionProducer<Action::Faust::Graph::Any>,
+      Component::ChangeListener {
+    using ArgsT = ProducerComponentArgs<ProducedActionType>;
+
+    FaustGraphs(ArgsT &&, const FileDialog &, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
 
     void Apply(const ActionType &) const override;
@@ -94,10 +102,12 @@ struct FaustDSPContainer {
     virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
 };
 
-// `FaustDSP` is a wrapper around a Faust DSP and a Faust Box.
+using FaustDspProducedActionType = Action::Append<Action::Faust::DSP::Any, typename Action::AudioGraph::CreateFaustNode>;
+
+// `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
-struct FaustDSP : Component, Component::ChangeListener {
-    FaustDSP(ComponentArgs &&, FaustDSPContainer &);
+struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component::ChangeListener {
+    FaustDSP(ArgsT &&, FaustDSPContainer &);
     ~FaustDSP();
 
     void OnComponentChanged() override;
@@ -128,8 +138,13 @@ private:
     llvm_dsp_factory *DspFactory{nullptr};
 };
 
-struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
-    FaustDSPs(ComponentArgs &&);
+struct FaustDSPs
+    : Vector<FaustDSP>,
+      Actionable<Action::Faust::DSP::Any>,
+      ActionProducer<FaustDspProducedActionType> {
+    using ArgsT = ProducerComponentArgs<ProducedActionType>;
+
+    FaustDSPs(ArgsT &&);
     ~FaustDSPs();
 
     void Apply(const ActionType &) const override;
@@ -139,8 +154,10 @@ private:
     void Render() const override;
 };
 
-struct Faust : Component, Actionable<Action::Faust::Any>, FaustDSPContainer {
-    Faust(ComponentArgs &&, const FileDialog &);
+struct Faust
+    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Faust::Any, Action::AudioGraph::CreateFaustNode>>,
+      FaustDSPContainer {
+    Faust(ArgsT &&, const FileDialog &);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
@@ -161,15 +178,14 @@ struct Faust : Component, Actionable<Action::Faust::Any>, FaustDSPContainer {
 
     const FileDialog &FileDialog;
 
-    Prop(FaustGraphStyle, GraphStyle);
+    SubProducerProp(FaustGraphStyle, GraphStyle);
     Prop(FaustGraphSettings, GraphSettings);
     Prop(FaustParamsStyle, ParamsStyle);
 
-    Prop_(FaustGraphs, Graphs, "Faust graphs", FileDialog, GraphStyle, GraphSettings);
+    SubProducerProp_(FaustGraphs, Graphs, "Faust graphs", FileDialog, GraphStyle, GraphSettings);
     Prop_(FaustParamss, Paramss, "Faust params", ParamsStyle);
     Prop_(FaustLogs, Logs, "Faust logs");
-
-    Prop(FaustDSPs, FaustDsps);
+    SubProducerProp(FaustDSPs, FaustDsps);
 
 protected:
     void Render() const override;

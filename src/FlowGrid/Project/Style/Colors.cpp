@@ -13,18 +13,18 @@
 using namespace ImGui;
 
 Colors::Colors(ComponentArgs &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
-    : PrimitiveVector<u32>(std::move(args)), GetName(get_name), AllowAuto(allow_auto) {
-    PrimitiveVector<u32>::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<u32>>);
+    : PrimitiveVector(std::move(args)), GetName(get_name), AllowAuto(allow_auto) {
+    PrimitiveVector::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<u32>>);
 }
 
 u32 Colors::Float4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
 ImVec4 Colors::U32ToFloat4(u32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
 void Colors::Set(const std::vector<ImVec4> &values) const {
-    PrimitiveVector<u32>::Set(values | std::views::transform([](const auto &value) { return Float4ToU32(value); }) | ranges::to<std::vector>);
+    PrimitiveVector::Set(values | std::views::transform([](const auto &value) { return Float4ToU32(value); }) | ranges::to<std::vector>);
 }
 void Colors::Set(const std::vector<std::pair<int, ImVec4>> &entries) const {
-    PrimitiveVector<u32>::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | ranges::to<std::vector>);
+    PrimitiveVector::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | ranges::to<std::vector>);
 }
 
 void Colors::Render() const {

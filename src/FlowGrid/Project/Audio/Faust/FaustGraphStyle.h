@@ -6,6 +6,7 @@
 #include "Core/Primitive/Flags.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/String.h"
+#include "Core/ActionableComponent.h"
 #include "Project/Style/Colors.h"
 #include "UI/Styling.h"
 
@@ -39,8 +40,8 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraphStyle : Component, Actionable<Action::Faust::GraphStyle::Any> {
-    FaustGraphStyle(ComponentArgs &&);
+struct FaustGraphStyle : ActionableComponent<Action::Faust::GraphStyle::Any> {
+    FaustGraphStyle(ArgsT &&);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;

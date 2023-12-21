@@ -166,6 +166,14 @@ struct CombineImpl<ActionVariant<Ts1...>, ActionVariant<Ts2...>, Vars...> {
 };
 template<typename... Vars> using Combine = typename CombineImpl<Vars...>::type;
 
+// Utility to append a (single, non-variant) action type to an `ActionVariant`.
+// E.g. `using BarAction = Action::Append<FooAction, Bar>`
+template<typename Var, typename T> struct AppendImpl;
+template<typename... Ts, typename T> struct AppendImpl<ActionVariant<Ts...>, T> {
+    using type = ActionVariant<Ts..., T>;
+};
+template<typename Var, typename T> using Append = typename AppendImpl<Var, T>::type;
+
 // Utility to filter an `ActionVariant` by a predicate.
 // E.g. `using Savable = Action::Filter<Action::IsSavable, Any>;`
 template<template<typename> class Predicate, typename Var> struct FilterImpl;

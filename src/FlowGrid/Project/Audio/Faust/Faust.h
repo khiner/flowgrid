@@ -35,8 +35,6 @@ Audio.Faust.FaustDsp.Code -> Audio.Faust.FaustDsp
 struct FaustParamss : Vector<FaustParams> {
     FaustParamss(ComponentArgs &&, const FaustParamsStyle &);
 
-    static std::unique_ptr<FaustParams> CreateChild(Component *, string_view path_prefix_segment, string_view path_segment);
-
     FaustParams *FindUi(ID dsp_id) const;
 
     const FaustParamsStyle &Style;
@@ -48,8 +46,6 @@ protected:
 struct FaustGraphs : Vector<FaustGraph>, Actionable<Action::Faust::Graph::Any>, Component::ChangeListener {
     FaustGraphs(ComponentArgs &&, const FileDialog &, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
-
-    static std::unique_ptr<FaustGraph> CreateChild(Component *, string_view path_prefix_segment, string_view path_segment);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
@@ -135,8 +131,6 @@ private:
 struct FaustDSPs : Vector<FaustDSP>, Actionable<Action::Faust::DSP::Any> {
     FaustDSPs(ComponentArgs &&);
     ~FaustDSPs();
-
-    static std::unique_ptr<FaustDSP> CreateChild(Component *, string_view path_prefix_segment, string_view path_segment);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }

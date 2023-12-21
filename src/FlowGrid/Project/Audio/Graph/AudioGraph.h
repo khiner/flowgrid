@@ -36,7 +36,7 @@ struct AudioGraph
     bool AllowInputConnectionChange() const override { return false; }
     bool AllowOutputConnectionChange() const override { return false; }
 
-    static std::unique_ptr<AudioGraphNode> CreateAudioGraphNode(Component *, string_view path_prefix_segment, string_view path_segment);
+    static std::unique_ptr<AudioGraphNode> CreateAudioGraphNode(ComponentArgs &&);
 
     std::unique_ptr<MaNode> CreateNode() const;
 

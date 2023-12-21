@@ -33,11 +33,11 @@ Child order is tracked with a separate `ChildPrefixes` vector.
 We need to store this in an auxiliary store member since child component members are stored in a persistent map without key ordering.
 */
 template<typename ChildType> struct Vector : Container {
-    using CreatorFunction = std::function<std::unique_ptr<ChildType>(Component *, string_view path_prefix_segment, string_view path_segment)>;
+    using CreatorFunction = std::function<std::unique_ptr<ChildType>(ComponentArgs &&)>;
     using ChildInitializerFunction = std::function<void(ChildType *)>;
 
-    inline static CreatorFunction DefaultCreator = [](Component *parent, string_view path_prefix_segment, string_view path_segment) {
-        return std::make_unique<ChildType>(ComponentArgs{parent, path_segment, "", path_prefix_segment});
+    inline static CreatorFunction DefaultCreator = [](ComponentArgs &&args) {
+        return std::make_unique<ChildType>(std::move(args));
     };
 
     Vector(ComponentArgs &&args, Menu &&menu, CreatorFunction creator = DefaultCreator)
@@ -99,7 +99,7 @@ template<typename ChildType> struct Vector : Container {
     }
 
     void EmplaceBack_(string_view path_segment, ChildInitializerFunction &&initializer = {}) {
-        auto child = Creator(this, GenerateNextPrefix(path_segment), path_segment);
+        auto child = Creator({this, path_segment, "", GenerateNextPrefix(path_segment)});
         if (initializer) initializer(child.get());
         const auto child_prefix = GetChildPrefix(child.get());
         Value.emplace_back(std::move(child));
@@ -139,7 +139,7 @@ template<typename ChildType> struct Vector : Container {
             const auto child_it = FindIt(prefix);
             if (child_it == Value.end()) {
                 const auto &[path_prefix, path_segment] = Split(prefix);
-                auto new_child = Creator(this, path_prefix, path_segment);
+                auto new_child = Creator({this, path_segment, "", path_prefix});
                 u32 index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));
                 Value.insert(Value.begin() + index, std::move(new_child));
             }

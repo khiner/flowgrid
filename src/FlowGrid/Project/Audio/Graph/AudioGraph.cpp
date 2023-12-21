@@ -483,13 +483,12 @@ dsp *AudioGraph::GetFaustDsp(ID id) const {
 
 static ID latest_dsp_id = 0; // TODO use `Vector::ChildInitializerFunction` to set the store during creation instead.
 
-std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    ComponentArgs args{parent, path_segment, "", path_prefix_segment};
-    auto *graph = static_cast<AudioGraph *>(parent->Parent);
-    if (path_segment == InputDeviceNodeTypeId) return CreateAudioGraphNode<InputDeviceNode>(graph, std::move(args));
-    if (path_segment == OutputDeviceNodeTypeId) return CreateAudioGraphNode<OutputDeviceNode>(graph, std::move(args));
-    if (path_segment == WaveformNodeTypeId) return CreateAudioGraphNode<WaveformNode>(graph, std::move(args));
-    if (path_segment == FaustNodeTypeId) {
+std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(ComponentArgs &&args) {
+    auto *graph = static_cast<AudioGraph *>(args.Parent->Parent);
+    if (args.PathSegment == InputDeviceNodeTypeId) return CreateAudioGraphNode<InputDeviceNode>(graph, std::move(args));
+    if (args.PathSegment == OutputDeviceNodeTypeId) return CreateAudioGraphNode<OutputDeviceNode>(graph, std::move(args));
+    if (args.PathSegment == WaveformNodeTypeId) return CreateAudioGraphNode<WaveformNode>(graph, std::move(args));
+    if (args.PathSegment == FaustNodeTypeId) {
         auto node = CreateAudioGraphNode<FaustNode>(graph, std::move(args), latest_dsp_id);
         latest_dsp_id = 0;
         return node;

@@ -55,11 +55,12 @@ void Faust::Render() const {
     }
 }
 
-FaustParamss::FaustParamss(ComponentArgs &&args, const FaustParamsStyle &style) : Vector(std::move(args), CreateChild), Style(style) {}
-
-std::unique_ptr<FaustParams> FaustParamss::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    auto *uis = static_cast<FaustParamss *>(parent);
-    return std::make_unique<FaustParams>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, uis->Style);
+FaustParamss::FaustParamss(ComponentArgs &&args, const FaustParamsStyle &style)
+    : Vector(std::move(args), [](auto &&child_args) {
+          const auto *uis = static_cast<const FaustParamss *>(child_args.Parent);
+          return std::make_unique<FaustParams>(std::move(child_args), uis->Style);
+      }),
+      Style(style) {
 }
 
 FaustParams *FaustParamss::FindUi(ID dsp_id) const {
@@ -78,12 +79,14 @@ FaustGraphs::FaustGraphs(ComponentArgs &&args, const ::FileDialog &file_dialog, 
               Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
               Menu("View", {settings.HoverFlags}),
           }),
-          CreateChild
+          [](auto &&child_args) {
+              const auto *graphs = static_cast<const FaustGraphs *>(child_args.Parent);
+              return std::make_unique<FaustGraph>(std::move(child_args), graphs->Style, graphs->Settings);
+          }
       ),
       FileDialog(file_dialog),
       Style(style), Settings(settings) {
     Style.FoldComplexity.RegisterChangeListener(this);
-
     AllInstances.insert(this);
 }
 
@@ -134,11 +137,6 @@ std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
         if (auto box_info = instance->GetBoxInfo(imgui_id)) return box_info;
     }
     return {};
-}
-
-std::unique_ptr<FaustGraph> FaustGraphs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    auto *graphs = static_cast<FaustGraphs *>(parent);
-    return std::make_unique<FaustGraph>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, graphs->Style, graphs->Settings);
 }
 
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
@@ -216,7 +214,11 @@ void FaustDSP::Update() {
 
 static const string FaustDspPathSegment = "FaustDSP";
 
-FaustDSPs::FaustDSPs(ComponentArgs &&args) : Vector(std::move(args), CreateChild) {
+FaustDSPs::FaustDSPs(ComponentArgs &&args)
+    : Vector(std::move(args), [](auto &&child_args) {
+          auto *container = static_cast<Faust *>(child_args.Parent->Parent);
+          return std::make_unique<FaustDSP>(std::move(child_args), *container);
+      }) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);
@@ -274,11 +276,6 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         if (auto *graph = Graphs.FindGraph(id)) Graphs.EraseId_(graph->Id);
         if (auto *ui = Paramss.FindUi(id)) Paramss.EraseId_(ui->Id);
     }
-}
-
-std::unique_ptr<FaustDSP> FaustDSPs::CreateChild(Component *parent, string_view path_prefix_segment, string_view path_segment) {
-    auto *container = static_cast<Faust *>(parent->Parent);
-    return std::make_unique<FaustDSP>(ComponentArgs{parent, path_segment, "", path_prefix_segment}, *container);
 }
 
 void FaustDSPs::Apply(const ActionType &action) const {

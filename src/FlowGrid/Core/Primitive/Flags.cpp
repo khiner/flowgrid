@@ -29,7 +29,7 @@ void Flags::Render() const {
             const auto &item = Items[i];
             const int option_mask = 1 << i;
             bool is_selected = option_mask & value;
-            if (Checkbox(item.Name.c_str(), &is_selected)) Action::Primitive::Flags::Set{Path, value ^ option_mask}.q(); // Toggle bit
+            if (Checkbox(item.Name.c_str(), &is_selected)) IssueSet(value ^ option_mask); // Toggle bit
             if (!item.Help.empty()) {
                 SameLine();
                 fg::HelpMarker(item.Help.c_str());
@@ -51,7 +51,7 @@ void Flags::MenuItem() const {
                 fg::HelpMarker(item.Help);
                 SameLine();
             }
-            if (ImGui::MenuItem(item.Name.c_str(), nullptr, is_selected)) Action::Primitive::Flags::Set{Path, value ^ option_mask}.q(); // Toggle bit
+            if (ImGui::MenuItem(item.Name.c_str(), nullptr, is_selected)) IssueSet(value ^ option_mask); // Toggle bit
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();

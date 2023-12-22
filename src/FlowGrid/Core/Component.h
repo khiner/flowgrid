@@ -8,7 +8,7 @@
 #include "nlohmann/json.hpp"
 
 #include "ComponentArgs.h"
-#include "Core/Primitive/Scalar.h"
+#include "Core/Primitive/PrimitiveVariant.h"
 #include "Core/Store/Patch/PatchOp.h"
 #include "Helper/Paths.h"
 
@@ -19,12 +19,13 @@ namespace fg = FlowGrid;
 
 using std::string, std::string_view;
 
+struct Store;
+struct Patch;
+struct PrimitiveActionQueuer;
+
 namespace FlowGrid {
 struct Style;
 }
-
-struct Store;
-struct Patch;
 struct FlowGridStyle;
 struct Windows;
 
@@ -162,7 +163,7 @@ struct Component {
     inline static bool IsGesturing{};
     static void UpdateGesturing();
 
-    Component(Store &, const Windows &, const fg::Style &);
+    Component(Store &, PrimitiveActionQueuer &, const Windows &, const fg::Style &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -231,6 +232,7 @@ struct Component {
     const FlowGridStyle &GetFlowGridStyle() const;
 
     Store &RootStore; // Reference to the store at the root of this component's tree.
+    PrimitiveActionQueuer &PrimitiveQ;
     const Windows &gWindows;
     const fg::Style &gStyle;
     Component *Root; // The root (project) component.
@@ -317,13 +319,10 @@ todo Try out replacing semicolon separators by e.g. commas.
 #define Prop(PropType, PropName, ...) PropType PropName{{this, #PropName, ""}, __VA_ARGS__};
 #define Prop_(PropType, PropName, MetaStr, ...) PropType PropName{{this, #PropName, MetaStr}, __VA_ARGS__};
 
-#define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateConsumer<PropType::ProducedActionType>()}, __VA_ARGS__};
-#define ProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, CreateConsumer<PropType::ProducedActionType>()}, __VA_ARGS__};
+// Sub-producers produce a subset action type, so they need a new producer generated from the parent.
+#define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
+#define ProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
 
 // Child producers produce the same action type as their parent, so they can simply use their parent's `q` function.
 #define ChildProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, q}, __VA_ARGS__};
 #define ChildProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, q}, __VA_ARGS__};
-
-// Sub-producers produce a subset action type, so they need a new producer generated from the parent.
-#define SubProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
-#define SubProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};

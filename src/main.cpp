@@ -1,5 +1,6 @@
 #include "imgui.h"
 
+#include "FlowGrid/Core/Primitive/PrimitiveActionQueuer.h"
 #include "FlowGrid/Core/Store/Store.h"
 #include "FlowGrid/Project/Project.h"
 #include "UI/Fonts.h"
@@ -7,7 +8,13 @@
 
 Store store{};
 ActionQueue<Action::Any> action_queue{};
-Project MainProject{store, action_queue};
+ActionProducer<Action::Any>::EnqueueFn q = [](auto &&a) -> bool { return action_queue.Enqueue(std::move(a)); };
+ActionProducer<Action::Primitive::Any>::EnqueueFn primitive_q = [](auto &&action) -> bool {
+    return std::visit([](auto &&a) -> bool { return action_queue.Enqueue(std::move(a)); }, std::move(action));
+};
+PrimitiveActionQueuer primitive_queuer{primitive_q};
+Project MainProject{store, primitive_queuer, q};
+
 // `project` is the only remaining global variable.
 // I "just" need to finish refactoring action queueing to get rid of this.
 const Project &project = MainProject;
@@ -49,14 +56,14 @@ int main() {
         Tick(ui); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
         Tick(ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        MainProject.ApplyQueuedActions(true);
+        MainProject.ApplyQueuedActions(action_queue, true);
     }
 
     MainProject.OnApplicationLaunch();
 
     while (Tick(ui)) {
         // Disable all actions while the file dialog is open.
-        MainProject.ApplyQueuedActions(false, MainProject.FileDialog.Visible);
+        MainProject.ApplyQueuedActions(action_queue, false, MainProject.FileDialog.Visible);
     }
 
     IGFD::Uninit();

@@ -5,7 +5,7 @@
 #include "Component.h"
 #include "ProducerComponentArgs.h"
 
-// `ActionType` is the type of actions that can be applied to the component.
+// `ActionType` is the type of action that can be _applied_ to the component.
 template<typename ActionType, typename ProducedActionType = ActionType>
 struct ActionableComponent : Component, Actionable<ActionType>, ActionProducer<ProducedActionType> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;

@@ -24,7 +24,7 @@ void UInt::Render() const {
     u32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &Min, &Max, "%d");
     UpdateGesturing();
-    if (edited) Action::Primitive::UInt::Set{Path, value}.q();
+    if (edited) IssueSet(value);
     HelpMarker();
 }
 void UInt::Render(const std::vector<u32> &options) const {
@@ -34,7 +34,7 @@ void UInt::Render(const std::vector<u32> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), ValueName(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(ValueName(option).c_str(), is_selected)) Action::Primitive::UInt::Set{Path, option}.q();
+            if (Selectable(ValueName(option).c_str(), is_selected)) IssueSet(option);
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();

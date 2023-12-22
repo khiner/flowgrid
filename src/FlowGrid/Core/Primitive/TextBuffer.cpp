@@ -82,7 +82,7 @@ void TextBuffer::Render() const {
     //   Soon I'm incorporating the TextEditor state/undo/redo system into the FlowGrid system.
     const string new_text = editor.GetText();
     if (new_text != prev_text) {
-        Action::TextBuffer::Set{Path, new_text}.q();
+        IssueSet(new_text);
     } else if (Value != new_text) {
         editor.SetText(Value);
     }

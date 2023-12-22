@@ -18,7 +18,7 @@ void Int::Render() const {
     int value = Value;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, Min, Max, "%d", ImGuiSliderFlags_None);
     UpdateGesturing();
-    if (edited) Action::Primitive::Int::Set{Path, value}.q();
+    if (edited) IssueSet(value);
     HelpMarker();
 }
 void Int::Render(const std::vector<int> &options) const {
@@ -28,7 +28,7 @@ void Int::Render(const std::vector<int> &options) const {
     if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(to_string(option).c_str(), is_selected)) Action::Primitive::Int::Set{Path, option}.q();
+            if (Selectable(to_string(option).c_str(), is_selected)) IssueSet(option);
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();

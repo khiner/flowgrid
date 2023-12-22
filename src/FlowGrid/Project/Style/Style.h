@@ -31,9 +31,7 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
-using StyleProducedAction = Action::Combine<Action::Style::Any, Action::Primitive::Any>;
-
-struct FlowGridStyle : ActionProducerComponent<StyleProducedAction> {
+struct FlowGridStyle : ActionProducerComponent<Action::Style::Any> {
     FlowGridStyle(ArgsT &&);
 
     Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
@@ -50,13 +48,13 @@ protected:
 };
 
 namespace FlowGrid {
-struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
+struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedActionType> {
     using ActionableComponent::ActionableComponent;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    struct ImGuiStyle : ActionProducerComponent<StyleProducedAction>, Component::ChangeListener {
+    struct ImGuiStyle : ActionProducerComponent<ProducedActionType>, Component::ChangeListener {
         ImGuiStyle(ArgsT &&);
         ~ImGuiStyle();
 
@@ -143,7 +141,7 @@ struct Style : ActionableComponent<Action::Style::Any, StyleProducedAction> {
         void Render() const override;
     };
 
-    struct ImPlotStyle : ActionProducerComponent<StyleProducedAction>, Component::ChangeListener {
+    struct ImPlotStyle : ActionProducerComponent<ProducedActionType>, Component::ChangeListener {
         ImPlotStyle(ArgsT &&);
         ~ImPlotStyle();
 

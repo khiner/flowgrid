@@ -1,6 +1,7 @@
 #include "Primitive.h"
 
 #include "Core/Store/Store.h"
+#include "PrimitiveActionQueuer.h"
 
 template<IsPrimitive T> bool Primitive<T>::Exists() const { return RootStore.Exists(Path); }
 template<IsPrimitive T> T Primitive<T>::Get() const { return std::get<T>(RootStore.Get(Path)); }
@@ -16,6 +17,10 @@ template<IsPrimitive T> void Primitive<T>::RenderValueTree(bool annotate, bool a
     FlashUpdateRecencyBackground();
     TreeNode(Name, false, std::format("{}", Value).c_str());
 }
+
+template<IsPrimitive T> void Primitive<T>::IssueSet(const T &value) const {
+    PrimitiveQ.QueueSet(Path, value);
+};
 
 // Explicit instantiations.
 template struct Primitive<bool>;

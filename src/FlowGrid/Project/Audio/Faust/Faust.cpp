@@ -217,8 +217,11 @@ static const string FaustDspPathSegment = "FaustDSP";
 FaustDSPs::FaustDSPs(ArgsT &&args)
     : Vector(std::move(args.Args), [this](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
-          return std::make_unique<FaustDSP>(FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container);
-      }), ActionProducer(std::move(args.Q)) {
+          return std::make_unique<FaustDSP>(
+              FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container
+          );
+      }),
+      ActionProducer(std::move(args.Q)) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);

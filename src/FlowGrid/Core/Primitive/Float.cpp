@@ -21,6 +21,6 @@ void Float::Render() const {
         SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
 
     UpdateGesturing();
-    if (edited) Action::Primitive::Float::Set{Path, value}.q();
+    if (edited) IssueSet(value);
     HelpMarker();
 }

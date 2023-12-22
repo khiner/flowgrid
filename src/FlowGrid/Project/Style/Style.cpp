@@ -5,6 +5,8 @@
 #include "implot.h"
 #include "implot_internal.h"
 
+#include "Core/Primitive/PrimitiveActionQueuer.h"
+
 using namespace ImGui;
 
 namespace FlowGrid {
@@ -198,7 +200,7 @@ void Style::ImGuiStyle::Render() const {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
-            if (Selectable(font->GetDebugName(), font == font_current)) Q(Action::Primitive::Int::Set{FontIndex.Path, n});
+            if (Selectable(font->GetDebugName(), font == font_current)) FontIndex.IssueSet(n);
             PopID();
         }
         EndCombo();
@@ -207,17 +209,17 @@ void Style::ImGuiStyle::Render() const {
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
     {
         bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) Q(Action::Primitive::Float::Set{WindowBorderSize.Path, border ? 1.f : 0.f});
+        if (Checkbox("WindowBorder", &border)) WindowBorderSize.IssueSet(border ? 1.f : 0.f);
     }
     SameLine();
     {
         bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) Q(Action::Primitive::Float::Set{FrameBorderSize.Path, border ? 1.f : 0.f});
+        if (Checkbox("FrameBorder", &border)) FrameBorderSize.IssueSet(border ? 1.f : 0.f);
     }
     SameLine();
     {
         bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) Q(Action::Primitive::Float::Set{PopupBorderSize.Path, border ? 1.f : 0.f});
+        if (Checkbox("PopupBorder", &border)) PopupBorderSize.IssueSet(border ? 1.f : 0.f);
     }
 
     Separator();

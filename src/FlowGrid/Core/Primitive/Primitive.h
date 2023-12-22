@@ -25,7 +25,7 @@ template<IsPrimitive T> struct Primitive : Component {
     bool Exists() const; // Check if exists in store.
     T Get() const; // Get from store.
 
-    virtual void IssueSet(const T &) const {}; // Issue a set action. todo every primitive field should have this.
+    void IssueSet(const T &) const; // Queue a set action.
 
     // Non-mutating set. Only updates store. Used during action application.
     void Set(const T &) const;

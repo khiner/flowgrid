@@ -5,8 +5,6 @@
 #include <__ranges/iota_view.h>
 #include <range/v3/range/conversion.hpp>
 
-#include <ranges>
-
 Enum::Enum(ComponentArgs &&args, std::vector<string> names, int value)
     : Primitive(std::move(args), value), Names(std::move(names)) {}
 Enum::Enum(ComponentArgs &&args, std::function<string(int)> get_name, int value)
@@ -34,7 +32,7 @@ void Enum::Render(const std::vector<int> &options) const {
         for (int option : options) {
             const bool is_selected = option == value;
             const auto &name = OptionName(option);
-            if (Selectable(name.c_str(), is_selected)) Action::Primitive::Enum::Set{Path, option}.q();
+            if (Selectable(name.c_str(), is_selected)) IssueSet(option);
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();
@@ -47,7 +45,7 @@ void Enum::MenuItem() const {
     if (BeginMenu(ImGuiLabel.c_str())) {
         for (u32 i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
-            if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) Action::Primitive::Enum::Set{Path, int(i)}.q();
+            if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) IssueSet(int(i));
             if (is_selected) SetItemDefaultFocus();
         }
         EndMenu();

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Audio/Audio.h"
-#include "Core/Action/ActionConsumer.h"
+#include "Core/Action/ActionProducer.h"
 #include "Core/Action/ActionQueue.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Action/Actions.h"
@@ -32,8 +32,8 @@ struct Plottable {
  * This class fully describes the project at any point in time.
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
  */
-struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any> {
-    Project(Store &, ActionQueue<ActionType> &);
+struct Project : Component, Actionable<Action::Any>, ActionProducer<Action::Any> {
+    Project(Store &, PrimitiveActionQueuer &, ActionProducer::Enqueue);
     ~Project();
 
     // A `ProjectComponent` is a `Component` that can cast the `Root` component pointer to its true `Project` type.
@@ -200,7 +200,7 @@ struct Project : Component, Actionable<Action::Any>, ActionConsumer<Action::Any>
 
     void RenderDebug() const override;
 
-    void ApplyQueuedActions(bool force_commit_gesture = false, bool ignore_actions = false) const;
+    void ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture = false, bool ignore_actions = false) const;
 
 protected:
     void Render() const override;

@@ -178,14 +178,14 @@ struct Faust
 
     const FileDialog &FileDialog;
 
-    SubProducerProp(FaustGraphStyle, GraphStyle);
+    ProducerProp(FaustGraphStyle, GraphStyle);
     Prop(FaustGraphSettings, GraphSettings);
     Prop(FaustParamsStyle, ParamsStyle);
 
-    SubProducerProp_(FaustGraphs, Graphs, "Faust graphs", FileDialog, GraphStyle, GraphSettings);
+    ProducerProp_(FaustGraphs, Graphs, "Faust graphs", FileDialog, GraphStyle, GraphSettings);
     Prop_(FaustParamss, Paramss, "Faust params", ParamsStyle);
     Prop_(FaustLogs, Logs, "Faust logs");
-    SubProducerProp(FaustDSPs, FaustDsps);
+    ProducerProp(FaustDSPs, FaustDsps);
 
 protected:
     void Render() const override;

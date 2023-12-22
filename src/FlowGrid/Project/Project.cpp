@@ -22,7 +22,6 @@ static Patch LatestPatch;
 
 // Project constants:
 static const fs::path InternalPath = ".flowgrid";
-
 // Order matters here, as the first extension is the default project extension.
 static const std::map<ProjectFormat, std::string> ExtensionByProjectFormat{
     {ProjectFormat::ActionFormat, ".fla"},
@@ -52,8 +51,8 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return ret;
 }
 
-Project::Project(Store &store, ActionQueue<ActionType> &action_queue)
-    : Component(store, Windows, Style), ActionConsumer(action_queue),
+Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::Enqueue q)
+    : Component(store, primitive_q, Windows, Style), ActionProducer(std::move(q)),
       HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
     Windows.SetWindowComponents({
         Audio.Graph,
@@ -791,17 +790,17 @@ void Project::Debug::Metrics::Render() const {
     RenderTabs();
 }
 
-void Project::ApplyQueuedActions(bool force_commit_gesture, bool ignore_actions) const {
+void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture, bool ignore_actions) const {
     static ActionMoment<ActionType> action_moment; // For dequeuing.
 
     if (ignore_actions) {
-        while (DQ(action_moment)) {};
+        while (queue.TryDequeue(action_moment)) {};
         return;
     }
 
     const bool gesture_actions_already_present = !ActiveGestureActions.empty();
 
-    while (DQ(action_moment)) {
+    while (queue.TryDequeue(action_moment)) {
         auto &[action, queue_time] = action_moment;
         if (!CanApply(action)) continue;
 

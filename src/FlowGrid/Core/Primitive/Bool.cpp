@@ -3,8 +3,7 @@
 #include "imgui.h"
 
 #include "UI/HelpMarker.h"
-
-void Bool::IssueToggle() const { Action::Primitive::Bool::Toggle{Path}.q(); }
+#include "PrimitiveActionQueuer.h"
 
 void Bool::Apply(const ActionType &action) const {
     Visit(
@@ -12,6 +11,8 @@ void Bool::Apply(const ActionType &action) const {
         [this](const Action::Primitive::Bool::Toggle &) { Set(!Get()); },
     );
 }
+
+void Bool::IssueToggle() const { PrimitiveQ.QueueToggle(Path); }
 
 using namespace ImGui;
 

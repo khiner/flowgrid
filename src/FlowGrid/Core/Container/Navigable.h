@@ -8,8 +8,8 @@
 template<typename T> struct Navigable : Container, Actionable<typename Action::Navigable<T>::Any> {
     using Container::Container;
 
-    // See note in `PrimitiveVector` for an explanation of this `using`.
     using ActionT = typename Action::Navigable<T>;
+    // See note in `PrimitiveVector` for an explanation of this `using`.
     using typename Actionable<typename ActionT::Any>::ActionType;
 
     void Apply(const ActionType &action) const override {

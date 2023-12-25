@@ -838,7 +838,6 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
 }
 
 #define DefineQ(ActionType)                                                                                      \
-    void Action::ActionType::q() const { project.Q(std::move(*this)); }                                          \
     void Action::ActionType::MenuItem() {                                                                        \
         auto instance = Action::ActionType{};                                                                    \
         if (ImGui::MenuItem(GetMenuLabel().c_str(), GetShortcut().c_str(), false, project.CanApply(instance))) { \

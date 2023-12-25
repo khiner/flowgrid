@@ -1,16 +1,23 @@
 #pragma once
 
 #include "Container.h"
+#include "Core/Action/ActionProducer.h"
 #include "Core/Container/PrimitiveVector.h"
 #include "Core/Primitive/UInt.h"
+#include "Core/ProducerComponentArgs.h"
 #include "NavigableAction.h"
 
-template<typename T> struct Navigable : Container, Actionable<typename Action::Navigable<T>::Any> {
-    using Container::Container;
-
+template<typename T> struct Navigable
+    : Container,
+      Actionable<typename Action::Navigable<T>::Any>,
+      ActionProducer<typename Action::Navigable<T>::Any> {
     using ActionT = typename Action::Navigable<T>;
+    using ArgsT = ProducerComponentArgs<typename ActionT::Any>;
     // See note in `PrimitiveVector` for an explanation of this `using`.
     using typename Actionable<typename ActionT::Any>::ActionType;
+    using typename ActionProducer<typename ActionT::Any>::ProducedActionType;
+
+    Navigable(ArgsT &&args) : Container(std::move(args.Args)), ActionProducer<ProducedActionType>(std::move(args.Q)) {}
 
     void Apply(const ActionType &action) const override {
         Visit(
@@ -28,10 +35,10 @@ template<typename T> struct Navigable : Container, Actionable<typename Action::N
         );
     }
 
-    template<typename U> void IssuePush(U &&value) const { typename ActionT::Push{Path, std::forward<U>(value)}.q(); }
-    void IssueMoveTo(u32 index) const { typename ActionT::MoveTo{Path, index}.q(); }
-    void IssueStepForward() const { typename ActionT::MoveTo{Path, u32(Cursor) + 1}.q(); }
-    void IssueStepBackward() const { typename ActionT::MoveTo{Path, u32(Cursor) - 1}.q(); }
+    template<typename U> void IssuePush(U &&value) const { ActionProducer<ProducedActionType>::Q(typename ActionT::Push{Path, std::forward<U>(value)}); }
+    void IssueMoveTo(u32 index) const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Path, index}); }
+    void IssueStepForward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Path, u32(Cursor) + 1}); }
+    void IssueStepBackward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Path, u32(Cursor) - 1}); }
 
     inline auto begin() { return Value.begin(); }
     inline auto end() { return Value.end(); }

@@ -152,7 +152,10 @@ struct DeviceNode : AudioGraphNode {
             if (BeginCombo(ImGuiLabel.c_str(), device_data_format.ToString().c_str())) {
                 for (const auto &df : device->Device->GetNativeFormats()) {
                     const bool is_selected = device_data_format == df;
-                    if (Selectable(df.ToString().c_str(), is_selected)) Action::AudioGraph::SetDeviceDataFormat{Id, df.SampleFormat, df.Channels, df.SampleRate}.q();
+                    if (Selectable(df.ToString().c_str(), is_selected)) {
+                        // xxx todo bring this back.
+                        // Action::AudioGraph::SetDeviceDataFormat{Id, df.SampleFormat, df.Channels, df.SampleRate}.q();
+                    }
                     if (is_selected) SetItemDefaultFocus();
                 }
                 EndCombo();
@@ -824,7 +827,7 @@ void AudioGraph::Connections::Render() const {
 
             const auto cell_interaction_flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (cell_interaction_flags & InteractionFlags_Clicked) {
-                Action::AdjacencyList::ToggleConnection{Path, out_node->Id, in_node->Id}.q();
+                Q(Action::AdjacencyList::ToggleConnection{Path, out_node->Id, in_node->Id});
             }
 
             const bool is_connected = IsConnected(out_node->Id, in_node->Id);

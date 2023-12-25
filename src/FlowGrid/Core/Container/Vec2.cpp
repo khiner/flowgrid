@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include "Core/Store/Store.h"
+#include "Core/Primitive/PrimitiveActionQueuer.h"
 
 using namespace ImGui;
 
@@ -55,7 +56,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 values = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&values, Min, Max, Format, flags);
     Component::UpdateGesturing();
-    if (edited) Action::Vec2::Set{Path, {values.x, values.y}}.q();
+    if (edited) PrimitiveQ.Enqueue(Action::Vec2::Set{Path, {values.x, values.y}});
     HelpMarker();
 }
 
@@ -120,7 +121,7 @@ json Vec2Linked::ToJson() const {
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
     bool linked = Linked;
-    if (Checkbox("Linked", &linked)) Action::Vec2::ToggleLinked{Path}.q();
+    if (Checkbox("Linked", &linked)) PrimitiveQ.Enqueue(Action::Vec2::ToggleLinked{Path});
     PopID();
 
     SameLine();
@@ -131,9 +132,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (edited) {
         if (Linked) {
             const float changed_value = xy.x != X() ? xy.x : xy.y;
-            Action::Vec2::SetAll{Path, changed_value}.q();
+            PrimitiveQ.Enqueue(Action::Vec2::SetAll{Path, changed_value});
         } else {
-            Action::Vec2::Set{Path, {xy.x, xy.y}}.q();
+            PrimitiveQ.Enqueue(Action::Vec2::Set{Path, {xy.x, xy.y}});
         }
     }
     HelpMarker();

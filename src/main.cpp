@@ -9,7 +9,7 @@
 Store store{};
 ActionQueue<Action::Any> action_queue{};
 ActionProducer<Action::Any>::EnqueueFn q = [](auto &&a) -> bool { return action_queue.Enqueue(std::move(a)); };
-ActionProducer<Action::Primitive::Any>::EnqueueFn primitive_q = [](auto &&action) -> bool {
+ActionProducer<PrimitiveActionQueuer::ProducedActionType>::EnqueueFn primitive_q = [](auto &&action) -> bool {
     return std::visit([](auto &&a) -> bool { return action_queue.Enqueue(std::move(a)); }, std::move(action));
 };
 PrimitiveActionQueuer primitive_queuer{primitive_q};

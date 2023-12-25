@@ -184,10 +184,10 @@ void Style::ImPlotStyle::ColorsClassic() const {
     MinorAlpha.Set(0.5f);
 }
 
-Style::ImGuiStyle::ImGuiColors::ImGuiColors(ComponentArgs &&args)
+Style::ImGuiStyle::ImGuiColors::ImGuiColors(ArgsT &&args)
     : Colors(std::move(args), ImGuiCol_COUNT, ImGui::GetStyleColorName, false) {}
 
-Style::ImPlotStyle::ImPlotColors::ImPlotColors(ComponentArgs &&args)
+Style::ImPlotStyle::ImPlotColors::ImPlotColors(ArgsT &&args)
     : Colors(std::move(args), ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::ImGuiStyle::Render() const {

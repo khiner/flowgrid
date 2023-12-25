@@ -186,7 +186,7 @@ struct Project : Component, Actionable<Action::Any>, ActionProducer<Action::Any>
     Prop(ProjectSettings, Settings);
     Prop(Info, Info);
 
-    Prop(Demo, Demo);
+    Prop(Demo, Demo, FileDialog);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
     const Menu MainMenu{

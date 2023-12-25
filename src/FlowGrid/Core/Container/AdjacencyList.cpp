@@ -6,6 +6,8 @@
 
 #include "Core/Store/Store.h"
 
+AdjacencyList::AdjacencyList(ArgsT &&args) : Container(std::move(args.Args)), ActionProducer(std::move(args.Q)) {}
+
 IdPairs AdjacencyList::Get() const { return RootStore.IdPairs(Path); }
 
 void AdjacencyList::Add(IdPair &&id_pair) const {

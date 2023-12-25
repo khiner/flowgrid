@@ -78,9 +78,11 @@ FaustGraphs::FaustGraphs(ArgsT &&args, const ::FileDialog &file_dialog, const Fa
               Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
               Menu("View", {settings.HoverFlags}),
           }),
-          [](auto &&child_args) {
+          [this](auto &&child_args) {
               const auto *graphs = static_cast<const FaustGraphs *>(child_args.Parent);
-              return std::make_unique<FaustGraph>(std::move(child_args), graphs->Style, graphs->Settings);
+              return std::make_unique<FaustGraph>(
+                  FaustGraph::ArgsT{std::move(child_args), CreateProducer<FaustGraph::ProducedActionType>()}, graphs->Style, graphs->Settings
+              );
           }
       ),
       ActionProducer(std::move(args.Q)),

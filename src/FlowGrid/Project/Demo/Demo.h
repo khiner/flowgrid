@@ -3,7 +3,7 @@
 #include "Project/FileDialog/FileDialog.h"
 
 struct Demo : Component {
-    Demo(ComponentArgs &&);
+    Demo(ComponentArgs &&, const FileDialog &);
 
     struct ImGuiDemo : Component {
         using Component::Component;
@@ -18,9 +18,10 @@ struct Demo : Component {
         void Render() const override;
     };
 
+    const FileDialog &Dialog;
     Prop(ImGuiDemo, ImGui);
     Prop(ImPlotDemo, ImPlot);
-    Prop(FileDialog::Demo, FileDialog);
+    Prop(FileDialog::Demo, FileDialog, Dialog);
 
 protected:
     void Render() const override;

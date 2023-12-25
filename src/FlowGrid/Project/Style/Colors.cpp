@@ -12,8 +12,8 @@
 
 using namespace ImGui;
 
-Colors::Colors(ComponentArgs &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
-    : PrimitiveVector(std::move(args)), GetName(get_name), AllowAuto(allow_auto) {
+Colors::Colors(ArgsT &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
+    : PrimitiveVector(std::move(args.Args)), ActionProducer(std::move(args.Q)), GetName(get_name), AllowAuto(allow_auto) {
     PrimitiveVector::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<u32>>);
 }
 
@@ -59,7 +59,7 @@ void Colors::Render() const {
             // todo use auto for FG colors (link to ImGui colors)
             if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) Action::PrimitiveVector<u32>::SetAt{Path, i, is_auto ? mapped_value : AutoColor}.q();
+                if (Button("Auto")) Q(Action::PrimitiveVector<u32>::SetAt{Path, i, is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
@@ -75,7 +75,7 @@ void Colors::Render() const {
 
             PopID();
 
-            if (changed) Action::PrimitiveVector<u32>::SetAt{Path, i, ColorConvertFloat4ToU32(value)}.q();
+            if (changed) Q(Action::PrimitiveVector<u32>::SetAt{Path, i, ColorConvertFloat4ToU32(value)});
         }
     }
     if (AllowAuto) {

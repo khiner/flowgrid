@@ -17,10 +17,15 @@ struct FileDialog : ActionableComponent<Action::FileDialog::Any> {
     void Set(const FileDialogData &) const;
 
     struct Demo : Component {
-        using Component::Component;
+        Demo(ComponentArgs &&, const FileDialog &);
+
+        const FileDialog &FileDialog;
 
     protected:
         void Render() const override;
+
+    private:
+        void OpenDialog(const FileDialogData &) const;
     };
 
     inline static bool Visible;

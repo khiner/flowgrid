@@ -1207,8 +1207,8 @@ std::optional<string> FaustGraph::GetBoxInfo(u32 id) const {
     return GetBoxType(node->FaustTree); // Just type for now.
 }
 
-FaustGraph::FaustGraph(ComponentArgs &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)
-    : Component(std::move(args)), Style(style), Settings(settings) {}
+FaustGraph::FaustGraph(ArgsT &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)
+    : ActionProducerComponent(std::move(args)), Style(style), Settings(settings) {}
 
 FaustGraph::~FaustGraph() {}
 

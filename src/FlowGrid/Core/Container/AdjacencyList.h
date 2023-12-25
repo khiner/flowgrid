@@ -2,11 +2,15 @@
 
 #include "AdjacencyListAction.h"
 #include "Container.h"
+#include "Core/Action/ActionProducer.h"
 #include "Core/Action/Actionable.h"
+#include "Core/ProducerComponentArgs.h"
 #include "Core/Store/IdPair.h"
 
-struct AdjacencyList : Container, Actionable<Action::AdjacencyList::Any> {
-    using Container::Container;
+struct AdjacencyList : Container, Actionable<Action::AdjacencyList::Any>, ActionProducer<Action::AdjacencyList::Any> {
+    using ArgsT = ProducerComponentArgs<ProducedActionType>;
+
+    AdjacencyList(ArgsT &&);
 
     using Edge = IdPair; // Source, destination
 

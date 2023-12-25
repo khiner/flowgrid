@@ -48,7 +48,7 @@ protected:
 struct FaustGraphs
     : Vector<FaustGraph>,
       Actionable<Action::Faust::Graph::Any>,
-      ActionProducer<Action::Faust::Graph::Any>,
+      ActionProducer<FaustGraph::ProducedActionType>,
       Component::ChangeListener {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
@@ -155,7 +155,7 @@ private:
 };
 
 struct Faust
-    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Faust::Any, Action::AudioGraph::CreateFaustNode>>,
+    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
       FaustDSPContainer {
     Faust(ArgsT &&, const FileDialog &);
 

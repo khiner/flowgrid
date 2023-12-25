@@ -39,7 +39,9 @@ void FileDialog::Set(const FileDialogData &data) const {
     Flags = data.flags;
 }
 
-static void OpenDialog(const FileDialogData &data) { Action::FileDialog::Open{json(data).dump()}.q(); }
+void FileDialog::Demo::OpenDialog(const FileDialogData &data) const {
+    FileDialog.Q(Action::FileDialog::Open{json(data).dump()});
+}
 
 using namespace ImGui;
 
@@ -103,6 +105,8 @@ void FileDialog::Render() const {
         if (Dialog->IsOk()) Q(Action::FileDialog::Select{Dialog->GetFilePathName()});
     }
 }
+
+FileDialog::Demo::Demo(ComponentArgs &&args, const ::FileDialog &dialog) : Component(std::move(args)), FileDialog(dialog) {}
 
 void FileDialog::Demo::Render() const {
 #ifdef USE_EXPLORATION_BY_KEYS

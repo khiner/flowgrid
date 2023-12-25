@@ -31,11 +31,11 @@ enum FlowGridCol_ {
 };
 using FlowGridCol = int;
 
-struct FlowGridStyle : ActionProducerComponent<Action::Style::Any> {
+struct FlowGridStyle : ActionProducerComponent<Action::Combine<Action::Style::Any, Colors::ProducedActionType>> {
     FlowGridStyle(ArgsT &&);
 
     Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
-    Prop(Colors, Colors, FlowGridCol_COUNT, GetColorName);
+    ProducerProp(Colors, Colors, FlowGridCol_COUNT, GetColorName);
 
     void ColorsDark() const;
     void ColorsLight() const;
@@ -63,7 +63,7 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImGuiColors : Colors {
-            ImGuiColors(ComponentArgs &&);
+            ImGuiColors(ArgsT &&);
         };
 
         void OnComponentChanged() override { IsChanged = true; }
@@ -135,7 +135,7 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
         Prop(Float, MouseCursorScale, 1);
         Prop(Float, ColumnsMinSpacing, 6);
 
-        Prop(ImGuiColors, Colors);
+        ProducerProp(ImGuiColors, Colors);
 
     protected:
         void Render() const override;
@@ -150,7 +150,7 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
         static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImPlotColors : Colors {
-            ImPlotColors(ComponentArgs &&);
+            ImPlotColors(ArgsT &&);
         };
 
         void OnComponentChanged() override { IsChanged = true; }
@@ -197,7 +197,7 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
         Prop(Vec2Linked, AnnotationPadding, {2, 2}, 0, 5, "%.0f");
         Prop(Vec2Linked, FitPadding, {0, 0}, 0, 0.2, "%.2f");
 
-        Prop(ImPlotColors, Colors);
+        ProducerProp(ImPlotColors, Colors);
         Prop(Bool, UseLocalTime);
         Prop(Bool, UseISO8601);
         Prop(Bool, Use24HourClock);

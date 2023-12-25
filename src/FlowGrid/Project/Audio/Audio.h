@@ -7,7 +7,7 @@
 
 struct ma_device;
 
-struct Audio : ActionableComponent<Action::Audio::Any> {
+struct Audio : ActionableComponent<Action::Audio::Any, Action::Combine<Action::Audio::Any, Action::AdjacencyList::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType>> {
     Audio(ArgsT &&, const FileDialog &);
     ~Audio();
 

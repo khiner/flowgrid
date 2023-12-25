@@ -40,7 +40,7 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraphStyle : ActionableComponent<Action::Faust::GraphStyle::Any> {
+struct FaustGraphStyle : ActionableComponent<Action::Faust::GraphStyle::Any, Action::Combine<Action::Faust::GraphStyle::Any, Colors::ProducedActionType>> {
     FaustGraphStyle(ArgsT &&);
 
     void Apply(const ActionType &) const override;
@@ -82,7 +82,7 @@ struct FaustGraphStyle : ActionableComponent<Action::Faust::GraphStyle::Any> {
     Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
     Prop(Float, InverterRadius, 3, 1, 5);
 
-    Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
+    ProducerProp(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
     void ColorsDark() const;
     void ColorsClassic() const;

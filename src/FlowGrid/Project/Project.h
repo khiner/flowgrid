@@ -1,9 +1,8 @@
 #pragma once
 
 #include "Audio/Audio.h"
-#include "Core/Action/ActionProducer.h"
 #include "Core/Action/ActionQueue.h"
-#include "Core/Action/Actionable.h"
+#include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
 #include "Core/ImGuiSettings.h"
 #include "Core/Windows.h"
@@ -32,7 +31,7 @@ struct Plottable {
  * This class fully describes the project at any point in time.
  * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
  */
-struct Project : Component, Actionable<Action::Any>, ActionProducer<Action::Any> {
+struct Project : Component, ActionableProducer<Action::Any> {
     Project(Store &, PrimitiveActionQueuer &, ActionProducer::Enqueue);
     ~Project();
 

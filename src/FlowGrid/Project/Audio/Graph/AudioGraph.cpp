@@ -438,7 +438,7 @@ u32 AudioGraph::ChannelConverterNode::ChannelCount(IO io) const {
 
 AudioGraph::AudioGraph(ProducerComponentArgs<ProducedActionType> &&args)
     : AudioGraphNode(std::move(args.Args), [this] { return CreateNode(); }),
-      ActionProducer(std::move(args.Q)) {
+      ActionableProducer(std::move(args.Q)) {
     IsActive = true; // The graph is always active, since it is always connected to itself.
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 

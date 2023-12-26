@@ -6,7 +6,7 @@
 
 #include "Core/Store/Store.h"
 
-AdjacencyList::AdjacencyList(ArgsT &&args) : Container(std::move(args.Args)), ActionProducer(std::move(args.Q)) {}
+AdjacencyList::AdjacencyList(ArgsT &&args) : Container(std::move(args.Args)), ActionableProducer(std::move(args.Q)) {}
 
 IdPairs AdjacencyList::Get() const { return RootStore.IdPairs(Path); }
 

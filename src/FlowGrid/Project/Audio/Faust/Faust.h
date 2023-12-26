@@ -8,8 +8,8 @@
 #include "FaustParamsStyle.h"
 #include "Project/Audio/Graph/AudioGraphAction.h"
 
-#include "Core/ActionableComponent.h"
 #include "Core/ActionProducerComponent.h"
+#include "Core/ActionableComponent.h"
 #include "Core/Container/Vector.h"
 #include "Core/Primitive/TextBuffer.h"
 
@@ -47,8 +47,7 @@ protected:
 
 struct FaustGraphs
     : Vector<FaustGraph>,
-      Actionable<Action::Faust::Graph::Any>,
-      ActionProducer<FaustGraph::ProducedActionType>,
+      ActionableProducer<Action::Faust::Graph::Any, FaustGraph::ProducedActionType>,
       Component::ChangeListener {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
@@ -140,8 +139,7 @@ private:
 
 struct FaustDSPs
     : Vector<FaustDSP>,
-      Actionable<Action::Faust::DSP::Any>,
-      ActionProducer<FaustDspProducedActionType> {
+      ActionableProducer<Action::Faust::DSP::Any, FaustDspProducedActionType> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
     FaustDSPs(ArgsT &&);

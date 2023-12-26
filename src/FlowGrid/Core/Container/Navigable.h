@@ -1,23 +1,20 @@
 #pragma once
 
 #include "Container.h"
-#include "Core/Action/ActionProducer.h"
+#include "Core/Action/ActionableProducer.h"
 #include "Core/Container/PrimitiveVector.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/ProducerComponentArgs.h"
 #include "NavigableAction.h"
 
-template<typename T> struct Navigable
-    : Container,
-      Actionable<typename Action::Navigable<T>::Any>,
-      ActionProducer<typename Action::Navigable<T>::Any> {
+template<typename T> struct Navigable : Container, ActionableProducer<typename Action::Navigable<T>::Any> {
     using ActionT = typename Action::Navigable<T>;
     using ArgsT = ProducerComponentArgs<typename ActionT::Any>;
     // See note in `PrimitiveVector` for an explanation of this `using`.
     using typename Actionable<typename ActionT::Any>::ActionType;
     using typename ActionProducer<typename ActionT::Any>::ProducedActionType;
 
-    Navigable(ArgsT &&args) : Container(std::move(args.Args)), ActionProducer<ProducedActionType>(std::move(args.Q)) {}
+    Navigable(ArgsT &&args) : Container(std::move(args.Args)), ActionableProducer<ProducedActionType>(std::move(args.Q)) {}
 
     void Apply(const ActionType &action) const override {
         Visit(

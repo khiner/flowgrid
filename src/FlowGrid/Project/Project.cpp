@@ -52,7 +52,7 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
 }
 
 Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::Enqueue q)
-    : Component(store, primitive_q, Windows, Style), ActionProducer(std::move(q)),
+    : Component(store, primitive_q, Windows, Style), ActionableProducer(std::move(q)),
       HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
     Windows.SetWindowComponents({
         Audio.Graph,

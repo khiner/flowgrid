@@ -85,7 +85,7 @@ FaustGraphs::FaustGraphs(ArgsT &&args, const ::FileDialog &file_dialog, const Fa
               );
           }
       ),
-      ActionProducer(std::move(args.Q)),
+      ActionableProducer(std::move(args.Q)),
       FileDialog(file_dialog),
       Style(style), Settings(settings) {
     Style.FoldComplexity.RegisterChangeListener(this);
@@ -223,7 +223,7 @@ FaustDSPs::FaustDSPs(ArgsT &&args)
               FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container
           );
       }),
-      ActionProducer(std::move(args.Q)) {
+      ActionableProducer(std::move(args.Q)) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);

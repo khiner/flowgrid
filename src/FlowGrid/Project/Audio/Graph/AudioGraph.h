@@ -22,8 +22,7 @@ inline static const std::string FaustNodeTypeId = "Faust";
 
 struct AudioGraph
     : AudioGraphNode,
-      Actionable<Action::AudioGraph::Any>,
-      ActionProducer<Action::Combine<Action::AudioGraph::Any, Action::AdjacencyList::Any>>,
+      ActionableProducer<Action::AudioGraph::Any, Action::Combine<Action::AudioGraph::Any, Action::AdjacencyList::Any>>,
       FaustDSPListener,
       AudioGraphNode::Listener {
     AudioGraph(ProducerComponentArgs<ProducedActionType> &&);

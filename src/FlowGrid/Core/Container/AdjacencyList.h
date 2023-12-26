@@ -2,17 +2,15 @@
 
 #include "AdjacencyListAction.h"
 #include "Container.h"
-#include "Core/Action/ActionProducer.h"
-#include "Core/Action/Actionable.h"
+#include "Core/Action/ActionableProducer.h"
 #include "Core/ProducerComponentArgs.h"
 #include "Core/Store/IdPair.h"
 
-struct AdjacencyList : Container, Actionable<Action::AdjacencyList::Any>, ActionProducer<Action::AdjacencyList::Any> {
+struct AdjacencyList : Container, ActionableProducer<Action::AdjacencyList::Any> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
+    using Edge = IdPair; // Source, destination
 
     AdjacencyList(ArgsT &&);
-
-    using Edge = IdPair; // Source, destination
 
     void Apply(const ActionType &action) const override {
         Visit(

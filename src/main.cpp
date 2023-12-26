@@ -6,19 +6,10 @@
 #include "UI/Fonts.h"
 #include "UI/UIContext.h"
 
-Store store{};
-ActionQueue<Action::Any> action_queue{};
-ActionProducer<Action::Any>::EnqueueFn q = [](auto &&a) -> bool { return action_queue.Enqueue(std::move(a)); };
-ActionProducer<PrimitiveActionQueuer::ProducedActionType>::EnqueueFn primitive_q = [](auto &&action) -> bool {
-    return std::visit([](auto &&a) -> bool { return action_queue.Enqueue(std::move(a)); }, std::move(action));
-};
-PrimitiveActionQueuer primitive_queuer{primitive_q};
-Project MainProject{store, primitive_queuer, q};
-
-bool Tick(const UIContext &ui) {
+bool Tick(const Project &project, const UIContext &ui) {
     static auto &io = ImGui::GetIO();
 
-    bool running = ui.Tick(MainProject);
+    bool running = ui.Tick(project);
     if (running && io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not actually changed.
         // E.g. if you press and hold a window-resize bar, it will set this flag every frame,
@@ -26,8 +17,8 @@ bool Tick(const UIContext &ui) {
         // Rather than modifying the ImGui fork to not set this flag in all such cases
         // (which would likely be a rabbit hole), we just check for diffs here.
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        const auto &patch = MainProject.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext());
-        if (!patch.Empty()) MainProject.Q(Action::Store::ApplyPatch{patch});
+        const auto &patch = project.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext());
+        if (!patch.Empty()) project.Q(Action::Store::ApplyPatch{patch});
         io.WantSaveIniSettings = false;
     }
 
@@ -35,7 +26,16 @@ bool Tick(const UIContext &ui) {
 }
 
 int main() {
-    const UIContext ui{MainProject.ImGuiSettings, MainProject.Style}; // Initialize ImGui and other UI state.
+    Store store{};
+    ActionQueue<Action::Any> queue{};
+    ActionProducer<Action::Any>::EnqueueFn q = [&queue](auto &&a) -> bool { return queue.Enqueue(std::move(a)); };
+    ActionProducer<PrimitiveActionQueuer::ProducedActionType>::EnqueueFn primitive_q = [&queue](auto &&action) -> bool {
+        return std::visit([&queue](auto &&a) -> bool { return queue.Enqueue(std::move(a)); }, std::move(action));
+    };
+    PrimitiveActionQueuer primitive_queuer{primitive_q};
+    Project project{store, primitive_queuer, q};
+
+    const UIContext ui{project.ImGuiSettings, project.Style}; // Initialize ImGui and other UI state.
     Component::gFonts.Init(); // Must be done after initializing ImGui.
     ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
 
@@ -49,17 +49,17 @@ int main() {
 
     {
         // Relying on these rendering side effects up front is not great.
-        Tick(ui); // Rendering the first frame has side effects like creating dockspaces & windows.
+        Tick(project, ui); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        Tick(ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        MainProject.ApplyQueuedActions(action_queue, true);
+        Tick(project, ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        project.ApplyQueuedActions(queue, true);
     }
 
-    MainProject.OnApplicationLaunch();
+    project.OnApplicationLaunch();
 
-    while (Tick(ui)) {
+    while (Tick(project, ui)) {
         // Disable all actions while the file dialog is open.
-        MainProject.ApplyQueuedActions(action_queue, false, MainProject.FileDialog.Visible);
+        project.ApplyQueuedActions(queue, false, project.FileDialog.Visible);
     }
 
     IGFD::Uninit();

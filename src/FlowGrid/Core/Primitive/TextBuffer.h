@@ -7,7 +7,7 @@
 struct TextEditor;
 
 struct TextBuffer : Primitive<string>, Actionable<Action::TextBuffer::Any> {
-    TextBuffer(ComponentArgs &&, string_view value = "");
+    TextBuffer(ComponentArgs &&, const Menu &file_menu, string_view value = "");
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;
@@ -24,5 +24,6 @@ private:
     void Render() const override;
     void RenderMenu() const;
 
+    const Menu &FileMenu;
     std::unique_ptr<TextEditor> Editor;
 };

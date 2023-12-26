@@ -22,7 +22,7 @@ template<typename T> struct ActionProducer {
         return std::visit([&action](auto &&q) -> bool { return q(std::move(action)); }, q);
     }
     bool Q(const ProducedActionType &action) const {
-        return std::visit([&action](auto &&q) -> bool { return q(action); }, q);
+        return std::visit([&action](auto &&q) -> bool { return q(ProducedActionType{action}); }, q);
     }
 
     // `SubProducer` supports action producers that only know about a subset action type (an action variant composed

@@ -15,14 +15,10 @@ ActionProducer<PrimitiveActionQueuer::ProducedActionType>::EnqueueFn primitive_q
 PrimitiveActionQueuer primitive_queuer{primitive_q};
 Project MainProject{store, primitive_queuer, q};
 
-// `project` is the only remaining global variable.
-// I "just" need to finish refactoring action queueing to get rid of this.
-const Project &project = MainProject;
-
 bool Tick(const UIContext &ui) {
     static auto &io = ImGui::GetIO();
 
-    bool running = ui.Tick(project);
+    bool running = ui.Tick(MainProject);
     if (running && io.WantSaveIniSettings) {
         // ImGui sometimes sets this flags when settings have not actually changed.
         // E.g. if you press and hold a window-resize bar, it will set this flag every frame,

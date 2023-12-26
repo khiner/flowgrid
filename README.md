@@ -120,7 +120,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
     (used for undo/redo, and for debugging/inspection/monitoring)
 - [json](https://github.com/nlohmann/json): state serialization
 - [ConcurrentQueue](https://github.com/cameron314/concurrentqueue): the main action queue
-  - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue, via the global `q` method.
+  - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue.
 
 ### C++ extensions
 

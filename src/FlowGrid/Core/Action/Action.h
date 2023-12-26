@@ -99,6 +99,12 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     fs::path GetComponentPath() const {
         return Call([](auto &a) { return a.GetComponentPath(); });
     }
+    std::string GetMenuLabel() const {
+        return Call([](auto &a) { return a.GetMenuLabel(); });
+    }
+    std::string GetShortcut() const {
+        return Call([](auto &a) { return a.GetShortcut(); });
+    }
 
     /**
      Provided actions are assumed to be chronologically consecutive.

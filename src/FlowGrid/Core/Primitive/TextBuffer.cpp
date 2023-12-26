@@ -3,14 +3,11 @@
 #include "imgui.h"
 
 #include "Core/Windows.h"
-#include "Project/Audio/Faust/FaustAction.h"
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/Fonts.h"
 
-static const Menu FileMenu = {"File", {Action::Faust::File::ShowOpenDialog::MenuItem, Action::Faust::File::ShowSaveDialog::MenuItem}};
-
-TextBuffer::TextBuffer(ComponentArgs &&args, string_view value)
-    : Primitive(std::move(args), string(value)), Editor(std::make_unique<TextEditor>()) {
+TextBuffer::TextBuffer(ComponentArgs &&args, const Menu &file_menu, string_view value)
+    : Primitive(std::move(args), string(value)), FileMenu(file_menu), Editor(std::make_unique<TextEditor>()) {
     Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Cpp);
 }
 

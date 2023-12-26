@@ -11,6 +11,7 @@
 #include "Core/Primitive/PrimitiveVariant.h"
 #include "Core/Store/Patch/PatchOp.h"
 #include "Helper/Paths.h"
+#include "MenuItemDrawable.h"
 
 using json = nlohmann::json;
 
@@ -28,10 +29,6 @@ struct Style;
 }
 struct FlowGridStyle;
 struct Windows;
-
-struct MenuItemDrawable {
-    virtual void MenuItem() const = 0;
-};
 
 struct Menu {
     using Item = std::variant<Menu, std::reference_wrapper<const MenuItemDrawable>, std::function<void()>>;

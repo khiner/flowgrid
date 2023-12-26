@@ -75,7 +75,7 @@ FaustGraphs::FaustGraphs(ArgsT &&args, const ::FileDialog &file_dialog, const Fa
     : Vector(
           std::move(args.Args),
           Menu({
-              Menu("File", {Action::Faust::Graph::ShowSaveSvgDialog::MenuItem}),
+              Menu("File", {ShowSaveSvgDialogMenuItem}),
               Menu("View", {settings.HoverFlags}),
           }),
           [this](auto &&child_args) {
@@ -144,8 +144,8 @@ std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
-FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container)
-    : ActionProducerComponent(std::move(args)), Container(container) {
+FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container, const Menu &file_menu)
+    : ActionProducerComponent(std::move(args)), FileMenu(file_menu), Container(container) {
     Code.RegisterChangeListener(this);
     Init();
 }
@@ -220,7 +220,7 @@ FaustDSPs::FaustDSPs(ArgsT &&args)
     : Vector(std::move(args.Args), [this](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
           return std::make_unique<FaustDSP>(
-              FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container
+              FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container, container->FileMenu
           );
       }),
       ActionableProducer(std::move(args.Q)) {

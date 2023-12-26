@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Audio/Audio.h"
+#include "Core/Action/ActionMenuItem.h"
 #include "Core/Action/ActionQueue.h"
 #include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
@@ -28,9 +29,10 @@ struct Plottable {
 };
 
 /**
- * This class fully describes the project at any point in time.
- * An immutable reference to the single source-of-truth project state `const Project &project` is defined at the bottom of this file.
- */
+This class fully describes the project at any point in time.
+It is a structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, PrimitiveVariant>`),
+along with additional metadata about each state member, such as its `Path`/`ID`/`Name`.
+*/
 struct Project : Component, ActionableProducer<Action::Any> {
     Project(Store &, PrimitiveActionQueuer &, ActionProducer::Enqueue);
     ~Project();
@@ -188,10 +190,35 @@ struct Project : Component, ActionableProducer<Action::Any> {
     Prop(Demo, Demo, FileDialog);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
+    ActionMenuItem<ActionType>
+        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}},
+        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}},
+        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}},
+        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}},
+        SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
+        UndoMenuItem{*this, Action::Project::Undo{}},
+        RedoMenuItem{*this, Action::Project::Redo{}};
+
     const Menu MainMenu{
         {
-            Menu("File", {Action::Project::OpenEmpty::MenuItem, Action::Project::ShowOpenDialog::MenuItem, [this]() { OpenRecentProjectMenuItem(); }, Action::Project::OpenDefault::MenuItem, Action::Project::SaveCurrent::MenuItem, Action::Project::SaveDefault::MenuItem}),
-            Menu("Edit", {Action::Project::Undo::MenuItem, Action::Project::Redo::MenuItem}),
+            Menu(
+                "File",
+                {
+                    OpenEmptyMenuItem,
+                    ShowOpenDialogMenuItem,
+                    [this]() { OpenRecentProjectMenuItem(); },
+                    OpenDefaultMenuItem,
+                    SaveCurrentMenuItem,
+                    SaveDefaultMenuItem,
+                }
+            ),
+            Menu(
+                "Edit",
+                {
+                    UndoMenuItem,
+                    RedoMenuItem,
+                }
+            ),
             [this] { return WindowMenuItem(); },
         },
         true
@@ -217,16 +244,3 @@ private:
 
     void WindowMenuItem() const;
 };
-
-/**
-Declare global read-only accessor for the canonical state instance `project`.
-
-`project` is a read-only structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, PrimitiveVariant>`).
-It provides a complete nested struct representation of the state, along with additional metadata about each state member, such as its `Path`/`ID`/`Name`/`Info`.
-Basically, it contains all data for each state member except its _actual value_ (a `Primitive`, struct of `Primitive`s, or collection of either).
-(Actually, each primitive leaf value is cached on its respective `Field`, but this is a technicality - the `Store` is conceptually the source of truth.)
-
-`project` has an immutable assignment operator, which return a modified copy of the `Store` value resulting from applying the assignment to the provided `Store`.
-(Note that this is only _conceptually_ a copy - see the [application architecture readme section](https://github.com/khiner/flowgrid#application-architecture) for more details.)
-*/
-extern const Project &project;

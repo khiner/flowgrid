@@ -8,6 +8,7 @@
 #include "FaustParamsStyle.h"
 #include "Project/Audio/Graph/AudioGraphAction.h"
 
+#include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionProducerComponent.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Container/Vector.h"
@@ -71,6 +72,9 @@ struct FaustGraphs
 
     void OnComponentChanged() override;
 
+    ActionMenuItem<ActionType>
+        ShowSaveSvgDialogMenuItem{*this, CreateProducer<ActionType>(), Action::Faust::Graph::ShowSaveSvgDialog{}};
+
     const FileDialog &FileDialog;
     const FaustGraphStyle &Style;
     const FaustGraphSettings &Settings;
@@ -106,12 +110,13 @@ using FaustDspProducedActionType = Action::Append<Action::Faust::DSP::Any, typen
 // `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
 struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component::ChangeListener {
-    FaustDSP(ArgsT &&, FaustDSPContainer &);
+    FaustDSP(ArgsT &&, FaustDSPContainer &, const Menu &file_menu);
     ~FaustDSP();
 
     void OnComponentChanged() override;
 
-    Prop_(TextBuffer, Code, "Faust code", R"#(import("stdfaust.lib");
+    const Menu &FileMenu;
+    Prop_(TextBuffer, Code, "Faust code", FileMenu, R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
    vslider("window (samples)", 1000, 50, 10000, 1),
    vslider("xfade (samples)", 10, 1, 10000, 1),
@@ -175,6 +180,18 @@ struct Faust
     inline static std::unordered_set<FaustDSPListener *> DspChangeListeners;
 
     const FileDialog &FileDialog;
+
+    ActionMenuItem<ActionType>
+        ShowOpenDialogMenuItem{*this, CreateProducer<ActionType>(), Action::Faust::File::ShowOpenDialog{}},
+        ShowSaveDialogMenuItem{*this, CreateProducer<ActionType>(), Action::Faust::File::ShowSaveDialog{}};
+
+    const Menu FileMenu{
+        "File",
+        {
+            ShowOpenDialogMenuItem,
+            ShowSaveDialogMenuItem,
+        }
+    };
 
     ProducerProp(FaustGraphStyle, GraphStyle);
     Prop(FaustGraphSettings, GraphSettings);

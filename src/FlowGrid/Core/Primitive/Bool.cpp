@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-#include "UI/HelpMarker.h"
 #include "PrimitiveActionQueuer.h"
+#include "UI/HelpMarker.h"
 
 void Bool::Apply(const ActionType &action) const {
     Visit(

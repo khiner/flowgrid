@@ -6,18 +6,26 @@
 #include "imgui.h"
 
 template<typename ActionType> struct ActionMenuItem : MenuItemDrawable {
-    ActionMenuItem(const Actionable<ActionType> &actionable, ActionProducer<ActionType>::EnqueueFn q, ActionType &&action = {})
+    using EnqueueFn = ActionProducer<ActionType>::EnqueueFn;
+    using ProducerOrQ = std::variant<std::reference_wrapper<const ActionableProducer<ActionType>>, EnqueueFn>;
+
+    ActionMenuItem(const Actionable<ActionType> &actionable, EnqueueFn q, ActionType &&action = {})
         : Actionable(actionable), Q(std::move(q)), Action(std::move(action)) {}
     ActionMenuItem(const ActionableProducer<ActionType> &actionable, ActionType &&action = {})
-        : Actionable(actionable), Q([&actionable](auto &&a) -> bool { return actionable.Q(a); }), Action(std::move(action)) {}
+        : Actionable(actionable), Q(actionable), Action(std::move(action)) {}
 
     void MenuItem() const override {
         if (ImGui::MenuItem(Action.GetMenuLabel().c_str(), Action.GetShortcut().c_str(), false, Actionable.CanApply(Action))) {
-            Q(ActionType{Action});
+            auto action = ActionType{Action}; // Make a copy.
+            Visit(
+                Q,
+                [&action](const ActionProducer<ActionType> &producer) { producer.Q(std::move(action)); },
+                [&action](const EnqueueFn &q) { q(std::move(action)); }
+            );
         }
     }
 
     const Actionable<ActionType> &Actionable;
-    ActionProducer<ActionType>::EnqueueFn Q;
+    ProducerOrQ Q;
     const ActionType Action{};
 };

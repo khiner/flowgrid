@@ -44,34 +44,34 @@ void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
     LanguageDefinitionId = language_def_id;
     switch (LanguageDefinitionId) {
         case LanguageDefinitionIdT::Cpp:
-            LanguageDef = &(LanguageDefinition::Cpp());
+            LanguageDef = &LanguageDefinition::Cpp;
             break;
         case LanguageDefinitionIdT::C:
-            LanguageDef = &(LanguageDefinition::C());
+            LanguageDef = &LanguageDefinition::C;
             break;
         case LanguageDefinitionIdT::Cs:
-            LanguageDef = &(LanguageDefinition::Cs());
+            LanguageDef = &LanguageDefinition::Cs;
             break;
         case LanguageDefinitionIdT::Python:
-            LanguageDef = &(LanguageDefinition::Python());
+            LanguageDef = &LanguageDefinition::Python;
             break;
         case LanguageDefinitionIdT::Lua:
-            LanguageDef = &(LanguageDefinition::Lua());
+            LanguageDef = &LanguageDefinition::Lua;
             break;
         case LanguageDefinitionIdT::Json:
-            LanguageDef = &(LanguageDefinition::Jsn());
+            LanguageDef = &LanguageDefinition::Jsn;
             break;
         case LanguageDefinitionIdT::Sql:
-            LanguageDef = &(LanguageDefinition::Sql());
+            LanguageDef = &LanguageDefinition::Sql;
             break;
         case LanguageDefinitionIdT::AngelScript:
-            LanguageDef = &(LanguageDefinition::AngelScript());
+            LanguageDef = &LanguageDefinition::AngelScript;
             break;
         case LanguageDefinitionIdT::Glsl:
-            LanguageDef = &(LanguageDefinition::Glsl());
+            LanguageDef = &LanguageDefinition::Glsl;
             break;
         case LanguageDefinitionIdT::Hlsl:
-            LanguageDef = &(LanguageDefinition::Hlsl());
+            LanguageDef = &LanguageDefinition::Hlsl;
             break;
         case LanguageDefinitionIdT::None:
             LanguageDef = nullptr;
@@ -80,7 +80,7 @@ void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
 
     RegexList.clear();
     for (const auto &r : LanguageDef->TokenRegexStrings) {
-        RegexList.push_back(std::make_pair(std::regex(r.first, std::regex_constants::optimize), r.second));
+        RegexList.push_back({std::regex(r.first, std::regex_constants::optimize), r.second});
     }
 
     Colorize();

@@ -191,23 +191,13 @@ private:
         using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndex &palette_index);
 
         string Name, CommentStart, CommentEnd, SingleLineComment;
+        bool IsCaseSensitive{true};
         std::unordered_set<string> Keywords, Identifiers;
+        std::vector<TokenRegexStringT> TokenRegexStrings;
+        TokenizeCallbackT Tokenize{nullptr};
         char PreprocChar{'#'};
 
-        TokenizeCallbackT Tokenize{nullptr};
-        std::vector<TokenRegexStringT> TokenRegexStrings;
-        bool IsCaseSensitive{true};
-
-        static const LanguageDefinition &Cpp();
-        static const LanguageDefinition &Hlsl();
-        static const LanguageDefinition &Glsl();
-        static const LanguageDefinition &Python();
-        static const LanguageDefinition &C();
-        static const LanguageDefinition &Sql();
-        static const LanguageDefinition &AngelScript();
-        static const LanguageDefinition &Lua();
-        static const LanguageDefinition &Cs();
-        static const LanguageDefinition &Jsn();
+        static const LanguageDefinition Cpp, Hlsl, Glsl, Python, C, Sql, AngelScript, Lua, Cs, Jsn;
     };
 
     enum class UndoOperationType {

@@ -184,7 +184,6 @@ private:
     };
 
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
-
     using LineT = std::vector<Glyph>;
 
     struct LanguageDefinition {
@@ -348,10 +347,10 @@ private:
     inline bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     inline int TabSizeAtColumn(int aColumn) const { return TabSize - (aColumn % TabSize); }
 
-    static const PaletteT &GetDarkPalette();
-    static const PaletteT &GetMarianaPalette();
-    static const PaletteT &GetLightPalette();
-    static const PaletteT &GetRetroBluePalette();
+    static const PaletteT DarkPalette;
+    static const PaletteT MarianaPalette;
+    static const PaletteT LightPalette;
+    static const PaletteT RetroBluePalette;
 
     std::vector<LineT> Lines;
     EditorState State;

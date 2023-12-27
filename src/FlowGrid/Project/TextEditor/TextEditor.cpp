@@ -20,16 +20,16 @@ void TextEditor::SetPalette(PaletteIdT palette_id) {
     const PaletteT *palette_base;
     switch (PaletteId) {
         case PaletteIdT::Dark:
-            palette_base = &(GetDarkPalette());
+            palette_base = &DarkPalette;
             break;
         case PaletteIdT::Light:
-            palette_base = &(GetLightPalette());
+            palette_base = &LightPalette;
             break;
         case PaletteIdT::Mariana:
-            palette_base = &(GetMarianaPalette());
+            palette_base = &MarianaPalette;
             break;
         case PaletteIdT::RetroBlue:
-            palette_base = &(GetRetroBluePalette());
+            palette_base = &RetroBluePalette;
             break;
     }
 
@@ -1714,7 +1714,7 @@ void TextEditor::Render(bool is_parent_focused) {
                         dl->AddCircleFilled({x, y}, 1.5f, Palette[int(PaletteIndex::ControlCharacter)], 4);
                     }
                 } else {
-                    uint seq_length = UTF8CharLength(glyph.Char);
+                    const uint seq_length = UTF8CharLength(glyph.Char);
                     if (CursorOnBracket && seq_length == 1 && MatchingBracketCoords == Coordinates{li, column}) {
                         ImVec2 top_left{target_glyph_pos.x, target_glyph_pos.y + font_height + 1.0f};
                         ImVec2 bottom_right{top_left.x + CharAdvance.x, top_left.y + 1.0f};
@@ -1738,21 +1738,22 @@ void TextEditor::Render(bool is_parent_focused) {
         // First pass for interactive end and second pass for interactive start.
         for (int i = 0; i < (LastEnsureCursorVisibleStartToo ? 2 : 1); i++) {
             if (i) UpdateViewVariables(ScrollX, ScrollY); // Second pass depends on changes made in first pass
-            auto target_coords = GetCursorPosition(LastEnsureCursorVisible, i); // Cursor selection end or start
+            const auto target_coords = GetCursorPosition(LastEnsureCursorVisible, i); // Cursor selection end or start
             if (target_coords.L <= FirstVisibleLineI) {
-                float target_scroll = std::max(0.0f, (target_coords.L - 0.5f) * CharAdvance.y);
-                if (target_scroll < ScrollY) ImGui::SetScrollY(target_scroll);
+                float scroll = std::max(0.0f, (target_coords.L - 0.5f) * CharAdvance.y);
+                if (scroll < ScrollY) ImGui::SetScrollY(scroll);
             }
             if (target_coords.L >= LastVisibleLineI) {
-                float target_scroll = std::max(0.0f, (target_coords.L + 1.5f) * CharAdvance.y - ContentHeight);
-                if (target_scroll > ScrollY) ImGui::SetScrollY(target_scroll);
+                float scroll = std::max(0.0f, (target_coords.L + 1.5f) * CharAdvance.y - ContentHeight);
+                if (scroll > ScrollY) ImGui::SetScrollY(scroll);
             }
             if (target_coords.C <= FirstVisibleColumn) {
-                float target_scroll = std::max(0.0f, TextStart + (target_coords.C - 0.5f) * CharAdvance.x);
-                if (target_scroll < ScrollX) ImGui::SetScrollX(ScrollX = target_scroll);
                 if (target_coords.C >= LastVisibleColumn) {
-                    float target_scroll = std::max(0.0f, TextStart + (target_coords.C + 0.5f) * CharAdvance.x - ContentWidth);
-                    if (target_scroll > ScrollX) ImGui::SetScrollX(ScrollX = target_scroll);
+                    float scroll = std::max(0.0f, TextStart + (target_coords.C + 0.5f) * CharAdvance.x - ContentWidth);
+                    if (scroll > ScrollX) ImGui::SetScrollX(ScrollX = scroll);
+                } else {
+                    float scroll = std::max(0.0f, TextStart + (target_coords.C - 0.5f) * CharAdvance.x);
+                    if (scroll < ScrollX) ImGui::SetScrollX(ScrollX = scroll);
                 }
             }
         }
@@ -1763,20 +1764,20 @@ void TextEditor::Render(bool is_parent_focused) {
         ImGui::SetScrollY(0);
     }
     if (SetViewAtLineI > -1) {
-        float target_scroll;
+        float scroll;
         switch (SetViewAtLineMode) {
             default:
             case SetViewAtLineMode::FirstVisibleLine:
-                target_scroll = std::max(0.0f, (float)SetViewAtLineI * CharAdvance.y);
+                scroll = std::max(0.0f, SetViewAtLineI * CharAdvance.y);
                 break;
             case SetViewAtLineMode::LastVisibleLine:
-                target_scroll = std::max(0.0f, (float)(SetViewAtLineI - (LastVisibleLineI - FirstVisibleLineI)) * CharAdvance.y);
+                scroll = std::max(0.0f, (SetViewAtLineI - (LastVisibleLineI - FirstVisibleLineI)) * CharAdvance.y);
                 break;
             case SetViewAtLineMode::Centered:
-                target_scroll = std::max(0.0f, ((float)SetViewAtLineI - (float)(LastVisibleLineI - FirstVisibleLineI) * 0.5f) * CharAdvance.y);
+                scroll = std::max(0.0f, (SetViewAtLineI - (LastVisibleLineI - FirstVisibleLineI) * 0.5f) * CharAdvance.y);
                 break;
         }
-        ImGui::SetScrollY(target_scroll);
+        ImGui::SetScrollY(scroll);
         SetViewAtLineI = -1;
     }
 }
@@ -2072,113 +2073,101 @@ int TextEditor::InsertTextAt(/* inout */ Coordinates &at, const char *text) {
     return total_lines;
 }
 
-const TextEditor::PaletteT &TextEditor::GetDarkPalette() {
-    static const PaletteT p = {{
-        0xdcdfe4ff, // Default
-        0xe06c75ff, // Keyword
-        0xe5c07bff, // Number
-        0x98c379ff, // String
-        0xe0a070ff, // Char literal
-        0x6a7384ff, // Punctuation
-        0x808040ff, // Preprocessor
-        0xdcdfe4ff, // Identifier
-        0x61afefff, // Known identifier
-        0xc678ddff, // Preproc identifier
-        0x3696a2ff, // Comment (single line)
-        0x3696a2ff, // Comment (multi line)
-        0x282c34ff, // Background
-        0xe0e0e0ff, // Cursor
-        0x2060a080, // Selection
-        0xff200080, // ErrorMarker
-        0xffffff15, // ControlCharacter
-        0x0080f040, // Breakpoint
-        0x7a8394ff, // Line number
-        0x00000040, // Current line fill
-        0x80808040, // Current line fill (inactive)
-        0xa0a0a040, // Current line edge
-    }};
-    return p;
-}
+const TextEditor::PaletteT TextEditor::DarkPalette = {{
+    0xdcdfe4ff, // Default
+    0xe06c75ff, // Keyword
+    0xe5c07bff, // Number
+    0x98c379ff, // String
+    0xe0a070ff, // Char literal
+    0x6a7384ff, // Punctuation
+    0x808040ff, // Preprocessor
+    0xdcdfe4ff, // Identifier
+    0x61afefff, // Known identifier
+    0xc678ddff, // Preproc identifier
+    0x3696a2ff, // Comment (single line)
+    0x3696a2ff, // Comment (multi line)
+    0x282c34ff, // Background
+    0xe0e0e0ff, // Cursor
+    0x2060a080, // Selection
+    0xff200080, // ErrorMarker
+    0xffffff15, // ControlCharacter
+    0x0080f040, // Breakpoint
+    0x7a8394ff, // Line number
+    0x00000040, // Current line fill
+    0x80808040, // Current line fill (inactive)
+    0xa0a0a040, // Current line edge
+}};
 
-const TextEditor::PaletteT &TextEditor::GetMarianaPalette() {
-    static const PaletteT p = {{
-        0xffffffff, // Default
-        0xc695c6ff, // Keyword
-        0xf9ae58ff, // Number
-        0x99c794ff, // String
-        0xe0a070ff, // Char literal
-        0x5fb4b4ff, // Punctuation
-        0x808040ff, // Preprocessor
-        0xffffffff, // Identifier
-        0x4dc69bff, // Known identifier
-        0xe0a0ffff, // Preproc identifier
-        0xa6acb9ff, // Comment (single line)
-        0xa6acb9ff, // Comment (multi line)
-        0x303841ff, // Background
-        0xe0e0e0ff, // Cursor
-        0x4e5a6580, // Selection
-        0xec5f6680, // ErrorMarker
-        0xffffff30, // ControlCharacter
-        0x0080f040, // Breakpoint
-        0xffffffb0, // Line number
-        0x4e5a6580, // Current line fill
-        0x4e5a6530, // Current line fill (inactive)
-        0x4e5a65b0, // Current line edge
-    }};
-    return p;
-}
+const TextEditor::PaletteT TextEditor::MarianaPalette = {{
+    0xffffffff, // Default
+    0xc695c6ff, // Keyword
+    0xf9ae58ff, // Number
+    0x99c794ff, // String
+    0xe0a070ff, // Char literal
+    0x5fb4b4ff, // Punctuation
+    0x808040ff, // Preprocessor
+    0xffffffff, // Identifier
+    0x4dc69bff, // Known identifier
+    0xe0a0ffff, // Preproc identifier
+    0xa6acb9ff, // Comment (single line)
+    0xa6acb9ff, // Comment (multi line)
+    0x303841ff, // Background
+    0xe0e0e0ff, // Cursor
+    0x4e5a6580, // Selection
+    0xec5f6680, // ErrorMarker
+    0xffffff30, // ControlCharacter
+    0x0080f040, // Breakpoint
+    0xffffffb0, // Line number
+    0x4e5a6580, // Current line fill
+    0x4e5a6530, // Current line fill (inactive)
+    0x4e5a65b0, // Current line edge
+}};
 
-const TextEditor::PaletteT &TextEditor::GetLightPalette() {
-    static const PaletteT p = {{
-        0x404040ff, // None
-        0x060cffff, // Keyword
-        0x008000ff, // Number
-        0xa02020ff, // String
-        0x704030ff, // Char literal
-        0x000000ff, // Punctuation
-        0x606040ff, // Preprocessor
-        0x404040ff, // Identifier
-        0x106060ff, // Known identifier
-        0xa040c0ff, // Preproc identifier
-        0x205020ff, // Comment (single line)
-        0x205040ff, // Comment (multi line)
-        0xffffffff, // Background
-        0x000000ff, // Cursor
-        0x00006040, // Selection
-        0xff1000a0, // ErrorMarker
-        0x90909090, // ControlCharacter
-        0x0080f080, // Breakpoint
-        0x005050ff, // Line number
-        0x00000040, // Current line fill
-        0x80808040, // Current line fill (inactive)
-        0x00000040, // Current line edge
-    }};
-    return p;
-}
+const TextEditor::PaletteT TextEditor::LightPalette = {{
+    0x404040ff, // None
+    0x060cffff, // Keyword
+    0x008000ff, // Number
+    0xa02020ff, // String
+    0x704030ff, // Char literal
+    0x000000ff, // Punctuation
+    0x606040ff, // Preprocessor
+    0x404040ff, // Identifier
+    0x106060ff, // Known identifier
+    0xa040c0ff, // Preproc identifier
+    0x205020ff, // Comment (single line)
+    0x205040ff, // Comment (multi line)
+    0xffffffff, // Background
+    0x000000ff, // Cursor
+    0x00006040, // Selection
+    0xff1000a0, // ErrorMarker
+    0x90909090, // ControlCharacter
+    0x0080f080, // Breakpoint
+    0x005050ff, // Line number
+    0x00000040, // Current line fill
+    0x80808040, // Current line fill (inactive)
+    0x00000040, // Current line edge
+}};
 
-const TextEditor::PaletteT &TextEditor::GetRetroBluePalette() {
-    static const PaletteT p = {{
-        0xffff00ff, // None
-        0x00ffffff, // Keyword
-        0x00ff00ff, // Number
-        0x008080ff, // String
-        0x008080ff, // Char literal
-        0xffffffff, // Punctuation
-        0x008000ff, // Preprocessor
-        0xffff00ff, // Identifier
-        0xffffffff, // Known identifier
-        0xff00ffff, // Preproc identifier
-        0x808080ff, // Comment (single line)
-        0x404040ff, // Comment (multi line)
-        0x000080ff, // Background
-        0xff8000ff, // Cursor
-        0x00ffff80, // Selection
-        0xff0000a0, // ErrorMarker
-        0x0080ff80, // Breakpoint
-        0x008080ff, // Line number
-        0x00000040, // Current line fill
-        0x80808040, // Current line fill (inactive)
-        0x00000040, // Current line edge
-    }};
-    return p;
-}
+const TextEditor::PaletteT TextEditor::RetroBluePalette = {{
+    0xffff00ff, // None
+    0x00ffffff, // Keyword
+    0x00ff00ff, // Number
+    0x008080ff, // String
+    0x008080ff, // Char literal
+    0xffffffff, // Punctuation
+    0x008000ff, // Preprocessor
+    0xffff00ff, // Identifier
+    0xffffffff, // Known identifier
+    0xff00ffff, // Preproc identifier
+    0x808080ff, // Comment (single line)
+    0x404040ff, // Comment (multi line)
+    0x000080ff, // Background
+    0xff8000ff, // Cursor
+    0x00ffff80, // Selection
+    0xff0000a0, // ErrorMarker
+    0x0080ff80, // Breakpoint
+    0x008080ff, // Line number
+    0x00000040, // Current line fill
+    0x80808040, // Current line fill (inactive)
+    0x00000040, // Current line edge
+}};

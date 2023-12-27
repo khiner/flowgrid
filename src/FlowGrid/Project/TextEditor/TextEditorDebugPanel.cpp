@@ -15,9 +15,7 @@ void TextEditor::DebugPanel() {
         }
     }
     if (CollapsingHeader("Lines")) {
-        for (int i = 0; i < Lines.size(); i++) {
-            Text("%d", Lines[i].size());
-        }
+        for (uint i = 0; i < Lines.size(); i++) Text("%lu", Lines[i].size());
     }
     if (CollapsingHeader("Undo")) {
         Text("Number of records: %lu", UndoBuffer.size());

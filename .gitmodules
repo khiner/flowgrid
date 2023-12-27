@@ -37,7 +37,7 @@
 	url = git@github.com:arximboldi/immer.git
 [submodule "lib/miniaudio"]
 	path = lib/miniaudio
-	url = git@github.com:mackron/miniaudio.git
+	url = git@github.com:khiner/miniaudio.git
 	branch = dev
 [submodule "lib/date"]
 	path = lib/date

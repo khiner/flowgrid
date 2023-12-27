@@ -187,19 +187,11 @@ private:
     using LineT = std::vector<Glyph>;
 
     struct LanguageDefinition {
-        struct Identifier {
-            Coordinates Location;
-            string Declaration;
-        };
-
         using TokenRegexStringT = std::pair<string, PaletteIndex>;
         using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndex &palette_index);
 
-        string Name;
-        std::unordered_set<string> Keywords;
-        std::unordered_map<string, Identifier> Identifiers;
-        std::unordered_map<string, Identifier> PreprocIdentifiers;
-        string CommentStart, CommentEnd, SingleLineComment;
+        string Name, CommentStart, CommentEnd, SingleLineComment;
+        std::unordered_set<string> Keywords, Identifiers;
         char PreprocChar{'#'};
 
         TokenizeCallbackT Tokenize{nullptr};

@@ -1912,16 +1912,13 @@ void TextEditor::ColorizeRange(int from_li, int to_li) {
                 if (token_color == PaletteIndex::Identifier) {
                     id.assign(token_begin, token_end);
 
-                    // todo : allmost all language definitions use lower case to specify keywords, so shouldn't this use ::tolower ?
+                    // todo : almost all language definitions use lower case to specify keywords, so shouldn't this use ::tolower ?
                     if (!LanguageDef->IsCaseSensitive) {
                         std::transform(id.begin(), id.end(), id.begin(), ::toupper);
                     }
                     if (!line[first - bufferBegin].IsPreprocessor) {
                         if (LanguageDef->Keywords.count(id) != 0) token_color = PaletteIndex::Keyword;
                         else if (LanguageDef->Identifiers.count(id) != 0) token_color = PaletteIndex::KnownIdentifier;
-                        else if (LanguageDef->PreprocIdentifiers.count(id) != 0) token_color = PaletteIndex::PreprocIdentifier;
-                    } else {
-                        if (LanguageDef->PreprocIdentifiers.count(id) != 0) token_color = PaletteIndex::PreprocIdentifier;
                     }
                 }
 

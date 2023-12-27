@@ -206,8 +206,7 @@ private:
     };
     struct UndoOperation {
         string Text;
-        TextEditor::Coordinates Start;
-        TextEditor::Coordinates End;
+        Coordinates Start, End;
         UndoOperationType Type;
     };
 
@@ -242,6 +241,9 @@ private:
     };
 
     inline static const PaletteIdT DefaultPaletteId = PaletteIdT::Dark;
+
+    void AddUndoOp(UndoRecord &, UndoOperationType, const Coordinates &start, const Coordinates &end);
+    void AddSelectionUndoOp(UndoRecord &, UndoOperationType, int c);
 
     string GetText(const Coordinates &start, const Coordinates &end) const;
     string GetSelectedText(int cursor = -1) const;

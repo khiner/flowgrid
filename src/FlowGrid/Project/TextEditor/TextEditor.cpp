@@ -756,14 +756,8 @@ void TextEditor::Delete(bool is_word_mode, const EditorState *editor_state) {
     }
 }
 
-void TextEditor::SetSelection(int start_li, int start_ci, int end_li, int end_ci, int c) {
-    Coordinates start_coords{start_li, GetCharacterColumn(start_li, start_ci)};
-    Coordinates end_coors{end_li, GetCharacterColumn(end_li, end_ci)};
-    SetSelection(start_coords, end_coors, c);
-}
-
 void TextEditor::SetSelection(Coordinates start, Coordinates end, int c) {
-    int max_line = int(Lines.size()) - 1;
+    const int max_line = int(Lines.size()) - 1;
     Coordinates min_coords{0, 0}, max_coords{max_line, GetLineMaxColumn(max_line)};
     if (start < min_coords) start = min_coords;
     else if (start > max_coords) start = max_coords;

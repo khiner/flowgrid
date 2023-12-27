@@ -293,7 +293,6 @@ private:
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
-    void SetSelection(int start_li, int start_ci, int end_li, int end_ci, int cursor = -1);
     void SetSelection(Coordinates start, Coordinates end, int cursor = -1);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);

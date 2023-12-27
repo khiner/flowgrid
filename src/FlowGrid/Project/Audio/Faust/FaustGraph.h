@@ -7,7 +7,10 @@
 class CTree;
 typedef CTree *Box;
 
+namespace FlowGrid {
 struct Node;
+}
+
 struct FaustGraphStyle;
 struct FaustGraphSettings;
 
@@ -29,12 +32,12 @@ struct FaustGraph : ActionProducerComponent<Action::Combine<Action::Faust::Graph
     const FaustGraphSettings &Settings;
 
     Box _Box;
-    mutable std::unordered_map<ID, Node *> NodeByImGuiId;
-    std::unique_ptr<Node> RootNode{};
+    mutable std::unordered_map<ID, fg::Node *> NodeByImGuiId;
+    std::unique_ptr<fg::Node> RootNode{};
 
 private:
     void Render() const override;
 
-    Node *Tree2Node(Box) const;
-    Node *Tree2NodeInner(Box) const;
+    fg::Node *Tree2Node(Box) const;
+    fg::Node *Tree2NodeInner(Box) const;
 };

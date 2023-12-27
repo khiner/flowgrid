@@ -339,6 +339,7 @@ static string UniqueId(const void *instance) { return std::format("{:x}", reinte
 
 using StringHelper::Capitalize;
 
+namespace FlowGrid {
 // An abstract block graph node.
 struct Node {
     inline static const u32
@@ -519,6 +520,9 @@ protected:
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
+} // namespace FlowGrid
+
+using namespace fg;
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
@@ -860,10 +864,10 @@ Each property can be changed in `Style.(Group|Decorate){PropertyName}`.
 # Render:
 
 1) Border rectangle at `Margin` offset, with a break for a label in the top-left,
-  and additional half-text-height Y-offset to center top border line with label.
-  * Stylable fields:
-    * Stroke width
-    * Stroke color
+and additional half-text-height Y-offset to center top border line with label.
+* Stylable fields:
+* Stroke width
+* Stroke color
 2) Horizontal channel IO connection lines, at channel's vertical offset and from/to X:
   * Input:
      From: My left

@@ -9,7 +9,7 @@ set(MinFaustTarget "MinimalFaustLlvm") # A minimal Faust LLVM compilation exampl
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++ -fexperimental-library")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
 
-set(STATIC_FAUST off CACHE BOOL "Build Static Faust library" FORCE)
+set(STATIC_FAUST on CACHE BOOL "Build Static Faust library" FORCE) # Dynamic Faust library causes a bus error on macOS.
 set(TRACY_ENABLED off CACHE BOOL "Enable Tracy profiling" FORCE)
 
 add_subdirectory(lib)

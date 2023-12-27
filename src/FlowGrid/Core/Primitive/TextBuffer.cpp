@@ -34,7 +34,7 @@ void TextBuffer::RenderMenu() const {
             Separator();
             if (MenuItem("Copy", "Ctrl-C", nullptr, editor.AnyCursorHasSelection())) editor.Copy();
             if (MenuItem("Cut", "Ctrl-X", nullptr, !editor.ReadOnly && editor.AnyCursorHasSelection())) editor.Cut();
-            if (MenuItem("Paste", "Ctrl-V", nullptr, !editor.ReadOnly && GetClipboardText() != nullptr)) editor.Paste();
+            if (MenuItem("Paste", "Ctrl-V", nullptr, !editor.ReadOnly && ImGui::GetClipboardText() != nullptr)) editor.Paste();
             Separator();
             if (MenuItem("Select all", nullptr, nullptr)) editor.SelectAll();
             EndMenu();

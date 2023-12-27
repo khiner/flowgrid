@@ -244,7 +244,6 @@ private:
     inline static const PaletteIdT DefaultPaletteId = PaletteIdT::Dark;
 
     string GetText(const Coordinates &start, const Coordinates &end) const;
-    string GetClipboardText() const;
     string GetSelectedText(int cursor = -1) const;
 
     void SetCursorPosition(const Coordinates &position, int cursor = -1, bool clear_selection = true);

@@ -34,7 +34,7 @@ void TextEditor::SetPalette(PaletteIdT palette_id) {
     }
 
     for (int i = 0; i < int(PaletteIndex::Max); ++i) {
-        ImVec4 color = U32ColorToVec4((*palette_base)[i]);
+        const ImVec4 color = U32ColorToVec4((*palette_base)[i]);
         // color.w *= ImGui::GetStyle().Alpha; todo bring this back.
         Palette[i] = ImGui::ColorConvertFloat4ToU32(color);
     }
@@ -140,8 +140,7 @@ void TextEditor::Copy() {
     } else {
         if (!Lines.empty()) {
             string str;
-            auto &line = Lines[GetCursorPosition().L];
-            for (auto &g : line) str.push_back(g.Char);
+            for (auto &g : Lines[GetCursorPosition().L]) str.push_back(g.Char);
             ImGui::SetClipboardText(str.c_str());
         }
     }
@@ -194,7 +193,7 @@ void TextEditor::Paste() {
         }
 
         for (int c = State.CurrentCursor; c > -1; c--) {
-            auto start = GetCursorPosition(c);
+            const auto start = GetCursorPosition(c);
             if (can_paste_to_multiple_cursors) {
                 const auto [clip_text_start, clip_text_end] = clip_text_lines[c];
                 const string clip_sub_text = clip_text.substr(clip_text_start, clip_text_end - clip_text_start);
@@ -274,7 +273,7 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
     ImGui::BeginChild(title, size, border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
 
-    bool is_focused = ImGui::IsWindowFocused();
+    const bool is_focused = ImGui::IsWindowFocused();
     HandleKeyboardInputs(is_parent_focused);
     HandleMouseInputs();
     ColorizeInternal();
@@ -348,7 +347,7 @@ void TextEditor::EditorState::AddCursor() {
 int TextEditor::EditorState::GetLastAddedCursorIndex() { return LastAddedCursor > CurrentCursor ? 0 : LastAddedCursor; }
 
 void TextEditor::EditorState::SortCursorsFromTopToBottom() {
-    auto last_added_cursor_pos = Cursors[GetLastAddedCursorIndex()].InteractiveEnd;
+    const auto last_added_cursor_pos = Cursors[GetLastAddedCursorIndex()].InteractiveEnd;
     std::sort(Cursors.begin(), Cursors.begin() + (CurrentCursor + 1), [](const auto &a, const auto &b) -> bool {
         return a.GetSelectionStart() < b.GetSelectionStart();
     });
@@ -476,7 +475,7 @@ bool TextEditor::Move(int &line, int &ci, bool left, bool lock_line) const {
             line++;
             ci = 0;
         } else {
-            int seq_length = UTF8CharLength(Lines[line][ci].Char);
+            const int seq_length = UTF8CharLength(Lines[line][ci].Char);
             ci = std::min(ci + seq_length, int(Lines[line].size()));
         }
     }
@@ -592,7 +591,7 @@ void TextEditor::MoveTop(bool select) {
 }
 
 void TextEditor::TextEditor::MoveBottom(bool select) {
-    int max_line = int(Lines.size()) - 1;
+    const int max_line = int(Lines.size()) - 1;
     SetCursorPosition({max_line, GetLineMaxColumn(max_line)}, State.CurrentCursor, !select);
 }
 
@@ -604,7 +603,7 @@ void TextEditor::MoveHome(bool select) {
 
 void TextEditor::MoveEnd(bool select) {
     for (int c = 0; c <= State.CurrentCursor; c++) {
-        int lindex = State.Cursors[c].InteractiveEnd.L;
+        const int lindex = State.Cursors[c].InteractiveEnd.L;
         SetCursorPosition({lindex, GetLineMaxColumn(lindex)}, c, !select);
     }
 }
@@ -612,7 +611,8 @@ void TextEditor::MoveEnd(bool select) {
 void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
     assert(!ReadOnly);
 
-    bool has_selection = AnyCursorHasSelection();
+    const bool has_selection = AnyCursorHasSelection();
+
     bool any_cursor_has_multiline_selection = false;
     for (int c = State.CurrentCursor; c > -1; c--) {
         const auto &cursor = State.Cursors[c];
@@ -621,10 +621,9 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             break;
         }
     }
-    bool is_indent_op = has_selection && any_cursor_has_multiline_selection && character == '\t';
-    if (is_indent_op) {
-        ChangeCurrentLinesIndentation(!is_shift);
-        return;
+
+    if (has_selection && any_cursor_has_multiline_selection && character == '\t') {
+        return ChangeCurrentLinesIndentation(!is_shift);
     }
 
     UndoRecord u{State};
@@ -639,7 +638,7 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
     std::vector<Coordinates> coords;
     for (int c = State.CurrentCursor; c > -1; c--) // order important here for typing \n in the same line at the same time
     {
-        auto coord = GetCursorPosition(c);
+        const auto coord = GetCursorPosition(c);
         coords.push_back(coord);
         UndoOperation added;
         added.Type = UndoOperationType::Add;
@@ -662,7 +661,7 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             }
 
             const size_t whitespace_size = new_line.size();
-            auto cindex = GetCharacterIndexR(coord);
+            const auto cindex = GetCharacterIndexR(coord);
             AddGlyphsToLine(coord.L + 1, new_line.size(), line.begin() + cindex, line.end());
             RemoveGlyphsFromLine(coord.L, cindex);
             SetCursorPosition({coord.L + 1, GetCharacterColumn(coord.L + 1, int(whitespace_size))}, c);
@@ -672,9 +671,9 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             if (e == 0) continue;
 
             buf[e] = '\0';
-            auto &line = Lines[coord.L];
-            auto cindex = GetCharacterIndexR(coord);
 
+            const auto &line = Lines[coord.L];
+            auto cindex = GetCharacterIndexR(coord);
             if (Overwrite && cindex < int(line.size())) {
                 uint d = UTF8CharLength(line[cindex].Char);
 
@@ -944,7 +943,8 @@ void TextEditor::MoveUpCurrentLines() {
     }
     if (min_li == 0) return; // Can't move up anymore.
 
-    Coordinates start{min_li - 1, 0}, end{max_li, GetLineMaxColumn(max_li)};
+    const Coordinates start{min_li - 1, 0};
+    Coordinates end{max_li, GetLineMaxColumn(max_li)};
     u.Operations.push_back({GetText(start, end), start, end, UndoOperationType::Delete});
 
     // Lines should be sorted at this point.
@@ -1072,8 +1072,8 @@ void TextEditor::RemoveCurrentLines() {
     OnCursorPositionChanged(); // Might combine cursors.
 
     for (int c = State.CurrentCursor; c > -1; c--) {
-        int li = State.Cursors[c].InteractiveEnd.L;
-        int next_li = li + 1, prev_li = li - 1;
+        const int li = State.Cursors[c].InteractiveEnd.L;
+        const int next_li = li + 1, prev_li = li - 1;
         Coordinates to_delete_start, to_delete_end;
         if (int(Lines.size()) > next_li) { // next line exists
             to_delete_start = {li, 0};
@@ -1113,7 +1113,7 @@ TextEditor::Coordinates TextEditor::SanitizeCoordinates(const Coordinates &coord
     if (coords.L >= int(Lines.size())) {
         if (Lines.empty()) return {0, 0};
 
-        auto li = int(Lines.size()) - 1;
+        const auto li = int(Lines.size()) - 1;
         return {li, GetLineMaxColumn(li)};
     }
     return {coords.L, Lines.empty() ? 0 : GetLineMaxColumn(coords.L, coords.C)};
@@ -1122,18 +1122,18 @@ TextEditor::Coordinates TextEditor::SanitizeCoordinates(const Coordinates &coord
 TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2 &position, bool insertion_mode, bool *is_over_li) const {
     static const float PosToCoordsColumnOffset = 0.33;
 
-    ImVec2 origin = ImGui::GetCursorScreenPos();
-    ImVec2 local{position.x - origin.x + 3.0f, position.y - origin.y};
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const ImVec2 local{position.x - origin.x + 3.0f, position.y - origin.y};
     if (is_over_li != nullptr) *is_over_li = local.x < TextStart;
 
     Coordinates out{
         std::max(0, int(floor(local.y / CharAdvance.y))),
         std::max(0, int(floor((local.x - TextStart) / CharAdvance.x)))
     };
-    int ci = GetCharacterIndexL(out);
+    const int ci = GetCharacterIndexL(out);
     if (ci > -1 && ci < int(Lines[out.L].size()) && Lines[out.L][ci].Char == '\t') {
-        int column_to_left = GetCharacterColumn(out.L, ci);
-        int column_to_right = GetCharacterColumn(out.L, GetCharacterIndexR(out));
+        const int column_to_left = GetCharacterColumn(out.L, ci);
+        const int column_to_right = GetCharacterColumn(out.L, GetCharacterIndexR(out));
         out.C = out.C - column_to_left < column_to_right - out.C ? column_to_left : column_to_right;
     } else {
         out.C = std::max(0, int(floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)));
@@ -1144,18 +1144,19 @@ TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2 &positio
 TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates &from) const {
     if (from.L >= int(Lines.size())) return from;
 
-    int li = from.L;
-    auto &line = Lines[li];
+    const auto &line = Lines[from.L];
+
     int ci = GetCharacterIndexL(from);
     if (ci >= int(line.size()) || line.empty()) return from;
     if (ci == int(line.size())) ci--;
 
-    bool initial_is_word_char = IsWordChar(line[ci].Char);
-    bool initial_is_space = isspace(line[ci].Char);
-    char initial_char = line[ci].Char;
+    const bool initial_is_word_char = IsWordChar(line[ci].Char);
+    const bool initial_is_space = isspace(line[ci].Char);
+    const char initial_char = line[ci].Char;
+    int li = from.L;
     while (Move(li, ci, true, true)) {
-        bool is_word_char = IsWordChar(line[ci].Char);
-        bool is_space = isspace(line[ci].Char);
+        const bool is_word_char = IsWordChar(line[ci].Char);
+        const bool is_space = isspace(line[ci].Char);
         if ((initial_is_space && !is_space) ||
             (initial_is_word_char && !is_word_char) ||
             (!initial_is_word_char && !initial_is_space && initial_char != line[ci].Char)) {
@@ -1169,19 +1170,20 @@ TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates &from) const
 TextEditor::Coordinates TextEditor::FindWordEnd(const Coordinates &from) const {
     if (from.L >= int(Lines.size())) return from;
 
-    int li = from.L;
-    auto &line = Lines[li];
-    auto ci = GetCharacterIndexL(from);
+    const auto &line = Lines[from.L];
+
+    int ci = GetCharacterIndexL(from);
     if (ci >= int(line.size())) return from;
 
-    bool initial_is_word_char = IsWordChar(line[ci].Char);
-    bool initial_is_space = isspace(line[ci].Char);
-    char initial_char = line[ci].Char;
+    const bool initial_is_word_char = IsWordChar(line[ci].Char);
+    const bool initial_is_space = isspace(line[ci].Char);
+    const char initial_char = line[ci].Char;
+    int li = from.L;
     while (Move(li, ci, false, true)) {
         if (ci == int(line.size())) break;
 
-        bool is_word_char = IsWordChar(line[ci].Char);
-        bool is_space = isspace(line[ci].Char);
+        const bool is_word_char = IsWordChar(line[ci].Char);
+        const bool is_space = isspace(line[ci].Char);
         if ((initial_is_space && !is_space) ||
             (initial_is_word_char && !is_word_char) ||
             (!initial_is_word_char && !initial_is_space && initial_char != line[ci].Char))
@@ -1193,9 +1195,9 @@ TextEditor::Coordinates TextEditor::FindWordEnd(const Coordinates &from) const {
 int TextEditor::GetCharacterIndexL(const Coordinates &coords) const {
     if (coords.L >= int(Lines.size())) return -1;
 
-    auto &line = Lines[coords.L];
-    int c = 0, i = 0;
-    int tab_coords_left = 0;
+    const auto &line = Lines[coords.L];
+
+    int c = 0, i = 0, tab_coords_left = 0;
     for (; i < int(line.size()) && c < coords.C;) {
         if (line[i].Char == '\t') {
             if (tab_coords_left == 0) tab_coords_left = TabSizeAtColumn(c);
@@ -1342,7 +1344,7 @@ void TextEditor::DeleteSelection(int c) {
 }
 
 void TextEditor::RemoveGlyphsFromLine(int li, int start_ci, int end_ci) {
-    int column = GetCharacterColumn(li, start_ci);
+    const int column = GetCharacterColumn(li, start_ci);
     auto &line = Lines[li];
     OnLineChanged(true, li, column, end_ci - start_ci, true);
     line.erase(line.begin() + start_ci, end_ci == -1 ? line.end() : line.begin() + end_ci);
@@ -1350,8 +1352,8 @@ void TextEditor::RemoveGlyphsFromLine(int li, int start_ci, int end_ci) {
 }
 
 void TextEditor::AddGlyphsToLine(int li, int ci, LineT::iterator source_start, LineT::iterator source_end) {
-    int column = GetCharacterColumn(li, ci);
-    int chars_inserted = std::distance(source_start, source_end);
+    const int column = GetCharacterColumn(li, ci);
+    const int chars_inserted = std::distance(source_start, source_end);
     auto &line = Lines[li];
     OnLineChanged(true, li, column, chars_inserted, false);
     line.insert(line.begin() + ci, source_start, source_end);
@@ -1359,7 +1361,7 @@ void TextEditor::AddGlyphsToLine(int li, int ci, LineT::iterator source_start, L
 }
 
 void TextEditor::AddGlyphToLine(int li, int ci, Glyph glyph) {
-    int column = GetCharacterColumn(li, ci);
+    const int column = GetCharacterColumn(li, ci);
     auto &line = Lines[li];
     OnLineChanged(true, li, column, 1, false);
     line.insert(line.begin() + ci, glyph);
@@ -1395,18 +1397,18 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
         if (ImGui::IsWindowHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
 
         auto &io = ImGui::GetIO();
-        auto is_osx = io.ConfigMacOSXBehaviors;
-        auto alt = io.KeyAlt;
-        auto ctrl = io.KeyCtrl;
-        auto shift = io.KeyShift;
-        auto super = io.KeySuper;
+        const auto is_osx = io.ConfigMacOSXBehaviors;
+        const auto alt = io.KeyAlt;
+        const auto ctrl = io.KeyCtrl;
+        const auto shift = io.KeyShift;
+        const auto super = io.KeySuper;
 
-        auto is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift;
-        auto is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt;
-        auto is_wordmove_key = is_osx ? alt : ctrl;
-        auto is_alt_only = alt && !ctrl && !shift && !super;
-        auto is_ctrl_only = ctrl && !alt && !shift && !super;
-        auto is_shift_only = shift && !alt && !ctrl && !super;
+        const auto is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift;
+        const auto is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt;
+        const auto is_wordmove_key = is_osx ? alt : ctrl;
+        const auto is_alt_only = alt && !ctrl && !shift && !super;
+        const auto is_ctrl_only = ctrl && !alt && !shift && !super;
+        const auto is_shift_only = shift && !alt && !ctrl && !super;
 
         io.WantCaptureKeyboard = true;
         io.WantTextInput = true;
@@ -1479,9 +1481,8 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
             EnterCharacter('\t', shift);
         if (!ReadOnly && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
             for (int i = 0; i < io.InputQueueCharacters.Size; i++) {
-                auto c = io.InputQueueCharacters[i];
-                if (c != 0 && (c == '\n' || c >= 32))
-                    EnterCharacter(c, shift);
+                const auto ch = io.InputQueueCharacters[i];
+                if (ch != 0 && (ch == '\n' || ch >= 32)) EnterCharacter(ch, shift);
             }
             io.InputQueueCharacters.resize(0);
         }
@@ -1489,15 +1490,15 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
 }
 
 static float Distance(const ImVec2 &a, const ImVec2 &b) {
-    float x = a.x - b.x, y = a.y - b.y;
+    const float x = a.x - b.x, y = a.y - b.y;
     return sqrt(x * x + y * y);
 }
 
 void TextEditor::HandleMouseInputs() {
-    ImGuiIO &io = ImGui::GetIO();
-    auto shift = io.KeyShift;
-    auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
-    auto alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
+    auto &io = ImGui::GetIO();
+    const auto shift = io.KeyShift;
+    const auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
+    const auto alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
     // Pan with middle mouse button
     Panning &= ImGui::IsMouseDown(2);
@@ -1514,12 +1515,12 @@ void TextEditor::HandleMouseInputs() {
     IsDraggingSelection &= ImGui::IsMouseDown(0);
     if (IsDraggingSelection && ImGui::IsMouseDragging(0)) {
         io.WantCaptureMouse = true;
-        auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite);
+        const auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite);
         SetCursorPosition(cursor_coords, State.GetLastAddedCursorIndex(), false);
     }
 
     if (ImGui::IsWindowHovered()) {
-        auto is_click = ImGui::IsMouseClicked(0);
+        const auto is_click = ImGui::IsMouseClicked(0);
         if (!shift && !alt) {
             if (is_click) IsDraggingSelection = true;
 
@@ -1529,15 +1530,15 @@ void TextEditor::HandleMouseInputs() {
                 LastMousePos = ImGui::GetMouseDragDelta(2);
             }
 
-            bool is_double_click = ImGui::IsMouseDoubleClicked(0);
-            auto t = ImGui::GetTime();
-            bool is_triple_click = is_click && !is_double_click && (LastClickTime != -1.0f && (t - LastClickTime) < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f);
+            const bool is_double_click = ImGui::IsMouseDoubleClicked(0);
+            const auto t = ImGui::GetTime();
+            const bool is_triple_click = is_click && !is_double_click && (LastClickTime != -1.0f && (t - LastClickTime) < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f);
             if (is_triple_click) {
                 if (ctrl) State.AddCursor();
                 else State.CurrentCursor = 0;
 
-                auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos());
-                auto target_cursor_pos = cursor_coords.L < int(Lines.size()) - 1 ?
+                const auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos());
+                const auto target_cursor_pos = cursor_coords.L < int(Lines.size()) - 1 ?
                     Coordinates{cursor_coords.L + 1, 0} :
                     Coordinates{cursor_coords.L, GetLineMaxColumn(cursor_coords.L)};
                 SetSelection({cursor_coords.L, 0}, target_cursor_pos, State.CurrentCursor);
@@ -1557,9 +1558,9 @@ void TextEditor::HandleMouseInputs() {
                 else State.CurrentCursor = 0;
 
                 bool is_over_li;
-                auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite, &is_over_li);
+                const auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite, &is_over_li);
                 if (is_over_li) {
-                    auto target_cursor_pos = cursor_coords.L < int(Lines.size()) - 1 ?
+                    const auto target_cursor_pos = cursor_coords.L < int(Lines.size()) - 1 ?
                         Coordinates{cursor_coords.L + 1, 0} :
                         Coordinates{cursor_coords.L, GetLineMaxColumn(cursor_coords.L)};
                     SetSelection({cursor_coords.L, 0}, target_cursor_pos, State.CurrentCursor);
@@ -1574,7 +1575,7 @@ void TextEditor::HandleMouseInputs() {
                 MergeCursorsIfPossible();
             }
         } else if (shift && is_click) {
-            auto new_selection = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite);
+            const auto new_selection = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite);
             SetCursorPosition(SanitizeCoordinates(new_selection), State.CurrentCursor, false);
         }
     }
@@ -1608,7 +1609,7 @@ void TextEditor::Render(bool is_parent_focused) {
         snprintf(li_buffer, 16, " %d ", int(Lines.size()));
         TextStart += ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, li_buffer, nullptr, nullptr).x;
     }
-    ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
+    const ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
     ScrollX = ImGui::GetScrollX();
     ScrollY = ImGui::GetScrollY();
     UpdateViewVariables(ScrollX, ScrollY);
@@ -1666,8 +1667,7 @@ void TextEditor::Render(bool is_parent_focused) {
             }
             if (cursor_coords_in_this_line.size() > 0) {
                 // Render the cursors
-                bool focused = ImGui::IsWindowFocused() || is_parent_focused;
-                if (focused) {
+                if (ImGui::IsWindowFocused() || is_parent_focused) {
                     for (const auto &cursor_coords : cursor_coords_in_this_line) {
                         float width = 1.0f;
                         auto cindex = GetCharacterIndexR(cursor_coords);
@@ -1675,7 +1675,7 @@ void TextEditor::Render(bool is_parent_focused) {
 
                         if (Overwrite && cindex < int(line.size())) {
                             if (line[cindex].Char == '\t') {
-                                auto x = (1.0f + std::floor((1.0f + cx) / (float(TabSize) * space_size))) * (float(TabSize) * space_size);
+                                const auto x = (1.0f + std::floor((1.0f + cx) / (float(TabSize) * space_size))) * (float(TabSize) * space_size);
                                 width = x - cx;
                             } else {
                                 width = CharAdvance.x;
@@ -1788,8 +1788,8 @@ void TextEditor::Render(bool is_parent_focused) {
 }
 
 void TextEditor::OnCursorPositionChanged() {
-    auto &cursor = State.Cursors[0];
-    bool one_cursor_without_selection = State.CurrentCursor == 0 && !cursor.HasSelection();
+    const auto &cursor = State.Cursors[0];
+    const bool one_cursor_without_selection = State.CurrentCursor == 0 && !cursor.HasSelection();
     CursorOnBracket = one_cursor_without_selection ? FindMatchingBracket(cursor.InteractiveEnd.L, GetCharacterIndexR(cursor.InteractiveEnd), MatchingBracketCoords) : false;
 
     if (!IsDraggingSelection) {
@@ -1812,7 +1812,7 @@ void TextEditor::OnLineChanged(bool before_change, int li, int column, int char_
             }
         }
     } else {
-        for (const auto &[c, ci]: cursor_indices) {
+        for (const auto &[c, ci] : cursor_indices) {
             SetCursorPosition({li, GetCharacterColumn(li, ci)}, c);
         }
     }
@@ -1901,7 +1901,7 @@ void TextEditor::ColorizeRange(int from_li, int to_li) {
                     if (std::regex_search(first, last, results, p.first, std::regex_constants::match_continuous)) {
                         has_tokenize_results = true;
 
-                        auto &v = *results.begin();
+                        const auto &v = *results.begin();
                         token_begin = v.first;
                         token_end = v.second;
                         token_color = p.second;

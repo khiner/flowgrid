@@ -4,6 +4,7 @@
 #include <cassert>
 #include <memory>
 #include <regex>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -255,7 +256,7 @@ private:
     void DeleteSelection(int cursor);
 
     void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);
-    void AddGlyphsToLine(int li, int ci, LineT::const_iterator start, LineT::const_iterator end);
+    void AddGlyphsToLine(int li, int ci, std::span<const Glyph>);
     void AddGlyphToLine(int li, int ci, Glyph glyph);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 

@@ -251,7 +251,7 @@ private:
 
     LineT &InsertLine(int li);
     void RemoveLine(int li, const std::unordered_set<int> *handled_cursors = nullptr);
-    void DeleteRange(const Coordinates &start, const Coordinates &end);
+    void DeleteRange(const Coordinates &start, const Coordinates &end, int exclude_ci = -1);
     void DeleteSelection(int cursor);
 
     void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);

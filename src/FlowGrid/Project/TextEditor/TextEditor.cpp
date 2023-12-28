@@ -1161,51 +1161,42 @@ void TextEditor::RemoveLine(int li, const std::unordered_set<int> *handled_curso
     }
 }
 
-void TextEditor::DeleteRange(const Coordinates &start, const Coordinates &end) {
+void TextEditor::DeleteRange(const Coordinates &start, const Coordinates &end, int exclude_ci) {
     if (end <= start) return;
 
     const auto start_ci = GetCharacterIndexL(start), end_ci = GetCharacterIndexR(end);
-    if (start.L == end.L) {
-        RemoveGlyphsFromLine(start.L, start_ci, end_ci);
-    } else {
-        RemoveGlyphsFromLine(start.L, start_ci, -1); // from start to end of line
-        RemoveGlyphsFromLine(end.L, 0, end_ci);
-        if (start.L < end.L) {
-            AddGlyphsToLine(start.L, Lines[start.L].size(), Lines[end.L]);
+    if (start.L == end.L) return RemoveGlyphsFromLine(start.L, start_ci, end_ci);
 
-            // Move up cursors in line that is being moved up.
-            for (int c = 0; c <= State.CurrentCursor; c++) {
-                const auto &cursor = State.Cursors[c];
-                if (cursor.InteractiveEnd.L > end.L) break;
-                if (cursor.InteractiveEnd.L != end.L) continue;
+    RemoveGlyphsFromLine(start.L, start_ci, -1); // from start to end of line
+    RemoveGlyphsFromLine(end.L, 0, end_ci);
+    if (start.L == end.L) return;
 
-                const int other_cursor_start_ci = GetCharacterIndexR(cursor.InteractiveStart);
-                const int other_cursor_end_ci = GetCharacterIndexR(cursor.InteractiveEnd);
-                const int other_cursor_new_start_ci = GetCharacterIndexR(start) + other_cursor_start_ci;
-                const int other_cursor_new_end_ci = GetCharacterIndexR(start) + other_cursor_end_ci;
-                SetCursorPosition({start.L, GetCharacterColumn(start.L, other_cursor_new_start_ci)}, c, true);
-                SetCursorPosition({start.L, GetCharacterColumn(start.L, other_cursor_new_end_ci)}, c, false);
-            }
+    // At least one line completely removed.
+    AddGlyphsToLine(start.L, Lines[start.L].size(), Lines[end.L]);
 
-            // Erase the next line.
-            const int start_li = start.L + 1, end_li = end.L + 1;
-            Lines.erase(Lines.begin() + start_li, Lines.begin() + end_li);
-            for (int c = 0; c <= State.CurrentCursor; c++) {
-                const auto &cursor = State.Cursors[c];
-                const auto &end = cursor.InteractiveEnd;
-                if (end.L >= start_li) {
-                    SetCursorPosition({std::max(0, end.L - (end_li - start_li)), end.C}, c);
-                }
-            }
+    // Move up all cursors after the last removed line.
+    const uint num_removed_lines = end.L - start.L;
+    for (int c = 0; c <= State.CurrentCursor; c++) {
+        if (exclude_ci != -1 && c == exclude_ci) continue;
+
+        auto &cursor = State.Cursors[c];
+        if (cursor.InteractiveEnd.L >= end.L) {
+            cursor.InteractiveStart.L -= num_removed_lines;
+            cursor.InteractiveEnd.L -= num_removed_lines;
         }
     }
+
+    Lines.erase(Lines.begin() + start.L + 1, Lines.begin() + end.L + 1);
 }
 
 void TextEditor::DeleteSelection(int c) {
-    const auto &cursor = State.Cursors[c == -1 ? State.CurrentCursor : c];
+    if (c == -1) c = State.CurrentCursor;
+
+    const auto &cursor = State.Cursors[c];
     if (!cursor.HasSelection()) return;
 
-    DeleteRange(cursor.GetSelectionStart(), cursor.GetSelectionEnd());
+    // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
+    DeleteRange(cursor.GetSelectionStart(), cursor.GetSelectionEnd(), c);
     SetCursorPosition(cursor.GetSelectionStart(), c);
     Colorize(cursor.GetSelectionStart().L, 1);
 }

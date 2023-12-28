@@ -293,8 +293,8 @@ private:
     Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
-    int GetCharacterIndexL(const Coordinates &coords) const;
-    int GetCharacterIndexR(const Coordinates &coords) const;
+    int GetCharacterIndexL(const Coordinates &) const;
+    int GetCharacterIndexR(const Coordinates &) const;
     int GetCharacterColumn(int li, int ci) const;
     int GetFirstVisibleCharacterIndex(int line) const;
     int GetLineMaxColumn(int line, int limit = -1) const;
@@ -305,8 +305,8 @@ private:
     void DeleteRange(const Coordinates &start, const Coordinates &end);
     void DeleteSelection(int cursor = -1);
 
-    void RemoveGlyphsFromLine(int li, int start_ci, int end_ci = -1);
-    void AddGlyphsToLine(int li, int ci, LineT::const_iterator source_start, LineT::const_iterator source_end);
+    void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);
+    void AddGlyphsToLine(int li, int ci, LineT::const_iterator start, LineT::const_iterator end);
     void AddGlyphToLine(int li, int ci, Glyph glyph);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 
@@ -316,7 +316,8 @@ private:
     void Render(bool is_parent_focused = false);
 
     void OnCursorPositionChanged();
-    void OnLineChanged(bool before_change, int li, int column, int char_count, bool is_deleted);
+    std::unordered_map<int, int> BeforeLineChanged(int li, int column, int char_count, bool is_deleted);
+    void AfterLineChanged(int li, std::unordered_map<int, int> &&cursor_indices);
     void MergeCursorsIfPossible();
 
     void AddUndo(UndoRecord &);

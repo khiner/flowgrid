@@ -152,8 +152,6 @@ void TextEditor::Copy() {
 }
 
 void TextEditor::Cut() {
-    if (ReadOnly) return Copy();
-
     if (AnyCursorHasSelection()) {
         UndoRecord u{State};
         Copy();
@@ -161,14 +159,11 @@ void TextEditor::Cut() {
             AddSelectionUndoOp(u, UndoOperationType::Delete, c);
             DeleteSelection(c);
         }
-
         AddUndo(u);
     }
 }
 
 void TextEditor::Paste() {
-    if (ReadOnly) return;
-
     // Check if we should do multicursor paste.
     const string clip_text = ImGui::GetClipboardText();
     bool can_paste_to_multiple_cursors = false;
@@ -600,8 +595,6 @@ void TextEditor::MoveEnd(bool select) {
 }
 
 void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
-    assert(!ReadOnly);
-
     const bool has_selection = AnyCursorHasSelection();
 
     bool any_cursor_has_multiline_selection = false;
@@ -696,7 +689,6 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
 }
 
 void TextEditor::Backspace(bool is_word_mode) {
-    assert(!ReadOnly);
     if (Lines.empty()) return;
 
     if (AnyCursorHasSelection()) {
@@ -715,7 +707,6 @@ void TextEditor::Backspace(bool is_word_mode) {
 }
 
 void TextEditor::Delete(bool is_word_mode, const EditorState *editor_state) {
-    assert(!ReadOnly);
     if (Lines.empty()) return;
 
     if (AnyCursorHasSelection()) {
@@ -867,8 +858,6 @@ bool TextEditor::FindMatchingBracket(int li, int ci, Coordinates &out) {
 }
 
 void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
-    assert(!ReadOnly);
-
     UndoRecord u{State};
     for (int c = State.CurrentCursor; c > -1; c--) {
         const auto &cursor = State.Cursors[c];
@@ -901,8 +890,6 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
 }
 
 void TextEditor::MoveUpCurrentLines() {
-    assert(!ReadOnly);
-
     UndoRecord u{State};
     std::set<int> affected_lines;
     int min_li = -1, max_li = -1;
@@ -940,8 +927,6 @@ void TextEditor::MoveUpCurrentLines() {
 }
 
 void TextEditor::MoveDownCurrentLines() {
-    assert(!ReadOnly);
-
     UndoRecord u{State};
     std::set<int> affected_lines;
     int min_li = -1, max_li = -1;
@@ -981,7 +966,6 @@ void TextEditor::MoveDownCurrentLines() {
 void TextEditor::ToggleLineComment() {
     if (LanguageDef == nullptr) return;
 
-    assert(!ReadOnly);
     const string &comment_str = LanguageDef->SingleLineComment;
 
     UndoRecord u{State};
@@ -1223,8 +1207,6 @@ int TextEditor::GetLineMaxColumn(int li, int limit) const {
 }
 
 TextEditor::LineT &TextEditor::InsertLine(int li) {
-    assert(!ReadOnly);
-
     auto &result = *Lines.insert(Lines.begin() + li, LineT());
     for (int c = 0; c <= State.CurrentCursor; c++) {
         const auto &cursor = State.Cursors[c];
@@ -1237,7 +1219,6 @@ TextEditor::LineT &TextEditor::InsertLine(int li) {
 }
 
 void TextEditor::RemoveLine(int li, const std::unordered_set<int> *handled_cursors) {
-    assert(!ReadOnly);
     assert(Lines.size() > 1);
 
     Lines.erase(Lines.begin() + li);
@@ -1254,7 +1235,6 @@ void TextEditor::RemoveLine(int li, const std::unordered_set<int> *handled_curso
 }
 
 void TextEditor::RemoveLines(int start, int end) {
-    assert(!ReadOnly);
     assert(end >= start);
     assert(Lines.size() > (size_t)(end - start));
 
@@ -1271,7 +1251,6 @@ void TextEditor::RemoveLines(int start, int end) {
 
 void TextEditor::DeleteRange(const Coordinates &start, const Coordinates &end) {
     assert(end >= start);
-    assert(!ReadOnly);
     if (end == start) return;
 
     const auto start_ci = GetCharacterIndexL(start);
@@ -1374,12 +1353,12 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
         const auto shift = io.KeyShift;
         const auto super = io.KeySuper;
 
-        const auto is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift;
-        const auto is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt;
-        const auto is_wordmove_key = is_osx ? alt : ctrl;
-        const auto is_alt_only = alt && !ctrl && !shift && !super;
-        const auto is_ctrl_only = ctrl && !alt && !shift && !super;
-        const auto is_shift_only = shift && !alt && !ctrl && !super;
+        const bool is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift;
+        const bool is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt;
+        const bool is_wordmove_key = is_osx ? alt : ctrl;
+        const bool is_alt_only = alt && !ctrl && !shift && !super;
+        const bool is_ctrl_only = ctrl && !alt && !shift && !super;
+        const bool is_shift_only = shift && !alt && !ctrl && !super;
 
         io.WantCaptureKeyboard = true;
         io.WantTextInput = true;
@@ -1422,9 +1401,9 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
             ChangeCurrentLinesIndentation(false);
         else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
             ChangeCurrentLinesIndentation(true);
-        else if (!alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
+        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
             MoveUpCurrentLines();
-        else if (!alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
+        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
             MoveDownCurrentLines();
         else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
             ToggleLineComment();
@@ -1438,10 +1417,9 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
             Paste();
         else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_V))
             Paste();
-        else if (is_shortcut && IsPressed(ImGuiKey_X))
-            Cut();
-        else if (is_shift_only && IsPressed(ImGuiKey_Delete))
-            Cut();
+        else if ((is_shortcut && IsPressed(ImGuiKey_X)) || (is_shift_only && IsPressed(ImGuiKey_Delete)))
+            if (ReadOnly) Copy();
+            else Cut();
         else if (is_shortcut && IsPressed(ImGuiKey_A))
             SelectAll();
         else if (is_shortcut && IsPressed(ImGuiKey_D))
@@ -1824,7 +1802,6 @@ void TextEditor::MergeCursorsIfPossible() {
 
 void TextEditor::AddUndo(UndoRecord &record) {
     record.After = State;
-    assert(!ReadOnly);
     UndoBuffer.resize((size_t)(UndoIndex + 1));
     UndoBuffer.back() = record;
     ++UndoIndex;
@@ -2013,8 +1990,6 @@ void TextEditor::ColorizeInternal() {
 }
 
 int TextEditor::InsertTextAt(/* inout */ Coordinates &at, const char *text) {
-    assert(!ReadOnly);
-
     int ci = GetCharacterIndexR(at);
     int total_lines = 0;
     while (*text != '\0') {

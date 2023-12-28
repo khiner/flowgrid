@@ -306,7 +306,7 @@ private:
     void DeleteSelection(int cursor = -1);
 
     void RemoveGlyphsFromLine(int li, int start_ci, int end_ci = -1);
-    void AddGlyphsToLine(int li, int ci, LineT::iterator source_start, LineT::iterator source_end);
+    void AddGlyphsToLine(int li, int ci, LineT::const_iterator source_start, LineT::const_iterator source_end);
     void AddGlyphToLine(int li, int ci, Glyph glyph);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 

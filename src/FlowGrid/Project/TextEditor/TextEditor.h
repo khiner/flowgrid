@@ -1,12 +1,9 @@
 #pragma once
 
-#include <algorithm>
 #include <array>
 #include <cassert>
-#include <map>
 #include <memory>
 #include <regex>
-#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -14,7 +11,9 @@
 
 #include "imgui.h"
 
-using std::string;
+#include "PaletteIndex.h"
+
+struct LanguageDefinition;
 
 struct TextEditor {
     TextEditor();
@@ -68,8 +67,8 @@ struct TextEditor {
     bool CanUndo() const { return !ReadOnly && UndoIndex > 0; }
     bool CanRedo() const { return !ReadOnly && UndoIndex < (int)UndoBuffer.size(); }
 
-    void SetText(const string &text);
-    string GetText() const;
+    void SetText(const std::string &text);
+    std::string GetText() const;
 
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
     void DebugPanel();
@@ -102,32 +101,6 @@ private:
     }
 
     inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
-
-    enum class PaletteIndex {
-        Default,
-        Keyword,
-        Number,
-        String,
-        CharLiteral,
-        Punctuation,
-        Preprocessor,
-        Identifier,
-        KnownIdentifier,
-        PreprocIdentifier,
-        Comment,
-        MultiLineComment,
-        Background,
-        Cursor,
-        Selection,
-        ErrorMarker,
-        ControlCharacter,
-        Breakpoint,
-        LineNumber,
-        CurrentLineFill,
-        CurrentLineFillInactive,
-        CurrentLineEdge,
-        Max
-    };
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -186,26 +159,12 @@ private:
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
     using LineT = std::vector<Glyph>;
 
-    struct LanguageDefinition {
-        using TokenRegexStringT = std::pair<string, PaletteIndex>;
-        using TokenizeCallbackT = bool (*)(const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out, PaletteIndex &palette_index);
-
-        string Name, CommentStart, CommentEnd, SingleLineComment;
-        bool IsCaseSensitive{true};
-        std::unordered_set<string> Keywords, Identifiers;
-        std::vector<TokenRegexStringT> TokenRegexStrings;
-        TokenizeCallbackT Tokenize{nullptr};
-        char PreprocChar{'#'};
-
-        static const LanguageDefinition Cpp, Hlsl, Glsl, Python, C, Sql, AngelScript, Lua, Cs, Jsn;
-    };
-
     enum class UndoOperationType {
         Add,
         Delete,
     };
     struct UndoOperation {
-        string Text;
+        std::string Text;
         Coordinates Start, End;
         UndoOperationType Type;
     };
@@ -245,13 +204,13 @@ private:
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coordinates &start, const Coordinates &end);
     void AddSelectionUndoOp(UndoRecord &, UndoOperationType, int c);
 
-    string GetText(const Coordinates &start, const Coordinates &end) const;
-    string GetSelectedText(int cursor = -1) const;
+    std::string GetText(const Coordinates &start, const Coordinates &end) const;
+    std::string GetSelectedText(int cursor = -1) const;
 
     void SetCursorPosition(const Coordinates &position, int cursor = -1, bool clear_selection = true);
 
     int InsertTextAt(Coordinates &at, const char *);
-    void InsertTextAtCursor(const string &, int cursor = -1);
+    void InsertTextAtCursor(const std::string &, int cursor = -1);
     void InsertTextAtCursor(const char *, int cursor = -1);
 
     enum class MoveDirection {
@@ -366,5 +325,5 @@ private:
     LanguageDefinitionIdT LanguageDefinitionId;
     const LanguageDefinition *LanguageDef = nullptr;
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
-    string LineBuffer;
+    std::string LineBuffer;
 };

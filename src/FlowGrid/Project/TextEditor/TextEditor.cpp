@@ -1,12 +1,14 @@
 #include "TextEditor.h"
 
+#include "LanguageDefinition.h"
+
 #include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <regex>
+#include <set>
 #include <string>
 
 #include "imgui_internal.h"
+
+using std::string;
 
 TextEditor::TextEditor() {
     SetPalette(DefaultPaletteId);

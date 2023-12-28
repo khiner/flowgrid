@@ -1,4 +1,4 @@
-#include "TextEditor.h"
+#include "LanguageDefinition.h"
 
 static bool TokenizeCStyleString(const char *in_begin, const char *in_end, const char *&out_begin, const char *&end_out) {
     const char *p = in_begin;
@@ -278,7 +278,7 @@ static bool TokenizeLuaStylePunctuation(const char *in_begin, const char *in_end
     return false;
 }
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Cpp = {
+const LanguageDefinition LanguageDefinition::Cpp = {
     .Name = "C++",
     .CommentStart = "/*",
     .CommentEnd = "*/",
@@ -315,7 +315,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Cpp = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Hlsl = {
+const LanguageDefinition LanguageDefinition::Hlsl = {
     .Name = "HLSL",
     .CommentStart = "/*",
     .CommentEnd = "*/",
@@ -351,7 +351,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Hlsl = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Glsl = {
+const LanguageDefinition LanguageDefinition::Glsl = {
     .Name = "GLSL",
     .CommentStart = "/*",
     .CommentEnd = "*/",
@@ -376,7 +376,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Glsl = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Python = {
+const LanguageDefinition LanguageDefinition::Python = {
     .Name = "Python",
     .CommentStart = "\"\"\"",
     .CommentEnd = "\"\"\"",
@@ -399,7 +399,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Python = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::C = {
+const LanguageDefinition LanguageDefinition::C = {
     .Name = "C",
     .CommentStart = "/*",
     .CommentEnd = "*/",
@@ -434,7 +434,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::C = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Sql = {
+const LanguageDefinition LanguageDefinition::Sql = {
     .Name = "SQL",
     .CommentStart = "/*",
     .CommentEnd = "*/",
@@ -465,7 +465,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Sql = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::AngelScript = {
+const LanguageDefinition LanguageDefinition::AngelScript = {
     .Name = "AngelScript",
     .CommentStart = "/*",
     .CommentEnd = "*/",
@@ -490,7 +490,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::AngelScript
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Lua = {
+const LanguageDefinition LanguageDefinition::Lua = {
     .Name = "Lua",
     .CommentStart = "--[[",
     .CommentEnd = "]]",
@@ -521,7 +521,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Lua = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Cs = {
+const LanguageDefinition LanguageDefinition::Cs = {
     .Name = "C#",
     .CommentStart = "/*",
     .CommentEnd = "*/",
@@ -547,7 +547,7 @@ const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Cs = {
     },
 };
 
-const TextEditor::LanguageDefinition TextEditor::LanguageDefinition::Jsn = {
+const LanguageDefinition LanguageDefinition::Jsn = {
     .Name = "Json",
     .CommentStart = "/*",
     .CommentEnd = "*/",

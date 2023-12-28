@@ -251,7 +251,6 @@ private:
 
     LineT &InsertLine(int li);
     void RemoveLine(int li, const std::unordered_set<int> *handled_cursors = nullptr);
-    void RemoveLines(int start, int end);
     void DeleteRange(const Coordinates &start, const Coordinates &end);
     void DeleteSelection(int cursor);
 

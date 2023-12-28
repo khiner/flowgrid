@@ -572,6 +572,7 @@ void TextEditor::MoveEnd(bool select) {
     }
 }
 
+// todo can we simplify this by using `InsertTextAt...`?
 void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
     const bool has_selection = AnyCursorHasSelection();
     if (character == '\t' && has_selection && AnyCursorHasMultilineSelection()) return ChangeCurrentLinesIndentation(!is_shift);
@@ -963,7 +964,7 @@ void TextEditor::RemoveCurrentLines() {
         if (int(Lines.size()) > next_li) { // Next line exists.
             to_delete_start = {li, 0};
             to_delete_end = {next_li, 0};
-            SetCursorPosition({State.Cursors[c].InteractiveEnd.L, 0}, c);
+            SetCursorPosition({li, 0}, c);
         } else if (prev_li > -1) { // Previous line exists.
             to_delete_start = {prev_li, GetLineMaxColumn(prev_li)};
             to_delete_end = {li, GetLineMaxColumn(li)};
@@ -1135,8 +1136,9 @@ TextEditor::LineT &TextEditor::InsertLine(int li) {
     auto &result = *Lines.insert(Lines.begin() + li, LineT{});
     for (int c = 0; c <= State.CurrentCursor; c++) {
         const auto &cursor = State.Cursors[c];
-        if (cursor.InteractiveEnd.L >= li) {
-            SetCursorPosition({cursor.InteractiveEnd.L + 1, cursor.InteractiveEnd.C}, c);
+        const auto &end = cursor.InteractiveEnd;
+        if (end.L >= li) {
+            SetCursorPosition({end.L + 1, end.C}, c);
         }
     }
 
@@ -1151,32 +1153,16 @@ void TextEditor::RemoveLine(int li, const std::unordered_set<int> *handled_curso
 
     for (int c = 0; c <= State.CurrentCursor; c++) {
         const auto &cursor = State.Cursors[c];
-        if (cursor.InteractiveEnd.L >= li) {
-            // Move up if it has not been handled already.
-            if (handled_cursors == nullptr || !handled_cursors->contains(c))
-                SetCursorPosition({cursor.InteractiveEnd.L - 1, cursor.InteractiveEnd.C}, c);
-        }
-    }
-}
-
-void TextEditor::RemoveLines(int start, int end) {
-    assert(end >= start);
-    assert(Lines.size() > (size_t)(end - start));
-
-    Lines.erase(Lines.begin() + start, Lines.begin() + end);
-    assert(!Lines.empty());
-    for (int c = 0; c <= State.CurrentCursor; c++) {
-        const auto &cursor = State.Cursors[c];
-        if (cursor.InteractiveEnd.L >= start) {
-            const int target_line = std::max(0, cursor.InteractiveEnd.L - (end - start));
-            SetCursorPosition({target_line, cursor.InteractiveEnd.C}, c);
+        const auto &end = cursor.InteractiveEnd;
+        // Move up if it has not been handled already.
+        if (end.L >= li && (handled_cursors == nullptr || !handled_cursors->contains(c))) {
+            SetCursorPosition({end.L - 1, end.C}, c);
         }
     }
 }
 
 void TextEditor::DeleteRange(const Coordinates &start, const Coordinates &end) {
-    assert(end >= start);
-    if (end == start) return;
+    if (end <= start) return;
 
     const auto start_ci = GetCharacterIndexL(start), end_ci = GetCharacterIndexR(end);
     if (start.L == end.L) {
@@ -1200,7 +1186,17 @@ void TextEditor::DeleteRange(const Coordinates &start, const Coordinates &end) {
                 SetCursorPosition({start.L, GetCharacterColumn(start.L, other_cursor_new_start_ci)}, c, true);
                 SetCursorPosition({start.L, GetCharacterColumn(start.L, other_cursor_new_end_ci)}, c, false);
             }
-            RemoveLines(start.L + 1, end.L + 1);
+
+            // Erase the next line.
+            const int start_li = start.L + 1, end_li = end.L + 1;
+            Lines.erase(Lines.begin() + start_li, Lines.begin() + end_li);
+            for (int c = 0; c <= State.CurrentCursor; c++) {
+                const auto &cursor = State.Cursors[c];
+                const auto &end = cursor.InteractiveEnd;
+                if (end.L >= start_li) {
+                    SetCursorPosition({std::max(0, end.L - (end_li - start_li)), end.C}, c);
+                }
+            }
         }
     }
 }
@@ -1543,9 +1539,7 @@ void TextEditor::Render(bool is_parent_focused) {
             std::vector<Coordinates> cursor_coords_in_this_line;
             for (int c = 0; c <= State.CurrentCursor; c++) {
                 const auto &cursor = State.Cursors[c];
-                if (cursor.InteractiveEnd.L == li) {
-                    cursor_coords_in_this_line.push_back(cursor.InteractiveEnd);
-                }
+                if (cursor.InteractiveEnd.L == li) cursor_coords_in_this_line.push_back(cursor.InteractiveEnd);
             }
             if (cursor_coords_in_this_line.size() > 0) {
                 // Render the cursors
@@ -1714,7 +1708,7 @@ void TextEditor::MergeCursorsIfPossible() {
 
 void TextEditor::AddUndo(UndoRecord &record) {
     record.After = State;
-    UndoBuffer.resize((size_t)(UndoIndex + 1));
+    UndoBuffer.resize(size_t(UndoIndex + 1));
     UndoBuffer.back() = record;
     ++UndoIndex;
 }

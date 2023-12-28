@@ -55,7 +55,6 @@ struct TextEditor {
     void ClearExtraCursors();
     void ClearSelections();
 
-    void SetCursorPosition(int li, int ci);
     inline std::pair<int, int> GetCursorLineColumn() const {
         const auto coords = GetCursorPosition();
         return {coords.L, coords.C};
@@ -130,6 +129,9 @@ private:
 
     struct Cursor {
         Coordinates InteractiveStart{0, 0}, InteractiveEnd{0, 0};
+    
+        inline bool operator==(const Cursor &o) const { return InteractiveStart == o.InteractiveStart && InteractiveEnd == o.InteractiveEnd; }
+
         inline Coordinates GetSelectionStart() const { return InteractiveStart < InteractiveEnd ? InteractiveStart : InteractiveEnd; }
         inline Coordinates GetSelectionEnd() const { return InteractiveStart > InteractiveEnd ? InteractiveStart : InteractiveEnd; }
         inline bool HasSelection() const { return InteractiveStart != InteractiveEnd; }
@@ -144,6 +146,7 @@ private:
 
         void AddCursor();
         int GetLastAddedCursorIndex();
+        Cursor &GetLastAddedCursor();
         void SortCursorsFromTopToBottom();
     };
 
@@ -193,16 +196,15 @@ private:
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coordinates &start, const Coordinates &end);
-    void AddSelectionUndoOp(UndoRecord &, UndoOperationType, int c);
+    void AddSelectionUndoOp(UndoRecord &, UndoOperationType, const Cursor &);
 
     std::string GetText(const Coordinates &start, const Coordinates &end) const;
-    std::string GetSelectedText(int cursor = -1) const;
+    std::string GetSelectedText(const Cursor &) const;
 
-    void SetCursorPosition(const Coordinates &position, int cursor, bool clear_selection = true);
+    void SetCursorPosition(const Coordinates &position, Cursor &cursor, bool clear_selection = true);
 
     int InsertTextAt(Coordinates &at, const char *);
-    void InsertTextAtCursor(const std::string &, int cursor);
-    void InsertTextAtCursor(const char *, int cursor);
+    void InsertTextAtCursor(const std::string &, Cursor &);
 
     enum class MoveDirection {
         Right = 0,
@@ -225,7 +227,8 @@ private:
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
-    void SetSelection(Coordinates start, Coordinates end, int cursor);
+    void SetSelection(Coordinates start, Coordinates end, Cursor &);
+    void SetSelection(Coordinates start, Coordinates end, int c);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
     bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
@@ -236,7 +239,7 @@ private:
     void RemoveCurrentLines();
 
     float TextDistanceToLineStart(const Coordinates &from, bool sanitize_coords = true) const;
-    void EnsureCursorVisible(int cursor = -1, bool start_too = false);
+    void EnsureCursorVisible(bool start_too = false);
 
     Coordinates SanitizeCoordinates(const Coordinates &) const;
     Coordinates GetCursorPosition(int cursor = -1, bool start = false) const;
@@ -250,9 +253,8 @@ private:
     int GetLineMaxColumn(int line, int limit = -1) const;
 
     LineT &InsertLine(int li);
-    void RemoveLine(int li, const std::unordered_set<int> *handled_cursors = nullptr);
-    void DeleteRange(const Coordinates &start, const Coordinates &end, int exclude_ci = -1);
-    void DeleteSelection(int cursor);
+    void DeleteRange(const Coordinates &start, const Coordinates &end, const Cursor *exclude_cursor = nullptr);
+    void DeleteSelection(Cursor &);
 
     void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);
     void AddGlyphsToLine(int li, int ci, std::span<const Glyph>);

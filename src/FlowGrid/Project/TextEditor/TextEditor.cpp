@@ -619,7 +619,7 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             ImTextCharToUtf8(buf, character);
 
             const auto &line = Lines[coord.L];
-            auto ci = GetCharacterIndexR(coord);
+            const auto ci = GetCharacterIndexR(coord);
             if (Overwrite && ci < int(line.size())) {
                 uint d = UTF8CharLength(line[ci].Char);
 
@@ -633,13 +633,12 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
                 }
                 u.Operations.push_back(removed);
             }
-
-            for (auto p = buf; *p != '\0'; p++, ++ci) {
-                AddGlyphToLine(coord.L, ci, {*p, PaletteIndex::Default});
-            }
+            std::vector<Glyph> glyphs;
+            for (auto p = buf; *p != '\0'; p++) glyphs.emplace_back(*p, PaletteIndex::Default);
+            AddGlyphsToLine(coord.L, ci, glyphs);
             added.Text = buf;
 
-            SetCursorPosition({coord.L, GetCharacterColumn(coord.L, ci)}, c);
+            SetCursorPosition({coord.L, GetCharacterColumn(coord.L, ci + glyphs.size())}, c);
         }
 
         added.End = GetCursorPosition(c);
@@ -1185,10 +1184,8 @@ void TextEditor::DeleteRange(const Coordinates &start, const Coordinates &end) {
     } else {
         RemoveGlyphsFromLine(start.L, start_ci, -1); // from start to end of line
         RemoveGlyphsFromLine(end.L, 0, end_ci);
-        const auto &first_line = Lines[start.L];
-        const auto &last_line = Lines[end.L];
         if (start.L < end.L) {
-            AddGlyphsToLine(start.L, first_line.size(), last_line);
+            AddGlyphsToLine(start.L, Lines[start.L].size(), Lines[end.L]);
 
             // Move up cursors in line that is being moved up.
             for (int c = 0; c <= State.CurrentCursor; c++) {
@@ -1236,11 +1233,13 @@ void TextEditor::AfterLineChanged(int li, std::unordered_map<int, int> &&adjuste
     }
 }
 
-void TextEditor::RemoveGlyphsFromLine(int li, int start_ci, int end_ci) {
-    const int column = GetCharacterColumn(li, start_ci);
+void TextEditor::RemoveGlyphsFromLine(int li, int ci, int end_ci) {
+    const int column = GetCharacterColumn(li, ci);
     auto &line = Lines[li];
-    auto adjusted_ci_for_cursor = BeforeLineChanged(li, column, end_ci - start_ci, true);
-    line.erase(line.begin() + start_ci, end_ci == -1 ? line.end() : line.begin() + end_ci);
+    // todo the `end_ci == -1` case is the only thing preventing this from being combined with `AddGlyphsToLine`.
+    std::span<const Glyph> glyphs = {line.cbegin() + ci, end_ci == -1 ? line.cend() : line.cbegin() + end_ci};
+    auto adjusted_ci_for_cursor = BeforeLineChanged(li, column, glyphs.size(), true);
+    line.erase(glyphs.begin(), glyphs.end());
     AfterLineChanged(li, std::move(adjusted_ci_for_cursor));
 }
 
@@ -1249,14 +1248,6 @@ void TextEditor::AddGlyphsToLine(int li, int ci, std::span<const Glyph> glyphs) 
     auto &line = Lines[li];
     auto adjusted_ci_for_cursor = BeforeLineChanged(li, column, glyphs.size(), false);
     line.insert(line.begin() + ci, glyphs.begin(), glyphs.end());
-    AfterLineChanged(li, std::move(adjusted_ci_for_cursor));
-}
-
-void TextEditor::AddGlyphToLine(int li, int ci, Glyph glyph) {
-    const int column = GetCharacterColumn(li, ci);
-    auto &line = Lines[li];
-    auto adjusted_ci_for_cursor = BeforeLineChanged(li, column, 1, false);
-    line.insert(line.begin() + ci, glyph);
     AfterLineChanged(li, std::move(adjusted_ci_for_cursor));
 }
 
@@ -1932,9 +1923,11 @@ int TextEditor::InsertTextAt(/* inout */ Coordinates &at, const char *text) {
             ++total_lines;
             ++text;
         } else {
-            for (int d = UTF8CharLength(*text); d > 0 && *text != '\0'; d--) {
-                AddGlyphToLine(at.L, ci++, {*text++, PaletteIndex::Default});
-            }
+            std::vector<Glyph> glyphs;
+            const uint length = UTF8CharLength(*text);
+            for (uint d = 0; d < length && *text != '\0'; d++) glyphs.emplace_back(*text++, PaletteIndex::Default);
+            AddGlyphsToLine(at.L, ci, glyphs);
+            ci += glyphs.size();
             at.C = GetCharacterColumn(at.L, ci);
         }
     }

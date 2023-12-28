@@ -257,7 +257,6 @@ private:
 
     void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);
     void AddGlyphsToLine(int li, int ci, std::span<const Glyph>);
-    void AddGlyphToLine(int li, int ci, Glyph glyph);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);

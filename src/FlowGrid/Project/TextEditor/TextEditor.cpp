@@ -484,7 +484,7 @@ void TextEditor::MoveCoords(Coordinates &coords, MoveDirection direction, bool i
         case MoveDirection::Right:
             if (ci >= int(Lines[lindex].size())) {
                 if (lindex < int(Lines.size()) - 1) {
-                    coords.L = std::max(0, std::min(int(Lines.size()) - 1, lindex + 1));
+                    coords.L = std::clamp(lindex + 1, 0, int(Lines.size()) - 1);
                     coords.C = 0;
                 }
             } else {
@@ -863,7 +863,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
         const auto &cursor = State.Cursors[c];
         for (int li = cursor.GetSelectionEnd().L; li >= cursor.GetSelectionStart().L; li--) {
             // Check if selection ends at line start.
-            if (cursor.GetSelectionEnd() == Coordinates{li, 0} && cursor.GetSelectionEnd() != cursor.GetSelectionStart()) continue;
+            if (cursor.HasSelection() && cursor.GetSelectionEnd() == Coordinates{li, 0}) continue;
 
             if (increase) {
                 if (Lines[li].size() > 0) {
@@ -897,7 +897,7 @@ void TextEditor::MoveCurrentLines(bool up) {
         const auto &cursor = State.Cursors[c];
         for (int li = cursor.GetSelectionEnd().L; li >= cursor.GetSelectionStart().L; li--) {
             // Check if selection ends at line start.
-            if (cursor.GetSelectionEnd() == Coordinates{li, 0} && cursor.GetSelectionEnd() != cursor.GetSelectionStart()) continue;
+            if (cursor.HasSelection() && cursor.GetSelectionEnd() == Coordinates{li, 0}) continue;
 
             affected_lines.insert(li);
             min_li = min_li == -1 ? li : (li < min_li ? li : min_li);
@@ -936,7 +936,7 @@ void TextEditor::ToggleLineComment() {
         const auto &cursor = State.Cursors[c];
         for (int li = cursor.GetSelectionEnd().L; li >= cursor.GetSelectionStart().L; li--) {
             // Check if selection ends at line start.
-            if (cursor.GetSelectionEnd() == Coordinates{li, 0} && cursor.GetSelectionEnd() != cursor.GetSelectionStart()) continue;
+            if (cursor.HasSelection() && cursor.GetSelectionEnd() == Coordinates{li, 0}) continue;
 
             affected_line_indices.insert(li);
 
@@ -1604,20 +1604,20 @@ void TextEditor::Render(bool is_parent_focused) {
             }
 
             // Render colorized text
-            static std::string glyph_buffer;
             int ci = GetFirstVisibleCharacterIndex(li);
             int column = FirstVisibleColumn; // can be in the middle of tab character
             while (ci < int(Lines[li].size()) && column <= LastVisibleColumn) {
                 const auto &glyph = line[ci];
-                ImVec2 target_glyph_pos = line_start_screen_pos + ImVec2{TextStart + TextDistanceToLineStart({li, column}, false), 0};
+                const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + TextDistanceToLineStart({li, column}, false), 0};
                 if (glyph.Char == '\t') {
                     if (ShowWhitespaces) {
-                        const float s = ImGui::GetFontSize();
-                        const float x1 = target_glyph_pos.x + CharAdvance.x * 0.3;
-                        const float y1 = target_glyph_pos.y + font_height * 0.5f;
-                        const float x2 = target_glyph_pos.x + (ShortTabs ? (TabSizeAtColumn(column) * CharAdvance.x - CharAdvance.x * 0.3f) : CharAdvance.x);
-                        const float gap = s * (ShortTabs ? 0.16f : 0.2f);
-                        const ImVec2 p1{x1, y1}, p2{x2, y1}, p3{x2 - gap, y1 - gap}, p4{x2 - gap, y1 + gap};
+                        const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
+                        const ImVec2 p2{
+                            glyph_pos.x + (ShortTabs ? (TabSizeAtColumn(column) * CharAdvance.x - CharAdvance.x * 0.3f) : CharAdvance.x),
+                            p1.y
+                        };
+                        const float gap = ImGui::GetFontSize() * (ShortTabs ? 0.16f : 0.2f);
+                        const ImVec2 p3{p2.x - gap, p1.y - gap}, p4{p2.x - gap, p1.y + gap};
                         const ImU32 color = Palette[int(PaletteIndex::ControlCharacter)];
                         dl->AddLine(p1, p2, color);
                         dl->AddLine(p2, p3, color);
@@ -1625,21 +1625,20 @@ void TextEditor::Render(bool is_parent_focused) {
                     }
                 } else if (glyph.Char == ' ') {
                     if (ShowWhitespaces) {
-                        const float s = ImGui::GetFontSize();
-                        const float x = target_glyph_pos.x + space_size * 0.5f;
-                        const float y = target_glyph_pos.y + s * 0.5f;
-                        dl->AddCircleFilled({x, y}, 1.5f, Palette[int(PaletteIndex::ControlCharacter)], 4);
+                        dl->AddCircleFilled(
+                            glyph_pos + ImVec2{space_size, ImGui::GetFontSize()} * 0.5f,
+                            1.5f, Palette[int(PaletteIndex::ControlCharacter)], 4
+                        );
                     }
                 } else {
                     const uint seq_length = UTF8CharLength(glyph.Char);
                     if (CursorOnBracket && seq_length == 1 && MatchingBracketCoords == Coordinates{li, column}) {
-                        ImVec2 top_left{target_glyph_pos.x, target_glyph_pos.y + font_height + 1.0f};
-                        ImVec2 bottom_right{top_left.x + CharAdvance.x, top_left.y + 1.0f};
-                        dl->AddRectFilled(top_left, bottom_right, Palette[int(PaletteIndex::Cursor)]);
+                        const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
+                        dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, Palette[int(PaletteIndex::Cursor)]);
                     }
-                    glyph_buffer.clear();
+                    string glyph_buffer;
                     for (uint i = 0; i < seq_length; i++) glyph_buffer.push_back(line[ci + i].Char);
-                    dl->AddText(target_glyph_pos, GetGlyphColor(glyph), glyph_buffer.c_str());
+                    dl->AddText(glyph_pos, GetGlyphColor(glyph), glyph_buffer.c_str());
                 }
                 MoveCharIndexAndColumn(li, ci, column);
             }
@@ -1716,9 +1715,8 @@ void TextEditor::OnLineChanged(bool before_change, int li, int column, int char_
         cursor_indices.clear();
         for (int c = 0; c <= State.CurrentCursor; c++) {
             const auto &cursor = State.Cursors[c];
-            if (cursor.InteractiveEnd.L == li && // Cursor is at the line.
-                cursor.InteractiveEnd.C > column && // Cursor is to the right of changing part.
-                cursor.GetSelectionEnd() == cursor.GetSelectionStart()) { // Cursor does not have a selection.
+            // Check if cursor is at the line, to the right of changing part, and without a selection.
+            if (cursor.InteractiveEnd.L == li && cursor.InteractiveEnd.C > column && !cursor.HasSelection()) {
                 cursor_indices[c] = GetCharacterIndexR({li, cursor.InteractiveEnd.C}) + (is_deleted ? -char_count : char_count);
             }
         }
@@ -1785,7 +1783,7 @@ void TextEditor::ColorizeRange(int from_li, int to_li) {
 
     string buffer, id;
     std::cmatch results;
-    const int end_li = std::max(0, std::min(int(Lines.size()), to_li));
+    const int end_li = std::clamp(to_li, 0, int(Lines.size()));
     for (int i = from_li; i < end_li; ++i) {
         auto &line = Lines[i];
         if (line.empty()) continue;
@@ -1819,7 +1817,7 @@ void TextEditor::ColorizeRange(int from_li, int to_li) {
                 }
             }
 
-            if (has_tokenize_results == false) {
+            if (!has_tokenize_results) {
                 first++;
             } else {
                 const size_t token_length = token_end - token_begin;

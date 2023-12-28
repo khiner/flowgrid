@@ -889,48 +889,10 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
     if (!u.Operations.empty()) AddUndo(u);
 }
 
-void TextEditor::MoveUpCurrentLines() {
+void TextEditor::MoveCurrentLines(bool up) {
     UndoRecord u{State};
     std::set<int> affected_lines;
     int min_li = -1, max_li = -1;
-    // Cursors are expected to be sorted from top to bottom.
-    for (int c = State.CurrentCursor; c > -1; c--) {
-        const auto &cursor = State.Cursors[c];
-        for (int li = cursor.GetSelectionEnd().L; li >= cursor.GetSelectionStart().L; li--) {
-            // Check if selection ends at line start.
-            if (cursor.GetSelectionEnd() == Coordinates{li, 0} && cursor.GetSelectionEnd() != cursor.GetSelectionStart()) continue;
-
-            affected_lines.insert(li);
-            min_li = min_li == -1 ? li : (li < min_li ? li : min_li);
-            max_li = max_li == -1 ? li : (li > max_li ? li : max_li);
-        }
-    }
-    if (min_li == 0) return; // Can't move up anymore.
-
-    const Coordinates start{min_li - 1, 0};
-    Coordinates end{max_li, GetLineMaxColumn(max_li)};
-    AddUndoOp(u, UndoOperationType::Delete, start, end);
-
-    // Lines should be sorted at this point.
-    for (int li : affected_lines) std::swap(Lines[li - 1], Lines[li]);
-
-    for (int c = State.CurrentCursor; c > -1; c--) {
-        auto &cursor = State.Cursors[c];
-        cursor.InteractiveStart.L -= 1;
-        cursor.InteractiveEnd.L -= 1;
-        // No need to set CursorPositionChanged as cursors will remain sorted.
-    }
-
-    // This line is swapped with line above. Need to find new max column.
-    AddUndoOp(u, UndoOperationType::Add, start, {max_li, GetLineMaxColumn(max_li)});
-    AddUndo(u);
-}
-
-void TextEditor::MoveDownCurrentLines() {
-    UndoRecord u{State};
-    std::set<int> affected_lines;
-    int min_li = -1, max_li = -1;
-    // Cursors are expected to be sorted from top to bottom.
     for (int c = 0; c <= State.CurrentCursor; c++) {
         const auto &cursor = State.Cursors[c];
         for (int li = cursor.GetSelectionEnd().L; li >= cursor.GetSelectionStart().L; li--) {
@@ -942,24 +904,23 @@ void TextEditor::MoveDownCurrentLines() {
             max_li = max_li == -1 ? li : (li > max_li ? li : max_li);
         }
     }
-    if (max_li == int(Lines.size()) - 1) return; // Can't move down anymore.
+    if ((up && min_li == 0) || (!up && max_li == int(Lines.size()) - 1)) return; // Can't move up/down anymore.
 
-    const Coordinates start{min_li, 0};
-    AddUndoOp(u, UndoOperationType::Delete, start, {max_li + 1, GetLineMaxColumn(max_li + 1)});
-
-    // Lines should be sorted at this point.
-    std::set<int>::reverse_iterator rit;
-    for (rit = affected_lines.rbegin(); rit != affected_lines.rend(); rit++) std::swap(Lines[*rit + 1], Lines[*rit]);
-
+    const int start_li = min_li - (up ? 1 : 0), end_li = max_li + (up ? 0 : 1);
+    const Coordinates start{start_li, 0}, end{end_li, GetLineMaxColumn(end_li)};
+    AddUndoOp(u, UndoOperationType::Delete, start, end);
+    if (up) {
+        for (const int li : affected_lines) std::swap(Lines[li - 1], Lines[li]);
+    } else {
+        for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); it++) std::swap(Lines[*it + 1], Lines[*it]);
+    }
     for (int c = State.CurrentCursor; c > -1; c--) {
         auto &cursor = State.Cursors[c];
-        cursor.InteractiveStart.L += 1;
-        cursor.InteractiveEnd.L += 1;
-        // No need to set CursorPositionChanged as cursors will remain sorted.
+        cursor.InteractiveStart.L = cursor.InteractiveStart.L + (up ? -1 : 1);
+        cursor.InteractiveEnd.L = cursor.InteractiveEnd.L + (up ? -1 : 1);
     }
-
-    // This line is swapped with line below. Need to find new max column.
-    AddUndoOp(u, UndoOperationType::Add, start, {max_li + 1, GetLineMaxColumn(max_li + 1)});
+    // No need to set CursorPositionChanged as cursors will remain sorted.
+    AddUndoOp(u, UndoOperationType::Add, start, end);
     AddUndo(u);
 }
 
@@ -974,8 +935,9 @@ void TextEditor::ToggleLineComment() {
     for (int c = State.CurrentCursor; c > -1; c--) {
         const auto &cursor = State.Cursors[c];
         for (int li = cursor.GetSelectionEnd().L; li >= cursor.GetSelectionStart().L; li--) {
-            if (cursor.GetSelectionEnd() == Coordinates{li, 0} && cursor.GetSelectionEnd() != cursor.GetSelectionStart()) // when selection ends at line start
-                continue;
+            // Check if selection ends at line start.
+            if (cursor.GetSelectionEnd() == Coordinates{li, 0} && cursor.GetSelectionEnd() != cursor.GetSelectionStart()) continue;
+
             affected_line_indices.insert(li);
 
             const auto &line = Lines[li];
@@ -1402,9 +1364,9 @@ void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
         else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
             ChangeCurrentLinesIndentation(true);
         else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
-            MoveUpCurrentLines();
+            MoveCurrentLines(true);
         else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
-            MoveDownCurrentLines();
+            MoveCurrentLines(false);
         else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
             ToggleLineComment();
         else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))

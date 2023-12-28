@@ -281,8 +281,7 @@ private:
     bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
     bool FindMatchingBracket(int line, int ci, Coordinates &out);
     void ChangeCurrentLinesIndentation(bool increase);
-    void MoveUpCurrentLines();
-    void MoveDownCurrentLines();
+    void MoveCurrentLines(bool up);
     void ToggleLineComment();
     void RemoveCurrentLines();
 
@@ -330,10 +329,7 @@ private:
     inline bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     inline int TabSizeAtColumn(int aColumn) const { return TabSize - (aColumn % TabSize); }
 
-    static const PaletteT DarkPalette;
-    static const PaletteT MarianaPalette;
-    static const PaletteT LightPalette;
-    static const PaletteT RetroBluePalette;
+    static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
     std::vector<LineT> Lines;
     EditorState State;

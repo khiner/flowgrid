@@ -303,37 +303,6 @@ static bool IsWordChar(char ch) {
         ch == '_';
 }
 
-// "Borrowed" from ImGui source
-static inline uint ImTextCharToUtf8(char *buf, uint buf_size, uint ch) {
-    if (ch < 0x80) {
-        buf[0] = char(ch);
-        return 1;
-    }
-    if (ch < 0x800) {
-        if (buf_size < 2) return 0;
-        buf[0] = char(0xc0 + (ch >> 6));
-        buf[1] = char(0x80 + (ch & 0x3f));
-        return 2;
-    }
-    if (ch >= 0xdc00 && ch < 0xe000) return 0;
-    if (ch >= 0xd800 && ch < 0xdc00) {
-        if (buf_size < 4) return 0;
-        buf[0] = char(0xf0 + (ch >> 18));
-        buf[1] = char(0x80 + ((ch >> 12) & 0x3f));
-        buf[2] = char(0x80 + ((ch >> 6) & 0x3f));
-        buf[3] = char(0x80 + (ch & 0x3f));
-        return 4;
-    }
-    // else if (c < 0x10000)
-    {
-        if (buf_size < 3) return 0;
-        buf[0] = char(0xe0 + (ch >> 12));
-        buf[1] = char(0x80 + ((ch >> 6) & 0x3f));
-        buf[2] = char(0x80 + (ch & 0x3f));
-        return 3;
-    }
-}
-
 void TextEditor::EditorState::AddCursor() {
     // Vector is never resized to smaller size.
     // `CurrentCursor` points to last available cursor in vector.
@@ -647,11 +616,8 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             RemoveGlyphsFromLine(coord.L, ci, -1);
             SetCursorPosition({coord.L + 1, GetCharacterColumn(coord.L + 1, int(whitespace_size))}, c);
         } else {
-            char buf[7];
-            uint e = ImTextCharToUtf8(buf, 7, character);
-            if (e == 0) continue;
-
-            buf[e] = '\0';
+            char buf[5];
+            ImTextCharToUtf8(buf, character);
 
             const auto &line = Lines[coord.L];
             auto ci = GetCharacterIndexR(coord);

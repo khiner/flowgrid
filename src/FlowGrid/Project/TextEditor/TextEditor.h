@@ -49,6 +49,7 @@ struct TextEditor {
 
     void SelectAll();
     bool AnyCursorHasSelection() const;
+    bool AnyCursorHasMultilineSelection() const;
     bool AllCursorsHaveSelection() const;
     void ClearExtraCursors();
     void ClearSelections();
@@ -131,6 +132,7 @@ private:
         inline Coordinates GetSelectionStart() const { return InteractiveStart < InteractiveEnd ? InteractiveStart : InteractiveEnd; }
         inline Coordinates GetSelectionEnd() const { return InteractiveStart > InteractiveEnd ? InteractiveStart : InteractiveEnd; }
         inline bool HasSelection() const { return InteractiveStart != InteractiveEnd; }
+        inline bool HasMultilineSelection() const { return GetSelectionStart().L != GetSelectionEnd().L; }
     };
 
     // State to be restored with undo/redo.

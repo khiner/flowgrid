@@ -111,6 +111,13 @@ bool TextEditor::AnyCursorHasSelection() const {
     return false;
 }
 
+bool TextEditor::AnyCursorHasMultilineSelection() const {
+    for (int c = 0; c <= State.CurrentCursor; c++) {
+        if (State.Cursors[c].HasMultilineSelection()) return true;
+    }
+    return false;
+}
+
 bool TextEditor::AllCursorsHaveSelection() const {
     for (int c = 0; c <= State.CurrentCursor; c++) {
         if (!State.Cursors[c].HasSelection()) return false;
@@ -567,17 +574,7 @@ void TextEditor::MoveEnd(bool select) {
 
 void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
     const bool has_selection = AnyCursorHasSelection();
-
-    bool any_cursor_has_multiline_selection = false;
-    for (int c = State.CurrentCursor; c > -1; c--) {
-        const auto &cursor = State.Cursors[c];
-        if (cursor.GetSelectionStart().L != cursor.GetSelectionEnd().L) {
-            any_cursor_has_multiline_selection = true;
-            break;
-        }
-    }
-
-    if (has_selection && any_cursor_has_multiline_selection && character == '\t') return ChangeCurrentLinesIndentation(!is_shift);
+    if (character == '\t' && has_selection && AnyCursorHasMultilineSelection()) return ChangeCurrentLinesIndentation(!is_shift);
 
     UndoRecord u{State};
     if (has_selection) {
@@ -588,8 +585,9 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
     }
 
     std::vector<Coordinates> coords;
-    for (int c = State.CurrentCursor; c > -1; c--) // order important here for typing \n in the same line at the same time
-    {
+    coords.reserve(State.CurrentCursor + 1);
+    // Order is important here for typing '\n' in the same line at the same time.
+    for (int c = State.CurrentCursor; c > -1; c--) {
         const auto coord = GetCursorPosition(c);
         coords.push_back(coord);
         UndoOperation added;
@@ -603,8 +601,7 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
             const auto &line = Lines[coord.L];
             auto &new_line = Lines[coord.L + 1];
 
-            added.Text = "";
-            added.Text += char(character);
+            added.Text = char(character);
             if (AutoIndent) {
                 for (uint i = 0; i < line.size() && isascii(line[i].Char) && isblank(line[i].Char); i++) {
                     new_line.push_back(line[i]);
@@ -630,7 +627,6 @@ void TextEditor::EnterCharacter(ImWchar character, bool is_shift) {
                 removed.Type = UndoOperationType::Delete;
                 removed.Start = State.Cursors[c].InteractiveEnd;
                 removed.End = {coord.L, GetCharacterColumn(coord.L, ci + d)};
-
                 while (d-- > 0 && ci < int(line.size())) {
                     removed.Text += line[ci].Char;
                     RemoveGlyphsFromLine(coord.L, ci, ci + 1);
@@ -1920,7 +1916,7 @@ int TextEditor::InsertTextAt(/* inout */ Coordinates &at, const char *text) {
     while (*text != '\0') {
         assert(!Lines.empty());
         if (*text == '\r') {
-            ++text; // skip
+            text++; // skip
         } else if (*text == '\n') {
             if (ci < int(Lines[at.L].size())) {
                 InsertLine(at.L + 1);

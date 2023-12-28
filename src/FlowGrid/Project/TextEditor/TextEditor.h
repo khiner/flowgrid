@@ -91,7 +91,7 @@ struct TextEditor {
 
 private:
     inline static ImVec4 U32ColorToVec4(ImU32 in) {
-        static const float s = 1.0f / 255.0f;
+        static constexpr float s = 1.0f / 255.0f;
         return ImVec4(
             ((in >> IM_COL32_A_SHIFT) & 0xFF) * s,
             ((in >> IM_COL32_B_SHIFT) & 0xFF) * s,
@@ -127,8 +127,7 @@ private:
     };
 
     struct Cursor {
-        Coordinates InteractiveStart = {0, 0};
-        Coordinates InteractiveEnd = {0, 0};
+        Coordinates InteractiveStart{0, 0}, InteractiveEnd{0, 0};
         inline Coordinates GetSelectionStart() const { return InteractiveStart < InteractiveEnd ? InteractiveStart : InteractiveEnd; }
         inline Coordinates GetSelectionEnd() const { return InteractiveStart > InteractiveEnd ? InteractiveStart : InteractiveEnd; }
         inline bool HasSelection() const { return InteractiveStart != InteractiveEnd; }
@@ -136,9 +135,9 @@ private:
 
     // State to be restored with undo/redo.
     struct EditorState {
-        int CurrentCursor = 0;
-        int LastAddedCursor = 0;
-        std::vector<Cursor> Cursors = {{{0, 0}}};
+        int CurrentCursor{0};
+        int LastAddedCursor{0};
+        std::vector<Cursor> Cursors{{{0, 0}}};
 
         void AddCursor();
         int GetLastAddedCursorIndex();
@@ -147,7 +146,7 @@ private:
 
     struct Glyph {
         char Char;
-        PaletteIndex ColorIndex = PaletteIndex::Default;
+        PaletteIndex ColorIndex{PaletteIndex::Default};
         bool IsComment : 1;
         bool IsMultiLineComment : 1;
         bool IsPreprocessor : 1;
@@ -188,18 +187,7 @@ private:
         EditorState Before{}, After{};
     };
 
-    inline static const std::unordered_map<char, char> OpenToCloseChar = {
-        {'{', '}'},
-        {'(', ')'},
-        {'[', ']'}
-    };
-    inline static const std::unordered_map<char, char> CloseToOpenChar = {
-        {'}', '{'},
-        {')', '('},
-        {']', '['}
-    };
-
-    inline static const PaletteIdT DefaultPaletteId = PaletteIdT::Dark;
+    inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coordinates &start, const Coordinates &end);
     void AddSelectionUndoOp(UndoRecord &, UndoOperationType, int c);
@@ -207,11 +195,11 @@ private:
     std::string GetText(const Coordinates &start, const Coordinates &end) const;
     std::string GetSelectedText(int cursor = -1) const;
 
-    void SetCursorPosition(const Coordinates &position, int cursor = -1, bool clear_selection = true);
+    void SetCursorPosition(const Coordinates &position, int cursor, bool clear_selection = true);
 
     int InsertTextAt(Coordinates &at, const char *);
-    void InsertTextAtCursor(const std::string &, int cursor = -1);
-    void InsertTextAtCursor(const char *, int cursor = -1);
+    void InsertTextAtCursor(const std::string &, int cursor);
+    void InsertTextAtCursor(const char *, int cursor);
 
     enum class MoveDirection {
         Right = 0,
@@ -234,7 +222,7 @@ private:
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
-    void SetSelection(Coordinates start, Coordinates end, int cursor = -1);
+    void SetSelection(Coordinates start, Coordinates end, int cursor);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
     bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
@@ -262,7 +250,7 @@ private:
     void RemoveLine(int li, const std::unordered_set<int> *handled_cursors = nullptr);
     void RemoveLines(int start, int end);
     void DeleteRange(const Coordinates &start, const Coordinates &end);
-    void DeleteSelection(int cursor = -1);
+    void DeleteSelection(int cursor);
 
     void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);
     void AddGlyphsToLine(int li, int ci, LineT::const_iterator start, LineT::const_iterator end);
@@ -282,7 +270,7 @@ private:
     void AddUndo(UndoRecord &);
 
     void Colorize(int from_li = 0, int line_count = -1);
-    void ColorizeRange(int from_li = 0, int to_li = 0);
+    void ColorizeRange(int from_li, int to_li);
     void ColorizeInternal();
 
     inline bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
@@ -323,7 +311,7 @@ private:
     PaletteIdT PaletteId;
     PaletteT Palette;
     LanguageDefinitionIdT LanguageDefinitionId;
-    const LanguageDefinition *LanguageDef = nullptr;
+    const LanguageDefinition *LanguageDef{nullptr};
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
     std::string LineBuffer;
 };

@@ -782,17 +782,20 @@ bool TextEditor::FindNextOccurrence(const char *text, int text_size, const Coord
 }
 
 bool TextEditor::FindMatchingBracket(int li, int ci, Coordinates &out) {
+    static const std::unordered_map<char, char>
+        OpenToCloseChar{{'{', '}'}, {'(', ')'}, {'[', ']'}},
+        CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
+
     const auto &line = Lines[li];
     if (li > int(Lines.size()) - 1 || ci > int(line.size()) - 1) return false;
 
     int li_inner = li, ci_inner = ci;
     int counter = 1;
-    if (CloseToOpenChar.find(line[ci].Char) != CloseToOpenChar.end()) {
-        char close_char = line[ci].Char;
-        char open_char = CloseToOpenChar.at(close_char);
+    if (CloseToOpenChar.contains(line[ci].Char)) {
+        const char close_char = line[ci].Char, open_char = CloseToOpenChar.at(close_char);
         while (Move(li_inner, ci_inner, true)) {
             if (ci_inner < int(Lines[li_inner].size())) {
-                char ch = Lines[li_inner][ci_inner].Char;
+                const char ch = Lines[li_inner][ci_inner].Char;
                 if (ch == open_char) {
                     counter--;
                     if (counter == 0) {
@@ -804,12 +807,11 @@ bool TextEditor::FindMatchingBracket(int li, int ci, Coordinates &out) {
                 }
             }
         }
-    } else if (OpenToCloseChar.find(line[ci].Char) != OpenToCloseChar.end()) {
-        char open_char = line[ci].Char;
-        char close_char = OpenToCloseChar.at(open_char);
+    } else if (OpenToCloseChar.contains(line[ci].Char)) {
+        const char open_char = line[ci].Char, close_char = OpenToCloseChar.at(open_char);
         while (Move(li_inner, ci_inner)) {
             if (ci_inner < int(Lines[li_inner].size())) {
-                char ch = Lines[li_inner][ci_inner].Char;
+                const char ch = Lines[li_inner][ci_inner].Char;
                 if (ch == close_char) {
                     counter--;
                     if (counter == 0) {
@@ -1006,7 +1008,7 @@ TextEditor::Coordinates TextEditor::SanitizeCoordinates(const Coordinates &coord
 }
 
 TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2 &position, bool insertion_mode, bool *is_over_li) const {
-    static const float PosToCoordsColumnOffset = 0.33;
+    static constexpr float PosToCoordsColumnOffset = 0.33;
 
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const ImVec2 local{position.x - origin.x + 3.0f, position.y - origin.y};
@@ -1156,7 +1158,7 @@ void TextEditor::RemoveLine(int li, const std::unordered_set<int> *handled_curso
         const auto &cursor = State.Cursors[c];
         if (cursor.InteractiveEnd.L >= li) {
             // Move up if it has not been handled already.
-            if (handled_cursors == nullptr || handled_cursors->find(c) == handled_cursors->end())
+            if (handled_cursors == nullptr || !handled_cursors->contains(c))
                 SetCursorPosition({cursor.InteractiveEnd.L - 1, cursor.InteractiveEnd.C}, c);
         }
     }
@@ -1475,7 +1477,7 @@ void TextEditor::HandleMouseInputs() {
 }
 
 void TextEditor::UpdateViewVariables(float scroll_x, float scroll_y) {
-    static const float ImGuiScrollbarWidth = 14;
+    static constexpr float ImGuiScrollbarWidth = 14;
 
     ContentHeight = ImGui::GetWindowHeight() - (IsHorizontalScrollbarVisible() ? ImGuiScrollbarWidth : 0.0f);
     ContentWidth = ImGui::GetWindowWidth() - (IsVerticalScrollbarVisible() ? ImGuiScrollbarWidth : 0.0f);
@@ -1701,9 +1703,9 @@ void TextEditor::MergeCursorsIfPossible() {
             if (prev_cursor.GetSelectionEnd() >= cursor.GetSelectionEnd()) {
                 cursors_to_delete.insert(c);
             } else if (prev_cursor.GetSelectionEnd() > cursor.GetSelectionStart()) {
-                auto pc_start = prev_cursor.GetSelectionStart(), pc_end = prev_cursor.GetSelectionEnd();
-                prev_cursor.InteractiveEnd = pc_end;
+                const auto pc_start = prev_cursor.GetSelectionStart(), pc_end = prev_cursor.GetSelectionEnd();
                 prev_cursor.InteractiveStart = pc_start;
+                prev_cursor.InteractiveEnd = pc_end;
                 cursors_to_delete.insert(c);
             }
         }
@@ -1716,7 +1718,7 @@ void TextEditor::MergeCursorsIfPossible() {
         }
     }
     for (int c = State.CurrentCursor; c > -1; c--) {
-        if (cursors_to_delete.find(c) != cursors_to_delete.end()) {
+        if (cursors_to_delete.contains(c)) {
             State.Cursors.erase(State.Cursors.begin() + c);
         }
     }

@@ -52,8 +52,6 @@ struct TextEditor {
     bool AnyCursorHasSelection() const;
     bool AnyCursorHasMultilineSelection() const;
     bool AllCursorsHaveSelection() const;
-    void ClearExtraCursors();
-    void ClearSelections();
 
     inline std::pair<int, int> GetCursorLineColumn() const {
         const auto coords = GetCursorPosition();

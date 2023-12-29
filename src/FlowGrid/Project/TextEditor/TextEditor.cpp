@@ -98,8 +98,11 @@ void TextEditor::SetLineSpacing(float line_spacing) {
 }
 
 void TextEditor::SelectAll() {
-    ClearSelections();
-    ClearExtraCursors();
+    for (uint c = 0; c <= State.CurrentCursor; c++) {
+        auto &cursor = State.Cursors[c];
+        cursor.InteractiveEnd = cursor.InteractiveStart = cursor.GetSelectionEnd();
+    }
+    State.CurrentCursor = 0;
     MoveTop();
     MoveBottom(true);
 }
@@ -123,15 +126,6 @@ bool TextEditor::AllCursorsHaveSelection() const {
         if (!State.Cursors[c].HasSelection()) return false;
     }
     return true;
-}
-
-void TextEditor::ClearExtraCursors() { State.CurrentCursor = 0; }
-
-void TextEditor::ClearSelections() {
-    for (uint c = 0; c <= State.CurrentCursor; c++) {
-        auto &cursor = State.Cursors[c];
-        cursor.InteractiveEnd = cursor.InteractiveStart = cursor.GetSelectionEnd();
-    }
 }
 
 TextEditor::Coordinates TextEditor::GetCursorPosition(int c, bool start) const {
@@ -548,7 +542,7 @@ void TextEditor::MoveTop(bool select) {
 
 void TextEditor::TextEditor::MoveBottom(bool select) {
     const int max_line = int(Lines.size()) - 1;
-    SetCursorPosition({max_line, GetLineMaxColumn(max_line)},  State.Cursors[State.CurrentCursor], !select);
+    SetCursorPosition({max_line, GetLineMaxColumn(max_line)}, State.Cursors[State.CurrentCursor], !select);
 }
 
 void TextEditor::MoveHome(bool select) {

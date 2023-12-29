@@ -300,8 +300,7 @@ void TextEditor::UndoRecord::Undo(TextEditor *editor) {
         if (!op.Text.empty()) {
             switch (op.Type) {
                 case UndoOperationType::Delete: {
-                    auto start = op.Start;
-                    editor->InsertTextAt(start, op.Text.c_str());
+                    editor->InsertTextAt(op.Start, op.Text);
                     editor->Colorize(op.Start.L - 1, op.End.L - op.Start.L + 2);
                     break;
                 }
@@ -328,8 +327,7 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
                     break;
                 }
                 case UndoOperationType::Add: {
-                    auto start = op.Start;
-                    editor->InsertTextAt(start, op.Text.c_str());
+                    editor->InsertTextAt(op.Start, op.Text);
                     editor->Colorize(op.Start.L - 1, op.End.L - op.Start.L + 1);
                     break;
                 }
@@ -361,11 +359,11 @@ void TextEditor::SetCursorPosition(const Coordinates &position, Cursor &c, bool 
 void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
     if (text.empty()) return;
 
-    auto pos = SanitizeCoordinates(c.End);
+    const auto pos = SanitizeCoordinates(c.End);
     const auto start = std::min(pos, c.SelectionStart());
-    const uint total_lines = pos.L - start.L + InsertTextAt(pos, text.c_str());
-    SetCursorPosition(pos, c);
-    Colorize(start.L - 1, total_lines + 2);
+    const auto insertion_end = InsertTextAt(pos, text);
+    SetCursorPosition(insertion_end, c);
+    Colorize(start.L - 1, insertion_end.L - start.L + std::ranges::count(text, '\n') + 2);
 }
 
 // Assumes given char index is not in the middle of a UTF8 sequence.
@@ -759,8 +757,8 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
 
             if (increase) {
                 if (Lines[li].size() > 0) {
-                    Coordinates line_start{li, 0}, insertion_end = line_start;
-                    InsertTextAt(insertion_end, "\t"); // Sets insertion end.
+                    const Coordinates line_start{li, 0};
+                    const auto insertion_end = InsertTextAt(line_start, "\t");
                     u.Operations.emplace_back("\t", line_start, insertion_end, UndoOperationType::Add);
                     Colorize(line_start.L, 1);
                 }
@@ -843,9 +841,9 @@ void TextEditor::ToggleLineComment() {
 
     if (should_add_comment) {
         for (int li : affected_line_indices) {
-            Coordinates line_start{li, 0}, insertion_end = line_start;
-            InsertTextAt(insertion_end, (comment_str + ' ').c_str()); // sets insertion end
-            u.Operations.emplace_back((comment_str + ' '), line_start, insertion_end, UndoOperationType::Add);
+            const Coordinates line_start{li, 0};
+            const Coordinates insertion_end = InsertTextAt(line_start, comment_str + ' ');
+            u.Operations.emplace_back(comment_str + ' ', line_start, insertion_end, UndoOperationType::Add);
             Colorize(line_start.L, 1);
         }
     } else {
@@ -1770,38 +1768,38 @@ void TextEditor::ColorizeInternal() {
     }
 }
 
-int TextEditor::InsertTextAt(/* inout */ Coordinates &at, const char *text) {
+TextEditor::Coordinates TextEditor::InsertTextAt(const Coordinates &at, const std::string &text) {
     int ci = GetCharIndexR(at);
-    int total_lines = 0;
-    while (*text != '\0') {
-        assert(!Lines.empty());
-        if (*text == '\r') {
-            text++; // skip
-        } else if (*text == '\n') {
-            if (ci < int(Lines[at.L].size())) {
-                InsertLine(at.L + 1);
-                const auto &line = Lines[at.L];
-                AddGlyphsToLine(at.L + 1, 0, {line.cbegin() + ci, line.cend()});
-                RemoveGlyphsFromLine(at.L, ci, -1);
+    Coordinates ret = at;
+    for (auto it = text.begin(); it != text.end(); it++) {
+        const char ch = *it;
+        if (ch == '\r') continue;
+
+        if (ch == '\n') {
+            if (ci < int(Lines[ret.L].size())) {
+                InsertLine(ret.L + 1);
+                const auto &line = Lines[ret.L];
+                AddGlyphsToLine(ret.L + 1, 0, {line.cbegin() + ci, line.cend()});
+                RemoveGlyphsFromLine(ret.L, ci, -1);
             } else {
-                InsertLine(at.L + 1);
+                InsertLine(ret.L + 1);
             }
-            ++at.L;
-            at.C = 0;
             ci = 0;
-            ++total_lines;
-            ++text;
+            ret.L++;
+            ret.C = 0;
         } else {
             std::vector<Glyph> glyphs;
-            const uint length = UTF8CharLength(*text);
-            for (uint d = 0; d < length && *text != '\0'; d++) glyphs.emplace_back(*text++, PaletteIndex::Default);
-            AddGlyphsToLine(at.L, ci, glyphs);
+            for (uint d = 0; d < UTF8CharLength(ch) && it != text.end(); d++) {
+                glyphs.emplace_back(*it, PaletteIndex::Default);
+                if (d > 0) it++;
+            }
+            AddGlyphsToLine(ret.L, ci, glyphs);
             ci += glyphs.size();
-            at.C = GetCharColumn(at.L, ci);
+            ret.C = GetCharColumn(ret.L, ci);
         }
     }
 
-    return total_lines;
+    return ret;
 }
 
 const TextEditor::PaletteT TextEditor::DarkPalette = {{

@@ -201,7 +201,7 @@ private:
 
     void SetCursorPosition(const Coordinates &position, Cursor &cursor, bool clear_selection = true);
 
-    int InsertTextAt(Coordinates &at, const char *);
+    Coordinates InsertTextAt(const Coordinates &, const std::string &); // Returns insertion end.
     void InsertTextAtCursor(const std::string &, Cursor &);
 
     enum class MoveDirection {

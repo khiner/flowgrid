@@ -59,10 +59,10 @@ void TextBuffer::Render() const {
     RenderMenu();
 
     auto &editor = *Editor;
-    const auto [cursor_line, cursor_column] = editor.GetCursorLineColumn();
+    const auto cursor_coords = editor.GetCursorPosition();
     const string editing_file = "no file";
     Text(
-        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_line + 1, cursor_column + 1, editor.GetLineCount(),
+        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, editor.GetLineCount(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
         editor.GetLanguageDefinitionName(),

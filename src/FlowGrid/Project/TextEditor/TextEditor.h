@@ -40,6 +40,30 @@ struct TextEditor {
         Hlsl
     };
 
+    // Represents a character coordinate from the user's point of view,
+    // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
+    // Tabs are counted as [1..TabSize] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
+    // For example, coordinate (1, 5) represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
+    struct Coordinates {
+        int L, C; // Line, Column
+        Coordinates() : L(0), C(0) {}
+        Coordinates(int li, int column) : L(li), C(column) {
+            assert(li >= 0);
+            assert(column >= 0);
+        }
+        inline static Coordinates Invalid() { return {-1, -1}; }
+
+        bool operator==(const Coordinates &o) const { return L == o.L && C == o.C; }
+        bool operator!=(const Coordinates &o) const { return L != o.L || C != o.C; }
+        bool operator<(const Coordinates &o) const { return L != o.L ? L < o.L : C < o.C; }
+        bool operator>(const Coordinates &o) const { return L != o.L ? L > o.L : C > o.C; }
+        bool operator<=(const Coordinates &o) const { return L != o.L ? L < o.L : C <= o.C; }
+        bool operator>=(const Coordinates &o) const { return L != o.L ? L > o.L : C >= o.C; }
+
+        Coordinates operator-(const Coordinates &o) { return {L - o.L, C - o.C}; }
+        Coordinates operator+(const Coordinates &o) { return {L + o.L, C + o.C}; }
+    };
+
     inline int GetLineCount() const { return Lines.size(); }
     void SetPalette(PaletteIdT);
     void SetLanguageDefinition(LanguageDefinitionIdT);
@@ -53,10 +77,7 @@ struct TextEditor {
     bool AnyCursorHasMultilineSelection() const;
     bool AllCursorsHaveSelection() const;
 
-    inline std::pair<int, int> GetCursorLineColumn() const {
-        const auto coords = GetCursorPosition();
-        return {coords.L, coords.C};
-    }
+    Coordinates GetCursorPosition(int cursor = -1, bool start = false) const;
 
     void Copy();
     void Cut();
@@ -100,30 +121,6 @@ private:
     }
 
     inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
-
-    // Represents a character coordinate from the user's point of view,
-    // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
-    // Tabs are counted as [1..TabSize] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
-    // For example, coordinate (1, 5) represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
-    struct Coordinates {
-        int L, C; // Line, Column
-        Coordinates() : L(0), C(0) {}
-        Coordinates(int li, int column) : L(li), C(column) {
-            assert(li >= 0);
-            assert(column >= 0);
-        }
-        inline static Coordinates Invalid() { return {-1, -1}; }
-
-        bool operator==(const Coordinates &o) const { return L == o.L && C == o.C; }
-        bool operator!=(const Coordinates &o) const { return L != o.L || C != o.C; }
-        bool operator<(const Coordinates &o) const { return L != o.L ? L < o.L : C < o.C; }
-        bool operator>(const Coordinates &o) const { return L != o.L ? L > o.L : C > o.C; }
-        bool operator<=(const Coordinates &o) const { return L != o.L ? L < o.L : C <= o.C; }
-        bool operator>=(const Coordinates &o) const { return L != o.L ? L > o.L : C >= o.C; }
-
-        Coordinates operator-(const Coordinates &o) { return {L - o.L, C - o.C}; }
-        Coordinates operator+(const Coordinates &o) { return {L + o.L, C + o.C}; }
-    };
 
     struct Cursor {
         Coordinates InteractiveStart{0, 0}, InteractiveEnd{0, 0};
@@ -240,7 +237,6 @@ private:
     void EnsureCursorVisible(bool start_too = false);
 
     Coordinates SanitizeCoordinates(const Coordinates &) const;
-    Coordinates GetCursorPosition(int cursor = -1, bool start = false) const;
     Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;

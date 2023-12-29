@@ -263,11 +263,7 @@ static uint UTF8CharLength(char ch) {
 }
 
 static bool IsWordChar(char ch) {
-    return UTF8CharLength(ch) > 1 ||
-        (ch >= 'a' && ch <= 'z') ||
-        (ch >= 'A' && ch <= 'Z') ||
-        (ch >= '0' && ch <= '9') ||
-        ch == '_';
+    return UTF8CharLength(ch) > 1 || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
 }
 
 void TextEditor::EditorState::AddCursor() {
@@ -526,8 +522,6 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
         added.Type = UndoOperationType::Add;
         added.Start = coord;
 
-        assert(!Lines.empty());
-
         if (ch == '\n') {
             InsertLine(coord.L + 1);
             const auto &line = Lines[coord.L];
@@ -624,82 +618,67 @@ void TextEditor::Delete(bool is_word_mode, const EditorState *editor_state) {
 
 void TextEditor::SetSelection(Coordinates start, Coordinates end, Cursor &c) {
     const int max_line = int(Lines.size()) - 1;
-    Coordinates min_coords{0, 0}, max_coords{max_line, GetLineMaxColumn(max_line)};
-    if (start < min_coords) start = min_coords;
-    else if (start > max_coords) start = max_coords;
-    if (end < min_coords) end = min_coords;
-    else if (end > max_coords) end = max_coords;
-
-    c.Start = start;
-    SetCursorPosition(end, c, false);
+    const Coordinates min_coords{0, 0}, max_coords{max_line, GetLineMaxColumn(max_line)};
+    c.Start = std::clamp(start, min_coords, max_coords);
+    SetCursorPosition(std::clamp(end, min_coords, max_coords), c, false);
 }
 
 void TextEditor::AddCursorForNextOccurrence(bool case_sensitive) {
     const auto &c = State.GetLastAddedCursor();
-    const string selection = GetSelectedText(c);
-    if (selection.empty()) return;
-
-    Coordinates next_start, next_end;
-    if (!FindNextOccurrence(selection.c_str(), selection.length(), c.SelectionEnd(), next_start, next_end, case_sensitive)) return;
-
-    State.AddCursor();
-    SetSelection(next_start, next_end, State.GetCursor());
-    SortAndMergeCursors();
-    EnsureCursorVisible(true);
+    if (const auto match_cursor = FindNextOccurrence(GetSelectedText(c), c.SelectionEnd(), case_sensitive)) {
+        State.AddCursor();
+        SetSelection(match_cursor->Start, match_cursor->End, State.GetCursor());
+        SortAndMergeCursors();
+        EnsureCursorVisible(true);
+    }
 }
 
-bool TextEditor::FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive) {
-    assert(text_size > 0);
+static char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && ch >= 'A' && ch <= 'Z') ? ch - 'A' + 'a' : ch; }
+
+std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &text, const Coordinates &from, bool case_sensitive) {
+    if (text.empty()) return {};
+
     int f_li, if_li;
     if_li = f_li = from.L;
 
     int f_i, if_i;
     if_i = f_i = GetCharIndexR(from);
 
-    while (true) {
-        bool matches;
-        {
-            // Match function.
-            int line_offset = 0;
-            uint ci_inner = f_i;
-            int i = 0;
-            for (; i < text_size; i++) {
-                if (ci_inner == Lines[f_li + line_offset].size()) {
-                    if (text[i] != '\n' || f_li + line_offset + 1 >= int(Lines.size())) break;
+    do {
+        /* Match */
+        int line_offset = 0;
+        uint ci_inner = f_i, i = 0;
+        for (; i < text.size(); i++) {
+            if (ci_inner == Lines[f_li + line_offset].size()) {
+                if (text[i] != '\n' || f_li + line_offset + 1 >= int(Lines.size())) break;
 
-                    ci_inner = 0;
-                    line_offset++;
-                } else {
-                    char to_compare_a = Lines[f_li + line_offset][ci_inner].Char;
-                    char to_compare_b = text[i];
-                    to_compare_a = (!case_sensitive && to_compare_a >= 'A' && to_compare_a <= 'Z') ? to_compare_a - 'A' + 'a' : to_compare_a;
-                    to_compare_b = (!case_sensitive && to_compare_b >= 'A' && to_compare_b <= 'Z') ? to_compare_b - 'A' + 'a' : to_compare_b;
-                    if (to_compare_a != to_compare_b) break;
+                ci_inner = 0;
+                line_offset++;
+            } else {
+                const char ch_a = ToLower(Lines[f_li + line_offset][ci_inner].Char, case_sensitive);
+                const char ch_b = ToLower(text[i], case_sensitive);
+                if (ch_a != ch_b) break;
 
-                    ci_inner++;
-                }
-            }
-            matches = i == text_size;
-            if (matches) {
-                start_out = {f_li, GetCharColumn(f_li, f_i)};
-                end_out = {f_li + line_offset, GetCharColumn(f_li + line_offset, ci_inner)};
-                return true;
+                ci_inner++;
             }
         }
+        if (i == text.size()) {
+            return Cursor{
+                {f_li, GetCharColumn(f_li, f_i)},
+                {f_li + line_offset, GetCharColumn(f_li + line_offset, ci_inner)}
+            };
+        }
 
-        // Move forward.
-        if (f_i == int(Lines[f_li].size())) { // Need to consider line breaks.
+        /* Move forward */
+        if (f_i == int(Lines[f_li].size())) {
             f_li = f_li == int(Lines.size()) - 1 ? 0 : f_li + 1;
             f_i = 0;
         } else {
             f_i++;
         }
+    } while (f_i != if_i || f_li != if_li);
 
-        // Detect complete scan.
-        if (f_i == if_i && f_li == if_li) return false;
-    }
-
-    return false;
+    return {};
 }
 
 bool TextEditor::FindMatchingBracket(int li, int ci, Coordinates &out) {
@@ -925,11 +904,10 @@ TextEditor::Coordinates TextEditor::SanitizeCoordinates(const Coordinates &coord
     return {coords.L, Lines.empty() ? 0 : GetLineMaxColumn(coords.L, coords.C)};
 }
 
-TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2 &position, bool insertion_mode, bool *is_over_li) const {
+TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2 &screen_pos, bool insertion_mode, bool *is_over_li) const {
     static constexpr float PosToCoordsColumnOffset = 0.33;
 
-    const ImVec2 origin = ImGui::GetCursorScreenPos();
-    const ImVec2 local{position.x - origin.x + 3.0f, position.y - origin.y};
+    const auto local = ImVec2{screen_pos.x + 3.0f, screen_pos.y} - ImGui::GetCursorScreenPos();
     if (is_over_li != nullptr) *is_over_li = local.x < TextStart;
 
     Coordinates out{

@@ -228,7 +228,8 @@ private:
     void SetSelection(Coordinates start, Coordinates end, Cursor &);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
-    bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);
+    // Returns a cursor containing the start/end coords of the next occurrence of `text` after `from`, or `std::nullopt` if not found.
+    std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coordinates &from, bool case_sensitive = true);
     bool FindMatchingBracket(int line, int ci, Coordinates &out);
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveCurrentLines(bool up);

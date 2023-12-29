@@ -708,8 +708,7 @@ void TextEditor::AddCursorForNextOccurrence(bool case_sensitive) {
 
     State.AddCursor();
     SetSelection(next_start, next_end, State.GetCursor());
-    State.SortCursors();
-    MergeCursorsIfPossible();
+    SortAndMergeCursors();
     EnsureCursorVisible(true);
 }
 
@@ -1421,8 +1420,7 @@ void TextEditor::HandleMouseInputs() {
                 LastClickTime = float(ImGui::GetTime());
                 LastClickPos = io.MousePos;
             } else if (ImGui::IsMouseReleased(0)) {
-                State.SortCursors();
-                MergeCursorsIfPossible();
+                SortAndMergeCursors();
             }
         } else if (shift && is_click) {
             const auto new_selection = ScreenPosToCoordinates(ImGui::GetMousePos(), !Overwrite);
@@ -1640,14 +1638,12 @@ void TextEditor::OnCursorPositionChanged() {
     const bool one_cursor_without_selection = State.CurrentCursor == 0 && !cursor.HasSelection();
     CursorOnBracket = one_cursor_without_selection ? FindMatchingBracket(cursor.InteractiveEnd.L, GetCharIndexR(cursor.InteractiveEnd), MatchingBracketCoords) : false;
 
-    if (!IsDraggingSelection) {
-        State.SortCursors();
-        MergeCursorsIfPossible();
-    }
+    if (!IsDraggingSelection) SortAndMergeCursors();
 }
 
-void TextEditor::MergeCursorsIfPossible() {
-    // Requires the cursors to be sorted from top to bottom.
+void TextEditor::SortAndMergeCursors() {
+    State.SortCursors();
+
     std::unordered_set<const Cursor *> delete_cursors;
     if (AnyCursorHasSelection()) {
         // Merge cursors if they overlap.

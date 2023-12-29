@@ -263,7 +263,7 @@ private:
     void OnCursorPositionChanged();
     std::unordered_map<int, int> BeforeLineChanged(int li, int column, int char_count, bool is_deleted);
     void AfterLineChanged(int li, std::unordered_map<int, int> &&cursor_indices);
-    void MergeCursorsIfPossible();
+    void SortAndMergeCursors();
 
     void AddUndo(UndoRecord &);
 

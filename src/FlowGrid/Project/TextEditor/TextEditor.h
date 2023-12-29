@@ -140,8 +140,8 @@ private:
 
     // State to be restored with undo/redo.
     struct EditorState {
-        int CurrentCursor{0};
-        int LastAddedCursor{0};
+        uint CurrentCursor{0};
+        uint LastAddedCursor{0};
         std::vector<Cursor> Cursors{{{0, 0}}};
 
         void AddCursor();

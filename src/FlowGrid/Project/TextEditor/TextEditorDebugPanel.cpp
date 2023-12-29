@@ -8,7 +8,7 @@ void TextEditor::DebugPanel() {
     if (CollapsingHeader("Editor state info")) {
         Checkbox("Panning", &Panning);
         Checkbox("Dragging selection", &IsDraggingSelection);
-        DragInt("Cursor count", &State.CurrentCursor);
+        DragU32("Cursor count", &State.CurrentCursor);
         for (int i = 0; i <= State.CurrentCursor; i++) {
             DragInt2("Interactive start", &State.Cursors[i].InteractiveStart.L);
             DragInt2("Interactive end", &State.Cursors[i].InteractiveEnd.L);

@@ -12,8 +12,8 @@ void TextEditor::DebugPanel() {
         EndDisabled();
         Text("Cursor count: %u", State.Cursors.size());
         for (auto &c : State.Cursors) {
-            DragInt2("Interactive start", &c.InteractiveStart.L);
-            DragInt2("Interactive end", &c.InteractiveEnd.L);
+            DragInt2("Interactive start", &c.Start.L);
+            DragInt2("Interactive end", &c.End.L);
         }
     }
     if (CollapsingHeader("Lines")) {
@@ -23,7 +23,7 @@ void TextEditor::DebugPanel() {
         Text("Number of records: %lu", UndoBuffer.size());
         Text("Undo index: %d", UndoIndex);
         for (size_t i = 0; i < UndoBuffer.size(); i++) {
-            const auto& record = UndoBuffer[i];
+            const auto &record = UndoBuffer[i];
             if (CollapsingHeader(std::to_string(i).c_str())) {
                 TextUnformatted("Operations");
                 for (const auto &operation : record.Operations) {

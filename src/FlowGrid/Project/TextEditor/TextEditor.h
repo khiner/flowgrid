@@ -123,14 +123,16 @@ private:
     inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
 
     struct Cursor {
-        Coordinates InteractiveStart{0, 0}, InteractiveEnd{0, 0};
+        // These coordinates reflect the order of interaction.
+        // For ordered coordinates, use `SelectionStart()` and `SelectionEnd()`.
+        Coordinates Start{}, End{};
 
-        inline bool operator==(const Cursor &o) const { return InteractiveStart == o.InteractiveStart && InteractiveEnd == o.InteractiveEnd; }
+        inline bool operator==(const Cursor &o) const { return Start == o.Start && End == o.End; }
 
-        inline Coordinates GetSelectionStart() const { return InteractiveStart < InteractiveEnd ? InteractiveStart : InteractiveEnd; }
-        inline Coordinates GetSelectionEnd() const { return InteractiveStart > InteractiveEnd ? InteractiveStart : InteractiveEnd; }
-        inline bool HasSelection() const { return InteractiveStart != InteractiveEnd; }
-        inline bool HasMultilineSelection() const { return GetSelectionStart().L != GetSelectionEnd().L; }
+        inline Coordinates SelectionStart() const { return Start < End ? Start : End; }
+        inline Coordinates SelectionEnd() const { return Start > End ? Start : End; }
+        inline bool HasSelection() const { return Start != End; }
+        inline bool HasMultilineSelection() const { return SelectionStart().L != SelectionEnd().L; }
     };
 
     // State to be restored with undo/redo.

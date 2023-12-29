@@ -124,7 +124,7 @@ private:
 
     struct Cursor {
         Coordinates InteractiveStart{0, 0}, InteractiveEnd{0, 0};
-    
+
         inline bool operator==(const Cursor &o) const { return InteractiveStart == o.InteractiveStart && InteractiveEnd == o.InteractiveEnd; }
 
         inline Coordinates GetSelectionStart() const { return InteractiveStart < InteractiveEnd ? InteractiveStart : InteractiveEnd; }
@@ -144,7 +144,7 @@ private:
         Cursor &GetCursor(int c = -1);
         const Cursor &GetCursor(int c = -1) const;
         Cursor &GetLastAddedCursor();
-        void SortCursorsFromTopToBottom();
+        void SortCursors();
     };
 
     struct Glyph {
@@ -154,8 +154,8 @@ private:
         bool IsMultiLineComment : 1;
         bool IsPreprocessor : 1;
 
-        Glyph(char character, PaletteIndex color_index)
-            : Char(character), ColorIndex(color_index), IsComment(false), IsMultiLineComment(false), IsPreprocessor(false) {}
+        Glyph(char ch, PaletteIndex color_index)
+            : Char(ch), ColorIndex(color_index), IsComment(false), IsMultiLineComment(false), IsPreprocessor(false) {}
     };
 
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
@@ -220,7 +220,7 @@ private:
     void MoveBottom(bool select = false);
     void MoveHome(bool select = false);
     void MoveEnd(bool select = false);
-    void EnterCharacter(ImWchar character, bool is_shift);
+    void EnterChar(ImWchar, bool is_shift);
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
@@ -241,10 +241,10 @@ private:
     Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
-    int GetCharacterIndexL(const Coordinates &) const;
-    int GetCharacterIndexR(const Coordinates &) const;
-    int GetCharacterColumn(int li, int ci) const;
-    int GetFirstVisibleCharacterIndex(int line) const;
+    int GetCharIndexL(const Coordinates &) const;
+    int GetCharIndexR(const Coordinates &) const;
+    int GetCharColumn(int li, int ci) const;
+    int GetFirstVisibleCharIndex(int line) const;
     int GetLineMaxColumn(int line, int limit = -1) const;
 
     LineT &InsertLine(int li);

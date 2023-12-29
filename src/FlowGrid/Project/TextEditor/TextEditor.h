@@ -69,7 +69,7 @@ struct TextEditor {
     void SetLanguageDefinition(LanguageDefinitionIdT);
     const char *GetLanguageDefinitionName() const;
 
-    void SetTabSize(int);
+    void SetTabSize(uint);
     void SetLineSpacing(float);
 
     void SelectAll();
@@ -193,7 +193,6 @@ private:
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coordinates &start, const Coordinates &end);
-    void AddSelectionUndoOp(UndoRecord &, UndoOperationType, const Cursor &);
 
     std::string GetText(const Coordinates &start, const Coordinates &end) const;
     std::string GetSelectedText(const Cursor &) const;
@@ -249,7 +248,7 @@ private:
 
     LineT &InsertLine(int li);
     void DeleteRange(const Coordinates &start, const Coordinates &end, const Cursor *exclude_cursor = nullptr);
-    void DeleteSelection(Cursor &);
+    void DeleteSelection(Cursor &, UndoRecord &);
 
     void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);
     void AddGlyphsToLine(int li, int ci, std::span<const Glyph>);
@@ -283,7 +282,7 @@ private:
     std::vector<UndoRecord> UndoBuffer;
     int UndoIndex{0};
 
-    int TabSize{4};
+    uint TabSize{4};
     int LastEnsureCursorVisible{-1};
     bool LastEnsureCursorVisibleStartToo{false};
     bool ScrollToTop{false};

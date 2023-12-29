@@ -135,11 +135,11 @@ private:
 
     // State to be restored with undo/redo.
     struct EditorState {
-        uint CurrentCursor{0};
-        uint LastAddedCursor{0};
+        uint LastAddedCursorIndex{0};
         std::vector<Cursor> Cursors{{{0, 0}}};
 
         void AddCursor();
+        void ResetCursors();
         int GetLastAddedCursorIndex();
         Cursor &GetCursor(int c = -1);
         const Cursor &GetCursor(int c = -1) const;

@@ -10,10 +10,10 @@ void TextEditor::DebugPanel() {
         Checkbox("Panning", &Panning);
         Checkbox("Dragging selection", &IsDraggingSelection);
         EndDisabled();
-        Text("Cursor count: %u", State.CurrentCursor);
-        for (uint i = 0; i <= State.CurrentCursor; i++) {
-            DragInt2("Interactive start", &State.Cursors[i].InteractiveStart.L);
-            DragInt2("Interactive end", &State.Cursors[i].InteractiveEnd.L);
+        Text("Cursor count: %u", State.Cursors.size());
+        for (auto &c : State.Cursors) {
+            DragInt2("Interactive start", &c.InteractiveStart.L);
+            DragInt2("Interactive end", &c.InteractiveEnd.L);
         }
     }
     if (CollapsingHeader("Lines")) {

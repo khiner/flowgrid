@@ -9,7 +9,7 @@
 
 #include "imgui_internal.h"
 
-using std::string, std::ranges::reverse_view;
+using std::string, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of;
 
 TextEditor::TextEditor() {
     SetPalette(DefaultPaletteId);
@@ -95,33 +95,20 @@ void TextEditor::SetTabSize(uint tab_size) { TabSize = std::clamp(tab_size, 1u, 
 void TextEditor::SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(line_spacing, 1.f, 2.f); }
 
 void TextEditor::SelectAll() {
-    for (auto &c : State.Cursors) {
-        c.InteractiveEnd = c.InteractiveStart = c.GetSelectionEnd();
-    }
+    for (auto &c : State.Cursors) c.InteractiveEnd = c.InteractiveStart = c.GetSelectionEnd();
     State.ResetCursors();
     MoveTop();
     MoveBottom(true);
 }
 
 bool TextEditor::AnyCursorHasSelection() const {
-    for (const auto &c : State.Cursors) {
-        if (c.HasSelection()) return true;
-    }
-    return false;
+    return any_of(State.Cursors, [](const auto &c) { return c.HasSelection(); });
 }
-
 bool TextEditor::AnyCursorHasMultilineSelection() const {
-    for (const auto &c : State.Cursors) {
-        if (c.HasMultilineSelection()) return true;
-    }
-    return false;
+    return any_of(State.Cursors, [](const auto &c) { return c.HasMultilineSelection(); });
 }
-
 bool TextEditor::AllCursorsHaveSelection() const {
-    for (const auto &c : State.Cursors) {
-        if (!c.HasSelection()) return false;
-    }
-    return true;
+    return all_of(State.Cursors, [](const auto &c) { return c.HasSelection(); });
 }
 
 TextEditor::Coordinates TextEditor::GetCursorPosition() const {
@@ -302,9 +289,7 @@ TextEditor::Cursor const &TextEditor::EditorState::GetCursor(int c) const { retu
 
 void TextEditor::EditorState::SortCursors() {
     const auto last_added_cursor_pos = GetLastAddedCursor().InteractiveEnd;
-    std::sort(Cursors.begin(), Cursors.end(), [](const auto &a, const auto &b) -> bool {
-        return a.GetSelectionStart() < b.GetSelectionStart();
-    });
+    std::ranges::sort(Cursors, [](const auto &a, const auto &b) -> bool { return a.GetSelectionStart() < b.GetSelectionStart(); });
     // Update last added cursor index to be valid after sort.
     for (auto &c : Cursors) {
         if (c.InteractiveEnd == last_added_cursor_pos) LastAddedCursorIndex = &c - Cursors.data();
@@ -359,45 +344,43 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
 }
 
 string TextEditor::GetText() const {
-    const auto last_line = int(Lines.size()) - 1;
-    return GetText({}, {last_line, GetLineMaxColumn(last_line)});
+    return Lines.empty() ? "" : GetText({}, {int(Lines.size() - 1), GetLineMaxColumn(Lines.size() - 1)});
 }
 
-string TextEditor::GetSelectedText(const Cursor &cursor) const {
-    return GetText(cursor.GetSelectionStart(), cursor.GetSelectionEnd());
+string TextEditor::GetSelectedText(const Cursor &c) const {
+    return GetText(c.GetSelectionStart(), c.GetSelectionEnd());
 }
 
-void TextEditor::SetCursorPosition(const Coordinates &position, Cursor &cursor, bool clear_selection) {
+void TextEditor::SetCursorPosition(const Coordinates &position, Cursor &c, bool clear_selection) {
     CursorPositionChanged = true;
 
-    if (clear_selection) cursor.InteractiveStart = position;
+    if (clear_selection) c.InteractiveStart = position;
 
-    if (cursor.InteractiveEnd != position) {
-        cursor.InteractiveEnd = position;
+    if (c.InteractiveEnd != position) {
+        c.InteractiveEnd = position;
         EnsureCursorVisible();
     }
 }
 
-void TextEditor::InsertTextAtCursor(const string &text, Cursor &cursor) {
+void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
     if (text.empty()) return;
 
-    auto pos = SanitizeCoordinates(cursor.InteractiveEnd);
-    const auto start = std::min(pos, cursor.GetSelectionStart());
+    auto pos = SanitizeCoordinates(c.InteractiveEnd);
+    const auto start = std::min(pos, c.GetSelectionStart());
     const uint total_lines = pos.L - start.L + InsertTextAt(pos, text.c_str());
-    SetCursorPosition(pos, cursor);
+    SetCursorPosition(pos, c);
     Colorize(start.L - 1, total_lines + 2);
 }
 
+// Assumes given char index is not in the middle of a UTF8 sequence.
+// Char index can be equal to line length.
 bool TextEditor::Move(int &line, int &ci, bool left, bool lock_line) const {
-    // assumes given char index is not in the middle of utf8 sequence
-    // char index can be line.length()
-
-    // invalid line
     if (line >= int(Lines.size())) return false;
 
     if (left) {
         if (ci == 0) {
             if (lock_line || line == 0) return false;
+
             line--;
             ci = Lines[line].size();
         } else {
@@ -407,11 +390,11 @@ bool TextEditor::Move(int &line, int &ci, bool left, bool lock_line) const {
     } else { // right
         if (ci == int(Lines[line].size())) {
             if (lock_line || line == int(Lines.size()) - 1) return false;
+
             line++;
             ci = 0;
         } else {
-            const int seq_length = UTF8CharLength(Lines[line][ci].Char);
-            ci = std::min(ci + seq_length, int(Lines[line].size()));
+            ci = std::min(ci + int(UTF8CharLength(Lines[line][ci].Char)), int(Lines[line].size()));
         }
     }
     return true;
@@ -426,18 +409,17 @@ void TextEditor::MoveCharIndexAndColumn(int line, int &ci, int &column) const {
 }
 
 void TextEditor::MoveCoords(Coordinates &coords, MoveDirection direction, bool is_word_mode, int line_count) const {
-    int ci = GetCharIndexR(coords);
-    int lindex = coords.L;
+    int ci = GetCharIndexR(coords), li = coords.L;
     switch (direction) {
         case MoveDirection::Right:
-            if (ci >= int(Lines[lindex].size())) {
-                if (lindex < int(Lines.size()) - 1) {
-                    coords.L = std::clamp(lindex + 1, 0, int(Lines.size()) - 1);
+            if (ci >= int(Lines[li].size())) {
+                if (li < int(Lines.size()) - 1) {
+                    coords.L = std::clamp(li + 1, 0, int(Lines.size()) - 1);
                     coords.C = 0;
                 }
             } else {
-                Move(lindex, ci);
-                int one_step_right_column = GetCharColumn(lindex, ci);
+                Move(li, ci);
+                const int one_step_right_column = GetCharColumn(li, ci);
                 if (is_word_mode) {
                     coords = FindWordEnd(coords);
                     coords.C = std::max(coords.C, one_step_right_column);
@@ -448,21 +430,21 @@ void TextEditor::MoveCoords(Coordinates &coords, MoveDirection direction, bool i
             break;
         case MoveDirection::Left:
             if (ci == 0) {
-                if (lindex > 0) {
-                    coords.L = lindex - 1;
+                if (li > 0) {
+                    coords.L = li - 1;
                     coords.C = GetLineMaxColumn(coords.L);
                 }
             } else {
-                Move(lindex, ci, true);
-                coords.C = GetCharColumn(lindex, ci);
+                Move(li, ci, true);
+                coords.C = GetCharColumn(li, ci);
                 if (is_word_mode) coords = FindWordStart(coords);
             }
             break;
         case MoveDirection::Up:
-            coords.L = std::max(0, lindex - line_count);
+            coords.L = std::max(0, li - line_count);
             break;
         case MoveDirection::Down:
-            coords.L = std::clamp(lindex + line_count, 0, int(Lines.size()) - 1);
+            coords.L = std::clamp(li + line_count, 0, int(Lines.size()) - 1);
             break;
     }
 }
@@ -646,7 +628,7 @@ void TextEditor::Delete(bool is_word_mode, const EditorState *editor_state) {
     }
 }
 
-void TextEditor::SetSelection(Coordinates start, Coordinates end, Cursor &cursor) {
+void TextEditor::SetSelection(Coordinates start, Coordinates end, Cursor &c) {
     const int max_line = int(Lines.size()) - 1;
     Coordinates min_coords{0, 0}, max_coords{max_line, GetLineMaxColumn(max_line)};
     if (start < min_coords) start = min_coords;
@@ -654,17 +636,17 @@ void TextEditor::SetSelection(Coordinates start, Coordinates end, Cursor &cursor
     if (end < min_coords) end = min_coords;
     else if (end > max_coords) end = max_coords;
 
-    cursor.InteractiveStart = start;
-    SetCursorPosition(end, cursor, false);
+    c.InteractiveStart = start;
+    SetCursorPosition(end, c, false);
 }
 
 void TextEditor::AddCursorForNextOccurrence(bool case_sensitive) {
-    const auto &cursor = State.GetLastAddedCursor();
-    const string selection = GetSelectedText(cursor);
+    const auto &c = State.GetLastAddedCursor();
+    const string selection = GetSelectedText(c);
     if (selection.empty()) return;
 
     Coordinates next_start, next_end;
-    if (!FindNextOccurrence(selection.c_str(), selection.length(), cursor.GetSelectionEnd(), next_start, next_end, case_sensitive)) return;
+    if (!FindNextOccurrence(selection.c_str(), selection.length(), c.GetSelectionEnd(), next_start, next_end, case_sensitive)) return;
 
     State.AddCursor();
     SetSelection(next_start, next_end, State.GetCursor());
@@ -1043,9 +1025,7 @@ int TextEditor::GetCharIndexR(const Coordinates &coords) const {
     if (coords.L >= int(Lines.size())) return -1;
 
     int c = 0, i = 0;
-    for (; i < int(Lines[coords.L].size()) && c < coords.C;) {
-        MoveCharIndexAndColumn(coords.L, i, c);
-    }
+    for (; i < int(Lines[coords.L].size()) && c < coords.C;) MoveCharIndexAndColumn(coords.L, i, c);
     return i;
 }
 
@@ -1053,9 +1033,7 @@ int TextEditor::GetCharColumn(int li, int ci) const {
     if (li >= int(Lines.size())) return 0;
 
     int i = 0, c = 0;
-    while (i < ci && i < int(Lines[li].size())) {
-        MoveCharIndexAndColumn(li, i, c);
-    }
+    while (i < ci && i < int(Lines[li].size())) MoveCharIndexAndColumn(li, i, c);
     return c;
 }
 
@@ -1063,9 +1041,7 @@ int TextEditor::GetFirstVisibleCharIndex(int li) const {
     if (li >= int(Lines.size())) return 0;
 
     int i = 0, c = 0;
-    while (c < FirstVisibleColumn && i < int(Lines[li].size())) {
-        MoveCharIndexAndColumn(li, i, c);
-    }
+    while (c < FirstVisibleColumn && i < int(Lines[li].size()))  MoveCharIndexAndColumn(li, i, c);
     return c > FirstVisibleColumn ? i - 1 : i;
 }
 
@@ -1142,8 +1118,7 @@ std::unordered_map<int, int> TextEditor::BeforeLineChanged(int li, int column, i
 
 void TextEditor::AfterLineChanged(int li, std::unordered_map<int, int> &&adjusted_ci_for_cursor) {
     for (const auto &[c, ci] : adjusted_ci_for_cursor) {
-        auto &cursor = State.Cursors[c];
-        SetCursorPosition({li, GetCharColumn(li, ci)}, cursor);
+        SetCursorPosition({li, GetCharColumn(li, ci)}, State.Cursors[c]);
     }
 }
 
@@ -1344,7 +1319,7 @@ void TextEditor::HandleMouseInputs() {
                 if (ctrl) State.AddCursor();
                 else State.ResetCursors();
 
-                auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos());
+                const auto cursor_coords = ScreenPosToCoordinates(ImGui::GetMousePos());
                 SetSelection(FindWordStart(cursor_coords), FindWordEnd(cursor_coords), State.GetCursor());
 
                 LastClickTime = float(ImGui::GetTime());
@@ -1424,10 +1399,7 @@ void TextEditor::Render(bool is_parent_focused) {
             const Coordinates line_start_coord{li, 0}, line_end_coord{li, max_column_limited};
             // Draw selection for the current line
             for (const auto &c : State.Cursors) {
-                const auto selection_start = c.GetSelectionStart();
-                const auto selection_end = c.GetSelectionEnd();
-                assert(selection_start <= selection_end);
-
+                const auto selection_start = c.GetSelectionStart(), selection_end = c.GetSelectionEnd();
                 float rect_start = -1.0f, rect_end = -1.0f;
                 if (selection_start <= line_end_coord)
                     rect_start = selection_start > line_start_coord ? TextDistanceToLineStart(selection_start) : 0.0f;
@@ -1579,9 +1551,9 @@ void TextEditor::Render(bool is_parent_focused) {
 }
 
 void TextEditor::OnCursorPositionChanged() {
-    const auto &cursor = State.Cursors[0];
-    const bool one_cursor_without_selection = State.Cursors.size() == 1 && !cursor.HasSelection();
-    CursorOnBracket = one_cursor_without_selection ? FindMatchingBracket(cursor.InteractiveEnd.L, GetCharIndexR(cursor.InteractiveEnd), MatchingBracketCoords) : false;
+    const auto &c = State.Cursors[0];
+    const bool one_cursor_without_selection = State.Cursors.size() == 1 && !c.HasSelection();
+    CursorOnBracket = one_cursor_without_selection ? FindMatchingBracket(c.InteractiveEnd.L, GetCharIndexR(c.InteractiveEnd), MatchingBracketCoords) : false;
 
     if (!IsDraggingSelection) SortAndMergeCursors();
 }

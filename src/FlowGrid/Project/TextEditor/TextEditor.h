@@ -77,7 +77,7 @@ struct TextEditor {
     bool AnyCursorHasMultilineSelection() const;
     bool AllCursorsHaveSelection() const;
 
-    Coordinates GetCursorPosition(int cursor = -1, bool start = false) const;
+    Coordinates GetCursorPosition() const;
 
     void Copy();
     void Cut();
@@ -141,6 +141,8 @@ private:
 
         void AddCursor();
         int GetLastAddedCursorIndex();
+        Cursor &GetCursor(int c = -1);
+        const Cursor &GetCursor(int c = -1) const;
         Cursor &GetLastAddedCursor();
         void SortCursorsFromTopToBottom();
     };
@@ -223,7 +225,6 @@ private:
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
     void SetSelection(Coordinates start, Coordinates end, Cursor &);
-    void SetSelection(Coordinates start, Coordinates end, int c);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
     bool FindNextOccurrence(const char *text, int text_size, const Coordinates &from, Coordinates &start_out, Coordinates &end_out, bool case_sensitive = true);

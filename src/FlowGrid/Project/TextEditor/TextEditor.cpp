@@ -327,10 +327,6 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
     editor->EnsureCursorVisible();
 }
 
-string TextEditor::GetText() const {
-    return Lines.empty() ? "" : GetText({}, {uint(Lines.size() - 1), GetLineMaxColumn(Lines.size() - 1)});
-}
-
 void TextEditor::SetCursorPosition(const Coords &position, Cursor &c, bool clear_selection) {
     CursorPositionChanged = true;
 
@@ -410,13 +406,10 @@ void TextEditor::MoveCoords(Coords &coords, MoveDirection direction, bool is_wor
             break;
         case MoveDirection::Left:
             if (ci == 0) {
-                if (li > 0) {
-                    coords.L = li - 1;
-                    coords.C = GetLineMaxColumn(coords.L);
-                }
+                if (li > 0) coords = LineMaxCoords(li - 1);
             } else {
                 Move(li, ci, true);
-                coords.C = GetCharColumn(li, ci);
+                coords = is_word_mode ? FindWordStart(coords) : Coords{coords.L, GetCharColumn(li, ci)};
                 if (is_word_mode) coords = FindWordStart(coords);
             }
             break;
@@ -479,18 +472,13 @@ void TextEditor::MoveRight(bool select, bool is_word_mode) {
 }
 
 void TextEditor::MoveTop(bool select) { SetCursorPosition({0, 0}, State.GetCursor(), !select); }
-
-void TextEditor::TextEditor::MoveBottom(bool select) {
-    const uint max_line = Lines.size() - 1;
-    SetCursorPosition({max_line, GetLineMaxColumn(max_line)}, State.GetCursor(), !select);
-}
+void TextEditor::TextEditor::MoveBottom(bool select) { SetCursorPosition(LineMaxCoords(Lines.size() - 1), State.GetCursor(), !select); }
 
 void TextEditor::MoveHome(bool select) {
     for (auto &c : State.Cursors) SetCursorPosition({c.End.L, 0}, c, !select);
 }
-
 void TextEditor::MoveEnd(bool select) {
-    for (auto &c : State.Cursors) SetCursorPosition({c.End.L, GetLineMaxColumn(c.End.L)}, c, !select);
+    for (auto &c : State.Cursors) SetCursorPosition(LineMaxCoords(c.End.L), c, !select);
 }
 
 // todo can we simplify this by using `InsertTextAt...`?
@@ -527,7 +515,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
             const auto ci = GetCharIndexR(coord);
             AddGlyphs(coord.L + 1, new_line.size(), {line.cbegin() + ci, line.cend()});
             RemoveGlyphs(coord.L, ci);
-            SetCursorPosition(LineCharToCoords(coord.L + 1, whitespace_size), c);
+            SetCursorPosition(LineCharCoords(coord.L + 1, whitespace_size), c);
         } else {
             char buf[5];
             ImTextCharToUtf8(buf, ch);
@@ -540,7 +528,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
                 UndoOperation removed;
                 removed.Type = UndoOperationType::Delete;
                 removed.Start = c.End;
-                removed.End = LineCharToCoords(coord.L, ci + d);
+                removed.End = LineCharCoords(coord.L, ci + d);
                 while (d-- > 0 && ci < line.size()) {
                     removed.Text += line[ci].Char;
                     RemoveGlyphs(coord.L, ci, ci + 1);
@@ -552,7 +540,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
             AddGlyphs(coord.L, ci, glyphs);
             added.Text = buf;
 
-            SetCursorPosition(LineCharToCoords(coord.L, ci + glyphs.size()), c);
+            SetCursorPosition(LineCharCoords(coord.L, ci + glyphs.size()), c);
         }
 
         added.End = SanitizeCoords(c.End);
@@ -605,8 +593,7 @@ void TextEditor::Delete(bool is_word_mode, const EditorState *editor_state) {
 }
 
 void TextEditor::SetSelection(Coords start, Coords end, Cursor &c) {
-    const uint max_line = Lines.size() - 1;
-    const Coords min_coords{0, 0}, max_coords{max_line, GetLineMaxColumn(max_line)};
+    const Coords min_coords{0, 0}, max_coords{LineMaxCoords(Lines.size() - 1)};
     c.Start = std::clamp(start, min_coords, max_coords);
     SetCursorPosition(std::clamp(end, min_coords, max_coords), c, false);
 }
@@ -650,7 +637,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &t
                 ci_inner++;
             }
         }
-        if (i == text.size()) return Cursor{LineCharToCoords(f_li, f_i), LineCharToCoords(f_li + line_offset, ci_inner)};
+        if (i == text.size()) return Cursor{LineCharCoords(f_li, f_i), LineCharCoords(f_li + line_offset, ci_inner)};
 
         /* Move forward */
         if (f_i == Lines[f_li].size()) {
@@ -684,7 +671,7 @@ bool TextEditor::FindMatchingBracket(uint li, uint ci, Coords &out) {
                 if (ch == open_char) {
                     counter--;
                     if (counter == 0) {
-                        out = LineCharToCoords(li_inner, ci_inner);
+                        out = LineCharCoords(li_inner, ci_inner);
                         return true;
                     }
                 } else if (ch == close_char) {
@@ -700,7 +687,7 @@ bool TextEditor::FindMatchingBracket(uint li, uint ci, Coords &out) {
                 if (ch == close_char) {
                     counter--;
                     if (counter == 0) {
-                        out = LineCharToCoords(li_inner, ci_inner);
+                        out = LineCharCoords(li_inner, ci_inner);
                         return true;
                     }
                 } else if (ch == open_char) {
@@ -761,7 +748,7 @@ void TextEditor::MoveCurrentLines(bool up) {
     if ((up && min_li == 0) || (!up && max_li == Lines.size() - 1)) return; // Can't move up/down anymore.
 
     const uint start_li = min_li - (up ? 1 : 0), end_li = max_li + (up ? 0 : 1);
-    const Coords start{start_li, 0}, end{end_li, GetLineMaxColumn(end_li)};
+    const Coords start{start_li, 0}, end{LineMaxCoords(end_li)};
     AddUndoOp(u, UndoOperationType::Delete, start, end);
     if (up) {
         for (const uint li : affected_lines) std::swap(Lines[li - 1], Lines[li]);
@@ -824,7 +811,7 @@ void TextEditor::ToggleLineComment() {
             assert(matched);
             if (ci + ci_2 < line.size() && line[ci + ci_2].Char == ' ') ci_2++;
 
-            const Coords start = LineCharToCoords(li, ci), end = LineCharToCoords(li, ci + ci_2);
+            const Coords start = LineCharCoords(li, ci), end = LineCharCoords(li, ci + ci_2);
             AddUndoOp(u, UndoOperationType::Delete, start, end);
             DeleteRange(start, end);
             Colorize(li, 1);
@@ -846,12 +833,12 @@ void TextEditor::RemoveCurrentLines() {
             to_delete_end = {li + 1, 0};
             SetCursorPosition({li, 0}, c);
         } else if (li > 0) { // Previous line exists.
-            to_delete_start = {li - 1, GetLineMaxColumn(li - 1)};
-            to_delete_end = {li, GetLineMaxColumn(li)};
+            to_delete_start = LineMaxCoords(li - 1);
+            to_delete_end = LineMaxCoords(li);
             SetCursorPosition({li - 1, 0}, c);
         } else {
             to_delete_start = {li, 0};
-            to_delete_end = {li, GetLineMaxColumn(li)};
+            to_delete_end = LineMaxCoords(li);
             SetCursorPosition({li, 0}, c);
         }
 
@@ -880,12 +867,7 @@ void TextEditor::EnsureCursorVisible(bool start_too) {
 }
 
 TextEditor::Coords TextEditor::SanitizeCoords(const Coords &coords) const {
-    if (coords.L >= Lines.size()) {
-        if (Lines.empty()) return {0, 0};
-
-        const uint li = Lines.size() - 1;
-        return {li, GetLineMaxColumn(li)};
-    }
+    if (coords.L >= Lines.size()) return LineMaxCoords(Lines.size() - 1);
     return {coords.L, Lines.empty() ? 0 : GetLineMaxColumn(coords.L, coords.C)};
 }
 
@@ -930,7 +912,7 @@ TextEditor::Coords TextEditor::FindWordStart(const Coords &from) const {
             break;
         }
     }
-    return LineCharToCoords(li, ci);
+    return LineCharCoords(li, ci);
 }
 
 TextEditor::Coords TextEditor::FindWordEnd(const Coords &from) const {
@@ -954,7 +936,7 @@ TextEditor::Coords TextEditor::FindWordEnd(const Coords &from) const {
             (!initial_is_word_char && !initial_is_space && initial_char != line[ci].Char))
             break;
     }
-    return LineCharToCoords(li, ci);
+    return LineCharCoords(li, ci);
 }
 
 uint TextEditor::GetCharIndexL(const Coords &coords) const {
@@ -1075,7 +1057,7 @@ void TextEditor::AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyp
     if (is_add) line.insert(line.begin() + ci, glyphs.begin(), glyphs.end());
     else line.erase(glyphs.begin(), glyphs.end());
 
-    for (const auto &[c, ci] : adjusted_ci_for_cursor) SetCursorPosition(LineCharToCoords(li, ci), State.Cursors[c]);
+    for (const auto &[c, ci] : adjusted_ci_for_cursor) SetCursorPosition(LineCharCoords(li, ci), State.Cursors[c]);
 }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
@@ -1246,10 +1228,11 @@ void TextEditor::HandleMouseInputs() {
                 else State.ResetCursors();
 
                 const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos());
-                const auto target_cursor_pos = cursor_coords.L < Lines.size() - 1 ?
-                    Coords{cursor_coords.L + 1, 0} :
-                    Coords{cursor_coords.L, GetLineMaxColumn(cursor_coords.L)};
-                SetSelection({cursor_coords.L, 0}, target_cursor_pos, State.GetCursor());
+                SetSelection(
+                    {cursor_coords.L, 0},
+                    cursor_coords.L < Lines.size() - 1 ? Coords{cursor_coords.L + 1, 0} : LineMaxCoords(cursor_coords.L),
+                    State.GetCursor()
+                );
 
                 LastClickTime = -1.0f;
             } else if (is_double_click) {
@@ -1268,10 +1251,11 @@ void TextEditor::HandleMouseInputs() {
                 bool is_over_li;
                 const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos(), !Overwrite, &is_over_li);
                 if (is_over_li) {
-                    const auto target_cursor_pos = cursor_coords.L < Lines.size() - 1 ?
-                        Coords{cursor_coords.L + 1, 0} :
-                        Coords{cursor_coords.L, GetLineMaxColumn(cursor_coords.L)};
-                    SetSelection({cursor_coords.L, 0}, target_cursor_pos, State.GetCursor());
+                    SetSelection(
+                        {cursor_coords.L, 0},
+                        cursor_coords.L < Lines.size() - 1 ? Coords{cursor_coords.L + 1, 0} : LineMaxCoords(cursor_coords.L),
+                        State.GetCursor()
+                    );
                 } else {
                     SetCursorPosition(cursor_coords, State.GetLastAddedCursor());
                 }

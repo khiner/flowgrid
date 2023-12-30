@@ -82,7 +82,8 @@ struct TextEditor {
     bool CanRedo() const { return !ReadOnly && UndoIndex < uint(UndoBuffer.size()); }
 
     void SetText(const std::string &text);
-    std::string GetText() const;
+    std::string GetText(const Coords &start, const Coords &end) const;
+    std::string GetText() const { return Lines.empty() ? "" : GetText({}, LineMaxCoords(Lines.size() - 1)); }
 
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
     void DebugPanel();
@@ -193,11 +194,9 @@ private:
 
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coords &start, const Coords &end);
 
-    std::string GetText(const Coords &start, const Coords &end) const;
-    std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
-
     void SetCursorPosition(const Coords &position, Cursor &cursor, bool clear_selection = true);
 
+    std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
     Coords InsertTextAt(const Coords &, const std::string &); // Returns insertion end.
     void InsertTextAtCursor(const std::string &, Cursor &);
 
@@ -207,8 +206,8 @@ private:
         Up = 2,
         Down = 3
     };
-    bool Move(uint &line, uint &ci, bool left = false, bool lock_line = false) const;
-    void MoveCharIndexAndColumn(uint line, uint &ci, uint &column) const;
+    bool Move(uint &li, uint &ci, bool left = false, bool lock_line = false) const;
+    void MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const;
     void MoveCoords(Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
     void MoveUp(uint amount = 1, bool select = false);
     void MoveDown(uint amount = 1, bool select = false);
@@ -227,7 +226,7 @@ private:
     void AddCursorForNextOccurrence(bool case_sensitive = true);
     // Returns a cursor containing the start/end coords of the next occurrence of `text` after `from`, or `std::nullopt` if not found.
     std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &from, bool case_sensitive = true);
-    bool FindMatchingBracket(uint line, uint ci, Coords &out);
+    bool FindMatchingBracket(uint li, uint ci, Coords &out);
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveCurrentLines(bool up);
     void ToggleLineComment();
@@ -236,7 +235,8 @@ private:
     float TextDistanceToLineStart(const Coords &from, bool sanitize_coords = true) const;
     void EnsureCursorVisible(bool start_too = false);
 
-    Coords LineCharToCoords(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
+    Coords LineMaxCoords(uint li) const { return {li, GetLineMaxColumn(li)}; }
+    Coords LineCharCoords(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
     Coords SanitizeCoords(const Coords &) const;
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
     Coords FindWordStart(const Coords &from) const;
@@ -245,8 +245,8 @@ private:
     uint GetCharIndexR(const Coords &) const;
     uint GetCharColumn(uint li, uint ci) const;
     uint GetFirstVisibleCharIndex(uint line) const;
-    uint GetLineMaxColumn(uint line) const;
-    uint GetLineMaxColumn(uint line, uint limit) const;
+    uint GetLineMaxColumn(uint li) const;
+    uint GetLineMaxColumn(uint li, uint limit) const;
 
     LineT &InsertLine(uint li);
     void DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor = nullptr);

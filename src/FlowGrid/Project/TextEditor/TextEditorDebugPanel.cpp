@@ -10,7 +10,7 @@ void TextEditor::DebugPanel() {
         Checkbox("Panning", &Panning);
         Checkbox("Dragging selection", &IsDraggingSelection);
         EndDisabled();
-        Text("Cursor count: %u", State.Cursors.size());
+        Text("Cursor count: %lu", State.Cursors.size());
         for (auto &c : State.Cursors) {
             DragU32("Interactive start", &c.Start.L);
             DragU32("Interactive end", &c.End.L);

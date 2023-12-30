@@ -45,26 +45,22 @@ struct TextEditor {
     // Tabs are counted as [1..TabSize] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
     // For example, coordinate (1, 5) represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
     struct Coordinates {
-        int L, C; // Line, Column
-        Coordinates() : L(0), C(0) {}
-        Coordinates(int li, int column) : L(li), C(column) {
-            assert(li >= 0);
-            assert(column >= 0);
+        int L{0}, C{0}; // Line, Column
+        Coordinates() = default;
+        Coordinates(int li, int column) : L(li), C(column) {}
+
+        auto operator<=>(const Coordinates &o) const {
+            if (auto cmp = L <=> o.L; cmp != 0) return cmp;
+            return C <=> o.C;
         }
-        inline static Coordinates Invalid() { return {-1, -1}; }
+        bool operator==(const Coordinates &o) const = default;
+        bool operator!=(const Coordinates &o) const = default;
 
-        bool operator==(const Coordinates &o) const { return L == o.L && C == o.C; }
-        bool operator!=(const Coordinates &o) const { return L != o.L || C != o.C; }
-        bool operator<(const Coordinates &o) const { return L != o.L ? L < o.L : C < o.C; }
-        bool operator>(const Coordinates &o) const { return L != o.L ? L > o.L : C > o.C; }
-        bool operator<=(const Coordinates &o) const { return L != o.L ? L < o.L : C <= o.C; }
-        bool operator>=(const Coordinates &o) const { return L != o.L ? L > o.L : C >= o.C; }
-
-        Coordinates operator-(const Coordinates &o) { return {L - o.L, C - o.C}; }
-        Coordinates operator+(const Coordinates &o) { return {L + o.L, C + o.C}; }
+        Coordinates operator-(const Coordinates &o) const { return {L - o.L, C - o.C}; }
+        Coordinates operator+(const Coordinates &o) const { return {L + o.L, C + o.C}; }
     };
 
-    inline int GetLineCount() const { return Lines.size(); }
+    int GetLineCount() const { return Lines.size(); }
     void SetPalette(PaletteIdT);
     void SetLanguageDefinition(LanguageDefinitionIdT);
     const char *GetLanguageDefinitionName() const;

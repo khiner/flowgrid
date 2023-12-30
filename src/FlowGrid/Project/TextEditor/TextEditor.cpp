@@ -283,7 +283,7 @@ TextEditor::Cursor const &TextEditor::EditorState::GetCursor(int c) const { retu
 
 void TextEditor::EditorState::SortCursors() {
     const auto last_added_cursor_pos = GetLastAddedCursor().End;
-    std::ranges::sort(Cursors, [](const auto &a, const auto &b) -> bool { return a.SelectionStart() < b.SelectionStart(); });
+    std::ranges::sort(Cursors, [](const auto &a, const auto &b) { return a.SelectionStart() < b.SelectionStart(); });
     // Update last added cursor index to be valid after sort.
     for (auto &c : Cursors) {
         if (c.End == last_added_cursor_pos) LastAddedCursorIndex = &c - Cursors.data();
@@ -625,9 +625,9 @@ void TextEditor::SetSelection(Coordinates start, Coordinates end, Cursor &c) {
 
 void TextEditor::AddCursorForNextOccurrence(bool case_sensitive) {
     const auto &c = State.GetLastAddedCursor();
-    if (const auto match_cursor = FindNextOccurrence(GetSelectedText(c), c.SelectionEnd(), case_sensitive)) {
+    if (const auto match_range = FindNextOccurrence(GetSelectedText(c), c.SelectionEnd(), case_sensitive)) {
         State.AddCursor();
-        SetSelection(match_cursor->Start, match_cursor->End, State.GetCursor());
+        SetSelection(match_range->Start, match_range->End, State.GetCursor());
         SortAndMergeCursors();
         EnsureCursorVisible(true);
     }
@@ -1521,8 +1521,9 @@ void TextEditor::Render(bool is_parent_focused) {
 
 void TextEditor::OnCursorPositionChanged() {
     const auto &c = State.Cursors[0];
-    const bool one_cursor_without_selection = State.Cursors.size() == 1 && !c.HasSelection();
-    CursorOnBracket = one_cursor_without_selection ? FindMatchingBracket(c.End.L, GetCharIndexR(c.End), MatchingBracketCoords) : false;
+    CursorOnBracket = State.Cursors.size() == 1 && !c.HasSelection() ?
+        FindMatchingBracket(c.End.L, GetCharIndexR(c.End), MatchingBracketCoords) :
+        false;
 
     if (!IsDraggingSelection) SortAndMergeCursors();
 }

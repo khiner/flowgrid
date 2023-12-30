@@ -111,8 +111,6 @@ bool TextEditor::AllCursorsHaveSelection() const {
     return all_of(State.Cursors, [](const auto &c) { return c.HasSelection(); });
 }
 
-TextEditor::Coords TextEditor::GetCursorPosition() const { return SanitizeCoords(State.GetCursor().End); }
-
 void TextEditor::Copy() {
     if (AnyCursorHasSelection()) {
         string str;
@@ -276,13 +274,6 @@ void TextEditor::EditorState::ResetCursors() {
     LastAddedCursorIndex = 0;
 }
 
-uint TextEditor::EditorState::GetLastAddedCursorIndex() { return LastAddedCursorIndex >= Cursors.size() ? 0 : LastAddedCursorIndex; }
-TextEditor::Cursor &TextEditor::EditorState::GetLastAddedCursor() { return Cursors[GetLastAddedCursorIndex()]; }
-TextEditor::Cursor &TextEditor::EditorState::GetCursor(uint c) { return Cursors[c]; }
-TextEditor::Cursor const &TextEditor::EditorState::GetCursor(uint c) const { return Cursors[c]; }
-TextEditor::Cursor &TextEditor::EditorState::GetCursor() { return Cursors.back(); }
-TextEditor::Cursor const &TextEditor::EditorState::GetCursor() const { return Cursors.back(); }
-
 void TextEditor::EditorState::SortCursors() {
     const auto last_added_cursor_pos = GetLastAddedCursor().End;
     std::ranges::sort(Cursors, [](const auto &a, const auto &b) { return a.SelectionStart() < b.SelectionStart(); });
@@ -339,8 +330,6 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
 string TextEditor::GetText() const {
     return Lines.empty() ? "" : GetText({}, {uint(Lines.size() - 1), GetLineMaxColumn(Lines.size() - 1)});
 }
-
-string TextEditor::GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
 
 void TextEditor::SetCursorPosition(const Coords &position, Cursor &c, bool clear_selection) {
     CursorPositionChanged = true;
@@ -489,9 +478,7 @@ void TextEditor::MoveRight(bool select, bool is_word_mode) {
     EnsureCursorVisible();
 }
 
-void TextEditor::MoveTop(bool select) {
-    SetCursorPosition({0, 0}, State.GetCursor(), !select);
-}
+void TextEditor::MoveTop(bool select) { SetCursorPosition({0, 0}, State.GetCursor(), !select); }
 
 void TextEditor::TextEditor::MoveBottom(bool select) {
     const uint max_line = Lines.size() - 1;
@@ -1090,10 +1077,6 @@ void TextEditor::AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyp
 
     for (const auto &[c, ci] : adjusted_ci_for_cursor) SetCursorPosition(LineCharToCoords(li, ci), State.Cursors[c]);
 }
-void TextEditor::AddGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, true); }
-void TextEditor::RemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, false); }
-void TextEditor::RemoveGlyphs(uint li, uint ci, uint end_ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cbegin() + end_ci}); }
-void TextEditor::RemoveGlyphs(uint li, uint ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cend()}); }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
     if (LanguageDef == nullptr) return Palette[int(PaletteIndex::Default)];

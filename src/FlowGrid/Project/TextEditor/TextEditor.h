@@ -59,6 +59,8 @@ struct TextEditor {
     };
 
     uint GetLineCount() const { return Lines.size(); }
+    Coords GetCursorPosition() const { return SanitizeCoords(State.GetCursor().End); }
+
     void SetPalette(PaletteIdT);
     void SetLanguageDefinition(LanguageDefinitionIdT);
     const char *GetLanguageDefinitionName() const;
@@ -70,8 +72,6 @@ struct TextEditor {
     bool AnyCursorHasSelection() const;
     bool AnyCursorHasMultilineSelection() const;
     bool AllCursorsHaveSelection() const;
-
-    Coords GetCursorPosition() const;
 
     void Copy();
     void Cut();
@@ -136,12 +136,13 @@ private:
 
         void AddCursor();
         void ResetCursors();
-        uint GetLastAddedCursorIndex();
-        Cursor &GetCursor(uint c);
-        Cursor &GetCursor();
-        const Cursor &GetCursor(uint c) const;
-        const Cursor &GetCursor() const;
-        Cursor &GetLastAddedCursor();
+        uint GetLastAddedCursorIndex() { return LastAddedCursorIndex >= Cursors.size() ? 0 : LastAddedCursorIndex; }
+        Cursor &GetLastAddedCursor() { return Cursors[GetLastAddedCursorIndex()]; }
+        Cursor &GetCursor(uint c) { return Cursors[c]; }
+        Cursor const &GetCursor(uint c) const { return Cursors[c]; }
+        Cursor &GetCursor() { return Cursors.back(); }
+        Cursor const &GetCursor() const { return Cursors.back(); }
+
         void SortCursors();
     };
 
@@ -193,7 +194,7 @@ private:
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coords &start, const Coords &end);
 
     std::string GetText(const Coords &start, const Coords &end) const;
-    std::string GetSelectedText(const Cursor &) const;
+    std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
 
     void SetCursorPosition(const Coords &position, Cursor &cursor, bool clear_selection = true);
 
@@ -252,11 +253,11 @@ private:
     void DeleteSelection(Cursor &, UndoRecord &);
 
     void AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph>, bool is_add);
-    void AddGlyphs(uint li, uint ci, std::span<const Glyph>);
-    void RemoveGlyphs(uint li, uint ci, std::span<const Glyph>);
-    void RemoveGlyphs(uint li, uint start_ci);
-    void RemoveGlyphs(uint li, uint start_ci, uint end_ci);
-    ImU32 GetGlyphColor(const Glyph &glyph) const;
+    void AddGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, true); }
+    void RemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, false); }
+    void RemoveGlyphs(uint li, uint ci, uint end_ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cbegin() + end_ci}); }
+    void RemoveGlyphs(uint li, uint ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cend()}); }
+    ImU32 GetGlyphColor(const Glyph &) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
     void HandleMouseInputs();

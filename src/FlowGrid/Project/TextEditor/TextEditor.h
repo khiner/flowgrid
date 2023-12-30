@@ -45,9 +45,7 @@ struct TextEditor {
     // Tabs are counted as [1..TabSize] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
     // For example, coordinate (1, 5) represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
     struct Coordinates {
-        int L{0}, C{0}; // Line, Column
-        Coordinates() = default;
-        Coordinates(int li, int column) : L(li), C(column) {}
+        uint L{0}, C{0}; // Line, Column
 
         auto operator<=>(const Coordinates &o) const {
             if (auto cmp = L <=> o.L; cmp != 0) return cmp;
@@ -60,7 +58,7 @@ struct TextEditor {
         Coordinates operator+(const Coordinates &o) const { return {L + o.L, C + o.C}; }
     };
 
-    int GetLineCount() const { return Lines.size(); }
+    uint GetLineCount() const { return Lines.size(); }
     void SetPalette(PaletteIdT);
     void SetLanguageDefinition(LanguageDefinitionIdT);
     const char *GetLanguageDefinitionName() const;
@@ -78,10 +76,10 @@ struct TextEditor {
     void Copy();
     void Cut();
     void Paste();
-    void Undo(int steps = 1);
-    void Redo(int steps = 1);
+    void Undo(uint steps = 1);
+    void Redo(uint steps = 1);
     bool CanUndo() const { return !ReadOnly && UndoIndex > 0; }
-    bool CanRedo() const { return !ReadOnly && UndoIndex < (int)UndoBuffer.size(); }
+    bool CanRedo() const { return !ReadOnly && UndoIndex < uint(UndoBuffer.size()); }
 
     void SetText(const std::string &text);
     std::string GetText() const;
@@ -138,9 +136,11 @@ private:
 
         void AddCursor();
         void ResetCursors();
-        int GetLastAddedCursorIndex();
-        Cursor &GetCursor(int c = -1);
-        const Cursor &GetCursor(int c = -1) const;
+        uint GetLastAddedCursorIndex();
+        Cursor &GetCursor(uint c);
+        Cursor &GetCursor();
+        const Cursor &GetCursor(uint c) const;
+        const Cursor &GetCursor() const;
         Cursor &GetLastAddedCursor();
         void SortCursors();
     };
@@ -206,11 +206,11 @@ private:
         Up = 2,
         Down = 3
     };
-    bool Move(int &line, int &ci, bool left = false, bool lock_line = false) const;
-    void MoveCharIndexAndColumn(int line, int &ci, int &column) const;
-    void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, int line_count = 1) const;
-    void MoveUp(int amount = 1, bool select = false);
-    void MoveDown(int amount = 1, bool select = false);
+    bool Move(uint &line, uint &ci, bool left = false, bool lock_line = false) const;
+    void MoveCharIndexAndColumn(uint line, uint &ci, uint &column) const;
+    void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
+    void MoveUp(uint amount = 1, bool select = false);
+    void MoveDown(uint amount = 1, bool select = false);
     void MoveLeft(bool select = false, bool is_word_mode = false);
     void MoveRight(bool select = false, bool is_word_mode = false);
     void MoveTop(bool select = false);
@@ -226,7 +226,7 @@ private:
     void AddCursorForNextOccurrence(bool case_sensitive = true);
     // Returns a cursor containing the start/end coords of the next occurrence of `text` after `from`, or `std::nullopt` if not found.
     std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coordinates &from, bool case_sensitive = true);
-    bool FindMatchingBracket(int line, int ci, Coordinates &out);
+    bool FindMatchingBracket(uint line, uint ci, Coordinates &out);
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveCurrentLines(bool up);
     void ToggleLineComment();
@@ -239,18 +239,18 @@ private:
     Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
-    int GetCharIndexL(const Coordinates &) const;
-    int GetCharIndexR(const Coordinates &) const;
-    int GetCharColumn(int li, int ci) const;
-    int GetFirstVisibleCharIndex(int line) const;
-    int GetLineMaxColumn(int line, int limit = -1) const;
+    uint GetCharIndexL(const Coordinates &) const;
+    uint GetCharIndexR(const Coordinates &) const;
+    uint GetCharColumn(uint li, uint ci) const;
+    uint GetFirstVisibleCharIndex(uint line) const;
+    uint GetLineMaxColumn(uint line, int limit = -1) const;
 
-    LineT &InsertLine(int li);
+    LineT &InsertLine(uint li);
     void DeleteRange(const Coordinates &start, const Coordinates &end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
-    void RemoveGlyphsFromLine(int li, int start_ci, int end_ci);
-    void AddGlyphsToLine(int li, int ci, std::span<const Glyph>);
+    void RemoveGlyphsFromLine(uint li, uint start_ci, int end_ci = -1);
+    void AddGlyphsToLine(uint li, uint ci, std::span<const Glyph>);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
@@ -259,19 +259,19 @@ private:
     void Render(bool is_parent_focused = false);
 
     void OnCursorPositionChanged();
-    std::unordered_map<int, int> BeforeLineChanged(int li, int column, int char_count, bool is_deleted);
-    void AfterLineChanged(int li, std::unordered_map<int, int> &&cursor_indices);
+    std::unordered_map<uint, uint> BeforeLineChanged(uint li, uint column, uint char_count, bool is_deleted);
+    void AfterLineChanged(uint li, std::unordered_map<uint, uint> &&cursor_indices);
     void SortAndMergeCursors();
 
     void AddUndo(UndoRecord &);
 
-    void Colorize(int from_li = 0, int line_count = -1);
-    void ColorizeRange(int from_li, int to_li);
+    void Colorize(uint from_li, uint line_count);
+    void ColorizeRange(uint from_li, uint to_li);
     void ColorizeInternal();
 
     bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
-    int TabSizeAtColumn(int aColumn) const { return TabSize - (aColumn % TabSize); }
+    uint TabSizeAtColumn(uint column) const { return TabSize - (column % TabSize); }
 
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
@@ -279,20 +279,20 @@ private:
     EditorState State;
 
     std::vector<UndoRecord> UndoBuffer;
-    int UndoIndex{0};
+    uint UndoIndex{0};
 
     uint TabSize{4};
     int LastEnsureCursorVisible{-1};
     bool LastEnsureCursorVisibleStartToo{false};
     bool ScrollToTop{false};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
-    int LeftMargin{10};
+    uint LeftMargin{10};
     ImVec2 CharAdvance;
     float LastClickTime{-1}; // In ImGui time.
     ImVec2 LastClickPos{-1, -1};
     float CurrentSpaceWidth{20}, CurrentSpaceHeight{20.0f};
-    int FirstVisibleLineI{0}, LastVisibleLineI{0}, VisibleLineCount{0};
-    int FirstVisibleColumn{0}, LastVisibleColumn{0}, VisibleColumnCount{0};
+    uint FirstVisibleLineI{0}, LastVisibleLineI{0}, VisibleLineCount{0};
+    uint FirstVisibleColumn{0}, LastVisibleColumn{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};
     float ScrollX{0}, ScrollY{0};
     bool Panning{false};
@@ -302,7 +302,7 @@ private:
     bool CursorOnBracket{false};
     Coordinates MatchingBracketCoords;
 
-    int ColorRangeMin{0}, ColorRangeMax{0};
+    uint ColorRangeMin{0}, ColorRangeMax{0};
     bool ShouldCheckComments{true};
     PaletteIdT PaletteId;
     PaletteT Palette;

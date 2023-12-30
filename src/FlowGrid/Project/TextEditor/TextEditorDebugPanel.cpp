@@ -12,8 +12,8 @@ void TextEditor::DebugPanel() {
         EndDisabled();
         Text("Cursor count: %u", State.Cursors.size());
         for (auto &c : State.Cursors) {
-            DragInt2("Interactive start", &c.Start.L);
-            DragInt2("Interactive end", &c.End.L);
+            DragU32("Interactive start", &c.Start.L);
+            DragU32("Interactive end", &c.End.L);
         }
     }
     if (CollapsingHeader("Lines")) {

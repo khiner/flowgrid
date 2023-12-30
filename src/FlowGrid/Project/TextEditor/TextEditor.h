@@ -235,8 +235,9 @@ private:
     float TextDistanceToLineStart(const Coordinates &from, bool sanitize_coords = true) const;
     void EnsureCursorVisible(bool start_too = false);
 
+    Coordinates LineCharToCoordinates(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
     Coordinates SanitizeCoordinates(const Coordinates &) const;
-    Coordinates ScreenPosToCoordinates(const ImVec2 &position, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
+    Coordinates ScreenPosToCoordinates(const ImVec2 &screen_pos, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
     Coordinates FindWordStart(const Coordinates &from) const;
     Coordinates FindWordEnd(const Coordinates &from) const;
     uint GetCharIndexL(const Coordinates &) const;

@@ -540,7 +540,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
             const auto ci = GetCharIndexR(coord);
             AddGlyphs(coord.L + 1, new_line.size(), {line.cbegin() + ci, line.cend()});
             RemoveGlyphs(coord.L, ci);
-            SetCursorPosition({coord.L + 1, GetCharColumn(coord.L + 1, whitespace_size)}, c);
+            SetCursorPosition(LineCharToCoordinates(coord.L + 1, whitespace_size), c);
         } else {
             char buf[5];
             ImTextCharToUtf8(buf, ch);
@@ -553,7 +553,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
                 UndoOperation removed;
                 removed.Type = UndoOperationType::Delete;
                 removed.Start = c.End;
-                removed.End = {coord.L, GetCharColumn(coord.L, ci + d)};
+                removed.End = LineCharToCoordinates(coord.L, ci + d);
                 while (d-- > 0 && ci < line.size()) {
                     removed.Text += line[ci].Char;
                     RemoveGlyphs(coord.L, ci, ci + 1);
@@ -565,7 +565,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
             AddGlyphs(coord.L, ci, glyphs);
             added.Text = buf;
 
-            SetCursorPosition({coord.L, GetCharColumn(coord.L, ci + glyphs.size())}, c);
+            SetCursorPosition(LineCharToCoordinates(coord.L, ci + glyphs.size()), c);
         }
 
         added.End = SanitizeCoordinates(c.End);
@@ -663,12 +663,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &t
                 ci_inner++;
             }
         }
-        if (i == text.size()) {
-            return Cursor{
-                {f_li, GetCharColumn(f_li, f_i)},
-                {f_li + line_offset, GetCharColumn(f_li + line_offset, ci_inner)}
-            };
-        }
+        if (i == text.size()) return Cursor{LineCharToCoordinates(f_li, f_i), LineCharToCoordinates(f_li + line_offset, ci_inner)};
 
         /* Move forward */
         if (f_i == Lines[f_li].size()) {
@@ -702,7 +697,7 @@ bool TextEditor::FindMatchingBracket(uint li, uint ci, Coordinates &out) {
                 if (ch == open_char) {
                     counter--;
                     if (counter == 0) {
-                        out = {li_inner, GetCharColumn(li_inner, ci_inner)};
+                        out = LineCharToCoordinates(li_inner, ci_inner);
                         return true;
                     }
                 } else if (ch == close_char) {
@@ -718,7 +713,7 @@ bool TextEditor::FindMatchingBracket(uint li, uint ci, Coordinates &out) {
                 if (ch == close_char) {
                     counter--;
                     if (counter == 0) {
-                        out = {li_inner, GetCharColumn(li_inner, ci_inner)};
+                        out = LineCharToCoordinates(li_inner, ci_inner);
                         return true;
                     }
                 } else if (ch == open_char) {
@@ -842,7 +837,7 @@ void TextEditor::ToggleLineComment() {
             assert(matched);
             if (ci + ci_2 < line.size() && line[ci + ci_2].Char == ' ') ci_2++;
 
-            const Coordinates start{li, GetCharColumn(li, ci)}, end{li, GetCharColumn(li, ci + ci_2)};
+            const Coordinates start = LineCharToCoordinates(li, ci), end = LineCharToCoordinates(li, ci + ci_2);
             AddUndoOp(u, UndoOperationType::Delete, start, end);
             DeleteRange(start, end);
             Colorize(li, 1);
@@ -919,8 +914,7 @@ TextEditor::Coordinates TextEditor::ScreenPosToCoordinates(const ImVec2 &screen_
     };
     const uint ci = GetCharIndexL(out);
     if (out.L < Lines.size() && ci < Lines[out.L].size() && Lines[out.L][ci].Char == '\t') {
-        const uint column_to_left = GetCharColumn(out.L, ci);
-        const uint column_to_right = GetCharColumn(out.L, GetCharIndexR(out));
+        const uint column_to_left = GetCharColumn(out.L, ci), column_to_right = GetCharColumn(out.L, GetCharIndexR(out));
         out.C = out.C - column_to_left < column_to_right - out.C ? column_to_left : column_to_right;
     } else {
         out.C = std::max(0u, uint(floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)));
@@ -938,7 +932,7 @@ TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates &from) const
     const bool initial_is_word_char = IsWordChar(line[ci].Char);
     const bool initial_is_space = isspace(line[ci].Char);
     const char initial_char = line[ci].Char;
-    uint li = from.L;
+    uint li = from.L; // Not modified.
     while (Move(li, ci, true, true)) {
         const bool is_word_char = IsWordChar(line[ci].Char);
         const bool is_space = isspace(line[ci].Char);
@@ -949,7 +943,7 @@ TextEditor::Coordinates TextEditor::FindWordStart(const Coordinates &from) const
             break;
         }
     }
-    return {from.L, GetCharColumn(from.L, ci)};
+    return LineCharToCoordinates(li, ci);
 }
 
 TextEditor::Coordinates TextEditor::FindWordEnd(const Coordinates &from) const {
@@ -962,7 +956,7 @@ TextEditor::Coordinates TextEditor::FindWordEnd(const Coordinates &from) const {
     const bool initial_is_word_char = IsWordChar(line[ci].Char);
     const bool initial_is_space = isspace(line[ci].Char);
     const char initial_char = line[ci].Char;
-    uint li = from.L;
+    uint li = from.L; // Not modified.
     while (Move(li, ci, false, true)) {
         if (ci == line.size()) break;
 
@@ -973,7 +967,7 @@ TextEditor::Coordinates TextEditor::FindWordEnd(const Coordinates &from) const {
             (!initial_is_word_char && !initial_is_space && initial_char != line[ci].Char))
             break;
     }
-    return {li, GetCharColumn(from.L, ci)};
+    return LineCharToCoordinates(li, ci);
 }
 
 uint TextEditor::GetCharIndexL(const Coordinates &coords) const {
@@ -1094,7 +1088,7 @@ void TextEditor::AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyp
     if (is_add) line.insert(line.begin() + ci, glyphs.begin(), glyphs.end());
     else line.erase(glyphs.begin(), glyphs.end());
 
-    for (const auto &[c, ci] : adjusted_ci_for_cursor) SetCursorPosition({li, GetCharColumn(li, ci)}, State.Cursors[c]);
+    for (const auto &[c, ci] : adjusted_ci_for_cursor) SetCursorPosition(LineCharToCoordinates(li, ci), State.Cursors[c]);
 }
 void TextEditor::AddGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, true); }
 void TextEditor::RemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, false); }

@@ -51,11 +51,11 @@ template<typename ChildType> struct Vector : Container {
     Vector(ComponentArgs &&args, CreatorFunction creator = DefaultCreator)
         : Vector(std::move(args), Menu{{}}, std::move(creator)) {}
 
-    inline void Clear() { Value.clear(); }
+    void Clear() { Value.clear(); }
     bool Empty() const { return Value.empty(); }
     u32 Size() const { return Value.size(); }
 
-    inline StorePath GetChildPrefix(const ChildType *child) const noexcept {
+    StorePath GetChildPrefix(const ChildType *child) const noexcept {
         if (child == nullptr) return {};
 
         const auto path = child->Path.lexically_relative(Path);
@@ -122,11 +122,11 @@ template<typename ChildType> struct Vector : Container {
     ChildType *front() const { return Value.front().get(); }
     ChildType *operator[](u32 i) const { return Value[i].get(); }
 
-    inline ChildType *Find(ID id) const {
+    ChildType *Find(ID id) const {
         const auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
         return it == Value.end() ? nullptr : it->get();
     }
-    inline auto FindIt(const StorePath &child_prefix) const {
+    auto FindIt(const StorePath &child_prefix) const {
         return std::find_if(Value.begin(), Value.end(), [this, &child_prefix](const auto &child) {
             return GetChildPrefix(child.get()) == child_prefix;
         });

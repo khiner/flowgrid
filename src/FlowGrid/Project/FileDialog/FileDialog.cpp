@@ -176,7 +176,7 @@ void FileDialog::Demo::Render() const {
     // Keeping this around to remind myself that custom panes & UserDatas are a thing.
     // If `cant_continue` is false, the user can't validate the dialog.
     // static bool can_validate_dialog = false;
-    // inline void InfosPane(const char *filter, IGFDUserDatas user_data, bool *cant_continue) {
+    // void InfosPane(const char *filter, IGFDUserDatas user_data, bool *cant_continue) {
     //     TextColored(ImVec4(0, 1, 1, 1), "Infos Pane");
     //     Text("Selected Filter: %s", filter);
     //     if (user_data) Text("User Data: %s", (const char *) user_data);

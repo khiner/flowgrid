@@ -61,8 +61,8 @@ struct AudioGraphNode : Component, Component::ChangeListener {
         // Called when a node's internal nodes (gainer/monitor) have meen added/removed/reinitialized.
         virtual void OnNodeConnectionsChanged(AudioGraphNode *) = 0;
     };
-    inline void RegisterListener(Listener *listener) noexcept { Listeners.insert(listener); }
-    inline void UnregisterListener(Listener *listener) noexcept { Listeners.erase(listener); }
+    void RegisterListener(Listener *listener) noexcept { Listeners.insert(listener); }
+    void UnregisterListener(Listener *listener) noexcept { Listeners.erase(listener); }
 
     void NotifyConnectionsChanged() {
         for (auto *listener : Listeners) listener->OnNodeConnectionsChanged(this);
@@ -74,23 +74,23 @@ struct AudioGraphNode : Component, Component::ChangeListener {
     // Nodes whose connections are managed and enforced by the `AudioGraph` return `false` (the graph endpoint node and device IO nodes).
     virtual bool AllowInputConnectionChange() const { return true; }
     virtual bool AllowOutputConnectionChange() const { return true; }
-    inline bool CanConnectInput() const { return AllowInputConnectionChange() && InputBusCount() > 0; }
-    inline bool CanConnectOutput() const { return AllowOutputConnectionChange() && OutputBusCount() > 0; }
+    bool CanConnectInput() const { return AllowInputConnectionChange() && InputBusCount() > 0; }
+    bool CanConnectOutput() const { return AllowOutputConnectionChange() && OutputBusCount() > 0; }
 
     // Called whenever the graph's sample rate changes.
     // At the very least, each node updates any active IO monitors based on the new sample rate.
     virtual void OnSampleRateChanged();
 
-    inline ma_node *Get() const { return Node ? Node->Node : nullptr; }
-    inline bool IsGraphEndpoint() const { return this == (void *)Graph; }
+    ma_node *Get() const { return Node ? Node->Node : nullptr; }
+    bool IsGraphEndpoint() const { return this == (void *)Graph; }
 
     u32 InputBusCount() const;
     u32 OutputBusCount() const;
-    inline u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
+    u32 BusCount(IO io) const { return io == IO_In ? InputBusCount() : OutputBusCount(); }
 
     u32 InputChannelCount(u32 bus) const;
     u32 OutputChannelCount(u32 bus) const;
-    inline u32 ChannelCount(IO io, u32 bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
+    u32 ChannelCount(IO io, u32 bus) const { return io == IO_In ? InputChannelCount(bus) : OutputChannelCount(bus); }
 
     // An `AudioGraphNode` may be composed of multiple inner `ma_node`s.
     // These return the graph-visible I/O nodes.
@@ -103,9 +103,7 @@ struct AudioGraphNode : Component, Component::ChangeListener {
     // The graph is responsible for calling this method whenever the topology of the graph changes.
     // When this node is connected to the graph endpoing node (directly or indirectly), it is considered active.
     // As a special case, the graph endpoint node is always considered active, since it is always "connected" to itself.
-    inline void SetActive(bool is_active) noexcept {
-        IsActive = IsGraphEndpoint() || is_active;
-    }
+    void SetActive(bool is_active) noexcept { IsActive = IsGraphEndpoint() || is_active; }
 
     struct GainerNode : Component, Component::ChangeListener {
         GainerNode(ComponentArgs &&);

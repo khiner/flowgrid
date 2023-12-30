@@ -30,13 +30,13 @@ enum GraphOrientation {
     GraphReverse
 };
 
-static inline ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientation) {
+inline static ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientation) {
     ImGuiDir dir = style.Direction;
     return (dir == ImGuiDir_Right && orientation == GraphForward) || (dir == ImGuiDir_Left && orientation == GraphReverse) ?
         ImGuiDir_Right :
         ImGuiDir_Left;
 }
-static inline bool IsLr(const FaustGraphStyle &style, GraphOrientation orientation) {
+inline static bool IsLr(const FaustGraphStyle &style, GraphOrientation orientation) {
     return GlobalDirection(style, orientation) == ImGuiDir_Right;
 }
 
@@ -65,11 +65,11 @@ struct Device {
     virtual void SetCursorPos(const ImVec2 &scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
     void AdvanceCursor(const ImVec2 &unscaled_pos) { SetCursorPos(CursorPosition + Scale(unscaled_pos)); }
 
-    inline ImVec2 At(const ImVec2 &local_pos) const { return Position + CursorPosition + Scale(local_pos); }
-    inline ImRect At(const ImRect &local_rect) const { return {At(local_rect.Min), At(local_rect.Max)}; }
+    ImVec2 At(const ImVec2 &local_pos) const { return Position + CursorPosition + Scale(local_pos); }
+    ImRect At(const ImRect &local_rect) const { return {At(local_rect.Min), At(local_rect.Max)}; }
 
-    inline ImVec2 Scale(const ImVec2 &p) const { return p * Context.GetScale(); }
-    inline float Scale(const float f) const { return f * Context.GetScale(); }
+    ImVec2 Scale(const ImVec2 &p) const { return p * Context.GetScale(); }
+    float Scale(const float f) const { return f * Context.GetScale(); }
 
     const FaustGraph &Context;
     const FaustGraphStyle &Style;
@@ -430,23 +430,23 @@ struct Node {
         device.SetCursorPos(before_cursor);
     };
 
-    inline float WireGap() const { return Style.WireGap; }
-
     virtual ImVec2 Margin() const { return Style.NodeMargin; }
     virtual ImVec2 Padding() const { return Style.NodePadding; } // Currently only actually used for `BlockNode` text
-    inline float XMargin() const { return Margin().x; }
-    inline float YMargin() const { return Margin().y; }
 
-    inline float W() const { return Size.x; }
-    inline float H() const { return Size.y; }
-    inline operator ImRect() const { return {{0, 0}, Size}; }
+    float XMargin() const { return Margin().x; }
+    float YMargin() const { return Margin().y; }
+    float WireGap() const { return Style.WireGap; }
 
-    inline bool IsForward() const { return Orientation == GraphForward; }
-    inline float OrientationUnit() const { return IsForward() ? 1 : -1; }
+    float W() const { return Size.x; }
+    float H() const { return Size.y; }
+    operator ImRect() const { return {{0, 0}, Size}; }
 
-    inline bool IsLr() const { return ::IsLr(Style, Orientation); }
-    inline float DirUnit() const { return IsLr() ? 1 : -1; }
-    inline float DirUnit(IO io) const { return DirUnit() * (io == IO_In ? 1.f : -1.f); }
+    bool IsForward() const { return Orientation == GraphForward; }
+    float OrientationUnit() const { return IsForward() ? 1 : -1; }
+
+    bool IsLr() const { return ::IsLr(Style, Orientation); }
+    float DirUnit() const { return IsLr() ? 1 : -1; }
+    float DirUnit(IO io) const { return DirUnit() * (io == IO_In ? 1.f : -1.f); }
 
     // Debug
     void DrawRect(Device &device) const {
@@ -927,8 +927,8 @@ struct GroupNode : Node {
     NodeType Type;
 
 private:
-    inline bool ShouldDecorate() const { return Type == NodeType_Group || Style.DecorateRootNode; }
-    inline float LineWidth() const { return !ShouldDecorate() ? 0.f : (Type == NodeType_Group ? Style.GroupLineWidth : Style.DecorateLineWidth); }
+    bool ShouldDecorate() const { return Type == NodeType_Group || Style.DecorateRootNode; }
+    float LineWidth() const { return !ShouldDecorate() ? 0.f : (Type == NodeType_Group ? Style.GroupLineWidth : Style.DecorateLineWidth); }
     ImVec2 Margin() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style.GroupMargin : Style.DecorateMargin); }
     ImVec2 Padding() const override { return !ShouldDecorate() ? ImVec2{0, 0} : (Type == NodeType_Group ? Style.GroupPadding : Style.DecoratePadding); }
 };

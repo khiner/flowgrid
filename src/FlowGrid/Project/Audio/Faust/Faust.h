@@ -165,13 +165,13 @@ struct Faust
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    inline void RegisterDspChangeListener(FaustDSPListener *listener) const noexcept {
+    void RegisterDspChangeListener(FaustDSPListener *listener) const noexcept {
         DspChangeListeners.insert(listener);
         for (auto *faust_dsp : FaustDsps) {
             listener->OnFaustDspAdded(faust_dsp->Id, faust_dsp->Dsp);
         }
     }
-    inline void UnregisterDspChangeListener(FaustDSPListener *listener) const noexcept {
+    void UnregisterDspChangeListener(FaustDSPListener *listener) const noexcept {
         DspChangeListeners.erase(listener);
     }
 

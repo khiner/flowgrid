@@ -21,16 +21,16 @@ struct FaustParamBase {
     */
     virtual void Render(const float suggested_height, bool no_label = false) const = 0;
 
-    inline bool IsGroup() const {
+    bool IsGroup() const {
         return Type == Type_None || Type == Type_TGroup || Type == Type_HGroup || Type == Type_VGroup;
     }
-    inline bool IsWidthExpandable() const {
+    bool IsWidthExpandable() const {
         return Type == Type_HGroup || Type == Type_VGroup || Type == Type_TGroup || Type == Type_NumEntry || Type == Type_HSlider || Type == Type_HBargraph;
     }
-    inline bool IsHeightExpandable() const {
+    bool IsHeightExpandable() const {
         return Type == Type_VBargraph || Type == Type_VSlider || Type == Type_CheckButton;
     }
-    inline bool IsLabelSameLine() const {
+    bool IsLabelSameLine() const {
         return Type == Type_NumEntry || Type == Type_HSlider || Type == Type_HBargraph || Type == Type_HRadioButtons || Type == Type_Menu || Type == Type_CheckButton;
     }
 

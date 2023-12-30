@@ -257,7 +257,7 @@ struct AudioGraphNode::SplitterNode {
         ma_splitter_node_uninit(&Splitter, nullptr);
     }
 
-    inline ma_splitter_node *Get() noexcept { return &Splitter; }
+    auto *Get() noexcept { return &Splitter; }
 
 private:
     ma_splitter_node Splitter;

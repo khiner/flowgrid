@@ -119,7 +119,7 @@ struct Component {
         for (auto &[component_id, listeners] : ChangeListenersById) listeners.erase(listener);
         std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); });
     }
-    inline void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
+    void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
     // IDs of all fields updated/added/removed during the latest action or undo/redo, mapped to all (field-relative) paths affected in the field.
     // For primitive fields, the paths will consist of only the root path.
@@ -173,7 +173,7 @@ struct Component {
 
     virtual void SetJson(json &&) const;
     virtual json ToJson() const;
-    inline json::json_pointer JsonPointer() const {
+    json::json_pointer JsonPointer() const {
         return json::json_pointer(Path.string()); // Implicit `json_pointer` constructor is disabled.
     }
 
@@ -199,12 +199,12 @@ struct Component {
     virtual std::string GetLabelDetailSuffix() const { return ""; }
 
     const Component *Child(u32 i) const noexcept { return Children[i]; }
-    inline u32 ChildCount() const noexcept { return Children.size(); }
+    u32 ChildCount() const noexcept { return Children.size(); }
 
     // Returns true if this component has changed directly (it must me a `Field` to be changed directly),
     // or if any of its descendent components have changed, if `include_descendents` is true.
     bool IsChanged(bool include_descendents = false) const noexcept;
-    inline bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
+    bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
 
     ImGuiWindow *FindWindow() const;
     ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).

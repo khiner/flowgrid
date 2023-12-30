@@ -40,16 +40,16 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
     inline auto begin() { return Value.begin(); }
     inline auto end() { return Value.end(); }
 
-    inline u32 GetCursor() const { return Cursor; }
+    u32 GetCursor() const { return Cursor; }
 
-    inline bool Empty() const { return Value.Empty(); }
-    inline bool CanMoveTo(u32 index) const { return index < Value.Size(); }
-    inline bool CanStepBackward() const { return u32(Cursor) > 0; }
-    inline bool CanStepForward() const { return !Value.Empty() && u32(Cursor) < Value.Size() - 1u; }
+    bool Empty() const { return Value.Empty(); }
+    bool CanMoveTo(u32 index) const { return index < Value.Size(); }
+    bool CanStepBackward() const { return u32(Cursor) > 0; }
+    bool CanStepForward() const { return !Value.Empty() && u32(Cursor) < Value.Size() - 1u; }
 
-    inline auto Back() const { return Value.back(); }
+    auto Back() const { return Value.back(); }
 
-    inline void Clear_() {
+    void Clear_() {
         Value.Clear_();
         Cursor.Set_(0);
     }
@@ -70,17 +70,17 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
         Value.PushBack_(std::forward<U>(value));
         Cursor.Set_(Value.Size() - 1);
     }
-    inline void Pop() const {
+    void Pop() const {
         if (Value.Empty()) return;
         if (u32(Cursor) > 0 && Cursor == Value.Size() - 1) Cursor.Set(u32(Cursor) - 1);
         Value.PopBack();
     }
 
-    inline void StepForward() const { Move(1); }
-    inline void StepBackward() const { Move(-1); }
+    void StepForward() const { Move(1); }
+    void StepBackward() const { Move(-1); }
 
-    inline void MoveTo(u32 index) const { Cursor.Set(std::clamp(int(index), 0, int(Value.Size()) - 1)); }
-    inline void Move(int offset) const { Cursor.Set(std::clamp(int(Cursor) + offset, 0, int(Value.Size()) - 1)); }
+    void MoveTo(u32 index) const { Cursor.Set(std::clamp(int(index), 0, int(Value.Size()) - 1)); }
+    void Move(int offset) const { Cursor.Set(std::clamp(int(Cursor) + offset, 0, int(Value.Size()) - 1)); }
 
     inline auto operator[](u32 index) { return Value[index]; }
     T operator*() const {

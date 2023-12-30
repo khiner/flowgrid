@@ -143,7 +143,7 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     // Serialize actions as two-element arrays, `[Path, Data]`.
     // Value element can possibly be null.
     // Assumes all actions define json converters.
-    inline void to_json(json &j) const {
+    void to_json(json &j) const {
         Call([&j](auto &a) { j = {a.GetPath(), a}; });
     }
 

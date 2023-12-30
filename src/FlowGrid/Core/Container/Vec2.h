@@ -28,8 +28,8 @@ struct Vec2 : Container, Actionable<Action::Vec2::Any> {
     void SetY(float) const;
     void Set(const std::pair<float, float> &) const;
 
-    inline float X() const noexcept { return Value.first; }
-    inline float Y() const noexcept { return Value.second; }
+    float X() const noexcept { return Value.first; }
+    float Y() const noexcept { return Value.second; }
 
     const float Min, Max;
     const char *Format;

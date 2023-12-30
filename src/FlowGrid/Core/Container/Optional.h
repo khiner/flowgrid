@@ -33,21 +33,21 @@ template<typename ComponentType> struct Optional : Container {
         }
     }
 
-    inline void Toggle_() {
+    void Toggle_() {
         HasValue.Toggle_();
         Refresh();
     }
 
-    inline void IssueToggle() const {
+    void IssueToggle() const {
         HasValue.IssueToggle();
     }
 
-    inline void Erase() const override {
+    void Erase() const override {
         HasValue.Set(false);
         if (Value) Value->Erase();
     }
 
-    inline void Reset() { Value.reset(); }
+    void Reset() { Value.reset(); }
 
     void RenderValueTree(bool annotate, bool auto_select) const override {
         if (!Value || Value->Children.empty()) {

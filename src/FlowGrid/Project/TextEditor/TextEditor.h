@@ -123,12 +123,12 @@ private:
         // For ordered coordinates, use `SelectionStart()` and `SelectionEnd()`.
         Coordinates Start{}, End{};
 
-        inline bool operator==(const Cursor &o) const { return Start == o.Start && End == o.End; }
+        bool operator==(const Cursor &o) const { return Start == o.Start && End == o.End; }
 
-        inline Coordinates SelectionStart() const { return Start < End ? Start : End; }
-        inline Coordinates SelectionEnd() const { return Start > End ? Start : End; }
-        inline bool HasSelection() const { return Start != End; }
-        inline bool HasMultilineSelection() const { return SelectionStart().L != SelectionEnd().L; }
+        Coordinates SelectionStart() const { return Start < End ? Start : End; }
+        Coordinates SelectionEnd() const { return Start > End ? Start : End; }
+        bool HasSelection() const { return Start != End; }
+        bool HasMultilineSelection() const { return SelectionStart().L != SelectionEnd().L; }
     };
 
     // State to be restored with undo/redo.
@@ -269,9 +269,9 @@ private:
     void ColorizeRange(int from_li, int to_li);
     void ColorizeInternal();
 
-    inline bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
-    inline bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
-    inline int TabSizeAtColumn(int aColumn) const { return TabSize - (aColumn % TabSize); }
+    bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
+    bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
+    int TabSizeAtColumn(int aColumn) const { return TabSize - (aColumn % TabSize); }
 
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 

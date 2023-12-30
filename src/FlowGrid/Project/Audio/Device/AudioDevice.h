@@ -47,8 +47,8 @@ struct AudioDevice {
     std::string GetName() const;
     bool IsDefault() const;
 
-    inline bool IsInput() const { return Type == IO_In; }
-    inline bool IsOutput() const { return Type == IO_Out; }
+    bool IsInput() const { return Type == IO_In; }
+    bool IsOutput() const { return Type == IO_Out; }
 
     bool IsStarted() const;
     bool IsNativeSampleRate(u32) const;

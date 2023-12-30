@@ -157,9 +157,9 @@ struct knob {
         IsHovered = IsItemHovered();
     }
 
-    inline ImU32 GetPrimaryColor() const { return GetColorU32(IsActive ? ImGuiCol_ButtonActive : (IsHovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button)); }
-    inline ImU32 GetSecondaryColor() const { return ScaleColor(GetColorU32(IsActive ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered), 0.5); }
-    inline ImU32 GetTrackColor() const { return GetColorU32(ImGuiCol_FrameBg); }
+    ImU32 GetPrimaryColor() const { return GetColorU32(IsActive ? ImGuiCol_ButtonActive : (IsHovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button)); }
+    ImU32 GetSecondaryColor() const { return ScaleColor(GetColorU32(IsActive ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered), 0.5); }
+    ImU32 GetTrackColor() const { return GetColorU32(ImGuiCol_FrameBg); }
 
     void Draw(KnobType type, int steps) const {
         switch (type) {

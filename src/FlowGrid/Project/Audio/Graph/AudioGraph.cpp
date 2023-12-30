@@ -57,7 +57,7 @@ struct DeviceMaNode : MaNode {
 
     virtual ~DeviceMaNode() {}
 
-    inline void UpdateDeviceConfig(AudioDevice::TargetConfig &&target_config) { Device.SetConfig(std::move(target_config)); }
+    void UpdateDeviceConfig(AudioDevice::TargetConfig &&target_config) { Device.SetConfig(std::move(target_config)); }
 
     AudioDevice Device;
 };
@@ -83,16 +83,16 @@ struct DeviceNode : AudioGraphNode {
 
     virtual ~DeviceNode() = default;
 
-    inline DeviceMaNode *GetDeviceMaNode() const { return static_cast<DeviceMaNode *>(Node.get()); }
+    inline static string GetDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
+    inline static string GetConfigName(const ma_device_info *info) { return info->isDefault ? "" : info->name; }
 
-    inline void UpdateDeviceConfig() {
+    DeviceMaNode *GetDeviceMaNode() const { return static_cast<DeviceMaNode *>(Node.get()); }
+
+    void UpdateDeviceConfig() {
         auto target_native_format = Format ? std::optional<DeviceDataFormat>(Format->ToDeviceDataFormat()) : std::nullopt;
         GetDeviceMaNode()->UpdateDeviceConfig({Graph->GetDeviceClientFormat(Device->Type), std::move(target_native_format), Name});
         UpdateFormat();
     }
-
-    inline static string GetDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
-    inline static string GetConfigName(const ma_device_info *info) { return info->isDefault ? "" : info->name; }
 
     string GetLabelDetailSuffix() const override { return Device->GetName(); }
 
@@ -391,13 +391,15 @@ struct OutputDeviceNode : DeviceNode {
 
 private:
     void ReadBufferData(void *output, u32 frame_count) const noexcept {
-        auto &buffer = static_cast<OutputDeviceMaNode *>(Node.get())->Buffer;
-        if (buffer) buffer->ReadData(output, frame_count);
+        if (auto &buffer = static_cast<OutputDeviceMaNode *>(Node.get())->Buffer) {
+            buffer->ReadData(output, frame_count);
+        }
     }
 
-    inline void SetBufferData(const void *input, u32 frame_count) const {
-        auto &buffer = static_cast<OutputDeviceMaNode *>(Node.get())->Buffer;
-        if (buffer) buffer->SetData(input, frame_count);
+    void SetBufferData(const void *input, u32 frame_count) const {
+        if (auto &buffer = static_cast<OutputDeviceMaNode *>(Node.get())->Buffer) {
+            buffer->SetData(input, frame_count);
+        }
     }
 };
 

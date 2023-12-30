@@ -337,7 +337,7 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
 }
 
 string TextEditor::GetText() const {
-    return Lines.empty() ? "" : GetText({}, {uint(Lines.size() - 1), GetLineMaxColumn(uint(Lines.size() - 1))});
+    return Lines.empty() ? "" : GetText({}, {uint(Lines.size() - 1), GetLineMaxColumn(Lines.size() - 1)});
 }
 
 string TextEditor::GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
@@ -538,8 +538,8 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
 
             const size_t whitespace_size = new_line.size();
             const auto ci = GetCharIndexR(coord);
-            AddGlyphsToLine(coord.L + 1, new_line.size(), {line.cbegin() + ci, line.cend()});
-            RemoveGlyphsFromLine(coord.L, ci, -1);
+            AddGlyphs(coord.L + 1, new_line.size(), {line.cbegin() + ci, line.cend()});
+            RemoveGlyphs(coord.L, ci);
             SetCursorPosition({coord.L + 1, GetCharColumn(coord.L + 1, whitespace_size)}, c);
         } else {
             char buf[5];
@@ -556,13 +556,13 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
                 removed.End = {coord.L, GetCharColumn(coord.L, ci + d)};
                 while (d-- > 0 && ci < line.size()) {
                     removed.Text += line[ci].Char;
-                    RemoveGlyphsFromLine(coord.L, ci, ci + 1);
+                    RemoveGlyphs(coord.L, ci, ci + 1);
                 }
                 u.Operations.push_back(removed);
             }
             std::vector<Glyph> glyphs;
             for (auto p = buf; *p != '\0'; p++) glyphs.emplace_back(*p, PaletteIndex::Default);
-            AddGlyphsToLine(coord.L, ci, glyphs);
+            AddGlyphs(coord.L, ci, glyphs);
             added.Text = buf;
 
             SetCursorPosition({coord.L, GetCharColumn(coord.L, ci + glyphs.size())}, c);
@@ -1010,16 +1010,23 @@ uint TextEditor::GetFirstVisibleCharIndex(uint li) const {
 
     uint i = 0, c = 0;
     while (c < FirstVisibleColumn && i < Lines[li].size()) MoveCharIndexAndColumn(li, i, c);
-    return c > FirstVisibleColumn ? i - 1 : i;
+    return c > FirstVisibleColumn && i > 0 ? i - 1 : i;
 }
 
-uint TextEditor::GetLineMaxColumn(uint li, int limit) const {
+uint TextEditor::GetLineMaxColumn(uint li) const {
+    if (li >= Lines.size()) return 0;
+
+    uint column = 0;
+    for (uint i = 0; i < Lines[li].size();) MoveCharIndexAndColumn(li, i, column);
+    return column;
+}
+uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
     if (li >= Lines.size()) return 0;
 
     uint column = 0;
     for (uint i = 0; i < Lines[li].size();) {
         MoveCharIndexAndColumn(li, i, column);
-        if (limit != -1 && column > uint(limit)) return limit;
+        if (column > limit) return limit;
     }
     return column;
 }
@@ -1037,14 +1044,14 @@ void TextEditor::DeleteRange(const Coordinates &start, const Coordinates &end, c
     if (end <= start) return;
 
     const auto start_ci = GetCharIndexL(start), end_ci = GetCharIndexR(end);
-    if (start.L == end.L) return RemoveGlyphsFromLine(start.L, start_ci, end_ci);
+    if (start.L == end.L) return RemoveGlyphs(start.L, start_ci, end_ci);
 
-    RemoveGlyphsFromLine(start.L, start_ci, -1); // from start to end of line
-    RemoveGlyphsFromLine(end.L, 0, end_ci);
+    RemoveGlyphs(start.L, start_ci); // from start to end of line
+    RemoveGlyphs(end.L, 0, end_ci);
     if (start.L == end.L) return;
 
     // At least one line completely removed.
-    AddGlyphsToLine(start.L, Lines[start.L].size(), Lines[end.L]);
+    AddGlyphs(start.L, Lines[start.L].size(), Lines[end.L]);
 
     // Move up all cursors after the last removed line.
     const uint num_removed_lines = end.L - start.L;
@@ -1070,42 +1077,29 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     Colorize(c.SelectionStart().L, 1);
 }
 
-// Returns new character index for each affected cursor when other cursor writes/deletes are on the same line.
-std::unordered_map<uint, uint> TextEditor::BeforeLineChanged(uint li, uint column, uint char_count, bool is_deleted) {
+void TextEditor::AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyphs, bool is_add) {
+    const uint column = GetCharColumn(li, ci);
+    auto &line = Lines[li];
+
+    // New character index for each affected cursor when other cursor writes/deletes are on the same line.
     std::unordered_map<uint, uint> adjusted_ci_for_cursor;
     for (uint c = 0; c < State.Cursors.size(); c++) {
         const auto &cursor = State.Cursors[c];
         // Cursor needs adjusting if it's to the right of a change, without a selection.
         if (cursor.End.L == li && cursor.End.C > column && !cursor.HasSelection()) {
-            adjusted_ci_for_cursor[c] = GetCharIndexR({li, cursor.End.C}) + (is_deleted ? -char_count : char_count);
+            adjusted_ci_for_cursor[c] = GetCharIndexR({li, cursor.End.C}) + (is_add ? glyphs.size() : -glyphs.size());
         }
     }
-    return adjusted_ci_for_cursor;
-}
 
-void TextEditor::AfterLineChanged(uint li, std::unordered_map<uint, uint> &&adjusted_ci_for_cursor) {
-    for (const auto &[c, ci] : adjusted_ci_for_cursor) {
-        SetCursorPosition({li, GetCharColumn(li, ci)}, State.Cursors[c]);
-    }
-}
+    if (is_add) line.insert(line.begin() + ci, glyphs.begin(), glyphs.end());
+    else line.erase(glyphs.begin(), glyphs.end());
 
-void TextEditor::RemoveGlyphsFromLine(uint li, uint ci, int end_ci) {
-    const uint column = GetCharColumn(li, ci);
-    auto &line = Lines[li];
-    // todo the `end_ci == -1` case is the only thing preventing this from being combined with `AddGlyphsToLine`.
-    std::span<const Glyph> glyphs = {line.cbegin() + ci, end_ci == -1 ? line.cend() : line.cbegin() + end_ci};
-    auto adjusted_ci_for_cursor = BeforeLineChanged(li, column, glyphs.size(), true);
-    line.erase(glyphs.begin(), glyphs.end());
-    AfterLineChanged(li, std::move(adjusted_ci_for_cursor));
+    for (const auto &[c, ci] : adjusted_ci_for_cursor) SetCursorPosition({li, GetCharColumn(li, ci)}, State.Cursors[c]);
 }
-
-void TextEditor::AddGlyphsToLine(uint li, uint ci, std::span<const Glyph> glyphs) {
-    const uint column = GetCharColumn(li, ci);
-    auto &line = Lines[li];
-    auto adjusted_ci_for_cursor = BeforeLineChanged(li, column, glyphs.size(), false);
-    line.insert(line.begin() + ci, glyphs.begin(), glyphs.end());
-    AfterLineChanged(li, std::move(adjusted_ci_for_cursor));
-}
+void TextEditor::AddGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, true); }
+void TextEditor::RemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, false); }
+void TextEditor::RemoveGlyphs(uint li, uint ci, uint end_ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cbegin() + end_ci}); }
+void TextEditor::RemoveGlyphs(uint li, uint ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cend()}); }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
     if (LanguageDef == nullptr) return Palette[int(PaletteIndex::Default)];
@@ -1757,8 +1751,8 @@ TextEditor::Coordinates TextEditor::InsertTextAt(const Coordinates &at, const st
             if (ci < Lines[ret.L].size()) {
                 InsertLine(ret.L + 1);
                 const auto &line = Lines[ret.L];
-                AddGlyphsToLine(ret.L + 1, 0, {line.cbegin() + ci, line.cend()});
-                RemoveGlyphsFromLine(ret.L, ci, -1);
+                AddGlyphs(ret.L + 1, 0, {line.cbegin() + ci, line.cend()});
+                RemoveGlyphs(ret.L, ci);
             } else {
                 InsertLine(ret.L + 1);
             }
@@ -1771,7 +1765,7 @@ TextEditor::Coordinates TextEditor::InsertTextAt(const Coordinates &at, const st
                 glyphs.emplace_back(*it, PaletteIndex::Default);
                 if (d > 0) it++;
             }
-            AddGlyphsToLine(ret.L, ci, glyphs);
+            AddGlyphs(ret.L, ci, glyphs);
             ci += glyphs.size();
             ret.C = GetCharColumn(ret.L, ci);
         }

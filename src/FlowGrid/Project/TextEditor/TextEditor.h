@@ -243,14 +243,18 @@ private:
     uint GetCharIndexR(const Coordinates &) const;
     uint GetCharColumn(uint li, uint ci) const;
     uint GetFirstVisibleCharIndex(uint line) const;
-    uint GetLineMaxColumn(uint line, int limit = -1) const;
+    uint GetLineMaxColumn(uint line) const;
+    uint GetLineMaxColumn(uint line, uint limit) const;
 
     LineT &InsertLine(uint li);
     void DeleteRange(const Coordinates &start, const Coordinates &end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
-    void RemoveGlyphsFromLine(uint li, uint start_ci, int end_ci = -1);
-    void AddGlyphsToLine(uint li, uint ci, std::span<const Glyph>);
+    void AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph>, bool is_add);
+    void AddGlyphs(uint li, uint ci, std::span<const Glyph>);
+    void RemoveGlyphs(uint li, uint ci, std::span<const Glyph>);
+    void RemoveGlyphs(uint li, uint start_ci);
+    void RemoveGlyphs(uint li, uint start_ci, uint end_ci);
     ImU32 GetGlyphColor(const Glyph &glyph) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
@@ -259,8 +263,6 @@ private:
     void Render(bool is_parent_focused = false);
 
     void OnCursorPositionChanged();
-    std::unordered_map<uint, uint> BeforeLineChanged(uint li, uint column, uint char_count, bool is_deleted);
-    void AfterLineChanged(uint li, std::unordered_map<uint, uint> &&cursor_indices);
     void SortAndMergeCursors();
 
     void AddUndo(UndoRecord &);

@@ -43,19 +43,19 @@ struct TextEditor {
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
     // Tabs are counted as [1..TabSize] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
-    // For example, coordinate (1, 5) represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
-    struct Coordinates {
+    // For example, `Coords{1, 5}` represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
+    struct Coords {
         uint L{0}, C{0}; // Line, Column
 
-        auto operator<=>(const Coordinates &o) const {
+        auto operator<=>(const Coords &o) const {
             if (auto cmp = L <=> o.L; cmp != 0) return cmp;
             return C <=> o.C;
         }
-        bool operator==(const Coordinates &o) const = default;
-        bool operator!=(const Coordinates &o) const = default;
+        bool operator==(const Coords &o) const = default;
+        bool operator!=(const Coords &o) const = default;
 
-        Coordinates operator-(const Coordinates &o) const { return {L - o.L, C - o.C}; }
-        Coordinates operator+(const Coordinates &o) const { return {L + o.L, C + o.C}; }
+        Coords operator-(const Coords &o) const { return {L - o.L, C - o.C}; }
+        Coords operator+(const Coords &o) const { return {L + o.L, C + o.C}; }
     };
 
     uint GetLineCount() const { return Lines.size(); }
@@ -71,7 +71,7 @@ struct TextEditor {
     bool AnyCursorHasMultilineSelection() const;
     bool AllCursorsHaveSelection() const;
 
-    Coordinates GetCursorPosition() const;
+    Coords GetCursorPosition() const;
 
     void Copy();
     void Cut();
@@ -119,12 +119,12 @@ private:
     struct Cursor {
         // These coordinates reflect the order of interaction.
         // For ordered coordinates, use `SelectionStart()` and `SelectionEnd()`.
-        Coordinates Start{}, End{};
+        Coords Start{}, End{};
 
         bool operator==(const Cursor &o) const { return Start == o.Start && End == o.End; }
 
-        Coordinates SelectionStart() const { return Start < End ? Start : End; }
-        Coordinates SelectionEnd() const { return Start > End ? Start : End; }
+        Coords SelectionStart() const { return Start < End ? Start : End; }
+        Coords SelectionEnd() const { return Start > End ? Start : End; }
         bool HasSelection() const { return Start != End; }
         bool HasMultilineSelection() const { return SelectionStart().L != SelectionEnd().L; }
     };
@@ -165,7 +165,7 @@ private:
     };
     struct UndoOperation {
         std::string Text;
-        Coordinates Start, End;
+        Coords Start, End;
         UndoOperationType Type;
     };
 
@@ -190,14 +190,14 @@ private:
 
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
-    void AddUndoOp(UndoRecord &, UndoOperationType, const Coordinates &start, const Coordinates &end);
+    void AddUndoOp(UndoRecord &, UndoOperationType, const Coords &start, const Coords &end);
 
-    std::string GetText(const Coordinates &start, const Coordinates &end) const;
+    std::string GetText(const Coords &start, const Coords &end) const;
     std::string GetSelectedText(const Cursor &) const;
 
-    void SetCursorPosition(const Coordinates &position, Cursor &cursor, bool clear_selection = true);
+    void SetCursorPosition(const Coords &position, Cursor &cursor, bool clear_selection = true);
 
-    Coordinates InsertTextAt(const Coordinates &, const std::string &); // Returns insertion end.
+    Coords InsertTextAt(const Coords &, const std::string &); // Returns insertion end.
     void InsertTextAtCursor(const std::string &, Cursor &);
 
     enum class MoveDirection {
@@ -208,7 +208,7 @@ private:
     };
     bool Move(uint &line, uint &ci, bool left = false, bool lock_line = false) const;
     void MoveCharIndexAndColumn(uint line, uint &ci, uint &column) const;
-    void MoveCoords(Coordinates &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
+    void MoveCoords(Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
     void MoveUp(uint amount = 1, bool select = false);
     void MoveDown(uint amount = 1, bool select = false);
     void MoveLeft(bool select = false, bool is_word_mode = false);
@@ -221,34 +221,34 @@ private:
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
-    void SetSelection(Coordinates start, Coordinates end, Cursor &);
+    void SetSelection(Coords start, Coords end, Cursor &);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
     // Returns a cursor containing the start/end coords of the next occurrence of `text` after `from`, or `std::nullopt` if not found.
-    std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coordinates &from, bool case_sensitive = true);
-    bool FindMatchingBracket(uint line, uint ci, Coordinates &out);
+    std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &from, bool case_sensitive = true);
+    bool FindMatchingBracket(uint line, uint ci, Coords &out);
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveCurrentLines(bool up);
     void ToggleLineComment();
     void RemoveCurrentLines();
 
-    float TextDistanceToLineStart(const Coordinates &from, bool sanitize_coords = true) const;
+    float TextDistanceToLineStart(const Coords &from, bool sanitize_coords = true) const;
     void EnsureCursorVisible(bool start_too = false);
 
-    Coordinates LineCharToCoordinates(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
-    Coordinates SanitizeCoordinates(const Coordinates &) const;
-    Coordinates ScreenPosToCoordinates(const ImVec2 &screen_pos, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
-    Coordinates FindWordStart(const Coordinates &from) const;
-    Coordinates FindWordEnd(const Coordinates &from) const;
-    uint GetCharIndexL(const Coordinates &) const;
-    uint GetCharIndexR(const Coordinates &) const;
+    Coords LineCharToCoords(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
+    Coords SanitizeCoords(const Coords &) const;
+    Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
+    Coords FindWordStart(const Coords &from) const;
+    Coords FindWordEnd(const Coords &from) const;
+    uint GetCharIndexL(const Coords &) const;
+    uint GetCharIndexR(const Coords &) const;
     uint GetCharColumn(uint li, uint ci) const;
     uint GetFirstVisibleCharIndex(uint line) const;
     uint GetLineMaxColumn(uint line) const;
     uint GetLineMaxColumn(uint line, uint limit) const;
 
     LineT &InsertLine(uint li);
-    void DeleteRange(const Coordinates &start, const Coordinates &end, const Cursor *exclude_cursor = nullptr);
+    void DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
     void AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph>, bool is_add);
@@ -303,7 +303,7 @@ private:
     ImVec2 LastMousePos;
     bool CursorPositionChanged{false};
     bool CursorOnBracket{false};
-    Coordinates MatchingBracketCoords;
+    Coords MatchingBracketCoords;
 
     uint ColorRangeMin{0}, ColorRangeMax{0};
     bool ShouldCheckComments{true};

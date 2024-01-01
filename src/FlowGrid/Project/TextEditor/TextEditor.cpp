@@ -634,15 +634,18 @@ std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &t
     return {};
 }
 
-std::optional<TextEditor::Coords> TextEditor::FindMatchingBracket(uint li, uint ci) {
+std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor &c) {
     static const std::unordered_map<char, char>
         OpenToCloseChar{{'{', '}'}, {'(', ')'}, {'[', ']'}},
         CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
 
-    if (li >= Lines.size()) return {};
-
+    const uint li = c.End.L;
     const auto &line = Lines[li];
-    if (ci >= line.size()) return {};
+    if (c.HasSelection() || line.empty()) return {};
+
+    uint ci = GetCharIndex(c.End);
+    // Considered on bracket if cursor is on the left or right.
+    if (ci > 0 && (CloseToOpenChar.contains(line[ci - 1].Char) || OpenToCloseChar.contains(line[ci - 1].Char))) ci--;
 
     const char ch = line[ci].Char;
     const bool is_close_char = CloseToOpenChar.contains(ch), is_open_char = OpenToCloseChar.contains(ch);
@@ -652,14 +655,9 @@ std::optional<TextEditor::Coords> TextEditor::FindMatchingBracket(uint li, uint 
     uint li_inner = li, ci_inner = ci, counter = 1;
     const bool move_left = is_close_char;
     while (Move(li_inner, ci_inner, move_left)) {
-        if (ci_inner >= Lines[li_inner].size()) continue;
-
         const char ch_inner = Lines[li_inner][ci_inner].Char;
-        if (ch_inner == ch) {
-            counter++;
-        } else if (ch_inner == other_ch) {
-            if (--counter == 0) return LineCharCoords(li_inner, ci_inner);
-        }
+        if (ch_inner == ch) counter++;
+        else if (ch_inner == other_ch && --counter == 0) return Cursor{{li, ci}, LineCharCoords(li_inner, ci_inner)};
     }
 
     return {};
@@ -1307,11 +1305,6 @@ void TextEditor::Render(bool is_parent_focused) {
                     const ImVec2 cstart{text_screen_pos_x + cx, line_start_screen_pos.y};
                     const ImVec2 cend{text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y};
                     dl->AddRectFilled(cstart, cend, Palette[int(PaletteIndex::Cursor)]);
-                    if (MatchingBracketCoords) {
-                        const ImVec2 top_left{cstart.x, line_start_screen_pos.y + font_height + 1.0f};
-                        const ImVec2 bottom_right{top_left.x + CharAdvance.x, top_left.y + 1.0f};
-                        dl->AddRectFilled(top_left, bottom_right, Palette[int(PaletteIndex::Cursor)]);
-                    }
                 }
             }
         }
@@ -1345,7 +1338,7 @@ void TextEditor::Render(bool is_parent_focused) {
                 }
             } else {
                 const uint seq_length = UTF8CharLength(glyph.Char);
-                if (seq_length == 1 && MatchingBracketCoords && *MatchingBracketCoords == Coords{li, column}) {
+                if (seq_length == 1 && MatchingBrackets && (MatchingBrackets->Start == Coords{li, column} || MatchingBrackets->End == Coords{li, column})) {
                     const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, Palette[int(PaletteIndex::Cursor)]);
                 }
@@ -1412,7 +1405,7 @@ void TextEditor::Render(bool is_parent_focused) {
 
 void TextEditor::OnCursorPositionChanged() {
     const auto &c = State.Cursors[0];
-    MatchingBracketCoords = State.Cursors.size() == 1 && !c.HasSelection() ? FindMatchingBracket(c.End.L, GetCharIndex(c.End)) : std::nullopt;
+    MatchingBrackets = State.Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
 
     if (!IsDraggingSelection) SortAndMergeCursors();
 }

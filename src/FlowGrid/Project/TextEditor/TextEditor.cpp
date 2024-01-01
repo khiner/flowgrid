@@ -121,7 +121,7 @@ void TextEditor::Copy() {
             }
         }
         ImGui::SetClipboardText(str.c_str());
-    } else if (!Lines.empty()) {
+    } else {
         string str;
         for (const auto &g : Lines[GetCursorPosition().L]) str.push_back(g.Char);
         ImGui::SetClipboardText(str.c_str());
@@ -442,8 +442,6 @@ void TextEditor::MoveDown(uint amount, bool select) {
 }
 
 void TextEditor::MoveLeft(bool select, bool is_word_mode) {
-    if (Lines.empty()) return;
-
     for (auto &c : State.Cursors) {
         if (AnyCursorHasSelection() && !select && !is_word_mode) {
             SetCursorPosition(c.SelectionStart(), c);
@@ -457,8 +455,6 @@ void TextEditor::MoveLeft(bool select, bool is_word_mode) {
 }
 
 void TextEditor::MoveRight(bool select, bool is_word_mode) {
-    if (Lines.empty()) return;
-
     for (auto &c : State.Cursors) {
         if (AnyCursorHasSelection() && !select && !is_word_mode) {
             SetCursorPosition(c.SelectionEnd(), c);
@@ -554,8 +550,6 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
 }
 
 void TextEditor::Backspace(bool is_word_mode) {
-    if (Lines.empty()) return;
-
     if (AnyCursorHasSelection()) {
         Delete(is_word_mode);
     } else {
@@ -572,8 +566,6 @@ void TextEditor::Backspace(bool is_word_mode) {
 }
 
 void TextEditor::Delete(bool is_word_mode, const EditorState *editor_state) {
-    if (Lines.empty()) return;
-
     if (AnyCursorHasSelection()) {
         UndoRecord u{editor_state == nullptr ? State : *editor_state};
         for (auto &c : reverse_view(State.Cursors)) DeleteSelection(c, u);
@@ -871,7 +863,7 @@ TextEditor::Coords TextEditor::SanitizeCoords(const Coords &coords) const {
     return {coords.L, Lines.empty() ? 0 : GetLineMaxColumn(coords.L, coords.C)};
 }
 
-TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool insertion_mode, bool *is_over_li) const {
+TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li) const {
     static constexpr float PosToCoordsColumnOffset = 0.33;
 
     const auto local = ImVec2{screen_pos.x + 3.0f, screen_pos.y} - ImGui::GetCursorScreenPos();
@@ -1205,7 +1197,7 @@ void TextEditor::HandleMouseInputs() {
     IsDraggingSelection &= ImGui::IsMouseDown(0);
     if (IsDraggingSelection && ImGui::IsMouseDragging(0)) {
         io.WantCaptureMouse = true;
-        const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos(), !Overwrite);
+        const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos());
         SetCursorPosition(cursor_coords, State.GetLastAddedCursor(), false);
     }
 
@@ -1249,7 +1241,7 @@ void TextEditor::HandleMouseInputs() {
                 else State.ResetCursors();
 
                 bool is_over_li;
-                const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos(), !Overwrite, &is_over_li);
+                const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos(), &is_over_li);
                 if (is_over_li) {
                     SetSelection(
                         {cursor_coords.L, 0},
@@ -1266,7 +1258,7 @@ void TextEditor::HandleMouseInputs() {
                 SortAndMergeCursors();
             }
         } else if (shift && is_click) {
-            const auto new_selection = ScreenPosToCoords(ImGui::GetMousePos(), !Overwrite);
+            const auto new_selection = ScreenPosToCoords(ImGui::GetMousePos());
             SetCursorPosition(SanitizeCoords(new_selection), State.GetCursor(), false);
         }
     }
@@ -1306,115 +1298,113 @@ void TextEditor::Render(bool is_parent_focused) {
     UpdateViewVariables(ScrollX, ScrollY);
 
     uint max_column_limited = 0;
-    if (!Lines.empty()) {
-        auto dl = ImGui::GetWindowDrawList();
-        const float font_size = ImGui::GetFontSize();
-        const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
+    auto dl = ImGui::GetWindowDrawList();
+    const float font_size = ImGui::GetFontSize();
+    const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
 
-        for (uint li = FirstVisibleLineI; li <= LastVisibleLineI && li < Lines.size(); li++) {
-            const auto &line = Lines[li];
-            max_column_limited = std::max(GetLineMaxColumn(li, LastVisibleColumn), max_column_limited);
+    for (uint li = FirstVisibleLineI; li <= LastVisibleLineI && li < Lines.size(); li++) {
+        const auto &line = Lines[li];
+        max_column_limited = std::max(GetLineMaxColumn(li, LastVisibleColumn), max_column_limited);
 
-            const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * CharAdvance.y};
-            const float text_screen_pos_x = line_start_screen_pos.x + TextStart;
-            const Coords line_start_coord{li, 0}, line_end_coord{li, max_column_limited};
-            // Draw selection for the current line
-            for (const auto &c : State.Cursors) {
-                const auto selection_start = c.SelectionStart(), selection_end = c.SelectionEnd();
-                float rect_start = -1.0f, rect_end = -1.0f;
-                if (selection_start <= line_end_coord)
-                    rect_start = selection_start > line_start_coord ? TextDistanceToLineStart(selection_start) : 0.0f;
-                if (selection_end > line_start_coord)
-                    rect_end = TextDistanceToLineStart(selection_end < line_end_coord ? selection_end : line_end_coord);
-                if (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord))
-                    rect_end += CharAdvance.x;
+        const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * CharAdvance.y};
+        const float text_screen_pos_x = line_start_screen_pos.x + TextStart;
+        const Coords line_start_coord{li, 0}, line_end_coord{li, max_column_limited};
+        // Draw selection for the current line
+        for (const auto &c : State.Cursors) {
+            const auto selection_start = c.SelectionStart(), selection_end = c.SelectionEnd();
+            float rect_start = -1.0f, rect_end = -1.0f;
+            if (selection_start <= line_end_coord)
+                rect_start = selection_start > line_start_coord ? TextDistanceToLineStart(selection_start) : 0.0f;
+            if (selection_end > line_start_coord)
+                rect_end = TextDistanceToLineStart(selection_end < line_end_coord ? selection_end : line_end_coord);
+            if (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord))
+                rect_end += CharAdvance.x;
 
-                if (rect_start != -1 && rect_end != -1 && rect_start < rect_end) {
-                    dl->AddRectFilled(
-                        {text_screen_pos_x + rect_start, line_start_screen_pos.y},
-                        {text_screen_pos_x + rect_end, line_start_screen_pos.y + CharAdvance.y},
-                        Palette[int(PaletteIndex::Selection)]
+            if (rect_start != -1 && rect_end != -1 && rect_start < rect_end) {
+                dl->AddRectFilled(
+                    {text_screen_pos_x + rect_start, line_start_screen_pos.y},
+                    {text_screen_pos_x + rect_end, line_start_screen_pos.y + CharAdvance.y},
+                    Palette[int(PaletteIndex::Selection)]
+                );
+            }
+        }
+
+        // Draw line number (right aligned)
+        if (ShowLineNumbers) {
+            snprintf(li_buffer, 16, "%d  ", li + 1);
+            const float line_num_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, li_buffer).x;
+            dl->AddText({text_screen_pos_x - line_num_width, line_start_screen_pos.y}, Palette[int(PaletteIndex::LineNumber)], li_buffer);
+        }
+
+        std::vector<Coords> cursor_coords_in_this_line;
+        for (const auto &c : State.Cursors) {
+            if (c.End.L == li) cursor_coords_in_this_line.push_back(c.End);
+        }
+        if (cursor_coords_in_this_line.size() > 0) {
+            // Render the cursors
+            if (ImGui::IsWindowFocused() || is_parent_focused) {
+                for (const auto &cursor_coords : cursor_coords_in_this_line) {
+                    float width = 1.0f;
+                    const uint ci = GetCharIndexR(cursor_coords);
+                    const float cx = TextDistanceToLineStart(cursor_coords);
+                    if (Overwrite && ci < line.size()) {
+                        if (line[ci].Char == '\t') {
+                            const auto x = (1.0f + std::floor((1.0f + cx) / (TabSize * space_size))) * (TabSize * space_size);
+                            width = x - cx;
+                        } else {
+                            width = CharAdvance.x;
+                        }
+                    }
+                    const ImVec2 cstart{text_screen_pos_x + cx, line_start_screen_pos.y};
+                    const ImVec2 cend{text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y};
+                    dl->AddRectFilled(cstart, cend, Palette[int(PaletteIndex::Cursor)]);
+                    if (CursorOnBracket) {
+                        const ImVec2 top_left{cstart.x, line_start_screen_pos.y + font_height + 1.0f};
+                        const ImVec2 bottom_right{top_left.x + CharAdvance.x, top_left.y + 1.0f};
+                        dl->AddRectFilled(top_left, bottom_right, Palette[int(PaletteIndex::Cursor)]);
+                    }
+                }
+            }
+        }
+
+        // Render colorized text
+        uint ci = GetFirstVisibleCharIndex(li);
+        uint column = FirstVisibleColumn; // can be in the middle of tab character
+        while (ci < Lines[li].size() && column <= LastVisibleColumn) {
+            const auto &glyph = line[ci];
+            const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + TextDistanceToLineStart({li, column}, false), 0};
+            if (glyph.Char == '\t') {
+                if (ShowWhitespaces) {
+                    const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
+                    const ImVec2 p2{
+                        glyph_pos.x + (ShortTabs ? (TabSizeAtColumn(column) * CharAdvance.x - CharAdvance.x * 0.3f) : CharAdvance.x),
+                        p1.y
+                    };
+                    const float gap = ImGui::GetFontSize() * (ShortTabs ? 0.16f : 0.2f);
+                    const ImVec2 p3{p2.x - gap, p1.y - gap}, p4{p2.x - gap, p1.y + gap};
+                    const ImU32 color = Palette[int(PaletteIndex::ControlCharacter)];
+                    dl->AddLine(p1, p2, color);
+                    dl->AddLine(p2, p3, color);
+                    dl->AddLine(p2, p4, color);
+                }
+            } else if (glyph.Char == ' ') {
+                if (ShowWhitespaces) {
+                    dl->AddCircleFilled(
+                        glyph_pos + ImVec2{space_size, ImGui::GetFontSize()} * 0.5f,
+                        1.5f, Palette[int(PaletteIndex::ControlCharacter)], 4
                     );
                 }
-            }
-
-            // Draw line number (right aligned)
-            if (ShowLineNumbers) {
-                snprintf(li_buffer, 16, "%d  ", li + 1);
-                const float line_num_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, li_buffer).x;
-                dl->AddText({text_screen_pos_x - line_num_width, line_start_screen_pos.y}, Palette[int(PaletteIndex::LineNumber)], li_buffer);
-            }
-
-            std::vector<Coords> cursor_coords_in_this_line;
-            for (const auto &c : State.Cursors) {
-                if (c.End.L == li) cursor_coords_in_this_line.push_back(c.End);
-            }
-            if (cursor_coords_in_this_line.size() > 0) {
-                // Render the cursors
-                if (ImGui::IsWindowFocused() || is_parent_focused) {
-                    for (const auto &cursor_coords : cursor_coords_in_this_line) {
-                        float width = 1.0f;
-                        const uint ci = GetCharIndexR(cursor_coords);
-                        const float cx = TextDistanceToLineStart(cursor_coords);
-                        if (Overwrite && ci < line.size()) {
-                            if (line[ci].Char == '\t') {
-                                const auto x = (1.0f + std::floor((1.0f + cx) / (TabSize * space_size))) * (TabSize * space_size);
-                                width = x - cx;
-                            } else {
-                                width = CharAdvance.x;
-                            }
-                        }
-                        const ImVec2 cstart{text_screen_pos_x + cx, line_start_screen_pos.y};
-                        const ImVec2 cend{text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y};
-                        dl->AddRectFilled(cstart, cend, Palette[int(PaletteIndex::Cursor)]);
-                        if (CursorOnBracket) {
-                            const ImVec2 top_left{cstart.x, line_start_screen_pos.y + font_height + 1.0f};
-                            const ImVec2 bottom_right{top_left.x + CharAdvance.x, top_left.y + 1.0f};
-                            dl->AddRectFilled(top_left, bottom_right, Palette[int(PaletteIndex::Cursor)]);
-                        }
-                    }
+            } else {
+                const uint seq_length = UTF8CharLength(glyph.Char);
+                if (CursorOnBracket && seq_length == 1 && MatchingBracketCoords == Coords{li, column}) {
+                    const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
+                    dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, Palette[int(PaletteIndex::Cursor)]);
                 }
+                string glyph_buffer;
+                for (uint i = 0; i < seq_length; i++) glyph_buffer.push_back(line[ci + i].Char);
+                dl->AddText(glyph_pos, GetGlyphColor(glyph), glyph_buffer.c_str());
             }
-
-            // Render colorized text
-            uint ci = GetFirstVisibleCharIndex(li);
-            uint column = FirstVisibleColumn; // can be in the middle of tab character
-            while (ci < Lines[li].size() && column <= LastVisibleColumn) {
-                const auto &glyph = line[ci];
-                const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + TextDistanceToLineStart({li, column}, false), 0};
-                if (glyph.Char == '\t') {
-                    if (ShowWhitespaces) {
-                        const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
-                        const ImVec2 p2{
-                            glyph_pos.x + (ShortTabs ? (TabSizeAtColumn(column) * CharAdvance.x - CharAdvance.x * 0.3f) : CharAdvance.x),
-                            p1.y
-                        };
-                        const float gap = ImGui::GetFontSize() * (ShortTabs ? 0.16f : 0.2f);
-                        const ImVec2 p3{p2.x - gap, p1.y - gap}, p4{p2.x - gap, p1.y + gap};
-                        const ImU32 color = Palette[int(PaletteIndex::ControlCharacter)];
-                        dl->AddLine(p1, p2, color);
-                        dl->AddLine(p2, p3, color);
-                        dl->AddLine(p2, p4, color);
-                    }
-                } else if (glyph.Char == ' ') {
-                    if (ShowWhitespaces) {
-                        dl->AddCircleFilled(
-                            glyph_pos + ImVec2{space_size, ImGui::GetFontSize()} * 0.5f,
-                            1.5f, Palette[int(PaletteIndex::ControlCharacter)], 4
-                        );
-                    }
-                } else {
-                    const uint seq_length = UTF8CharLength(glyph.Char);
-                    if (CursorOnBracket && seq_length == 1 && MatchingBracketCoords == Coords{li, column}) {
-                        const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
-                        dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, Palette[int(PaletteIndex::Cursor)]);
-                    }
-                    string glyph_buffer;
-                    for (uint i = 0; i < seq_length; i++) glyph_buffer.push_back(line[ci + i].Char);
-                    dl->AddText(glyph_pos, GetGlyphColor(glyph), glyph_buffer.c_str());
-                }
-                MoveCharIndexAndColumn(li, ci, column);
-            }
+            MoveCharIndexAndColumn(li, ci, column);
         }
     }
     CurrentSpaceHeight = (Lines.size() + std::min(VisibleLineCount - 1, uint(Lines.size()))) * CharAdvance.y;
@@ -1529,7 +1519,7 @@ void TextEditor::Colorize(uint from_li, uint line_count) {
 }
 
 void TextEditor::ColorizeRange(uint from_li, uint to_li) {
-    if (Lines.empty() || from_li >= to_li || LanguageDef == nullptr) return;
+    if (from_li >= to_li || LanguageDef == nullptr) return;
 
     string buffer, id;
     std::cmatch results;
@@ -1602,7 +1592,7 @@ bool ColorizerEquals(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 
 }
 
 void TextEditor::ColorizeInternal() {
-    if (Lines.empty() || LanguageDef == nullptr) return;
+    if (LanguageDef == nullptr) return;
 
     if (ShouldCheckComments) {
         bool within_string = false;

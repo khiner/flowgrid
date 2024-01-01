@@ -238,7 +238,7 @@ private:
     Coords LineMaxCoords(uint li) const { return {li, GetLineMaxColumn(li)}; }
     Coords LineCharCoords(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
     Coords SanitizeCoords(const Coords &) const;
-    Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool is_insertion_mode = false, bool *is_over_li = nullptr) const;
+    Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     Coords FindWordStart(const Coords &from) const;
     Coords FindWordEnd(const Coords &from) const;
     uint GetCharIndexL(const Coords &) const;

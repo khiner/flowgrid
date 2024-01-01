@@ -644,41 +644,26 @@ bool TextEditor::FindMatchingBracket(uint li, uint ci, Coords &out) {
     const auto &line = Lines[li];
     if (ci >= line.size()) return false;
 
-    uint li_inner = li, ci_inner = ci;
-    uint counter = 1;
-    if (CloseToOpenChar.contains(line[ci].Char)) {
-        const char close_char = line[ci].Char, open_char = CloseToOpenChar.at(close_char);
-        while (Move(li_inner, ci_inner, true)) {
-            if (ci_inner < Lines[li_inner].size()) {
-                const char ch = Lines[li_inner][ci_inner].Char;
-                if (ch == open_char) {
-                    counter--;
-                    if (counter == 0) {
-                        out = LineCharCoords(li_inner, ci_inner);
-                        return true;
-                    }
-                } else if (ch == close_char) {
-                    counter++;
-                }
-            }
-        }
-    } else if (OpenToCloseChar.contains(line[ci].Char)) {
-        const char open_char = line[ci].Char, close_char = OpenToCloseChar.at(open_char);
-        while (Move(li_inner, ci_inner)) {
-            if (ci_inner < Lines[li_inner].size()) {
-                const char ch = Lines[li_inner][ci_inner].Char;
-                if (ch == close_char) {
-                    counter--;
-                    if (counter == 0) {
-                        out = LineCharCoords(li_inner, ci_inner);
-                        return true;
-                    }
-                } else if (ch == open_char) {
-                    counter++;
-                }
+    const char ch = line[ci].Char;
+    const bool is_close_char = CloseToOpenChar.contains(ch), is_open_char = OpenToCloseChar.contains(ch);
+    if (!is_close_char && !is_open_char) return false;
+
+    const char other_ch = is_close_char ? CloseToOpenChar.at(ch) : OpenToCloseChar.at(ch);
+    uint li_inner = li, ci_inner = ci, counter = 1;
+    while (Move(li_inner, ci_inner, is_close_char)) {
+        if (ci_inner >= Lines[li_inner].size()) continue;
+
+        const char ch_inner = Lines[li_inner][ci_inner].Char;
+        if (ch_inner == ch) {
+            counter++;
+        } else if (ch_inner == other_ch) {
+            if (--counter == 0) {
+                out = LineCharCoords(li_inner, ci_inner);
+                return true;
             }
         }
     }
+
     return false;
 }
 

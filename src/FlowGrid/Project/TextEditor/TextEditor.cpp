@@ -700,7 +700,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
             } else {
                 Coords start{li, 0}, end{li, TabSize};
                 int ci = int(GetCharIndex(end)) - 1;
-                while (ci > -1 && (line[ci].Char == ' ' || line[ci].Char == '\t')) ci--;
+                while (ci > -1 && isspace(line[ci].Char)) ci--;
                 const bool only_space_chars_found = ci == -1;
                 if (only_space_chars_found) {
                     u.Operations.emplace_back(GetText(start, end), start, end, UndoOperationType::Delete);
@@ -755,7 +755,7 @@ void TextEditor::ToggleLineComment() {
     UndoRecord u{State};
     bool should_add_comment = false;
     std::unordered_set<uint> affected_line_indices;
-    for (const auto &c : reverse_view(State.Cursors)) {
+    for (const auto &c : State.Cursors) {
         for (uint li = c.SelectionStart().L; li <= c.SelectionEnd().L; li++) {
             // Check if selection ends at line start.
             if (c.HasSelection() && c.SelectionEnd() == Coords{li, 0}) continue;
@@ -763,43 +763,38 @@ void TextEditor::ToggleLineComment() {
             affected_line_indices.insert(li);
 
             const auto &line = Lines[li];
-            uint i = 0;
-            while (i < line.size() && (line[i].Char == ' ' || line[i].Char == '\t')) i++;
-            if (i == line.size()) continue;
-
-            uint i_inner = 0;
-            while (i_inner < comment_str.length() && i + i_inner < line.size() && line[i + i_inner].Char == comment_str[i_inner]) i++;
-            const bool matched = i_inner == comment_str.length();
-            should_add_comment |= !matched;
-        }
-    }
-
-    if (should_add_comment) {
-        for (uint li : affected_line_indices) {
-            const Coords line_start{li, 0};
-            const Coords insertion_end = InsertTextAt(line_start, comment_str + ' ');
-            u.Operations.emplace_back(comment_str + ' ', line_start, insertion_end, UndoOperationType::Add);
-            Colorize(line_start.L, 1);
-        }
-    } else {
-        for (uint li : affected_line_indices) {
-            const auto &line = Lines[li];
             uint ci = 0;
-            while (ci < line.size() && (line[ci].Char == ' ' || line[ci].Char == '\t')) ci++;
+            while (ci < line.size() && isspace(line[ci].Char)) ci++;
             if (ci == line.size()) continue;
 
-            uint ci_2 = 0;
-            while (ci_2 < comment_str.length() && ci + ci_2 < line.size() && line[ci + ci_2].Char == comment_str[ci_2]) ci_2++;
-            const bool matched = ci_2 == comment_str.length();
-            assert(matched);
-            if (ci + ci_2 < line.size() && line[ci + ci_2].Char == ' ') ci_2++;
-
-            const Coords start = LineCharCoords(li, ci), end = LineCharCoords(li, ci + ci_2);
-            AddUndoOp(u, UndoOperationType::Delete, start, end);
-            DeleteRange(start, end);
-            Colorize(li, 1);
+            uint comment_ci = 0;
+            while (comment_ci < comment_str.length() && ci + comment_ci < line.size() && line[ci + comment_ci].Char == comment_str[comment_ci]) comment_ci++;
+            should_add_comment |= comment_ci != comment_str.length();
         }
     }
+
+    for (uint li : affected_line_indices) {
+        if (should_add_comment) {
+            const Coords line_start{li, 0}, insertion_end = InsertTextAt(line_start, comment_str + ' ');
+            u.Operations.emplace_back(comment_str + ' ', line_start, insertion_end, UndoOperationType::Add);
+        } else {
+            const auto &line = Lines[li];
+            uint ci = 0;
+            while (ci < line.size() && isspace(line[ci].Char)) ci++;
+            if (ci == line.size()) continue;
+
+            uint comment_ci = 0;
+            while (comment_ci < comment_str.length() && ci + comment_ci < line.size() && line[ci + comment_ci].Char == comment_str[comment_ci]) comment_ci++;
+            assert(comment_ci == comment_str.length());
+            if (ci + comment_ci < line.size() && line[ci + comment_ci].Char == ' ') comment_ci++;
+
+            const Coords start = LineCharCoords(li, ci), end = LineCharCoords(li, ci + comment_ci);
+            AddUndoOp(u, UndoOperationType::Delete, start, end);
+            DeleteRange(start, end);
+        }
+        Colorize(li, 1);
+    }
+    AddUndo(u);
 }
 
 void TextEditor::RemoveCurrentLines() {

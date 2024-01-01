@@ -18,24 +18,21 @@ TextEditor::TextEditor() {
 
 TextEditor::~TextEditor() {}
 
-void TextEditor::SetPalette(PaletteIdT palette_id) {
-    PaletteId = palette_id;
-    const PaletteT *palette_base;
-    switch (PaletteId) {
+const TextEditor::PaletteT *TextEditor::GetPalette(PaletteIdT palette_id) {
+    switch (palette_id) {
         case PaletteIdT::Dark:
-            palette_base = &DarkPalette;
-            break;
+            return &DarkPalette;
         case PaletteIdT::Light:
-            palette_base = &LightPalette;
-            break;
+            return &LightPalette;
         case PaletteIdT::Mariana:
-            palette_base = &MarianaPalette;
-            break;
+            return &MarianaPalette;
         case PaletteIdT::RetroBlue:
-            palette_base = &RetroBluePalette;
-            break;
+            return &RetroBluePalette;
     }
+}
 
+void TextEditor::SetPalette(PaletteIdT palette_id) {
+    const PaletteT *palette_base = GetPalette(palette_id);
     for (uint i = 0; i < uint(PaletteIndex::Max); ++i) {
         const ImVec4 color = U32ColorToVec4((*palette_base)[i]);
         // color.w *= ImGui::GetStyle().Alpha; todo bring this back.
@@ -367,85 +364,58 @@ void TextEditor::MoveCharIndexAndColumn(uint line, uint &ci, uint &column) const
     column = ch == '\t' ? NextTabstop(column, TabSize) : column + 1;
 }
 
-void TextEditor::MoveCoords(Coords &coords, MoveDirection direction, bool is_word_mode, uint line_count) const {
+TextEditor::Coords TextEditor::MoveCoords(const Coords &coords, MoveDirection direction, bool is_word_mode, uint line_count) const {
     uint ci = GetCharIndex(coords), li = coords.L;
     switch (direction) {
         case MoveDirection::Right:
             if (ci >= Lines[li].size()) {
-                if (li < Lines.size() - 1) {
-                    coords.L = std::clamp(li + 1, 0u, uint(Lines.size() - 1));
-                    coords.C = 0;
-                }
-            } else {
-                Move(li, ci);
-                const uint one_step_right_column = GetCharColumn(li, ci);
-                if (is_word_mode) {
-                    coords = FindWordEnd(coords);
-                    coords.C = std::max(coords.C, one_step_right_column);
-                } else {
-                    coords.C = one_step_right_column;
-                }
+                if (li < Lines.size() - 1) return {std::clamp(li + 1, 0u, uint(Lines.size() - 1)), 0};
+                return coords;
             }
-            break;
+            Move(li, ci);
+            if (is_word_mode) {
+                auto new_coords = FindWordEnd(coords);
+                new_coords.C = std::max(new_coords.C, GetCharColumn(li, ci));
+                return new_coords;
+            }
+            return LineCharCoords(li, ci);
         case MoveDirection::Left:
             if (ci == 0) {
-                if (li > 0) coords = LineMaxCoords(li - 1);
-            } else {
-                Move(li, ci, true);
-                coords = is_word_mode ? FindWordStart(coords) : Coords{coords.L, GetCharColumn(li, ci)};
-                if (is_word_mode) coords = FindWordStart(coords);
+                if (li > 0) return LineMaxCoords(li - 1);
+                return coords;
             }
-            break;
+            if (is_word_mode) return FindWordStart({li, coords.C - 1});
+            Move(li, ci, true);
+            return LineCharCoords(li, ci);
         case MoveDirection::Up:
-            coords.L = std::max(0u, li - line_count);
-            break;
+            return {uint(std::max(0, int(li) - int(line_count))), coords.C};
         case MoveDirection::Down:
-            coords.L = std::clamp(li + line_count, 0u, uint(Lines.size() - 1));
-            break;
+            return {std::min(li + line_count, uint(Lines.size() - 1)), coords.C};
     }
 }
 
 void TextEditor::MoveUp(uint amount, bool select) {
-    for (auto &c : State.Cursors) {
-        auto new_coords = c.End;
-        MoveCoords(new_coords, MoveDirection::Up, false, amount);
-        SetCursorPosition(new_coords, c, !select);
-    }
+    for (auto &c : State.Cursors) SetCursorPosition(MoveCoords(c.End, MoveDirection::Up, false, amount), c, !select);
     EnsureCursorVisible();
 }
 
 void TextEditor::MoveDown(uint amount, bool select) {
-    for (auto &c : State.Cursors) {
-        assert(c.End.C >= 0);
-        auto new_coords = c.End;
-        MoveCoords(new_coords, MoveDirection::Down, false, amount);
-        SetCursorPosition(new_coords, c, !select);
-    }
+    for (auto &c : State.Cursors) SetCursorPosition(MoveCoords(c.End, MoveDirection::Down, false, amount), c, !select);
     EnsureCursorVisible();
 }
 
 void TextEditor::MoveLeft(bool select, bool is_word_mode) {
     for (auto &c : State.Cursors) {
-        if (AnyCursorHasSelection() && !select && !is_word_mode) {
-            SetCursorPosition(c.SelectionStart(), c);
-        } else {
-            auto new_coords = c.End;
-            MoveCoords(new_coords, MoveDirection::Left, is_word_mode);
-            SetCursorPosition(new_coords, c, !select);
-        }
+        if (AnyCursorHasSelection() && !select && !is_word_mode) SetCursorPosition(c.SelectionStart(), c);
+        else SetCursorPosition(MoveCoords(c.End, MoveDirection::Left, is_word_mode), c, !select);
     }
     EnsureCursorVisible();
 }
 
 void TextEditor::MoveRight(bool select, bool is_word_mode) {
     for (auto &c : State.Cursors) {
-        if (AnyCursorHasSelection() && !select && !is_word_mode) {
-            SetCursorPosition(c.SelectionEnd(), c);
-        } else {
-            auto new_coords = c.End;
-            MoveCoords(new_coords, MoveDirection::Right, is_word_mode);
-            SetCursorPosition(new_coords, c, !select);
-        }
+        if (AnyCursorHasSelection() && !select && !is_word_mode) SetCursorPosition(c.SelectionEnd(), c);
+        else SetCursorPosition(MoveCoords(c.End, MoveDirection::Right, is_word_mode), c, !select);
     }
     EnsureCursorVisible();
 }

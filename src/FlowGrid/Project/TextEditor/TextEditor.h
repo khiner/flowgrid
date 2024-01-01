@@ -206,7 +206,7 @@ private:
     };
     bool Move(uint &li, uint &ci, bool left = false, bool lock_line = false) const;
     void MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const;
-    void MoveCoords(Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
+    Coords MoveCoords(const Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
     void MoveUp(uint amount = 1, bool select = false);
     void MoveDown(uint amount = 1, bool select = false);
     void MoveLeft(bool select = false, bool is_word_mode = false);
@@ -276,6 +276,8 @@ private:
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     uint TabSizeAtColumn(uint column) const { return TabSize - (column % TabSize); }
 
+    static const PaletteT *GetPalette(PaletteIdT);
+
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
     std::vector<LineT> Lines;
@@ -306,7 +308,6 @@ private:
 
     uint ColorRangeMin{0}, ColorRangeMax{0};
     bool ShouldCheckComments{true};
-    PaletteIdT PaletteId;
     PaletteT Palette;
     const LanguageDefinition *LanguageDef{nullptr};
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;

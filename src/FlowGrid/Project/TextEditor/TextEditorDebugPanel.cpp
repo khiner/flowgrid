@@ -12,8 +12,11 @@ void TextEditor::DebugPanel() {
         EndDisabled();
         Text("Cursor count: %lu", State.Cursors.size());
         for (auto &c : State.Cursors) {
-            DragU32("Interactive start", &c.Start.L);
-            DragU32("Interactive end", &c.End.L);
+            DragU32("Start line", &c.Start.L, 0.25f, 0, Lines.size());
+            DragU32("Start column", &c.Start.C, 0.25f, 0, Lines[c.Start.L].size());
+            DragU32("End line", &c.End.L, 0.25f, 0, Lines.size());
+            DragU32("End column", &c.End.C, 0.25f, 0, Lines[c.End.L].size());
+            Spacing();
         }
     }
     if (CollapsingHeader("Lines")) {

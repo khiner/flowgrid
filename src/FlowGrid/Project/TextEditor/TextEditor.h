@@ -143,8 +143,6 @@ private:
         Cursor const &GetCursor(uint c) const { return Cursors[c]; }
         Cursor &GetCursor() { return Cursors.back(); }
         Cursor const &GetCursor() const { return Cursors.back(); }
-
-        void SortCursors();
     };
 
     struct Glyph {

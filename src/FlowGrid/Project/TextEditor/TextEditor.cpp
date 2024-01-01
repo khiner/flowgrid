@@ -274,15 +274,6 @@ void TextEditor::EditorState::ResetCursors() {
     LastAddedCursorIndex = 0;
 }
 
-void TextEditor::EditorState::SortCursors() {
-    const auto last_added_cursor_pos = GetLastAddedCursor().End;
-    std::ranges::sort(Cursors, [](const auto &a, const auto &b) { return a.SelectionStart() < b.SelectionStart(); });
-    // Update last added cursor index to be valid after sort.
-    for (auto &c : Cursors) {
-        if (c.End == last_added_cursor_pos) LastAddedCursorIndex = &c - Cursors.data();
-    }
-}
-
 void TextEditor::UndoRecord::Undo(TextEditor *editor) {
     for (const auto &op : reverse_view(Operations)) {
         if (op.Text.empty()) continue;
@@ -1457,31 +1448,36 @@ void TextEditor::OnCursorPositionChanged() {
 }
 
 void TextEditor::SortAndMergeCursors() {
-    State.SortCursors();
+    if (State.Cursors.size() <= 1) return;
 
-    std::unordered_set<const Cursor *> delete_cursors;
-    if (AnyCursorHasSelection()) {
-        // Merge cursors if they overlap.
-        for (uint c = 1; c < State.Cursors.size(); c++) {
-            const auto &cursor = State.Cursors[c];
-            auto &prev_cursor = State.Cursors[c - 1];
-            if (prev_cursor.SelectionEnd() >= cursor.SelectionEnd()) {
-                delete_cursors.insert(&cursor);
-            } else if (prev_cursor.SelectionEnd() > cursor.SelectionStart()) {
-                const auto pc_start = prev_cursor.SelectionStart(), pc_end = prev_cursor.SelectionEnd();
-                prev_cursor.Start = pc_start;
-                prev_cursor.End = pc_end;
-                delete_cursors.insert(&cursor);
-            }
-        }
-    } else {
-        // Merge cursors if they are at the same position.
-        for (uint c = 1; c < State.Cursors.size(); c++) {
-            const auto &cursor = State.Cursors[c];
-            if (State.Cursors[c - 1].End == cursor.End) delete_cursors.insert(&cursor);
+    // Sort cursors.
+    const auto last_added_cursor_end = State.GetLastAddedCursor().End;
+    std::ranges::sort(State.Cursors, [](const auto &a, const auto &b) { return a.SelectionStart() < b.SelectionStart(); });
+
+    // Merge overlapping cursors.
+    std::vector<Cursor> merged;
+    Cursor current = State.Cursors.front();
+    for (size_t c = 1; c < State.Cursors.size(); ++c) {
+        const auto &next = State.Cursors[c];
+        if (current.SelectionEnd() >= next.SelectionStart()) {
+            // Overlap. Extend the current cursor to to include the next.
+            const auto start = std::min(current.SelectionStart(), next.SelectionStart());
+            const auto end = std::max(current.SelectionEnd(), next.SelectionEnd());
+            current.Start = start;
+            current.End = end;
+        } else {
+            // No overlap. Finalize the current cursor and start a new merge.
+            merged.push_back(current);
+            current = next;
         }
     }
-    std::erase_if(State.Cursors, [&delete_cursors](const auto &c) { return delete_cursors.contains(&c); });
+
+    merged.push_back(current);
+    State.Cursors = std::move(merged);
+
+    // Update last added cursor index to be valid after sort/merge.
+    const auto it = std::ranges::find_if(State.Cursors, [&last_added_cursor_end](const auto &c) { return c.End == last_added_cursor_end; });
+    State.LastAddedCursorIndex = it != State.Cursors.end() ? std::distance(State.Cursors.begin(), it) : 0;
 }
 
 void TextEditor::AddUndo(UndoRecord &record) {

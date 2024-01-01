@@ -308,7 +308,6 @@ private:
     bool ShouldCheckComments{true};
     PaletteIdT PaletteId;
     PaletteT Palette;
-    LanguageDefinitionIdT LanguageDefinitionId;
     const LanguageDefinition *LanguageDef{nullptr};
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
     std::string LineBuffer;

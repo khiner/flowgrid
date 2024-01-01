@@ -43,47 +43,39 @@ void TextEditor::SetPalette(PaletteIdT palette_id) {
     }
 }
 
-void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
-    LanguageDefinitionId = language_def_id;
-    switch (LanguageDefinitionId) {
-        case LanguageDefinitionIdT::Cpp:
-            LanguageDef = &LanguageDefinition::Cpp;
-            break;
-        case LanguageDefinitionIdT::C:
-            LanguageDef = &LanguageDefinition::C;
-            break;
-        case LanguageDefinitionIdT::Cs:
-            LanguageDef = &LanguageDefinition::Cs;
-            break;
-        case LanguageDefinitionIdT::Python:
-            LanguageDef = &LanguageDefinition::Python;
-            break;
-        case LanguageDefinitionIdT::Lua:
-            LanguageDef = &LanguageDefinition::Lua;
-            break;
-        case LanguageDefinitionIdT::Json:
-            LanguageDef = &LanguageDefinition::Jsn;
-            break;
-        case LanguageDefinitionIdT::Sql:
-            LanguageDef = &LanguageDefinition::Sql;
-            break;
-        case LanguageDefinitionIdT::AngelScript:
-            LanguageDef = &LanguageDefinition::AngelScript;
-            break;
-        case LanguageDefinitionIdT::Glsl:
-            LanguageDef = &LanguageDefinition::Glsl;
-            break;
-        case LanguageDefinitionIdT::Hlsl:
-            LanguageDef = &LanguageDefinition::Hlsl;
-            break;
-        case LanguageDefinitionIdT::None:
-            LanguageDef = nullptr;
-            break;
+static const LanguageDefinition *GetLanguageDefinition(TextEditor::LanguageDefinitionIdT language_def_id) {
+    switch (language_def_id) {
+        case TextEditor::LanguageDefinitionIdT::Cpp:
+            return &LanguageDefinition::Cpp;
+        case TextEditor::LanguageDefinitionIdT::C:
+            return &LanguageDefinition::C;
+        case TextEditor::LanguageDefinitionIdT::Cs:
+            return &LanguageDefinition::Cs;
+        case TextEditor::LanguageDefinitionIdT::Python:
+            return &LanguageDefinition::Python;
+        case TextEditor::LanguageDefinitionIdT::Lua:
+            return &LanguageDefinition::Lua;
+        case TextEditor::LanguageDefinitionIdT::Json:
+            return &LanguageDefinition::Jsn;
+        case TextEditor::LanguageDefinitionIdT::Sql:
+            return &LanguageDefinition::Sql;
+        case TextEditor::LanguageDefinitionIdT::AngelScript:
+            return &LanguageDefinition::AngelScript;
+        case TextEditor::LanguageDefinitionIdT::Glsl:
+            return &LanguageDefinition::Glsl;
+        case TextEditor::LanguageDefinitionIdT::Hlsl:
+            return &LanguageDefinition::Hlsl;
+        case TextEditor::LanguageDefinitionIdT::None:
+            return nullptr;
     }
+}
+
+void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
+    LanguageDef = GetLanguageDefinition(language_def_id);
 
     RegexList.clear();
     for (const auto &r : LanguageDef->TokenRegexStrings) {
-        RegexList.push_back({std::regex(r.first, std::regex_constants::optimize), r.second});
+        RegexList.emplace_back(std::regex(r.first, std::regex_constants::optimize), r.second);
     }
 
     Colorize(0, Lines.size());

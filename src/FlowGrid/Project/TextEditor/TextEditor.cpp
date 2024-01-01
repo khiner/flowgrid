@@ -747,48 +747,42 @@ void TextEditor::MoveCurrentLines(bool up) {
     AddUndo(u);
 }
 
+uint TextEditor::FindFirstNonSpace(const LineT &line) {
+    return std::distance(line.begin(), std::ranges::find_if(line, [](const auto &g) { return !isspace(g.Char); }));
+}
+
+bool TextEditor::LineStartsWith(const LineT &line, const string &str) {
+    const uint start = FindFirstNonSpace(line);
+    if (start + str.length() > line.size()) return false;
+
+    const auto line_subrange = std::ranges::subrange(line.begin() + start, line.begin() + std::min(line.size(), start + str.length()));
+    return std::ranges::equal(line_subrange, str, [](const auto &glyph, char c) { return glyph.Char == c; });
+}
+
 void TextEditor::ToggleLineComment() {
     if (LanguageDef == nullptr) return;
 
-    const string &comment_str = LanguageDef->SingleLineComment;
-
-    UndoRecord u{State};
-    bool should_add_comment = false;
-    std::unordered_set<uint> affected_line_indices;
+    std::unordered_set<uint> affected_lines;
     for (const auto &c : State.Cursors) {
         for (uint li = c.SelectionStart().L; li <= c.SelectionEnd().L; li++) {
-            // Check if selection ends at line start.
-            if (c.HasSelection() && c.SelectionEnd() == Coords{li, 0}) continue;
-
-            affected_line_indices.insert(li);
-
-            const auto &line = Lines[li];
-            uint ci = 0;
-            while (ci < line.size() && isspace(line[ci].Char)) ci++;
-            if (ci == line.size()) continue;
-
-            uint comment_ci = 0;
-            while (comment_ci < comment_str.length() && ci + comment_ci < line.size() && line[ci + comment_ci].Char == comment_str[comment_ci]) comment_ci++;
-            should_add_comment |= comment_ci != comment_str.length();
+            if (c.SelectionEnd() != Coords{li, 0} && !Lines[li].empty()) affected_lines.insert(li);
         }
     }
 
-    for (uint li : affected_line_indices) {
+    UndoRecord u{State};
+    const string &comment = LanguageDef->SingleLineComment;
+    const bool should_add_comment = any_of(affected_lines, [&](uint li) { return !LineStartsWith(Lines[li], comment); });
+    for (uint li : affected_lines) {
         if (should_add_comment) {
-            const Coords line_start{li, 0}, insertion_end = InsertTextAt(line_start, comment_str + ' ');
-            u.Operations.emplace_back(comment_str + ' ', line_start, insertion_end, UndoOperationType::Add);
+            const Coords line_start{li, 0}, insertion_end = InsertTextAt(line_start, comment + ' ');
+            u.Operations.emplace_back(comment + ' ', line_start, insertion_end, UndoOperationType::Add);
         } else {
             const auto &line = Lines[li];
-            uint ci = 0;
-            while (ci < line.size() && isspace(line[ci].Char)) ci++;
-            if (ci == line.size()) continue;
+            const uint ci = FindFirstNonSpace(line);
+            uint comment_ci = ci + comment.length();
+            if (comment_ci < line.size() && line[comment_ci].Char == ' ') comment_ci++;
 
-            uint comment_ci = 0;
-            while (comment_ci < comment_str.length() && ci + comment_ci < line.size() && line[ci + comment_ci].Char == comment_str[comment_ci]) comment_ci++;
-            assert(comment_ci == comment_str.length());
-            if (ci + comment_ci < line.size() && line[ci + comment_ci].Char == ' ') comment_ci++;
-
-            const Coords start = LineCharCoords(li, ci), end = LineCharCoords(li, ci + comment_ci);
+            const Coords start = LineCharCoords(li, ci), end = LineCharCoords(li, comment_ci);
             AddUndoOp(u, UndoOperationType::Delete, start, end);
             DeleteRange(start, end);
         }

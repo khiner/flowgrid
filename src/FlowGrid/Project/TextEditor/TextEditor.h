@@ -225,6 +225,8 @@ private:
     // Returns a cursor containing the start/end coords of the next occurrence of `text` after `from`, or `std::nullopt` if not found.
     std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &from, bool case_sensitive = true);
     bool FindMatchingBracket(uint li, uint ci, Coords &out);
+    static uint FindFirstNonSpace(const LineT &);
+    static bool LineStartsWith(const LineT &, const std::string &comment);
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveCurrentLines(bool up);
     void ToggleLineComment();

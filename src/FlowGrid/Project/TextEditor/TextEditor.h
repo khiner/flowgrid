@@ -241,8 +241,7 @@ private:
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     Coords FindWordStart(const Coords &from) const;
     Coords FindWordEnd(const Coords &from) const;
-    uint GetCharIndexL(const Coords &) const;
-    uint GetCharIndexR(const Coords &) const;
+    uint GetCharIndex(const Coords &) const;
     uint GetCharColumn(uint li, uint ci) const;
     uint GetFirstVisibleCharIndex(uint line) const;
     uint GetLineMaxColumn(uint li) const;

@@ -1477,94 +1477,89 @@ void TextEditor::ColorizeRange(uint from_li, uint to_li) {
     }
 }
 
-template<class InputIt1, class InputIt2, class BinaryPredicate>
-bool ColorizerEquals(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2, BinaryPredicate p) {
-    for (; first1 != last1 && first2 != last2; ++first1, ++first2) {
-        if (!p(*first1, *first2)) return false;
-    }
-    return first1 == last1 && first2 == last2;
+template<typename ElementT>
+static bool Equals(const std::string &str, const std::span<const ElementT> &span, std::size_t span_offset, auto predicate) {
+    if (span.size() < span_offset + str.size()) return false;
+    return std::ranges::equal(str, span.subspan(span_offset, str.size()), predicate);
+}
+
+bool TextEditor::Equals(const std::string &str, const std::span<const Glyph> &span, std::size_t span_offset) {
+    static const auto pred = [](const char &a, const Glyph &b) { return a == b.Char; };
+    return ::Equals(str, span, span_offset, pred);
 }
 
 void TextEditor::ColorizeInternal() {
     if (LanguageDef == nullptr) return;
 
     if (ShouldCheckComments) {
-        bool within_string = false, within_single_line_comment = false, within_preproc = false;
-        bool first_char = true; // there is no other non-whitespace characters in the line before
+        bool in_string = false, in_preproc = false, in_single_line_comment = false, in_multi_line_comment = false;
+        bool first_char = true; // There are no non-whitespace characters before this char in this line.
         bool concatenate = false; // '\' on the very end of the line
-        uint li = 0, i = 0;
-        uint end_i = 0, end_li = Lines.size();
-        uint comment_start_li = end_li, comment_start_i = end_i;
-        while (li < end_li || i < end_i) {
+        uint end_li = Lines.size(), end_ci = 0;
+        uint comment_start_li = end_li, comment_start_ci = end_ci;
+        for (uint li = 0, ci = 0; li < end_li || ci < end_ci;) {
             auto &line = Lines[li];
-            if (i == 0 && !concatenate) {
-                within_single_line_comment = false;
-                within_preproc = false;
+            if (ci == 0 && !concatenate) {
+                in_single_line_comment = false;
+                in_preproc = false;
                 first_char = true;
             }
 
             concatenate = false;
             if (line.empty()) {
-                i = 0;
                 li++;
+                ci = 0;
                 continue;
             }
 
-            const auto &g = line[i];
-            const auto ch = g.Char;
+            const auto ch = line[ci].Char;
             if (ch != LanguageDef->PreprocChar && !isspace(ch)) first_char = false;
-            if (i == line.size() - 1 && line[line.size() - 1].Char == '\\') concatenate = true;
+            if (ci == line.size() - 1 && line[line.size() - 1].Char == '\\') concatenate = true;
 
-            bool in_comment = (comment_start_li < li || (comment_start_li == li && comment_start_i <= i));
-            if (within_string) {
-                line[i].IsMultiLineComment = in_comment;
+            in_multi_line_comment = comment_start_li < li || (comment_start_li == li && comment_start_ci <= ci);
+            if (in_string) {
+                line[ci].IsMultiLineComment = in_multi_line_comment;
                 if (ch == '\"') {
-                    if (i + 1 < line.size() && line[i + 1].Char == '\"') {
-                        i += 1;
-                        if (i < line.size()) line[i].IsMultiLineComment = in_comment;
+                    if (ci + 1 < line.size() && line[ci + 1].Char == '\"') {
+                        ci += 1;
+                        if (ci < line.size()) line[ci].IsMultiLineComment = in_multi_line_comment;
                     } else {
-                        within_string = false;
+                        in_string = false;
                     }
                 } else if (ch == '\\') {
-                    i += 1;
-                    if (i < line.size()) line[i].IsMultiLineComment = in_comment;
+                    ci += 1;
+                    if (ci < line.size()) line[ci].IsMultiLineComment = in_multi_line_comment;
                 }
             } else {
-                if (first_char && ch == LanguageDef->PreprocChar) within_preproc = true;
+                if (first_char && ch == LanguageDef->PreprocChar) in_preproc = true;
                 if (ch == '\"') {
-                    within_string = true;
-                    line[i].IsMultiLineComment = in_comment;
+                    in_string = true;
+                    line[ci].IsMultiLineComment = in_multi_line_comment;
                 } else {
-                    static const auto pred = [](const char &a, const Glyph &b) { return a == b.Char; };
-                    const auto from = line.begin() + i;
-                    const auto &start_str = LanguageDef->CommentStart;
-                    const auto &single_start_str = LanguageDef->SingleLineComment;
-                    if (!within_single_line_comment && i + start_str.size() <= line.size() &&
-                        ColorizerEquals(start_str.cbegin(), start_str.cend(), from, from + start_str.size(), pred)) {
+                    std::span<const Glyph> line_span(line);
+                    if (!in_single_line_comment && Equals(LanguageDef->CommentStart, line_span, ci)) {
                         comment_start_li = li;
-                        comment_start_i = i;
-                    } else if (single_start_str.size() > 0 && i + single_start_str.size() <= line.size() && ColorizerEquals(single_start_str.begin(), single_start_str.end(), from, from + single_start_str.size(), pred)) {
-                        within_single_line_comment = true;
+                        comment_start_ci = ci;
+                    } else if (!LanguageDef->SingleLineComment.empty() && Equals(LanguageDef->SingleLineComment, line_span, ci)) {
+                        in_single_line_comment = true;
                     }
 
-                    in_comment = comment_start_li < li || (comment_start_li == li && comment_start_i <= i);
-                    line[i].IsMultiLineComment = in_comment;
-                    line[i].IsComment = within_single_line_comment;
+                    in_multi_line_comment = comment_start_li < li || (comment_start_li == li && comment_start_ci <= ci);
+                    line[ci].IsMultiLineComment = in_multi_line_comment;
+                    line[ci].IsComment = in_single_line_comment;
 
-                    const auto &end_str = LanguageDef->CommentEnd;
-                    if (i + 1 >= end_str.size() &&
-                        ColorizerEquals(end_str.cbegin(), end_str.cend(), from + 1 - end_str.size(), from + 1, pred)) {
-                        comment_start_i = end_i;
+                    if (Equals(LanguageDef->CommentEnd, line_span, ci + 1 - LanguageDef->CommentEnd.size())) {
                         comment_start_li = end_li;
+                        comment_start_ci = end_ci;
                     }
                 }
             }
 
-            if (i < line.size()) line[i].IsPreprocessor = within_preproc;
-            i += UTF8CharLength(ch);
-            if (i >= line.size()) {
-                i = 0;
+            if (ci < line.size()) line[ci].IsPreprocessor = in_preproc;
+            ci += UTF8CharLength(ch);
+            if (ci >= line.size()) {
                 li++;
+                ci = 0;
             }
         }
         ShouldCheckComments = false;

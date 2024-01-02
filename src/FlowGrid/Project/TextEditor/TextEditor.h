@@ -140,9 +140,9 @@ private:
         uint GetLastAddedCursorIndex() { return LastAddedCursorIndex >= Cursors.size() ? 0 : LastAddedCursorIndex; }
         Cursor &GetLastAddedCursor() { return Cursors[GetLastAddedCursorIndex()]; }
         Cursor &GetCursor(uint c) { return Cursors[c]; }
-        Cursor const &GetCursor(uint c) const { return Cursors[c]; }
+        const Cursor &GetCursor(uint c) const { return Cursors[c]; }
         Cursor &GetCursor() { return Cursors.back(); }
-        Cursor const &GetCursor() const { return Cursors.back(); }
+        const Cursor &GetCursor() const { return Cursors.back(); }
     };
 
     struct Glyph {
@@ -189,6 +189,8 @@ private:
     };
 
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
+
+    static bool Equals(const std::string &, const std::span<const Glyph> &, std::size_t span_offset = 0);
 
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coords &start, const Coords &end);
 

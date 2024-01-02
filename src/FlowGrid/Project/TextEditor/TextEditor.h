@@ -154,6 +154,9 @@ private:
 
         Glyph(char ch, PaletteIndex color_index)
             : Char(ch), ColorIndex(color_index), IsComment(false), IsMultiLineComment(false), IsPreprocessor(false) {}
+
+        bool operator==(char ch) const { return Char == ch; }
+        operator char() const { return Char; }
     };
 
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
@@ -190,8 +193,6 @@ private:
 
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
-    static bool Equals(const std::string &, const std::span<const Glyph> &, std::size_t span_offset = 0);
-
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coords &start, const Coords &end);
 
     void SetCursorPosition(const Coords &position, Cursor &cursor, bool clear_selection = true);
@@ -227,8 +228,6 @@ private:
     // Returns a cursor containing the start/end coords of the next occurrence of `text` after `from`, or `std::nullopt` if not found.
     std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &from, bool case_sensitive = true);
     std::optional<Cursor> FindMatchingBrackets(const Cursor &);
-    static uint FindFirstNonSpace(const LineT &);
-    static bool LineStartsWith(const LineT &, const std::string &comment);
     void ChangeCurrentLinesIndentation(bool increase);
     void MoveCurrentLines(bool up);
     void ToggleLineComment();

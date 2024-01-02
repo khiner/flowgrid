@@ -954,8 +954,8 @@ void TextEditor::AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyp
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
     if (LanguageDef == nullptr) return Palette[int(PaletteIndex::Default)];
-    if (glyph.IsComment) return Palette[int(PaletteIndex::Comment)];
     if (glyph.IsMultiLineComment) return Palette[int(PaletteIndex::MultiLineComment)];
+    if (glyph.IsComment) return Palette[int(PaletteIndex::Comment)];
 
     const auto color = Palette[int(glyph.ColorIndex)];
     if (glyph.IsPreprocessor) {
@@ -1492,76 +1492,53 @@ void TextEditor::ColorizeInternal() {
     if (LanguageDef == nullptr) return;
 
     if (ShouldCheckComments) {
-        bool in_string = false, in_preproc = false, in_single_line_comment = false, in_multi_line_comment = false;
-        bool first_char = true; // There are no non-whitespace characters before this char in this line.
-        bool concatenate = false; // '\' on the very end of the line
-        uint end_li = Lines.size(), end_ci = 0;
-        uint comment_start_li = end_li, comment_start_ci = end_ci;
-        for (uint li = 0, ci = 0; li < end_li || ci < end_ci;) {
-            auto &line = Lines[li];
-            if (ci == 0 && !concatenate) {
-                in_single_line_comment = false;
-                in_preproc = false;
-                first_char = true;
-            }
+        bool in_string = false, in_preproc = false, in_multi_line_comment = false;
+        bool line_continues = false; // For preprocessor.
 
-            concatenate = false;
-            if (line.empty()) {
-                li++;
-                ci = 0;
-                continue;
-            }
+        for (auto &line : Lines) {
+            if (line.empty()) line_continues = false;
 
-            const auto ch = line[ci].Char;
-            if (ch != LanguageDef->PreprocChar && !isspace(ch)) first_char = false;
-            if (ci == line.size() - 1 && line[line.size() - 1].Char == '\\') concatenate = true;
+            bool in_single_line_comment = false;
+            for (uint ci = 0; ci < line.size(); ++ci) {
+                auto &glyph = line[ci];
+                auto ch = glyph.Char;
+                if (ci == 0 && !line_continues) in_preproc = (ch == LanguageDef->PreprocChar);
 
-            in_multi_line_comment = comment_start_li < li || (comment_start_li == li && comment_start_ci <= ci);
-            if (in_string) {
-                line[ci].IsMultiLineComment = in_multi_line_comment;
-                if (ch == '\"') {
-                    if (ci + 1 < line.size() && line[ci + 1].Char == '\"') {
-                        ci += 1;
-                        if (ci < line.size()) line[ci].IsMultiLineComment = in_multi_line_comment;
-                    } else {
-                        in_string = false;
-                    }
-                } else if (ch == '\\') {
-                    ci += 1;
-                    if (ci < line.size()) line[ci].IsMultiLineComment = in_multi_line_comment;
+                if (in_preproc) {
+                    if (ci == line.size() - 1) line_continues = ch == '\\';
+                    glyph.IsPreprocessor = true;
+                    glyph.IsComment = glyph.IsMultiLineComment = false; // No comments in preprocessor.
+                    continue;
                 }
-            } else {
-                if (first_char && ch == LanguageDef->PreprocChar) in_preproc = true;
-                if (ch == '\"') {
+                std::span<const Glyph> line_span(line);
+                if (!in_string && !in_single_line_comment && !in_multi_line_comment && Equals(LanguageDef->CommentStart, line_span, ci)) {
+                    in_multi_line_comment = true;
+                    for (uint j = ci; j < ci + LanguageDef->CommentStart.size() && j < line.size(); ++j) {
+                        line[j].IsComment = line[j].IsMultiLineComment = true;
+                    }
+                    ci += LanguageDef->CommentStart.size() - 1;
+                    continue;
+                } else if (in_multi_line_comment && Equals(LanguageDef->CommentEnd, line_span, ci)) {
+                    for (uint j = ci; j < ci + LanguageDef->CommentEnd.size() && j < line.size(); ++j) {
+                        line[j].IsComment = line[j].IsMultiLineComment = true;
+                    }
+                    ci += LanguageDef->CommentEnd.size() - 1;
+                    in_multi_line_comment = false;
+                    continue;
+                } else if (!in_string && !in_multi_line_comment && Equals(LanguageDef->SingleLineComment, line_span, ci)) {
+                    in_single_line_comment = true;
+                } else if (!in_string && !in_multi_line_comment && !in_single_line_comment && ch == '\"') {
                     in_string = true;
-                    line[ci].IsMultiLineComment = in_multi_line_comment;
-                } else {
-                    std::span<const Glyph> line_span(line);
-                    if (!in_single_line_comment && Equals(LanguageDef->CommentStart, line_span, ci)) {
-                        comment_start_li = li;
-                        comment_start_ci = ci;
-                    } else if (!LanguageDef->SingleLineComment.empty() && Equals(LanguageDef->SingleLineComment, line_span, ci)) {
-                        in_single_line_comment = true;
-                    }
-
-                    in_multi_line_comment = comment_start_li < li || (comment_start_li == li && comment_start_ci <= ci);
-                    line[ci].IsMultiLineComment = in_multi_line_comment;
-                    line[ci].IsComment = in_single_line_comment;
-
-                    if (Equals(LanguageDef->CommentEnd, line_span, ci + 1 - LanguageDef->CommentEnd.size())) {
-                        comment_start_li = end_li;
-                        comment_start_ci = end_ci;
-                    }
+                } else if (in_string && ch == '\"') {
+                    in_string = false;
                 }
-            }
 
-            if (ci < line.size()) line[ci].IsPreprocessor = in_preproc;
-            ci += UTF8CharLength(ch);
-            if (ci >= line.size()) {
-                li++;
-                ci = 0;
+                glyph.IsPreprocessor = in_preproc;
+                glyph.IsComment = in_multi_line_comment || in_single_line_comment;
+                glyph.IsMultiLineComment = in_multi_line_comment;
             }
         }
+
         ShouldCheckComments = false;
     }
 

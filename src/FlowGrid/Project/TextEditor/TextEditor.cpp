@@ -558,40 +558,34 @@ static char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && c
 std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &text, const Coords &from, bool case_sensitive) {
     if (text.empty()) return {};
 
-    uint f_li, if_li;
-    if_li = f_li = from.L;
-
-    uint f_i, if_i;
-    if_i = f_i = GetCharIndex(from);
+    const uint li = from.L, ci = GetCharIndex(from);
+    uint find_li = li, find_ci = ci;
 
     do {
         /* Match */
-        uint line_offset = 0;
-        uint ci_inner = f_i, i = 0;
-        for (; i < text.size(); i++) {
-            if (ci_inner == Lines[f_li + line_offset].size()) {
-                if (text[i] != '\n' || f_li + line_offset + 1 >= Lines.size()) break;
+        uint li_inner = find_li, ci_inner = find_ci;
+        for (uint i = 0; i < text.size(); i++) {
+            if (ci_inner == Lines[li_inner].size()) {
+                if (text[i] != '\n' || li_inner + 1 >= Lines.size()) break;
 
+                li_inner++;
                 ci_inner = 0;
-                line_offset++;
             } else {
-                const char ch_a = ToLower(Lines[f_li + line_offset][ci_inner].Char, case_sensitive);
-                const char ch_b = ToLower(text[i], case_sensitive);
-                if (ch_a != ch_b) break;
+                if (ToLower(Lines[li_inner][ci_inner].Char, case_sensitive) != ToLower(text[i], case_sensitive)) break;
 
                 ci_inner++;
             }
+            if (i == text.size() - 1) return Cursor{LineCharCoords(find_li, find_ci), LineCharCoords(li_inner, ci_inner)};
         }
-        if (i == text.size()) return Cursor{LineCharCoords(f_li, f_i), LineCharCoords(f_li + line_offset, ci_inner)};
 
         /* Move forward */
-        if (f_i == Lines[f_li].size()) {
-            f_li = f_li == Lines.size() - 1 ? 0 : f_li + 1;
-            f_i = 0;
+        if (find_ci == Lines[find_li].size()) {
+            find_li = find_li == Lines.size() - 1 ? 0 : find_li + 1;
+            find_ci = 0;
         } else {
-            f_i++;
+            find_ci++;
         }
-    } while (f_i != if_i || f_li != if_li);
+    } while (find_ci != ci || find_li != li);
 
     return {};
 }
@@ -842,12 +836,9 @@ TextEditor::Coords TextEditor::FindWordEnd(const Coords &from) const {
     const char initial_char = line[ci].Char;
     uint li = from.L; // Not modified.
     while (Move(li, ci, false, true)) {
-        if (ci == line.size()) break;
-
-        const bool is_word_char = IsWordChar(line[ci].Char);
-        const bool is_space = isspace(line[ci].Char);
-        if ((initial_is_space && !is_space) ||
-            (initial_is_word_char && !is_word_char) ||
+        if (ci == line.size() ||
+            (initial_is_space && !isspace(line[ci].Char)) ||
+            (initial_is_word_char && !IsWordChar(line[ci].Char)) ||
             (!initial_is_word_char && !initial_is_space && initial_char != line[ci].Char))
             break;
     }
@@ -1264,9 +1255,11 @@ void TextEditor::Render(bool is_parent_focused) {
                             width = CharAdvance.x;
                         }
                     }
-                    const ImVec2 cstart{text_screen_pos_x + cx, line_start_screen_pos.y};
-                    const ImVec2 cend{text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y};
-                    dl->AddRectFilled(cstart, cend, Palette[int(PaletteIndex::Cursor)]);
+                    dl->AddRectFilled(
+                        {text_screen_pos_x + cx, line_start_screen_pos.y},
+                        {text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y},
+                        Palette[int(PaletteIndex::Cursor)]
+                    );
                 }
             }
         }
@@ -1449,8 +1442,6 @@ void TextEditor::ColorizeRange(uint from_li, uint to_li) {
             PaletteIndex token_color = PaletteIndex::Default;
             bool has_tokenize_results = LanguageDef->Tokenize != nullptr && LanguageDef->Tokenize(first, buffer_end, token_begin, token_end, token_color);
             if (!has_tokenize_results) {
-                // todo : remove
-                // printf("using regex for %.*s\n", first + 10 < last ? 10 : int(last - first), first);
                 for (const auto &p : RegexList) {
                     if (std::regex_search(first, buffer_end, results, p.first, std::regex_constants::match_continuous)) {
                         has_tokenize_results = true;
@@ -1470,18 +1461,14 @@ void TextEditor::ColorizeRange(uint from_li, uint to_li) {
                 const size_t token_length = token_end - token_begin;
                 if (token_color == PaletteIndex::Identifier) {
                     id.assign(token_begin, token_end);
-
-                    // todo : almost all language definitions use lower case to specify keywords, so shouldn't this use ::tolower ?
-                    if (!LanguageDef->IsCaseSensitive) {
-                        std::transform(id.begin(), id.end(), id.begin(), ::toupper);
-                    }
+                    if (!LanguageDef->IsCaseSensitive) std::ranges::transform(id, id.begin(), ::toupper);
                     if (!line[first - buffer_begin].IsPreprocessor) {
-                        if (LanguageDef->Keywords.count(id) != 0) token_color = PaletteIndex::Keyword;
-                        else if (LanguageDef->Identifiers.count(id) != 0) token_color = PaletteIndex::KnownIdentifier;
+                        if (LanguageDef->Keywords.contains(id)) token_color = PaletteIndex::Keyword;
+                        else if (LanguageDef->Identifiers.contains(id)) token_color = PaletteIndex::KnownIdentifier;
                     }
                 }
 
-                for (size_t j = 0; j < token_length; ++j) {
+                for (size_t j = 0; j < token_length; j++) {
                     line[(token_begin - buffer_begin) + j].ColorIndex = token_color;
                 }
                 first = token_end;
@@ -1502,9 +1489,7 @@ void TextEditor::ColorizeInternal() {
     if (LanguageDef == nullptr) return;
 
     if (ShouldCheckComments) {
-        bool within_string = false;
-        bool within_single_line_comment = false;
-        bool within_preproc = false;
+        bool within_string = false, within_single_line_comment = false, within_preproc = false;
         bool first_char = true; // there is no other non-whitespace characters in the line before
         bool concatenate = false; // '\' on the very end of the line
         uint li = 0, i = 0;

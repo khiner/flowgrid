@@ -245,7 +245,7 @@ private:
     Coords FindWordBoundary(const Coords &from, bool is_start = false) const;
     uint GetCharIndex(const Coords &) const;
     uint GetCharColumn(uint li, uint ci) const;
-    uint GetFirstVisibleCharIndex(uint line) const;
+    uint GetFirstVisibleCharIndex(uint li) const;
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;
 

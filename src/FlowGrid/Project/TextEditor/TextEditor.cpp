@@ -670,7 +670,7 @@ void TextEditor::ToggleLineComment() {
     std::unordered_set<uint> affected_lines;
     for (const auto &c : State.Cursors) {
         for (uint li = c.SelectionStart().L; li <= c.SelectionEnd().L; li++) {
-            if (c.SelectionEnd() != Coords{li, 0} && !Lines[li].empty()) affected_lines.insert(li);
+            if (!(c.HasSelection() && c.SelectionEnd() == Coords{li, 0}) && !Lines[li].empty()) affected_lines.insert(li);
         }
     }
 

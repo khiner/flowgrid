@@ -371,6 +371,13 @@ void TextEditor::MoveCharIndexAndColumn(uint line, uint &ci, uint &column) const
     column = ch == '\t' ? NextTabstop(column, TabSize) : column + 1;
 }
 
+uint TextEditor::NumStartingSpaceColumns(uint li) const {
+    const auto &line = Lines[li];
+    uint ci = 0, column = 0;
+    while (ci < line.size() && isblank(line[ci])) MoveCharIndexAndColumn(li, ci, column);
+    return column;
+}
+
 TextEditor::Coords TextEditor::MoveCoords(const Coords &coords, MoveDirection direction, bool is_word_mode, uint line_count) const {
     uint ci = GetCharIndex(coords), li = coords.L;
     switch (direction) {
@@ -437,75 +444,37 @@ void TextEditor::MoveEnd(bool select) {
     for (auto &c : State.Cursors) SetCursorPosition(LineMaxCoords(c.End.L), c, !select);
 }
 
-// todo can we simplify this by using `InsertTextAt...`?
 void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
     if (ch == '\t' && AnyCursorHasMultilineSelection()) return ChangeCurrentLinesIndentation(!is_shift);
 
     UndoRecord u{State};
     for (auto &c : reverse_view(State.Cursors)) DeleteSelection(c, u);
 
-    std::vector<Coords> coords;
-    coords.reserve(State.Cursors.size());
-    // Order is important here for typing '\n' in the same line at the same time.
+    // Order is important here for typing '\n' in the same line with multiple cursors.
     for (auto &c : reverse_view(State.Cursors)) {
         const auto coord = SanitizeCoords(c.End);
-        coords.push_back(coord);
-        UndoOperation added;
-        added.Type = UndoOperationType::Add;
-        added.Start = coord;
-
+        string insert_text;
         if (ch == '\n') {
-            InsertLine(coord.L + 1);
-            const auto &line = Lines[coord.L];
-            auto &new_line = Lines[coord.L + 1];
-
-            added.Text = char(ch);
+            insert_text = "\n";
             if (AutoIndent) {
-                for (uint i = 0; i < line.size() && isascii(line[i]) && isblank(line[i]); i++) {
-                    new_line.push_back(line[i]);
-                    added.Text += line[i];
-                }
+                // Match the indentation of the current or next line, whichever has more indentation.
+                const uint li = coord.L;
+                const uint indent_li = li < Lines.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
+                const auto &indent_line = Lines[indent_li];
+                for (uint i = 0; i < indent_line.size() && isblank(indent_line[i]); i++) insert_text += indent_line[i];
             }
-
-            const size_t whitespace_size = new_line.size();
-            const auto ci = GetCharIndex(coord);
-            AddGlyphs(coord.L + 1, new_line.size(), {line.cbegin() + ci, line.cend()});
-            RemoveGlyphs(coord.L, ci);
-            SetCursorPosition(LineCharCoords(coord.L + 1, whitespace_size), c);
         } else {
             char buf[5];
             ImTextCharToUtf8(buf, ch);
-
-            const auto &line = Lines[coord.L];
-            const auto ci = GetCharIndex(coord);
-            if (Overwrite && ci < line.size()) {
-                uint d = UTF8CharLength(line[ci]);
-
-                UndoOperation removed;
-                removed.Type = UndoOperationType::Delete;
-                removed.Start = c.End;
-                removed.End = LineCharCoords(coord.L, ci + d);
-                while (d-- > 0 && ci < line.size()) {
-                    removed.Text += line[ci];
-                    RemoveGlyphs(coord.L, ci, ci + 1);
-                }
-                u.Operations.push_back(removed);
-            }
-            std::vector<Glyph> glyphs;
-            for (auto p = buf; *p != '\0'; p++) glyphs.emplace_back(*p, PaletteIndex::Default);
-            AddGlyphs(coord.L, ci, glyphs);
-            added.Text = buf;
-
-            SetCursorPosition(LineCharCoords(coord.L, ci + glyphs.size()), c);
+            insert_text = buf;
         }
 
-        added.End = SanitizeCoords(c.End);
-        u.Operations.push_back(added);
+        InsertTextAtCursor(insert_text, c);
+        u.Operations.emplace_back(insert_text, coord, SanitizeCoords(c.End), UndoOperationType::Add);
     }
 
     AddUndo(u);
 
-    for (const auto &coord : coords) Colorize(coord.L, 3);
     EnsureCursorVisible();
 }
 
@@ -644,7 +613,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
             } else {
                 Coords start{li, 0}, end{li, TabSize};
                 int ci = int(GetCharIndex(end)) - 1;
-                while (ci > -1 && isspace(line[ci])) ci--;
+                while (ci > -1 && isblank(line[ci])) ci--;
                 const bool only_space_chars_found = ci == -1;
                 if (only_space_chars_found) {
                     u.Operations.emplace_back(GetText(start, end), start, end, UndoOperationType::Delete);
@@ -695,7 +664,7 @@ void TextEditor::ToggleLineComment() {
     if (LanguageDef == nullptr) return;
 
     static const auto FindFirstNonSpace = [](const LineT &line) {
-        return std::distance(line.begin(), std::ranges::find_if_not(line, isspace));
+        return std::distance(line.begin(), std::ranges::find_if_not(line, isblank));
     };
 
     std::unordered_set<uint> affected_lines;

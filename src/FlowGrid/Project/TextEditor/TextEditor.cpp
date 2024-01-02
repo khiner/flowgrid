@@ -388,7 +388,7 @@ TextEditor::Coords TextEditor::MoveCoords(const Coords &coords, MoveDirection di
             }
             Move(li, ci);
             if (is_word_mode) {
-                auto new_coords = FindWordEnd(coords);
+                auto new_coords = FindWordBoundary(coords, false);
                 new_coords.C = std::max(new_coords.C, GetCharColumn(li, ci));
                 return new_coords;
             }
@@ -398,7 +398,7 @@ TextEditor::Coords TextEditor::MoveCoords(const Coords &coords, MoveDirection di
                 if (li > 0) return LineMaxCoords(li - 1);
                 return coords;
             }
-            if (is_word_mode) return FindWordStart({li, coords.C - 1});
+            if (is_word_mode) return FindWordBoundary({li, coords.C - 1}, true);
             Move(li, ci, true);
             return LineCharCoords(li, ci);
         case MoveDirection::Up:
@@ -770,7 +770,7 @@ TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool 
     return SanitizeCoords(out);
 }
 
-TextEditor::Coords TextEditor::FindWordStart(const Coords &from) const {
+TextEditor::Coords TextEditor::FindWordBoundary(const Coords &from, bool is_start) const {
     if (from.L >= Lines.size()) return from;
 
     const auto &line = Lines[from.L];
@@ -781,34 +781,14 @@ TextEditor::Coords TextEditor::FindWordStart(const Coords &from) const {
     const bool initial_is_space = isspace(line[ci]);
     const char initial_char = line[ci];
     uint li = from.L; // Not modified.
-    while (Move(li, ci, true, true)) {
-        if ((initial_is_space && !isspace(line[ci])) ||
-            (initial_is_word_char && !IsWordChar(line[ci])) ||
-            (!initial_is_word_char && !initial_is_space && initial_char != line[ci])) {
-            Move(li, ci, false, true); // one step to the right
-            break;
-        }
-    }
-    return LineCharCoords(li, ci);
-}
-
-TextEditor::Coords TextEditor::FindWordEnd(const Coords &from) const {
-    if (from.L >= Lines.size()) return from;
-
-    const auto &line = Lines[from.L];
-    uint ci = GetCharIndex(from);
-    if (ci >= line.size()) return from;
-
-    const bool initial_is_word_char = IsWordChar(line[ci]);
-    const bool initial_is_space = isspace(line[ci]);
-    const char initial_char = line[ci];
-    uint li = from.L; // Not modified.
-    while (Move(li, ci, false, true)) {
+    while (Move(li, ci, is_start, true)) {
         if (ci == line.size() ||
             (initial_is_space && !isspace(line[ci])) ||
             (initial_is_word_char && !IsWordChar(line[ci])) ||
-            (!initial_is_word_char && !initial_is_space && initial_char != line[ci]))
+            (!initial_is_word_char && !initial_is_space && initial_char != line[ci])) {
+            if (is_start) Move(li, ci, false, true); // Move back one step to the right before returning line/char.
             break;
+        }
     }
     return LineCharCoords(li, ci);
 }
@@ -1100,7 +1080,7 @@ void TextEditor::HandleMouseInputs() {
                 else State.ResetCursors();
 
                 const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos());
-                SetSelection(FindWordStart(cursor_coords), FindWordEnd(cursor_coords), State.GetCursor());
+                SetSelection(FindWordBoundary(cursor_coords, true), FindWordBoundary(cursor_coords, false), State.GetCursor());
 
                 LastClickTime = float(ImGui::GetTime());
                 LastClickPos = io.MousePos;

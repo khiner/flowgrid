@@ -242,8 +242,7 @@ private:
     Coords LineCharCoords(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
     Coords SanitizeCoords(const Coords &) const;
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
-    Coords FindWordStart(const Coords &from) const;
-    Coords FindWordEnd(const Coords &from) const;
+    Coords FindWordBoundary(const Coords &from, bool is_start = false) const;
     uint GetCharIndex(const Coords &) const;
     uint GetCharColumn(uint li, uint ci) const;
     uint GetFirstVisibleCharIndex(uint line) const;

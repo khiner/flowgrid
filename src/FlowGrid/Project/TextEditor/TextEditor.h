@@ -174,6 +174,14 @@ private:
     struct LineCharIter {
         LineCharIter(const std::vector<LineT> &lines, LineChar lc = {0, 0})
             : Lines(lines), LC(std::move(lc)), Begin({0, 0}), End({uint(Lines.size() - 1), uint(Lines.back().size())}) {}
+        LineCharIter(const LineCharIter &) = default; // Needed since we have an assignment operator.
+
+        LineCharIter &operator=(const LineCharIter &o) {
+            LC = o.LC;
+            Begin = o.Begin;
+            End = o.End;
+            return *this;
+        }
 
         operator char() const { return Lines[LC.L][LC.C]; }
 
@@ -267,8 +275,8 @@ private:
     void SetSelection(Coords start, Coords end, Cursor &);
 
     void AddCursorForNextOccurrence(bool case_sensitive = true);
-    // Returns a cursor containing the start/end coords of the next occurrence of `text` after `from`, or `std::nullopt` if not found.
-    std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &from, bool case_sensitive = true);
+    // Returns a cursor containing the start/end coords of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
+    std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &start, bool case_sensitive = true);
     std::optional<Cursor> FindMatchingBrackets(const Cursor &);
     uint NumStartingSpaceColumns(uint li) const;
 

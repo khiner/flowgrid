@@ -515,37 +515,28 @@ void TextEditor::AddCursorForNextOccurrence(bool case_sensitive) {
 
 static char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && ch >= 'A' && ch <= 'Z') ? ch - 'A' + 'a' : ch; }
 
-std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &text, const Coords &from, bool case_sensitive) {
+std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &text, const Coords &start, bool case_sensitive) {
     if (text.empty()) return {};
 
-    const uint li = from.L, ci = GetCharIndex(from);
-    uint find_li = li, find_ci = ci;
-
+    const LineChar start_lc = ToLineChar(start);
+    LineCharIter find_lci{Lines, start_lc};
     do {
-        /* Match */
-        uint li_inner = find_li, ci_inner = find_ci;
+        LineCharIter match_lci = find_lci;
         for (uint i = 0; i < text.size(); i++) {
-            if (ci_inner == Lines[li_inner].size()) {
-                if (text[i] != '\n' || li_inner + 1 >= Lines.size()) break;
-
-                li_inner++;
-                ci_inner = 0;
-            } else {
-                if (ToLower(Lines[li_inner][ci_inner], case_sensitive) != ToLower(text[i], case_sensitive)) break;
-
-                ci_inner++;
+            const auto &match_lc = *match_lci;
+            if (match_lc.C == Lines[match_lc.L].size()) {
+                if (text[i] != '\n' || match_lc.L + 1 >= Lines.size()) break;
+            } else if (ToLower(match_lci, case_sensitive) != ToLower(text[i], case_sensitive)) {
+                break;
             }
-            if (i == text.size() - 1) return Cursor{ToCoords({find_li, find_ci}), ToCoords({li_inner, ci_inner})};
+
+            ++match_lci;
+            if (i == text.size() - 1) return Cursor{ToCoords(*find_lci), ToCoords(*match_lci)};
         }
 
-        /* Move forward */
-        if (find_ci == Lines[find_li].size()) {
-            find_li = find_li == Lines.size() - 1 ? 0 : find_li + 1;
-            find_ci = 0;
-        } else {
-            find_ci++;
-        }
-    } while (find_ci != ci || find_li != li);
+        ++find_lci;
+        if (find_lci == find_lci.end()) find_lci = find_lci.begin();
+    } while (*find_lci != start_lc);
 
     return {};
 }

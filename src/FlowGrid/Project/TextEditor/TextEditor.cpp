@@ -3,6 +3,7 @@
 #include "LanguageDefinition.h"
 
 #include <algorithm>
+#include <range/v3/range/conversion.hpp>
 #include <ranges>
 #include <set>
 #include <string>
@@ -1366,22 +1367,15 @@ void TextEditor::Colorize(uint from_li, uint line_count) {
 void TextEditor::ColorizeRange(uint from_li, uint to_li) {
     if (from_li >= to_li || LanguageDef == nullptr) return;
 
-    string buffer, id;
     std::cmatch results;
-    const uint end_li = std::clamp(to_li, 0u, uint(Lines.size()));
-    for (uint i = from_li; i < end_li; ++i) {
+    for (uint i = from_li; i < std::min(to_li, uint(Lines.size())); ++i) {
         auto &line = Lines[i];
         if (line.empty()) continue;
 
-        buffer.resize(line.size());
-        for (size_t j = 0; j < line.size(); ++j) {
-            auto &col = line[j];
-            buffer[j] = col;
-            col.ColorIndex = PaletteIndex::Default;
-        }
+        for (auto &glyph : line) glyph.ColorIndex = PaletteIndex::Default;
 
-        const char *buffer_begin = &buffer.front();
-        const char *buffer_end = buffer_begin + buffer.size();
+        const string buffer = line | ranges::to<string>;
+        const char *buffer_begin = &buffer.front(), *buffer_end = buffer_begin + buffer.size();
         for (auto first = buffer_begin; first != buffer_end;) {
             const char *token_begin = nullptr, *token_end = nullptr;
             PaletteIndex token_color = PaletteIndex::Default;
@@ -1405,8 +1399,8 @@ void TextEditor::ColorizeRange(uint from_li, uint to_li) {
             } else {
                 const size_t token_length = token_end - token_begin;
                 if (token_color == PaletteIndex::Identifier) {
-                    id.assign(token_begin, token_end);
-                    if (!LanguageDef->IsCaseSensitive) std::ranges::transform(id, id.begin(), ::toupper);
+                    string id(token_begin, token_end);
+                    if (!LanguageDef->IsCaseSensitive) std::transform(id.begin(), id.end(), id.begin(), toupper);
                     if (!line[first - buffer_begin].IsPreprocessor) {
                         if (LanguageDef->Keywords.contains(id)) token_color = PaletteIndex::Keyword;
                         else if (LanguageDef->Identifiers.contains(id)) token_color = PaletteIndex::KnownIdentifier;

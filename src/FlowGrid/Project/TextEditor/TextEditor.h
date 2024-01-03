@@ -58,6 +58,10 @@ struct TextEditor {
         Coords operator+(const Coords &o) const { return {L + o.L, C + o.C}; }
     };
 
+    struct LineChar {
+        uint L{0}, C{0};
+    };
+
     uint GetLineCount() const { return Lines.size(); }
     Coords GetCursorPosition() const { return SanitizeCoords(State.GetCursor().End); }
 
@@ -122,7 +126,8 @@ private:
         // For ordered coordinates, use `SelectionStart()` and `SelectionEnd()`.
         Coords Start{}, End{};
 
-        bool operator==(const Cursor &o) const { return Start == o.Start && End == o.End; }
+        bool operator==(const Cursor &) const = default;
+        bool operator!=(const Cursor &) const = default;
 
         Coords SelectionStart() const { return Start < End ? Start : End; }
         Coords SelectionEnd() const { return Start > End ? Start : End; }
@@ -207,9 +212,11 @@ private:
         Up = 2,
         Down = 3
     };
-    bool Move(uint &li, uint &ci, bool left = false, bool lock_line = false) const;
-    void MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const;
+
     Coords MoveCoords(const Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
+
+    bool Move(LineChar &, bool left = false, bool lock_line = false) const;
+    void MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const;
     void MoveUp(uint amount = 1, bool select = false);
     void MoveDown(uint amount = 1, bool select = false);
     void MoveLeft(bool select = false, bool is_word_mode = false);
@@ -239,12 +246,12 @@ private:
     void EnsureCursorVisible(bool start_too = false);
 
     Coords LineMaxCoords(uint li) const { return {li, GetLineMaxColumn(li)}; }
-    Coords LineCharCoords(uint li, uint ci) const { return {li, GetCharColumn(li, ci)}; }
+    Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(lc)}; }
     Coords SanitizeCoords(const Coords &) const;
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     Coords FindWordBoundary(const Coords &from, bool is_start = false) const;
     uint GetCharIndex(const Coords &) const;
-    uint GetCharColumn(uint li, uint ci) const;
+    uint GetCharColumn(LineChar) const;
     uint GetFirstVisibleCharIndex(uint li) const;
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;
@@ -253,11 +260,11 @@ private:
     void DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
-    void AddOrRemoveGlyphs(uint li, uint ci, std::span<const Glyph>, bool is_add);
-    void AddGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, true); }
-    void RemoveGlyphs(uint li, uint ci, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(li, ci, glyphs, false); }
-    void RemoveGlyphs(uint li, uint ci, uint end_ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cbegin() + end_ci}); }
-    void RemoveGlyphs(uint li, uint ci) { RemoveGlyphs(li, ci, {Lines[li].cbegin() + ci, Lines[li].cend()}); }
+    void AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph>, bool is_add);
+    void AddGlyphs(LineChar lc, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, true); }
+    void RemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, false); }
+    void RemoveGlyphs(LineChar lc, uint end_ci) { RemoveGlyphs(lc, {Lines[lc.L].cbegin() + lc.C, Lines[lc.L].cbegin() + end_ci}); }
+    void RemoveGlyphs(LineChar lc) { RemoveGlyphs(lc, {Lines[lc.L].cbegin() + lc.C, Lines[lc.L].cend()}); }
     ImU32 GetGlyphColor(const Glyph &) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
@@ -298,8 +305,8 @@ private:
     float LastClickTime{-1}; // In ImGui time.
     ImVec2 LastClickPos{-1, -1};
     float CurrentSpaceWidth{20}, CurrentSpaceHeight{20.0f};
-    uint FirstVisibleLineI{0}, LastVisibleLineI{0}, VisibleLineCount{0};
-    uint FirstVisibleColumn{0}, LastVisibleColumn{0}, VisibleColumnCount{0};
+    Coords FirstVisibleCoords{0, 0}, LastVisibleCoords{0, 0};
+    uint VisibleLineCount{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};
     float ScrollX{0}, ScrollY{0};
     bool Panning{false};

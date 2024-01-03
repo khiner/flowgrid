@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cassert>
+#include <iterator>
 #include <memory>
 #include <regex>
 #include <span>
@@ -51,8 +52,8 @@ struct TextEditor {
             if (auto cmp = L <=> o.L; cmp != 0) return cmp;
             return C <=> o.C;
         }
-        bool operator==(const Coords &o) const = default;
-        bool operator!=(const Coords &o) const = default;
+        bool operator==(const Coords &) const = default;
+        bool operator!=(const Coords &) const = default;
 
         Coords operator-(const Coords &o) const { return {L - o.L, C - o.C}; }
         Coords operator+(const Coords &o) const { return {L + o.L, C + o.C}; }
@@ -60,6 +61,9 @@ struct TextEditor {
 
     struct LineChar {
         uint L{0}, C{0};
+
+        bool operator==(const LineChar &) const = default;
+        bool operator!=(const LineChar &) const = default;
     };
 
     uint GetLineCount() const { return Lines.size(); }
@@ -167,6 +171,38 @@ private:
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
     using LineT = std::vector<Glyph>;
 
+    struct LineCharIter {
+        LineCharIter(const std::vector<LineT> &lines, LineChar lc = {0, 0})
+            : Lines(lines), LC(std::move(lc)), Begin({0, 0}), End({uint(Lines.size() - 1), uint(Lines.back().size())}) {}
+
+        operator char() const { return Lines[LC.L][LC.C]; }
+
+        LineChar operator*() const { return LC; }
+
+        LineCharIter &operator++() {
+            MoveRight();
+            return *this;
+        }
+        LineCharIter &operator--() {
+            MoveLeft();
+            return *this;
+        }
+
+        bool operator==(const LineCharIter &o) const { return LC == o.LC; }
+        bool operator!=(const LineCharIter &o) const { return LC != o.LC; }
+
+        LineCharIter begin() const { return {Lines, Begin}; }
+        LineCharIter end() const { return {Lines, End}; }
+
+    private:
+        const std::vector<LineT> &Lines;
+        LineChar LC;
+        LineChar Begin, End;
+
+        void MoveRight();
+        void MoveLeft();
+    };
+
     enum class UndoOperationType {
         Add,
         Delete,
@@ -215,7 +251,6 @@ private:
 
     Coords MoveCoords(const Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
 
-    bool Move(LineChar &, bool left = false, bool lock_line = false) const;
     void MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const;
     void MoveUp(uint amount = 1, bool select = false);
     void MoveDown(uint amount = 1, bool select = false);
@@ -247,6 +282,7 @@ private:
 
     Coords LineMaxCoords(uint li) const { return {li, GetLineMaxColumn(li)}; }
     Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(lc)}; }
+    LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(coords)}; }
     Coords SanitizeCoords(const Coords &) const;
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     Coords FindWordBoundary(const Coords &from, bool is_start = false) const;

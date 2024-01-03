@@ -10,7 +10,7 @@
 
 #include "imgui_internal.h"
 
-using std::string, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of;
+using std::string, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
 TextEditor::TextEditor() {
     SetPalette(DefaultPaletteId);
@@ -23,7 +23,7 @@ static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
     if (c2.size() + c2_offset < c1.size()) return false;
 
     const auto begin = c2.cbegin() + c2_offset;
-    return std::ranges::equal(c1, std::ranges::subrange(begin, begin + c1.size()), [](const auto &a, const auto &b) { return a == b; });
+    return std::ranges::equal(c1, subrange(begin, begin + c1.size()), [](const auto &a, const auto &b) { return a == b; });
 }
 
 const TextEditor::PaletteT *TextEditor::GetPalette(PaletteIdT palette_id) {
@@ -336,33 +336,25 @@ void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
     Colorize(start.L, insertion_end.L - start.L + std::ranges::count(text, '\n') + 2);
 }
 
-// Assumes given char index is not in the middle of a UTF8 sequence.
-// Char index can be equal to line length.
-bool TextEditor::Move(LineChar &lc, bool left, bool lock_line) const {
-    auto &[li, ci] = lc;
-    if (li >= Lines.size()) return false;
+void TextEditor::LineCharIter::MoveRight() {
+    if (LC == End) return;
 
-    if (left) {
-        if (ci == 0) {
-            if (lock_line || li == 0) return false;
-
-            li--;
-            ci = Lines[li].size();
-        } else {
-            ci--;
-            while (ci > 0 && IsUTFSequence(Lines[li][ci])) ci--;
-        }
-    } else { // right
-        if (ci == Lines[li].size()) {
-            if (lock_line || li == Lines.size() - 1) return false;
-
-            li++;
-            ci = 0;
-        } else {
-            ci = std::min(ci + UTF8CharLength(Lines[li][ci]), uint(Lines[li].size()));
-        }
+    if (LC.C == Lines[LC.L].size()) {
+        LC.L++;
+        LC.C = 0;
+    } else {
+        LC.C = std::min(LC.C + UTF8CharLength(Lines[LC.L][LC.C]), uint(Lines[LC.L].size()));
     }
-    return true;
+}
+void TextEditor::LineCharIter::MoveLeft() {
+    if (LC == Begin) return;
+
+    if (LC.C == 0) {
+        LC.L--;
+        LC.C = Lines[LC.L].size() - 1;
+    } else {
+        do { LC.C--; } while (LC.C > 0 && IsUTFSequence(Lines[LC.L][LC.C]));
+    }
 }
 
 static uint NextTabstop(uint column, uint tab_size) { return ((column / tab_size) + 1) * tab_size; }
@@ -375,38 +367,28 @@ void TextEditor::MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const {
 
 uint TextEditor::NumStartingSpaceColumns(uint li) const {
     const auto &line = Lines[li];
-    uint ci = 0, column = 0;
-    while (ci < line.size() && isblank(line[ci])) MoveCharIndexAndColumn(li, ci, column);
+    uint column = 0;
+    for (uint ci = 0; ci < line.size() && isblank(line[ci]);) MoveCharIndexAndColumn(li, ci, column);
     return column;
 }
 
 TextEditor::Coords TextEditor::MoveCoords(const Coords &coords, MoveDirection direction, bool is_word_mode, uint line_count) const {
-    LineChar lc = {coords.L, GetCharIndex(coords)};
+    LineCharIter lci{Lines, ToLineChar(coords)};
     switch (direction) {
         case MoveDirection::Right:
-            if (lc.C >= Lines[lc.L].size()) {
-                if (lc.L < Lines.size() - 1) return {std::clamp(lc.L + 1, 0u, uint(Lines.size() - 1)), 0};
-                return coords;
-            }
-            Move(lc);
-            if (is_word_mode) {
-                auto new_coords = FindWordBoundary(coords, false);
-                new_coords.C = std::max(new_coords.C, GetCharColumn(lc));
-                return new_coords;
-            }
-            return ToCoords(lc);
+            if (lci == lci.end()) return coords;
+            ++lci;
+            if (is_word_mode) return FindWordBoundary(ToCoords(*lci), false);
+            return ToCoords(*lci);
         case MoveDirection::Left:
-            if (lc.C == 0) {
-                if (lc.L > 0) return LineMaxCoords(lc.L - 1);
-                return coords;
-            }
-            if (is_word_mode) return FindWordBoundary({lc.L, coords.C - 1}, true);
-            Move(lc, true);
-            return ToCoords(lc);
+            if (lci == lci.begin()) return coords;
+            --lci;
+            if (is_word_mode) return FindWordBoundary(ToCoords(*lci), true);
+            return ToCoords(*lci);
         case MoveDirection::Up:
-            return {uint(std::max(0, int(lc.L) - int(line_count))), coords.C};
+            return {uint(std::max(0, int(coords.L) - int(line_count))), coords.C};
         case MoveDirection::Down:
-            return {std::min(lc.L + line_count, uint(Lines.size() - 1)), coords.C};
+            return {std::min(coords.L + line_count, uint(Lines.size() - 1)), coords.C};
     }
 }
 
@@ -586,13 +568,12 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
     if (!is_close_char && !is_open_char) return {};
 
     const char other_ch = is_close_char ? CloseToOpenChar.at(ch) : OpenToCloseChar.at(ch);
-    LineChar lc_inner{li, ci};
-    uint counter = 1;
-    const bool move_left = is_close_char;
-    while (Move(lc_inner, move_left)) {
-        const char ch_inner = Lines[lc_inner.L][lc_inner.C];
-        if (ch_inner == ch) counter++;
-        else if (ch_inner == other_ch && --counter == 0) return Cursor{{li, ci}, ToCoords(lc_inner)};
+    const LineChar cursor_lc{li, ci};
+    uint match_count = 0;
+    for (LineCharIter lci{Lines, cursor_lc}; lci != (is_close_char ? lci.begin() : lci.end()); is_close_char ? --lci : ++lci) {
+        const char ch_inner = lci;
+        if (ch_inner == ch) match_count++;
+        else if (ch_inner == other_ch && (match_count == 0 || --match_count == 0)) return Cursor{ToCoords(cursor_lc), ToCoords(*lci)};
     }
 
     return {};
@@ -765,8 +746,7 @@ TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool 
     };
     const uint ci = GetCharIndex(out);
     if (out.L < Lines.size() && ci < Lines[out.L].size() && Lines[out.L][ci] == '\t') {
-        const uint column_to_left = GetCharColumn({out.L, ci}), column_to_right = GetCharColumn({out.L, GetCharIndex(out)});
-        out.C = out.C - column_to_left < column_to_right - out.C ? column_to_left : column_to_right;
+        out.C -= GetCharColumn({out.L, ci});
     } else {
         out.C = std::max(0u, uint(floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)));
     }
@@ -777,63 +757,58 @@ TextEditor::Coords TextEditor::FindWordBoundary(const Coords &from, bool is_star
     if (from.L >= Lines.size()) return from;
 
     const auto &line = Lines[from.L];
-    LineChar lc{from.L, GetCharIndex(from)};
-    if (lc.C >= line.size()) return from;
+    uint ci = GetCharIndex(from);
+    if (ci >= line.size()) return from;
 
-    const bool initial_is_word_char = IsWordChar(line[lc.C]);
-    const bool initial_is_space = isspace(line[lc.C]);
-    const char initial_char = line[lc.C];
-    while (Move(lc, is_start, true)) {
-        const uint ci = lc.C;
+    const bool init_is_word_char = IsWordChar(line[ci]), init_is_space = isspace(line[ci]);
+    const char init_char = line[ci];
+    for (; is_start ? ci > 0 : ci < line.size(); is_start ? --ci : ++ci) {
         if (ci == line.size() ||
-            (initial_is_space && !isspace(line[ci])) ||
-            (initial_is_word_char && !IsWordChar(line[ci])) ||
-            (!initial_is_word_char && !initial_is_space && initial_char != line[ci])) {
-            if (is_start) Move(lc, false, true); // Move back one step to the right before returning line/char.
+            (init_is_space && !isspace(line[ci])) ||
+            (init_is_word_char && !IsWordChar(line[ci])) ||
+            (!init_is_word_char && !init_is_space && init_char != line[ci])) {
+            if (is_start) ++ci; // Undo one left step before returning line/char.
             break;
         }
     }
-    return ToCoords(lc);
+    return ToCoords({from.L, ci});
 }
 
 uint TextEditor::GetCharIndex(const Coords &coords) const {
     const uint li = std::min(coords.L, uint(Lines.size() - 1));
-    uint i = 0;
-    for (uint column = 0; i < Lines[li].size() && column < coords.C;) MoveCharIndexAndColumn(li, i, column);
-    return i;
+    uint ci = 0;
+    for (uint column = 0; ci < Lines[li].size() && column < coords.C;) MoveCharIndexAndColumn(li, ci, column);
+    return ci;
 }
 
 uint TextEditor::GetCharColumn(LineChar lc) const {
     if (lc.L >= Lines.size()) return 0;
 
     uint column = 0;
-    for (uint i = 0; i < lc.C && i < Lines[lc.L].size();) MoveCharIndexAndColumn(lc.L, i, column);
+    for (uint ci = 0; ci < lc.C && ci < Lines[lc.L].size();) MoveCharIndexAndColumn(lc.L, ci, column);
     return column;
 }
 
 uint TextEditor::GetFirstVisibleCharIndex(uint li) const {
     if (li >= Lines.size()) return 0;
 
-    uint i = 0, column = 0;
-    while (column < FirstVisibleCoords.C && i < Lines[li].size()) MoveCharIndexAndColumn(li, i, column);
-    return column > FirstVisibleCoords.C && i > 0 ? i - 1 : i;
+    uint ci = 0, column = 0;
+    while (column < FirstVisibleCoords.C && ci < Lines[li].size()) MoveCharIndexAndColumn(li, ci, column);
+    return column > FirstVisibleCoords.C && ci > 0 ? ci - 1 : ci;
 }
 
 uint TextEditor::GetLineMaxColumn(uint li) const {
     if (li >= Lines.size()) return 0;
 
     uint column = 0;
-    for (uint i = 0; i < Lines[li].size();) MoveCharIndexAndColumn(li, i, column);
+    for (uint ci = 0; ci < Lines[li].size();) MoveCharIndexAndColumn(li, ci, column);
     return column;
 }
 uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
     if (li >= Lines.size()) return 0;
 
     uint column = 0;
-    for (uint i = 0; i < Lines[li].size();) {
-        MoveCharIndexAndColumn(li, i, column);
-        if (column > limit) return limit;
-    }
+    for (uint ci = 0; ci < Lines[li].size() && column < limit;) MoveCharIndexAndColumn(li, ci, column);
     return column;
 }
 
@@ -1407,9 +1382,8 @@ void TextEditor::ColorizeRange(uint from_li, uint to_li) {
                     }
                 }
 
-                for (size_t j = 0; j < token_length; j++) {
-                    line[(token_begin - buffer_begin) + j].ColorIndex = token_color;
-                }
+                auto token_begin_it = line.begin() + (token_begin - buffer_begin);
+                for (auto &glyph : subrange(token_begin_it, token_begin_it + token_length)) glyph.ColorIndex = token_color;
                 first = token_end;
             }
         }

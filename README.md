@@ -7,17 +7,18 @@ My goal with FlowGrid is to create a framework for making artful/(self-)educatio
 
 _Still in its early stages. Expect things to be broken!_
 
-## Application architecture
+## Application state architecture
 
 FlowGrid uses a unidirectional data-flow architecture (like Redux).
-Each user action is encapsulated as a simple struct with all the information needed to carry out its effect on the project state.
+Each user action is encapsulated in a plain struct containing all necessary information needed to update the project state.
 Actions are grouped together into `std::variant` types composed in a nested domain hierarchy, with a variant type called `Action::Any` at the root.
 All issued actions are queued into a single concurrent queue, and each applied action overwrites the project store.
-Actions are grouped into "gestures", and each gesture holds a logical snapshot of the full project state after applying its actions.
+Actions are grouped based on relative queue time and type, and are merged into "gestures" at commit time, with each gesture representing a single coherent, undoable action group.
+Every committed gesture is stored in a "history record" containing the gesture and a _logical snapshot_ of the full project state resulting from its application.
 If you're unfamiliar with persistent data structures, this is much less memory intensive than it sounds!
 Each snapshot only needs to track a relatively small amount of data representing its change to the underlying store, a concept referred to as "structural sharing".
 
-This architectural pattern is largely inspired by [Lager](https://github.com/arximboldi/lager) but with fewer bells and whistles and none of its dependencies other than [immer](https://github.com/arximboldi/immer/).
+This architecture is largely inspired by [Lager](https://github.com/arximboldi/lager) but with fewer bells and whistles and none of its dependencies other than [immer](https://github.com/arximboldi/immer/).
 
 ## Application docs
 

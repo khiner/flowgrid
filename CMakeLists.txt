@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(FlowGrid LANGUAGES C CXX)
 
-set(MinFaustTarget "MinimalFaustLlvm") # A minimal Faust LLVM compilation example executable, in `build/` with this name.
-
 # Uncomment for AddressSanitizer.
 # Manually set `export ASAN_OPTIONS=halt_on_error=0` to not stop after first sanitize issue.
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -stdlib=libc++ -fexperimental-library -fsanitize=address")
@@ -76,11 +74,6 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE ${FREETYPE_LIBRARIES} ${Vulkan_LIBRARIES} SDL3::SDL3 nlohmann_json::nlohmann_json faustlib PkgConfig::FFTW3F)
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
-
-add_executable(${MinFaustTarget} src/minimal_faust_llvm.cpp)
-target_link_libraries(${MinFaustTarget} PRIVATE faustlib)
-set_target_properties(${MinFaustTarget} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-target_compile_options(${MinFaustTarget} PRIVATE -Wall -Wextra)
 
 add_definitions(-DIMGUI_DEFINE_MATH_OPERATORS) # ImVec2 & ImVec4 math operators
 add_definitions(-DIMGUI_ENABLE_FREETYPE)

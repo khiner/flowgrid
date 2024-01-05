@@ -2,8 +2,8 @@
 
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Action/ActionableProducer.h"
+#include "Core/Primitive/Primitive.h"
 #include "Core/ProducerComponentArgs.h"
-#include "Primitive.h"
 #include "Project/FileDialog/FileDialogData.h"
 #include "TextBufferAction.h"
 

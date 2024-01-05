@@ -4,13 +4,13 @@
 
 #include "Core/Container/ContainerAction.h"
 #include "Core/Primitive/PrimitiveAction.h"
-#include "Core/Primitive/TextBufferAction.h"
 #include "Core/Store/StoreAction.h"
 #include "Core/WindowsAction.h"
 #include "Project/Audio/AudioAction.h"
 #include "Project/FileDialog/FileDialogAction.h"
 #include "Project/ProjectAction.h"
 #include "Project/Style/StyleAction.h"
+#include "Project/TextBuffer/TextBufferAction.h"
 
 namespace Action {
 // `Any` holds all action types.

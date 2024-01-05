@@ -89,7 +89,12 @@ void FaustGraphs::Apply(const ActionType &action) const {
         action,
         // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
         [this](const Action::Faust::Graph::ShowSaveSvgDialog &) {
-            FileDialog.Set({Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(), ".*", ".", "faust_graph", true, 1});
+            FileDialog.Set({
+                .owner_path = Path,
+                .title = Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(),
+                .default_file_name = "faust_graph",
+                .save_mode = true,
+            });
         },
         [this](const Action::Faust::Graph::SaveSvgFile &a) {
             if (const auto *graph = FindGraph(a.dsp_id)) graph->SaveBoxSvg(a.dir_path);
@@ -339,17 +344,22 @@ void FaustGraphs::Render() const {
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
-        if (FileDialog.Title == Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel() && FileDialog.SaveMode) {
-            Q(Action::Faust::Graph::SaveSvgFile{Id, selected_path});
+        if (FileDialog.OwnerPath == Path && FileDialog.SaveMode) {
+            Q(Action::Faust::Graph::SaveSvgFile{LastSelectedDspId, selected_path});
         }
         PrevSelectedPath = selected_path;
     }
 
-    if (Size() == 1) return (*this)[0]->Draw();
+    if (Size() == 1) {
+        const auto *graph = (*this)[0];
+        LastSelectedDspId = graph->DspId;
+        return graph->Draw();
+    }
 
     if (BeginTabBar("")) {
         for (const auto *graph : *this) {
             if (BeginTabItem(std::format("{}", ID(graph->DspId)).c_str())) {
+                LastSelectedDspId = graph->DspId;
                 graph->Draw();
                 EndTabItem();
             }

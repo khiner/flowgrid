@@ -28,6 +28,7 @@ bool FileDialog::CanApply(const ActionType &action) const {
 }
 
 void FileDialog::Set(const FileDialogData &data) const {
+    OwnerPath = data.owner_path;
     SelectedFilePath = "";
     Visible = true;
     Title = data.title;
@@ -148,29 +149,29 @@ void FileDialog::Demo::Render() const {
 
     Text("Singleton access:");
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
-        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
+        OpenDialog({Path, ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with collections of filters")) {
-        OpenDialog({ChooseFileOpen, "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md", ".", "", false, 1, flags});
+        OpenDialog({Path, ChooseFileOpen, "All files{.*},Source files (*.cpp *.h *.hpp){.cpp,.h,.hpp},Image files (*.png *.gif *.jpg *.jpeg){.png,.gif,.jpg,.jpeg},.md", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open all file types with \".*\" filter")) {
-        OpenDialog({ChooseFileOpen, ".*", ".", FilePathName, false, 1, flags});
+        OpenDialog({Path, ChooseFileOpen, ".*", ".", FilePathName, false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open File Dialog with filter of type regex (Custom.+[.]h)")) {
-        OpenDialog({ChooseFileOpen, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags});
+        OpenDialog({Path, ChooseFileOpen, "Regex Custom*.h{(Custom.+[.]h)}", ".", "", false, 1, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with selection of 5 items")) {
-        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags});
+        OpenDialog({Path, ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 5, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with infinite selection")) {
-        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags});
+        OpenDialog({Path, ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 0, flags});
     }
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog with most recent file path name")) {
-        OpenDialog({ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", FilePathName, false, 1, flags});
+        OpenDialog({Path, ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", FilePathName, false, 1, flags});
     }
 
     if (Button(ICON_IGFD_SAVE " Save file dialog with confirm-overwrite dialog if file exists")) {
-        OpenDialog({ChooseFileSave, "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}", ".", FilePathName, true, 1, flags | ImGuiFileDialogFlags_ConfirmOverwrite});
+        OpenDialog({Path, ChooseFileSave, "C/C++ file (*.c *.cpp){.c,.cpp}, Header file (*.h){.h}", ".", FilePathName, true, 1, flags | ImGuiFileDialogFlags_ConfirmOverwrite});
     }
 
     // Keeping this around to remind myself that custom panes & UserDatas are a thing.

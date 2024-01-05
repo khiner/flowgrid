@@ -4,4 +4,4 @@
 
 #include "nlohmann/json.hpp"
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(FileDialogData, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(FileDialogData, owner_path, title, filters, file_path, default_file_name, save_mode, max_num_selections, flags);

@@ -66,9 +66,7 @@ void TextBuffer::Render() const {
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
-        const string &extension = selected_path.extension();
-        // todo using `filters` here is not great
-        if (extension == FileConf.OpenConfig.filters || extension == FileConf.SaveConfig.filters) {
+        if (FileDialog.OwnerPath == FileConf.OpenConfig.owner_path || FileDialog.OwnerPath == FileConf.SaveConfig.owner_path) {
             if (FileDialog.SaveMode) Q(Action::TextBuffer::Save{Path, selected_path});
             else Q(Action::TextBuffer::Open{Path, selected_path});
         }

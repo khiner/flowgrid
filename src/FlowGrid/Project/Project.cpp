@@ -275,8 +275,14 @@ void Project::Apply(const ActionType &action) const {
         [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
 
         [this](const Store::ActionType &a) { RootStore.Apply(a); },
-        [this](const Action::Project::ShowOpenDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", ""}); },
-        [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({"Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+        [this](const Action::Project::ShowOpenDialog &) {
+            FileDialog.Set({
+                .owner_path = Path,
+                .title = "Choose file",
+                .filters = AllProjectExtensionsDelimited,
+            });
+        },
+        [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Path, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
         [this](const Audio::ActionType &a) { Audio.Apply(a); },
         [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
         [this](const Windows::ActionType &a) { Windows.Apply(a); },
@@ -373,8 +379,7 @@ void Project::Render() const {
     static string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
-        const string &extension = selected_path.extension();
-        if (std::ranges::find(AllProjectExtensions, extension) != AllProjectExtensions.end()) {
+        if (FileDialog.OwnerPath == Path || FileDialog.OwnerPath == Path) {
             if (FileDialog.SaveMode) Q(Action::Project::Save{selected_path});
             else Q(Action::Project::Open{selected_path});
         }

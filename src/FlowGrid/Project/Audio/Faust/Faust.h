@@ -11,7 +11,7 @@
 #include "Core/ActionProducerComponent.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Container/Vector.h"
-#include "Core/Primitive/TextBuffer.h"
+#include "Project/TextBuffer/TextBuffer.h"
 
 struct FileDialog;
 
@@ -79,6 +79,8 @@ struct FaustGraphs
     const FaustGraphSettings &Settings;
 
 private:
+    mutable ID LastSelectedDspId{0};
+
     void Render() const override;
 };
 
@@ -120,8 +122,18 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
 
     const TextBuffer::FileConfig FileConfig{
         [this](std::string file_path) { OpenFile(file_path); },
-        {"Choose file", FaustDspFileExtension, ".", ""},
-        {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1},
+        {
+            .owner_path = Path,
+            .title = "Open Faust DSP file",
+            .filters = FaustDspFileExtension,
+        },
+        {
+            .owner_path = Path,
+            .title = "Save Faust DSP file",
+            .filters = FaustDspFileExtension,
+            .default_file_name = "my_dsp",
+            .save_mode = true,
+        },
     };
 
     FaustDSPContainer &Container;

@@ -5,7 +5,14 @@
 DefineActionType(
     TextBuffer,
     DefineComponentAction(Set, "", std::string value;);
-    ComponentActionJson(Set, value);
+    DefineUnsavedComponentAction(ShowOpenDialog, Merge, "~Open");
+    DefineUnsavedComponentAction(ShowSaveDialog, Merge, "~Save as...");
+    DefineComponentAction(Open, "", fs::path file_path;);
+    DefineUnsavedComponentAction(Save, NoMerge, "", fs::path file_path;);
 
-    using Any = ActionVariant<Set>;
+    ComponentActionJson(Set, value);
+    ComponentActionJson(Open, file_path);
+    ComponentActionJson(Save, file_path);
+
+    using Any = ActionVariant<Set, ShowOpenDialog, ShowSaveDialog, Save, Open>;
 );

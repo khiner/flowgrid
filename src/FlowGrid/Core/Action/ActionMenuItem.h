@@ -2,6 +2,7 @@
 
 #include "ActionableProducer.h"
 #include "Core/MenuItemDrawable.h"
+#include "Helper/Variant.h"
 
 #include "imgui.h"
 

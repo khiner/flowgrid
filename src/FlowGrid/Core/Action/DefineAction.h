@@ -59,6 +59,13 @@ template<class...> constexpr bool always_false_v = false;
         fs::path GetComponentPath() const { return path; } __VA_ARGS__ \
     )
 
+#define DefineUnsavedComponentAction(ActionType, merge_type, meta_str, ...) \
+    DefineActionInternal(                                                   \
+        ActionType, 0, merge_type, meta_str,                                \
+        fs::path path;                                                      \
+        fs::path GetComponentPath() const { return path; } __VA_ARGS__      \
+    )
+
 #define DefineUnmergableComponentAction(ActionType, ...)               \
     DefineActionInternal(                                              \
         ActionType, 1, NoMerge, "",                                    \

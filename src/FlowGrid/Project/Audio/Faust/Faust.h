@@ -8,7 +8,6 @@
 #include "FaustParamsStyle.h"
 #include "Project/Audio/Graph/AudioGraphAction.h"
 
-#include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionProducerComponent.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Container/Vector.h"
@@ -105,22 +104,33 @@ struct FaustDSPContainer {
     virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
 };
 
-using FaustDspProducedActionType = Action::Append<Action::Faust::DSP::Any, typename Action::AudioGraph::CreateFaustNode>;
+using FaustDspProducedActionType = Action::Append<Action::Combine<Action::Faust::DSP::Any, Action::TextBuffer::Any>, typename Action::AudioGraph::CreateFaustNode>;
 
 // `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
 struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component::ChangeListener {
-    FaustDSP(ArgsT &&, FaustDSPContainer &, const Menu &file_menu);
+    FaustDSP(ArgsT &&, FaustDSPContainer &, const FileDialog &);
     ~FaustDSP();
 
     void OnComponentChanged() override;
 
-    const Menu &FileMenu;
-    Prop_(TextBuffer, Code, "Faust code", FileMenu, R"#(import("stdfaust.lib");
+    void OpenFile(const fs::path &);
+
+    inline static const std::string FaustDspFileExtension = ".dsp";
+
+    const TextBuffer::FileConfig FileConfig{
+        [this](std::string file_path) { OpenFile(file_path); },
+        {"Choose file", FaustDspFileExtension, ".", ""},
+        {"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1},
+    };
+
+    FaustDSPContainer &Container;
+    const FileDialog &FileDialog;
+    ProducerProp_(TextBuffer, Code, "Faust code", FileDialog, FileConfig, R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
-   vslider("window (samples)", 1000, 50, 10000, 1),
-   vslider("xfade (samples)", 10, 1, 10000, 1),
-   vslider("shift (semitones)", 0, -24, +24, 0.1)
+    vslider("window (samples)", 1000, 50, 10000, 1),
+    vslider("xfade (samples)", 10, 1, 10000, 1),
+    vslider("shift (semitones)", 0, -24, +24, 0.1)
  )
 );
 process = _ : pitchshifter;)#");
@@ -138,7 +148,6 @@ private:
 
     void DestroyDsp();
 
-    FaustDSPContainer &Container;
     llvm_dsp_factory *DspFactory{nullptr};
 };
 
@@ -147,7 +156,7 @@ struct FaustDSPs
       ActionableProducer<Action::Faust::DSP::Any, FaustDspProducedActionType> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
-    FaustDSPs(ArgsT &&);
+    FaustDSPs(ArgsT &&, const FileDialog &);
     ~FaustDSPs();
 
     void Apply(const ActionType &) const override;
@@ -158,7 +167,7 @@ private:
 };
 
 struct Faust
-    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
+    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, TextBuffer::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
       FaustDSPContainer {
     Faust(ArgsT &&, const FileDialog &);
 
@@ -180,19 +189,6 @@ struct Faust
     inline static std::unordered_set<FaustDSPListener *> DspChangeListeners;
 
     const FileDialog &FileDialog;
-
-    ActionMenuItem<ActionType>
-        ShowOpenDialogMenuItem{*this, CreateProducer<ActionType>(), Action::Faust::File::ShowOpenDialog{}},
-        ShowSaveDialogMenuItem{*this, CreateProducer<ActionType>(), Action::Faust::File::ShowSaveDialog{}};
-
-    const Menu FileMenu{
-        "File",
-        {
-            ShowOpenDialogMenuItem,
-            ShowSaveDialogMenuItem,
-        }
-    };
-
     ProducerProp(FaustGraphStyle, GraphStyle);
     Prop(FaustGraphSettings, GraphSettings);
     Prop(FaustParamsStyle, ParamsStyle);
@@ -200,7 +196,7 @@ struct Faust
     ProducerProp_(FaustGraphs, Graphs, "Faust graphs", FileDialog, GraphStyle, GraphSettings);
     Prop_(FaustParamss, Paramss, "Faust params", ParamsStyle);
     Prop_(FaustLogs, Logs, "Faust logs");
-    ProducerProp(FaustDSPs, FaustDsps);
+    ProducerProp(FaustDSPs, FaustDsps, FileDialog);
 
 protected:
     void Render() const override;

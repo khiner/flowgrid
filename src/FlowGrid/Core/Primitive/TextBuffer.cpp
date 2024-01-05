@@ -3,11 +3,14 @@
 #include "imgui.h"
 
 #include "Core/Windows.h"
+#include "Helper/File.h"
+#include "Project/FileDialog/FileDialog.h"
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/Fonts.h"
 
-TextBuffer::TextBuffer(ComponentArgs &&args, const Menu &file_menu, string_view value)
-    : Primitive(std::move(args), string(value)), FileMenu(file_menu), Editor(std::make_unique<TextEditor>()) {
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const TextBuffer::FileConfig &file_config, string_view value)
+    : Primitive(std::move(args.Args), string(value)), ActionableProducer(std::move(args.Q)),
+      FileDialog(file_dialog), FileConf(file_config), Editor(std::make_unique<TextEditor>()) {
     Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Cpp);
 }
 
@@ -17,6 +20,10 @@ void TextBuffer::Apply(const ActionType &action) const {
     Visit(
         action,
         [this](const Action::TextBuffer::Set &a) { Set(a.value); },
+        [this](const Action::TextBuffer::ShowOpenDialog &) { FileDialog.Set(FileConf.OpenConfig); },
+        [this](const Action::TextBuffer::ShowSaveDialog &) { FileDialog.Set(FileConf.SaveConfig); },
+        [this](const Action::TextBuffer::Open &a) { FileConf.OnOpen(a.file_path); },
+        [this](const Action::TextBuffer::Save &a) { FileIO::write(a.file_path, Editor->GetText()); },
     );
 }
 
@@ -56,6 +63,18 @@ void TextBuffer::RenderMenu() const {
 }
 
 void TextBuffer::Render() const {
+    static string PrevSelectedPath = "";
+    if (PrevSelectedPath != FileDialog.SelectedFilePath) {
+        const fs::path selected_path = FileDialog.SelectedFilePath;
+        const string &extension = selected_path.extension();
+        // todo using `filters` here is not great
+        if (extension == FileConf.OpenConfig.filters || extension == FileConf.SaveConfig.filters) {
+            if (FileDialog.SaveMode) Q(Action::TextBuffer::Save{Path, selected_path});
+            else Q(Action::TextBuffer::Open{Path, selected_path});
+        }
+        PrevSelectedPath = selected_path;
+    }
+
     RenderMenu();
 
     auto &editor = *Editor;

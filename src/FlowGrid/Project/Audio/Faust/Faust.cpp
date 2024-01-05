@@ -5,8 +5,6 @@
 #include "Helper/File.h"
 #include "Project/FileDialog/FileDialog.h"
 
-static const std::string FaustDspFileExtension = ".dsp";
-
 Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionableComponent(std::move(args)), FileDialog(file_dialog) {}
 
 void Faust::Apply(const ActionType &action) const {
@@ -15,19 +13,6 @@ void Faust::Apply(const ActionType &action) const {
         [this](const Action::Faust::DSP::Any &a) { FaustDsps.Apply(a); },
         [this](const Action::Faust::Graph::Any &a) { Graphs.Apply(a); },
         [this](const Action::Faust::GraphStyle::Any &a) { Graphs.Style.Apply(a); },
-        [this](const Action::Faust::File::Any &a) {
-            Visit(
-                a,
-                [this](const Action::Faust::File::ShowOpenDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", ""}); },
-                [this](const Action::Faust::File::ShowSaveDialog &) { FileDialog.Set({"Choose file", FaustDspFileExtension, ".", "my_dsp", true, 1}); },
-                [this](const Action::Faust::File::Open &a) {
-                    if (!FaustDsps.Empty()) FaustDsps.front()->Code.Set(FileIO::read(a.file_path));
-                },
-                [this](const Action::Faust::File::Save &a) {
-                    if (!FaustDsps.Empty()) FileIO::write(a.file_path, FaustDsps.front()->Code);
-                },
-            );
-        },
     );
 }
 
@@ -37,21 +22,10 @@ bool Faust::CanApply(const ActionType &action) const {
         [this](const Action::Faust::DSP::Any &a) { return FaustDsps.CanApply(a); },
         [this](const Action::Faust::Graph::Any &a) { return Graphs.CanApply(a); },
         [this](const Action::Faust::GraphStyle::Any &a) { return Graphs.Style.CanApply(a); },
-        [](const Action::Faust::File::Any &) { return true; },
     );
 }
 
 void Faust::Render() const {
-    static string PrevSelectedPath = "";
-    if (PrevSelectedPath != FileDialog.SelectedFilePath) {
-        const fs::path selected_path = FileDialog.SelectedFilePath;
-        const string &extension = selected_path.extension();
-        if (extension == FaustDspFileExtension) {
-            if (FileDialog.SaveMode) Q(Action::Faust::File::Save{selected_path});
-            else Q(Action::Faust::File::Open{selected_path});
-        }
-        PrevSelectedPath = selected_path;
-    }
 }
 
 FaustParamss::FaustParamss(ComponentArgs &&args, const FaustParamsStyle &style)
@@ -144,8 +118,8 @@ std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
-FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container, const Menu &file_menu)
-    : ActionProducerComponent(std::move(args)), FileMenu(file_menu), Container(container) {
+FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container, const ::FileDialog &file_dialog)
+    : ActionProducerComponent(std::move(args)), Container(container), FileDialog(file_dialog) {
     Code.RegisterChangeListener(this);
     Init();
 }
@@ -153,6 +127,10 @@ FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container, const Menu &file_
 FaustDSP::~FaustDSP() {
     Uninit();
     UnregisterChangeListener(this);
+}
+
+void FaustDSP::OpenFile(const fs::path &file_path) {
+    Code.Set(FileIO::read(file_path));
 }
 
 void FaustDSP::OnComponentChanged() {
@@ -216,11 +194,11 @@ void FaustDSP::Update() {
 
 static const string FaustDspPathSegment = "FaustDSP";
 
-FaustDSPs::FaustDSPs(ArgsT &&args)
-    : Vector(std::move(args.Args), [this](auto &&child_args) {
+FaustDSPs::FaustDSPs(ArgsT &&args, const FileDialog &file_dialog)
+    : Vector(std::move(args.Args), [&](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
           return std::make_unique<FaustDSP>(
-              FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container, container->FileMenu
+              FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container, file_dialog
           );
       }),
       ActionableProducer(std::move(args.Q)) {
@@ -382,9 +360,13 @@ void FaustGraphs::Render() const {
 
 void FaustDSP::Render() const {
     if (BeginMenuBar()) {
-        if (BeginMenu("DSP")) {
-            if (MenuItem("Delete")) Q(Action::Faust::DSP::Delete{Id});
-            if (MenuItem("Create audio node")) Q(Action::AudioGraph::CreateFaustNode{Id});
+        if (BeginMenu("Faust DSP")) {
+            if (MenuItem("Create DSP")) Q(Action::Faust::DSP::Create());
+            if (BeginMenu("Current DSP")) {
+                if (MenuItem("Create audio node")) Q(Action::AudioGraph::CreateFaustNode{Id});
+                if (MenuItem("Delete")) Q(Action::Faust::DSP::Delete{Id});
+                EndMenu();
+            }
             EndMenu();
         }
         EndMenuBar();
@@ -393,14 +375,6 @@ void FaustDSP::Render() const {
 }
 
 void FaustDSPs::Render() const {
-    if (BeginMenuBar()) {
-        if (BeginMenu("Create")) {
-            if (MenuItem("Create Faust DSP")) Q(Action::Faust::DSP::Create());
-            EndMenu();
-        }
-        EndMenuBar();
-    }
-
     if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
     if (Size() == 1) return (*this)[0]->Draw();
 

@@ -1,13 +1,26 @@
 #pragma once
 
-#include "Core/Action/Actionable.h"
+#include "Core/Action/ActionMenuItem.h"
+#include "Core/Action/ActionableProducer.h"
+#include "Core/ProducerComponentArgs.h"
 #include "Primitive.h"
+#include "Project/FileDialog/FileDialogData.h"
 #include "TextBufferAction.h"
 
+struct FileDialog;
 struct TextEditor;
 
-struct TextBuffer : Primitive<string>, Actionable<Action::TextBuffer::Any> {
-    TextBuffer(ComponentArgs &&, const Menu &file_menu, string_view value = "");
+struct TextBuffer : Primitive<string>, ActionableProducer<Action::TextBuffer::Any> {
+    using ArgsT = ProducerComponentArgs<ProducedActionType>;
+
+    struct FileConfig {
+        using OpenCallback = std::function<void(std::string)>;
+
+        OpenCallback OnOpen;
+        FileDialogData OpenConfig, SaveConfig;
+    };
+
+    TextBuffer(ArgsT &&, const FileDialog &, const FileConfig &, string_view value = "");
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;
@@ -24,6 +37,19 @@ private:
     void Render() const override;
     void RenderMenu() const;
 
-    const Menu &FileMenu;
+    ActionMenuItem<ActionType>
+        ShowOpenDialogMenuItem{*this, CreateProducer<ActionType>(), Action::TextBuffer::ShowOpenDialog{Path}},
+        ShowSaveDialogMenuItem{*this, CreateProducer<ActionType>(), Action::TextBuffer::ShowSaveDialog{Path}};
+
+    const Menu FileMenu{
+        "File",
+        {
+            ShowOpenDialogMenuItem,
+            ShowSaveDialogMenuItem,
+        }
+    };
+
+    const FileDialog &FileDialog;
+    const FileConfig &FileConf;
     std::unique_ptr<TextEditor> Editor;
 };

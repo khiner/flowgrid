@@ -211,9 +211,9 @@ void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
         [&primitive](const Enum::ActionType &a) { static_cast<const Enum *>(primitive)->Apply(a); },
         [&primitive](const Flags::ActionType &a) { static_cast<const Flags *>(primitive)->Apply(a); },
         [&primitive](const String::ActionType &a) { static_cast<const String *>(primitive)->Apply(a); },
-        [&primitive](const TextBuffer::ActionType &a) { static_cast<const TextBuffer *>(primitive)->Apply(a); },
     );
 }
+
 void Project::ApplyContainerAction(const Action::Container::Any &action) const {
     const auto *container = Find(action.GetComponentPath());
     if (container == nullptr) throw std::runtime_error(std::format("Container not found: {}", action.GetComponentPath().string()));
@@ -240,6 +240,11 @@ void Project::Apply(const ActionType &action) const {
         action,
         [this](const Action::Primitive::Any &a) { ApplyPrimitiveAction(a); },
         [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
+        [this](const Action::TextBuffer::Any &a) {
+            const auto *buffer = Find(a.GetComponentPath());
+            if (buffer == nullptr) throw std::runtime_error(std::format("TextBuffer not found: {}", a.GetComponentPath().string()));
+            static_cast<const TextBuffer *>(buffer)->Apply(a);
+        },
 
         [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
         [this](const Action::Project::Open &a) { Open(a.file_path); },
@@ -284,6 +289,7 @@ bool Project::CanApply(const ActionType &action) const {
         action,
         [](const Action::Primitive::Any &) { return true; },
         [](const Action::Container::Any &) { return true; },
+        [](const Action::TextBuffer::Any &) { return true; },
 
         [this](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
         [this](const Action::Project::Redo &) { return History.CanRedo(); },

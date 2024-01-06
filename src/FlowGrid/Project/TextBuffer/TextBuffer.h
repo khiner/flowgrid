@@ -14,13 +14,11 @@ struct TextBuffer : Primitive<string>, ActionableProducer<Action::TextBuffer::An
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
     struct FileConfig {
-        using OpenCallback = std::function<void(std::string)>;
-
-        OpenCallback OnOpen;
         FileDialogData OpenConfig, SaveConfig;
     };
 
-    TextBuffer(ArgsT &&, const FileDialog &, const FileConfig &, string_view value = "");
+    TextBuffer(ArgsT &&, const FileDialog &, FileConfig &&, string_view value = "");
+    TextBuffer(ArgsT &&, const FileDialog &, string_view value = "");
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;
@@ -50,6 +48,6 @@ private:
     };
 
     const FileDialog &FileDialog;
-    const FileConfig &FileConf;
+    FileConfig FileConf;
     std::unique_ptr<TextEditor> Editor;
 };

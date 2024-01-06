@@ -69,6 +69,7 @@ Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProduce
         Debug.DebugLog,
         Debug.StackTool,
         Debug.Metrics,
+        TextEditor,
         Style,
         Demo,
         Info,
@@ -335,6 +336,7 @@ void Project::Render() const {
         auto settings_node_id = DockBuilderSplitNode(info_node_id, ImGuiDir_Down, 0.25f, nullptr, &info_node_id);
         auto faust_tools_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.5f, nullptr, &dockspace_id);
         auto faust_graph_node_id = DockBuilderSplitNode(faust_tools_node_id, ImGuiDir_Left, 0.5f, nullptr, &faust_tools_node_id);
+        auto text_editor_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.5f, nullptr, &dockspace_id);
 
         Audio.Graph.Dock(audio_node_id);
         Audio.Graph.Connections.Dock(audio_node_id);
@@ -344,6 +346,7 @@ void Project::Render() const {
         Audio.Faust.Graphs.Dock(faust_graph_node_id);
         Audio.Faust.Paramss.Dock(faust_tools_node_id);
         Audio.Faust.Logs.Dock(faust_tools_node_id);
+        TextEditor.Dock(text_editor_node_id);
 
         Debug.Dock(debug_node_id);
         Debug.ProjectPreview.Dock(debug_node_id);
@@ -377,13 +380,11 @@ void Project::Render() const {
 
     // Handle file dialog.
     static string PrevSelectedPath = "";
-    if (PrevSelectedPath != FileDialog.SelectedFilePath) {
+    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.OwnerPath == Path) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
-        if (FileDialog.OwnerPath == Path || FileDialog.OwnerPath == Path) {
-            if (FileDialog.SaveMode) Q(Action::Project::Save{selected_path});
-            else Q(Action::Project::Open{selected_path});
-        }
-        PrevSelectedPath = selected_path;
+        PrevSelectedPath = FileDialog.SelectedFilePath = "";
+        if (FileDialog.SaveMode) Q(Action::Project::Save{selected_path});
+        else Q(Action::Project::Open{selected_path});
     }
 
     static const auto Shortcuts = ActionType::CreateShortcuts();

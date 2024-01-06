@@ -134,10 +134,6 @@ FaustDSP::~FaustDSP() {
     UnregisterChangeListener(this);
 }
 
-void FaustDSP::OpenFile(const fs::path &file_path) {
-    Code.Set(FileIO::read(file_path));
-}
-
 void FaustDSP::OnComponentChanged() {
     if (Code.IsChanged()) Update();
 }
@@ -342,12 +338,10 @@ void FaustGraphs::Render() const {
     if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
 
     static string PrevSelectedPath = "";
-    if (PrevSelectedPath != FileDialog.SelectedFilePath) {
+    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.OwnerPath == Path && FileDialog.SaveMode) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
-        if (FileDialog.OwnerPath == Path && FileDialog.SaveMode) {
-            Q(Action::Faust::Graph::SaveSvgFile{LastSelectedDspId, selected_path});
-        }
-        PrevSelectedPath = selected_path;
+        PrevSelectedPath = FileDialog.SelectedFilePath = "";
+        Q(Action::Faust::Graph::SaveSvgFile{LastSelectedDspId, selected_path});
     }
 
     if (Size() == 1) {

@@ -8,9 +8,30 @@
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/Fonts.h"
 
-TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const TextBuffer::FileConfig &file_config, string_view value)
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, TextBuffer::FileConfig &&file_config, string_view value)
     : Primitive(std::move(args.Args), string(value)), ActionableProducer(std::move(args.Q)),
-      FileDialog(file_dialog), FileConf(file_config), Editor(std::make_unique<TextEditor>()) {
+      FileDialog(file_dialog), FileConf(std::move(file_config)), Editor(std::make_unique<TextEditor>()) {
+    Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Cpp);
+}
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_view value)
+    : Primitive(std::move(args.Args), string(value)), ActionableProducer(std::move(args.Q)),
+      FileDialog(file_dialog),
+      FileConf({
+          {
+              .owner_path = Path,
+              .title = "Open file",
+              .filters = ".json",
+          },
+          {
+              .owner_path = Path,
+              .title = "Save file",
+              .filters = ".json",
+              .default_file_name = "my_json",
+              .save_mode = true,
+          },
+      }),
+      Editor(std::make_unique<TextEditor>()) {
+    WindowFlags |= ImGuiWindowFlags_MenuBar;
     Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Cpp);
 }
 
@@ -22,7 +43,7 @@ void TextBuffer::Apply(const ActionType &action) const {
         [this](const Action::TextBuffer::Set &a) { Set(a.value); },
         [this](const Action::TextBuffer::ShowOpenDialog &) { FileDialog.Set(FileConf.OpenConfig); },
         [this](const Action::TextBuffer::ShowSaveDialog &) { FileDialog.Set(FileConf.SaveConfig); },
-        [this](const Action::TextBuffer::Open &a) { FileConf.OnOpen(a.file_path); },
+        [this](const Action::TextBuffer::Open &a) { Set(FileIO::read(a.file_path)); },
         [this](const Action::TextBuffer::Save &a) { FileIO::write(a.file_path, Editor->GetText()); },
     );
 }
@@ -64,13 +85,12 @@ void TextBuffer::RenderMenu() const {
 
 void TextBuffer::Render() const {
     static string PrevSelectedPath = "";
-    if (PrevSelectedPath != FileDialog.SelectedFilePath) {
+    if (PrevSelectedPath != FileDialog.SelectedFilePath &&
+        (FileDialog.OwnerPath == FileConf.OpenConfig.owner_path || FileDialog.OwnerPath == FileConf.SaveConfig.owner_path)) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
-        if (FileDialog.OwnerPath == FileConf.OpenConfig.owner_path || FileDialog.OwnerPath == FileConf.SaveConfig.owner_path) {
-            if (FileDialog.SaveMode) Q(Action::TextBuffer::Save{Path, selected_path});
-            else Q(Action::TextBuffer::Open{Path, selected_path});
-        }
-        PrevSelectedPath = selected_path;
+        PrevSelectedPath = FileDialog.SelectedFilePath = "";
+        if (FileDialog.SaveMode) Q(Action::TextBuffer::Save{Path, selected_path});
+        else Q(Action::TextBuffer::Open{Path, selected_path});
     }
 
     RenderMenu();

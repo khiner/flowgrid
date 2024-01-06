@@ -116,36 +116,35 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
 
     void OnComponentChanged() override;
 
-    void OpenFile(const fs::path &);
-
     inline static const std::string FaustDspFileExtension = ".dsp";
-
-    const TextBuffer::FileConfig FileConfig{
-        [this](std::string file_path) { OpenFile(file_path); },
-        {
-            .owner_path = Path,
-            .title = "Open Faust DSP file",
-            .filters = FaustDspFileExtension,
-        },
-        {
-            .owner_path = Path,
-            .title = "Save Faust DSP file",
-            .filters = FaustDspFileExtension,
-            .default_file_name = "my_dsp",
-            .save_mode = true,
-        },
-    };
 
     FaustDSPContainer &Container;
     const FileDialog &FileDialog;
-    ProducerProp_(TextBuffer, Code, "Faust code", FileDialog, FileConfig, R"#(import("stdfaust.lib");
+    ProducerProp_(
+        TextBuffer, Code, "Faust code", FileDialog,
+        TextBuffer::FileConfig{
+            {
+                .owner_path = Path,
+                .title = "Open Faust DSP file",
+                .filters = FaustDspFileExtension,
+            },
+            {
+                .owner_path = Path,
+                .title = "Save Faust DSP file",
+                .filters = FaustDspFileExtension,
+                .default_file_name = "my_dsp",
+                .save_mode = true,
+            },
+        },
+        R"#(import("stdfaust.lib");
 pitchshifter = vgroup("Pitch Shifter", ef.transpose(
     vslider("window (samples)", 1000, 50, 10000, 1),
     vslider("xfade (samples)", 10, 1, 10000, 1),
     vslider("shift (semitones)", 0, -24, +24, 0.1)
  )
 );
-process = _ : pitchshifter;)#");
+process = _ : pitchshifter;)#"
+    );
 
     Box Box{nullptr};
     dsp *Dsp{nullptr};

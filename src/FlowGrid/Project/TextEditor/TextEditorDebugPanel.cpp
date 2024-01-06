@@ -39,4 +39,7 @@ void TextEditor::DebugPanel() {
             }
         }
     }
+    if (CollapsingHeader("Tree-Sitter")) {
+        Text("S-expression:\n%s", GetSyntaxTreeSExp().c_str());
+    }
 }

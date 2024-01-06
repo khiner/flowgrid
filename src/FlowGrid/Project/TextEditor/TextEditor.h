@@ -18,6 +18,10 @@
 struct LanguageDefinition;
 
 struct TextEditor {
+    // Forward-declare wrapper structs for Tree-Sitter types.
+    struct CodeParser;
+    struct SyntaxTree;
+
     TextEditor();
     ~TextEditor();
 
@@ -92,6 +96,8 @@ struct TextEditor {
     void SetText(const std::string &text);
     std::string GetText(const Coords &start, const Coords &end) const;
     std::string GetText() const { return Lines.empty() ? "" : GetText({}, LineMaxCoords(Lines.size() - 1)); }
+
+    std::string GetSyntaxTreeSExp() const;
 
     bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
     void DebugPanel();
@@ -365,4 +371,7 @@ private:
     const LanguageDefinition *LanguageDef{nullptr};
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
     std::string LineBuffer;
+
+    std::unique_ptr<CodeParser> Parser;
+    std::unique_ptr<SyntaxTree> Tree;
 };

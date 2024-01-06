@@ -8,16 +8,63 @@
 #include <set>
 #include <string>
 
+#include <tree_sitter/api.h>
+
 #include "imgui_internal.h"
 
 using std::string, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
-TextEditor::TextEditor() {
+extern "C" TSLanguage *tree_sitter_json(); // Implemented by the `tree-sitter-json` library.
+
+struct TextEditor::CodeParser {
+    CodeParser() : parser(ts_parser_new()) {}
+    ~CodeParser() { ts_parser_delete(parser); }
+
+    void SetLanguage(TSLanguage *language) const {
+        ts_parser_set_language(parser, language);
+    }
+
+    TSParser *get() const { return parser; }
+
+private:
+    TSParser *parser;
+};
+
+struct TextEditor::SyntaxTree {
+    SyntaxTree(TSParser *parser) : Parser(parser) {}
+    ~SyntaxTree() {
+        if (Tree == nullptr) return;
+        ts_tree_delete(Tree);
+        Tree = nullptr;
+    }
+
+    void Parse(const string &source) {
+        Tree = ts_parser_parse_string(Parser, Tree, source.c_str(), source.length());
+    }
+
+    TSNode RootNode() const { return ts_tree_root_node(Tree); }
+
+private:
+    TSParser *Parser{nullptr};
+    TSTree *Tree{nullptr};
+};
+
+TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()), Tree(std::make_unique<SyntaxTree>(Parser->get())) {
     SetPalette(DefaultPaletteId);
     Lines.push_back({});
 }
 
 TextEditor::~TextEditor() {}
+
+string TextEditor::GetSyntaxTreeSExp() const {
+    Parser->SetLanguage(tree_sitter_json());
+    Tree->Parse(GetText());
+
+    char *c_string = ts_node_string(Tree->RootNode());
+    string s_expression(c_string);
+    free(c_string);
+    return s_expression;
+}
 
 static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
     if (c2.size() + c2_offset < c1.size()) return false;
@@ -1447,7 +1494,7 @@ void TextEditor::ColorizeInternal() {
     }
 }
 
-TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const std::string &text) {
+TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text) {
     uint ci = GetCharIndex(at);
     Coords ret = at;
     for (auto it = text.begin(); it != text.end(); it++) {

@@ -243,28 +243,18 @@ void TextEditor::AddUndoOp(UndoRecord &record, UndoOperationType type, const Coo
 }
 
 string TextEditor::GetText(const Coords &start, const Coords &end) const {
-    if (end == start) return "";
+    if (end <= start) return "";
 
-    assert(end > start);
-    uint line_start = start.L, line_end = end.L;
-    uint start_ci = GetCharIndex(start);
-    const auto end_ci = GetCharIndex(end);
-
-    uint s = 0;
-    for (uint i = line_start; i < line_end; i++) s += Lines[i].size();
-
+    const uint start_li = start.L, end_li = std::min(uint(Lines.size()) - 1, end.L);
+    const uint start_ci = GetCharIndex(start), end_ci = GetCharIndex(end);
     string result;
-    result.reserve(s + s / 8);
-    while (start_ci < end_ci || line_start < line_end) {
-        if (line_start >= Lines.size()) break;
-
-        const auto &line = Lines[line_start];
-        if (start_ci < line.size()) {
-            result += line[start_ci];
-            start_ci++;
+    for (uint ci = start_ci, li = start_li; li < end_li || ci < end_ci;) {
+        const auto &line = Lines[li];
+        if (ci < line.size()) {
+            result += line[ci++];
         } else {
-            ++line_start;
-            start_ci = 0;
+            ++li;
+            ci = 0;
             result += '\n';
         }
     }

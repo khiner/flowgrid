@@ -322,14 +322,14 @@ private:
     void UpdateViewVariables(float scroll_x, float scroll_y);
     void Render(bool is_parent_focused = false);
 
+    void OnTextChanged(uint from_li, uint line_count);
     void OnCursorPositionChanged();
     void SortAndMergeCursors();
 
     void AddUndo(UndoRecord &);
 
-    void Colorize(uint from_li, uint line_count);
     void ColorizeRange(uint from_li, uint to_li);
-    void ColorizeInternal();
+    void ColorizeComments();
 
     bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
@@ -365,8 +365,7 @@ private:
     bool CursorPositionChanged{false};
     std::optional<Cursor> MatchingBrackets{};
 
-    uint ColorRangeMin{0}, ColorRangeMax{0};
-    bool ShouldCheckComments{true};
+    uint ChangedLineMin{0}, ChangedLineMax{0};
     PaletteT Palette;
     const LanguageDefinition *LanguageDef{nullptr};
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;

@@ -3,6 +3,7 @@
 #include "LanguageDefinition.h"
 
 #include <algorithm>
+#include <print>
 #include <range/v3/range/conversion.hpp>
 #include <ranges>
 #include <set>
@@ -130,7 +131,7 @@ void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
         RegexList.emplace_back(std::regex(r.first, std::regex_constants::optimize), r.second);
     }
 
-    Colorize(0, Lines.size());
+    OnTextChanged(0, Lines.size());
 }
 
 const char *TextEditor::GetLanguageDefinitionName() const { return LanguageDef != nullptr ? LanguageDef->Name.c_str() : "None"; }
@@ -235,7 +236,7 @@ void TextEditor::SetText(const string &text) {
     UndoBuffer.clear();
     UndoIndex = 0;
 
-    Colorize(0, Lines.size());
+    OnTextChanged(0, Lines.size());
 }
 
 void TextEditor::AddUndoOp(UndoRecord &record, UndoOperationType type, const Coords &start, const Coords &end) {
@@ -273,7 +274,14 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
     const bool is_focused = ImGui::IsWindowFocused();
     HandleKeyboardInputs(is_parent_focused);
     HandleMouseInputs();
-    ColorizeInternal();
+
+    if (ChangedLineMin < ChangedLineMax) {
+        ColorizeComments();
+        ColorizeRange(ChangedLineMin, ChangedLineMax);
+        ChangedLineMin = std::numeric_limits<uint>::max();
+        ChangedLineMax = std::numeric_limits<uint>::min();
+    }
+
     Render(is_parent_focused);
 
     ImGui::EndChild();
@@ -315,12 +323,12 @@ void TextEditor::UndoRecord::Undo(TextEditor *editor) {
         switch (op.Type) {
             case UndoOperationType::Delete: {
                 editor->InsertTextAt(op.Start, op.Text);
-                editor->Colorize(op.Start.L, op.End.L - op.Start.L + 2);
+                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 2);
                 break;
             }
             case UndoOperationType::Add: {
                 editor->DeleteRange(op.Start, op.End);
-                editor->Colorize(op.Start.L, op.End.L - op.Start.L + 2);
+                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 2);
                 break;
             }
         }
@@ -337,12 +345,12 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
         switch (op.Type) {
             case UndoOperationType::Delete: {
                 editor->DeleteRange(op.Start, op.End);
-                editor->Colorize(op.Start.L, op.End.L - op.Start.L + 1);
+                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 1);
                 break;
             }
             case UndoOperationType::Add: {
                 editor->InsertTextAt(op.Start, op.Text);
-                editor->Colorize(op.Start.L, op.End.L - op.Start.L + 1);
+                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 1);
                 break;
             }
         }
@@ -370,7 +378,7 @@ void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
     const auto start = std::min(pos, c.SelectionStart());
     const auto insertion_end = InsertTextAt(pos, text);
     SetCursorPosition(insertion_end, c);
-    Colorize(start.L, insertion_end.L - start.L + std::ranges::count(text, '\n') + 2);
+    OnTextChanged(start.L, insertion_end.L - start.L + std::ranges::count(text, '\n') + 2);
 }
 
 void TextEditor::LineCharIter::MoveRight() {
@@ -620,7 +628,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
                     const Coords line_start{li, 0};
                     const auto insertion_end = InsertTextAt(line_start, "\t");
                     u.Operations.emplace_back("\t", line_start, insertion_end, UndoOperationType::Add);
-                    Colorize(line_start.L, 1);
+                    OnTextChanged(line_start.L, 1);
                 }
             } else {
                 Coords start{li, 0}, end{li, TabSize};
@@ -630,7 +638,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
                 if (only_space_chars_found) {
                     u.Operations.emplace_back(GetText(start, end), start, end, UndoOperationType::Delete);
                     DeleteRange(start, end);
-                    Colorize(li, 1);
+                    OnTextChanged(li, 1);
                 }
             }
         }
@@ -705,7 +713,7 @@ void TextEditor::ToggleLineComment() {
             AddUndoOp(u, UndoOperationType::Delete, start, end);
             DeleteRange(start, end);
         }
-        Colorize(li, 1);
+        OnTextChanged(li, 1);
     }
     AddUndo(u);
 }
@@ -883,7 +891,7 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
     DeleteRange(c.SelectionStart(), c.SelectionEnd(), &c);
     SetCursorPosition(c.SelectionStart(), c);
-    Colorize(c.SelectionStart().L, 1);
+    OnTextChanged(c.SelectionStart().L, 1);
 }
 
 void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs, bool is_add) {
@@ -1307,6 +1315,11 @@ void TextEditor::Render(bool is_parent_focused) {
     }
 }
 
+void TextEditor::OnTextChanged(uint from_li, uint line_count) {
+    ChangedLineMin = std::min(ChangedLineMin, from_li);
+    ChangedLineMax = std::max(ChangedLineMax, std::clamp(from_li + line_count, ChangedLineMin, uint(Lines.size())));
+}
+
 void TextEditor::OnCursorPositionChanged() {
     const auto &c = State.Cursors[0];
     MatchingBrackets = State.Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
@@ -1354,17 +1367,6 @@ void TextEditor::AddUndo(UndoRecord &record) {
     UndoBuffer.resize(UndoIndex + 1);
     UndoBuffer.back() = record;
     ++UndoIndex;
-}
-
-// TODO
-// - multiline comments vs single-line: latter is blocking start of a ML
-void TextEditor::Colorize(uint from_li, uint line_count) {
-    const uint to_line = std::min(uint(Lines.size()), from_li + line_count);
-    ColorRangeMin = std::min(ColorRangeMin, from_li);
-    ColorRangeMax = std::max(ColorRangeMax, to_line);
-    ColorRangeMin = std::max(0u, ColorRangeMin);
-    ColorRangeMax = std::max(ColorRangeMin, ColorRangeMax);
-    ShouldCheckComments = true;
 }
 
 void TextEditor::ColorizeRange(uint from_li, uint to_li) {
@@ -1418,69 +1420,53 @@ void TextEditor::ColorizeRange(uint from_li, uint to_li) {
     }
 }
 
-void TextEditor::ColorizeInternal() {
+void TextEditor::ColorizeComments() {
     if (LanguageDef == nullptr) return;
 
-    if (ShouldCheckComments) {
-        bool in_string = false, in_preproc = false, in_multi_line_comment = false;
-        bool line_continues = false; // For preprocessor.
+    bool in_string = false, in_preproc = false, in_multi_line_comment = false;
+    bool line_continues = false; // For preprocessor.
 
-        for (auto &line : Lines) {
-            if (line.empty()) line_continues = false;
+    for (auto &line : Lines) {
+        if (line.empty()) line_continues = false;
 
-            bool in_single_line_comment = false;
-            for (uint ci = 0; ci < line.size(); ++ci) {
-                auto &glyph = line[ci];
-                const char ch = glyph;
-                if (ci == 0 && !line_continues) in_preproc = (ch == LanguageDef->PreprocChar);
+        bool in_single_line_comment = false;
+        for (uint ci = 0; ci < line.size(); ++ci) {
+            auto &glyph = line[ci];
+            const char ch = glyph;
+            if (ci == 0 && !line_continues) in_preproc = (ch == LanguageDef->PreprocChar);
 
-                if (in_preproc) {
-                    if (ci == line.size() - 1) line_continues = ch == '\\';
-                    glyph.IsPreprocessor = true;
-                    glyph.IsComment = glyph.IsMultiLineComment = false; // No comments in preprocessor.
-                    continue;
-                }
-                if (!in_string && !in_single_line_comment && !in_multi_line_comment && Equals(LanguageDef->CommentStart, line, ci)) {
-                    in_multi_line_comment = true;
-                    for (uint j = ci; j < ci + LanguageDef->CommentStart.size() && j < line.size(); ++j) {
-                        line[j].IsComment = line[j].IsMultiLineComment = true;
-                    }
-                    ci += LanguageDef->CommentStart.size() - 1;
-                    continue;
-                } else if (in_multi_line_comment && Equals(LanguageDef->CommentEnd, line, ci)) {
-                    for (uint j = ci; j < ci + LanguageDef->CommentEnd.size() && j < line.size(); ++j) {
-                        line[j].IsComment = line[j].IsMultiLineComment = true;
-                    }
-                    ci += LanguageDef->CommentEnd.size() - 1;
-                    in_multi_line_comment = false;
-                    continue;
-                } else if (!in_string && !in_multi_line_comment && Equals(LanguageDef->SingleLineComment, line, ci)) {
-                    in_single_line_comment = true;
-                } else if (!in_string && !in_multi_line_comment && !in_single_line_comment && ch == '\"') {
-                    in_string = true;
-                } else if (in_string && ch == '\"') {
-                    in_string = false;
-                }
-
-                glyph.IsPreprocessor = in_preproc;
-                glyph.IsComment = in_multi_line_comment || in_single_line_comment;
-                glyph.IsMultiLineComment = in_multi_line_comment;
+            if (in_preproc) {
+                if (ci == line.size() - 1) line_continues = ch == '\\';
+                glyph.IsPreprocessor = true;
+                glyph.IsComment = glyph.IsMultiLineComment = false; // No comments in preprocessor.
+                continue;
             }
-        }
+            if (!in_string && !in_single_line_comment && !in_multi_line_comment && Equals(LanguageDef->CommentStart, line, ci)) {
+                in_multi_line_comment = true;
+                for (uint j = ci; j < ci + LanguageDef->CommentStart.size() && j < line.size(); ++j) {
+                    line[j].IsComment = line[j].IsMultiLineComment = true;
+                }
+                ci += LanguageDef->CommentStart.size() - 1;
+                continue;
+            } else if (in_multi_line_comment && Equals(LanguageDef->CommentEnd, line, ci)) {
+                for (uint j = ci; j < ci + LanguageDef->CommentEnd.size() && j < line.size(); ++j) {
+                    line[j].IsComment = line[j].IsMultiLineComment = true;
+                }
+                ci += LanguageDef->CommentEnd.size() - 1;
+                in_multi_line_comment = false;
+                continue;
+            } else if (!in_string && !in_multi_line_comment && Equals(LanguageDef->SingleLineComment, line, ci)) {
+                in_single_line_comment = true;
+            } else if (!in_string && !in_multi_line_comment && !in_single_line_comment && ch == '\"') {
+                in_string = true;
+            } else if (in_string && ch == '\"') {
+                in_string = false;
+            }
 
-        ShouldCheckComments = false;
-    }
-
-    if (ColorRangeMin < ColorRangeMax) {
-        const uint increment = (LanguageDef->Tokenize == nullptr) ? 10 : 10000;
-        const uint to = std::min(ColorRangeMin + increment, ColorRangeMax);
-        ColorizeRange(ColorRangeMin, to);
-        ColorRangeMin = to;
-        if (ColorRangeMax == ColorRangeMin) {
-            ColorRangeMin = std::numeric_limits<uint>::max();
-            ColorRangeMax = std::numeric_limits<uint>::min();
+            glyph.IsPreprocessor = in_preproc;
+            glyph.IsComment = in_multi_line_comment || in_single_line_comment;
+            glyph.IsMultiLineComment = in_multi_line_comment;
         }
-        return;
     }
 }
 

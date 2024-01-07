@@ -131,7 +131,7 @@ void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
         RegexList.emplace_back(std::regex(r.first, std::regex_constants::optimize), r.second);
     }
 
-    OnTextChanged(0, Lines.size());
+    OnTextChanged();
 }
 
 const char *TextEditor::GetLanguageDefinitionName() const { return LanguageDef != nullptr ? LanguageDef->Name.c_str() : "None"; }
@@ -236,7 +236,7 @@ void TextEditor::SetText(const string &text) {
     UndoBuffer.clear();
     UndoIndex = 0;
 
-    OnTextChanged(0, Lines.size());
+    OnTextChanged();
 }
 
 void TextEditor::AddUndoOp(UndoRecord &record, UndoOperationType type, const Coords &start, const Coords &end) {
@@ -275,11 +275,10 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
     HandleKeyboardInputs(is_parent_focused);
     HandleMouseInputs();
 
-    if (ChangedLineMin < ChangedLineMax) {
+    if (ChangedRange) {
         ColorizeComments();
-        ColorizeRange(ChangedLineMin, ChangedLineMax);
-        ChangedLineMin = std::numeric_limits<uint>::max();
-        ChangedLineMax = std::numeric_limits<uint>::min();
+        Colorize();
+        ChangedRange = std::nullopt;
     }
 
     Render(is_parent_focused);
@@ -323,12 +322,12 @@ void TextEditor::UndoRecord::Undo(TextEditor *editor) {
         switch (op.Type) {
             case UndoOperationType::Delete: {
                 editor->InsertTextAt(op.Start, op.Text);
-                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 2);
+                editor->OnTextChanged({op.Start, op.End});
                 break;
             }
             case UndoOperationType::Add: {
                 editor->DeleteRange(op.Start, op.End);
-                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 2);
+                editor->OnTextChanged({op.Start, {op.Start.L + 1, 0}});
                 break;
             }
         }
@@ -345,12 +344,12 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
         switch (op.Type) {
             case UndoOperationType::Delete: {
                 editor->DeleteRange(op.Start, op.End);
-                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 1);
+                editor->OnTextChanged({op.Start, {op.Start.L + 1, 0}});
                 break;
             }
             case UndoOperationType::Add: {
                 editor->InsertTextAt(op.Start, op.Text);
-                editor->OnTextChanged(op.Start.L, op.End.L - op.Start.L + 1);
+                editor->OnTextChanged({op.Start, op.End});
                 break;
             }
         }
@@ -378,7 +377,7 @@ void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
     const auto start = std::min(pos, c.SelectionStart());
     const auto insertion_end = InsertTextAt(pos, text);
     SetCursorPosition(insertion_end, c);
-    OnTextChanged(start.L, insertion_end.L - start.L + std::ranges::count(text, '\n') + 2);
+    OnTextChanged({start, insertion_end});
 }
 
 void TextEditor::LineCharIter::MoveRight() {
@@ -628,7 +627,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
                     const Coords line_start{li, 0};
                     const auto insertion_end = InsertTextAt(line_start, "\t");
                     u.Operations.emplace_back("\t", line_start, insertion_end, UndoOperationType::Add);
-                    OnTextChanged(line_start.L, 1);
+                    OnTextChanged(line_start.L);
                 }
             } else {
                 Coords start{li, 0}, end{li, TabSize};
@@ -638,7 +637,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
                 if (only_space_chars_found) {
                     u.Operations.emplace_back(GetText(start, end), start, end, UndoOperationType::Delete);
                     DeleteRange(start, end);
-                    OnTextChanged(li, 1);
+                    OnTextChanged(li);
                 }
             }
         }
@@ -713,7 +712,7 @@ void TextEditor::ToggleLineComment() {
             AddUndoOp(u, UndoOperationType::Delete, start, end);
             DeleteRange(start, end);
         }
-        OnTextChanged(li, 1);
+        OnTextChanged(li);
     }
     AddUndo(u);
 }
@@ -891,7 +890,7 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
     DeleteRange(c.SelectionStart(), c.SelectionEnd(), &c);
     SetCursorPosition(c.SelectionStart(), c);
-    OnTextChanged(c.SelectionStart().L, 1);
+    OnTextChanged({c.SelectionStart(), {c.SelectionStart().L + 1, 0}});
 }
 
 void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs, bool is_add) {
@@ -1315,10 +1314,19 @@ void TextEditor::Render(bool is_parent_focused) {
     }
 }
 
-void TextEditor::OnTextChanged(uint from_li, uint line_count) {
-    ChangedLineMin = std::min(ChangedLineMin, from_li);
-    ChangedLineMax = std::max(ChangedLineMax, std::clamp(from_li + line_count, ChangedLineMin, uint(Lines.size())));
+void TextEditor::OnTextChanged(Cursor &&range) {
+    if (!ChangedRange) {
+        ChangedRange = std::move(range);
+    } else {
+        ChangedRange = Cursor{
+            {std::min(ChangedRange->SelectionStart().L, range.Start.L), 0},
+            {std::max(ChangedRange->SelectionEnd().L, std::clamp(range.End.L, ChangedRange->SelectionStart().L, uint(Lines.size()))), 0},
+        };
+    }
 }
+
+void TextEditor::OnTextChanged() { OnTextChanged({{0, 0}, {uint(Lines.size()), uint(Lines.back().size())}}); }
+void TextEditor::OnTextChanged(uint li) { OnTextChanged({{li, 0}, {li + 1, 0}}); }
 
 void TextEditor::OnCursorPositionChanged() {
     const auto &c = State.Cursors[0];
@@ -1369,12 +1377,12 @@ void TextEditor::AddUndo(UndoRecord &record) {
     ++UndoIndex;
 }
 
-void TextEditor::ColorizeRange(uint from_li, uint to_li) {
-    if (from_li >= to_li || LanguageDef == nullptr) return;
+void TextEditor::Colorize() {
+    if (!ChangedRange || LanguageDef == nullptr) return;
 
     std::cmatch results;
-    for (uint i = from_li; i < std::min(to_li, uint(Lines.size())); ++i) {
-        auto &line = Lines[i];
+    for (uint li = ChangedRange->Start.L; li < std::min(ChangedRange->End.L, uint(Lines.size()) - 1); ++li) {
+        auto &line = Lines[li];
         if (line.empty()) continue;
 
         for (auto &glyph : line) glyph.ColorIndex = PaletteIndex::Default;

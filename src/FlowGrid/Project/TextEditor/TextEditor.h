@@ -322,13 +322,15 @@ private:
     void UpdateViewVariables(float scroll_x, float scroll_y);
     void Render(bool is_parent_focused = false);
 
-    void OnTextChanged(uint from_li, uint line_count);
+    void OnTextChanged(Cursor &&range);
+    void OnTextChanged(); // All text changed.
+    void OnTextChanged(uint li); // Line changed.
     void OnCursorPositionChanged();
     void SortAndMergeCursors();
 
     void AddUndo(UndoRecord &);
 
-    void ColorizeRange(uint from_li, uint to_li);
+    void Colorize(); // Colorize based on the current `ChangedRange`.
     void ColorizeComments();
 
     bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
@@ -346,11 +348,10 @@ private:
     uint UndoIndex{0};
 
     uint TabSize{4};
-    int LastEnsureCursorVisible{-1};
-    bool LastEnsureCursorVisibleStartToo{false};
-    bool ScrollToTop{false};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
     uint LeftMargin{10};
+    int LastEnsureCursorVisible{-1};
+    bool LastEnsureCursorVisibleStartToo{false};
     ImVec2 CharAdvance;
     float LastClickTime{-1}; // In ImGui time.
     ImVec2 LastClickPos{-1, -1};
@@ -359,17 +360,14 @@ private:
     uint VisibleLineCount{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};
     float ScrollX{0}, ScrollY{0};
-    bool Panning{false};
-    bool IsDraggingSelection{false};
+    bool Panning{false}, IsDraggingSelection{false}, ScrollToTop{false};
     ImVec2 LastMousePos;
     bool CursorPositionChanged{false};
     std::optional<Cursor> MatchingBrackets{};
-
-    uint ChangedLineMin{0}, ChangedLineMax{0};
+    std::optional<Cursor> ChangedRange{};
     PaletteT Palette;
     const LanguageDefinition *LanguageDef{nullptr};
     std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
-    std::string LineBuffer;
 
     std::unique_ptr<CodeParser> Parser;
     std::unique_ptr<SyntaxTree> Tree;

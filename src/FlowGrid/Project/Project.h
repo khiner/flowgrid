@@ -183,7 +183,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
     ProducerProp(fg::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
-    ProducerProp(TextBuffer, TextEditor, FileDialog);
+    ProducerProp(TextBuffer, TextEditor, FileDialog, "[1, null]");
     ProducerProp(Audio, Audio, FileDialog);
     Prop(ProjectSettings, Settings);
     Prop(Info, Info);

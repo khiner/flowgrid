@@ -20,19 +20,19 @@ TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_vie
           {
               .owner_path = Path,
               .title = "Open file",
-              .filters = ".json",
+              .filters = ".json,.cpp",
           },
           {
               .owner_path = Path,
               .title = "Save file",
-              .filters = ".json",
+              .filters = ".json,.cpp",
               .default_file_name = "my_json",
               .save_mode = true,
           },
       }),
       Editor(std::make_unique<TextEditor>()) {
     WindowFlags |= ImGuiWindowFlags_MenuBar;
-    Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Cpp);
+    Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Json);
 }
 
 TextBuffer::~TextBuffer() {}
@@ -102,7 +102,7 @@ void TextBuffer::Render() const {
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, editor.GetLineCount(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
-        editor.GetLanguageDefinitionName(),
+        editor.GetLanguageDefinitionName().c_str(),
         editing_file.c_str()
     );
 

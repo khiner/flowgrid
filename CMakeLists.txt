@@ -23,7 +23,7 @@ set(ImPlotDir lib/implot)
 set(ImGuiFileDialogDir lib/ImGuiFileDialog)
 set(MaDir lib/miniaudio)
 set(TreeSitterDir lib/tree-sitter)
-set(TreeSitterParsersDir lib/tree-sitter-parsers)
+set(TreeSitterGrammarsDir lib/tree-sitter-grammars)
 
 add_executable(${PROJECT_NAME}
     ${ImGuiDir}/imgui_demo.cpp
@@ -40,7 +40,9 @@ add_executable(${PROJECT_NAME}
     ${ImGuiFileDialogDir}/ImGuiFileDialog.cpp
     ${MaDir}/extras/miniaudio_split/miniaudio.c
     ${TreeSitterDir}/lib/src/lib.c
-    ${TreeSitterParsersDir}/tree-sitter-json/src/parser.c
+    ${TreeSitterGrammarsDir}/tree-sitter-json/src/parser.c
+    ${TreeSitterGrammarsDir}/tree-sitter-cpp/src/parser.c
+    ${TreeSitterGrammarsDir}/tree-sitter-cpp/src/scanner.c
     ${FlowGridSourceFiles}
     src/main.cpp
 )
@@ -63,7 +65,8 @@ include_directories(
     lib/date/include/date
     ${TreeSitterDir}/lib/include
     ${TreeSitterDir}/lib/src
-    ${TreeSitterParsersDir}/tree-sitter-json/src
+    ${TreeSitterGrammarsDir}/tree-sitter-json/src
+    ${TreeSitterGrammarsDir}/tree-sitter-cpp/src
     PkgConfig::FFTW3F
 )
 

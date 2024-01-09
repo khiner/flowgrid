@@ -4,7 +4,6 @@
 #include <cassert>
 #include <iterator>
 #include <memory>
-#include <regex>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -13,9 +12,8 @@
 
 #include "imgui.h"
 
-#include "PaletteIndex.h"
-
 struct LanguageDefinition;
+struct TSLanguage;
 
 struct TextEditor {
     // Forward-declare wrapper structs for Tree-Sitter types.
@@ -25,25 +23,70 @@ struct TextEditor {
     TextEditor();
     ~TextEditor();
 
+    // todo group all language data/functionality into a struct.
+
+    enum class PaletteIndex {
+        // Language
+        Default,
+        Keyword,
+        NumberLiteral,
+        StringLiteral,
+        CharLiteral,
+        Punctuation,
+        Preprocessor,
+        Operator,
+        Identifier,
+        Type,
+        Comment,
+        // Application
+        Background,
+        Cursor,
+        Selection,
+        ErrorMarker,
+        ControlCharacter,
+        Breakpoint,
+        LineNumber,
+        CurrentLineFill,
+        CurrentLineFillInactive,
+        CurrentLineEdge,
+        Max
+    };
+
     enum class PaletteIdT {
         Dark,
         Light,
         Mariana,
         RetroBlue
     };
+
+    using LanguagePalette = std::unordered_map<std::string, PaletteIndex>;
+
     enum class LanguageDefinitionIdT {
         None,
         Cpp,
-        C,
-        Cs,
-        Python,
-        Lua,
         Json,
-        Sql,
-        AngelScript,
-        Glsl,
-        Hlsl
     };
+
+    inline static std::string GetLanguageDefinitionName(LanguageDefinitionIdT id) {
+        static const std::unordered_map<LanguageDefinitionIdT, std::string> LanguageDefinitionNames{
+            {LanguageDefinitionIdT::Cpp, "C++"},
+            {LanguageDefinitionIdT::Json, "JSON"},
+        };
+        return LanguageDefinitionNames.at(id);
+    }
+
+    inline static std::string GetSingleLineComment(LanguageDefinitionIdT id) {
+        static const std::unordered_map<LanguageDefinitionIdT, std::string> SingleLineComments{
+            {LanguageDefinitionIdT::Cpp, "//"},
+            {LanguageDefinitionIdT::Json, "//"},
+        };
+        return SingleLineComments.at(id);
+    }
+    static TSLanguage *GetLanguage(LanguageDefinitionIdT);
+    static const LanguagePalette &GetLanguagePalette(LanguageDefinitionIdT);
+
+    static LanguagePalette CreateCppPalette();
+    static LanguagePalette CreateJsonPalette();
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -75,7 +118,7 @@ struct TextEditor {
 
     void SetPalette(PaletteIdT);
     void SetLanguageDefinition(LanguageDefinitionIdT);
-    const char *GetLanguageDefinitionName() const;
+    std::string GetLanguageDefinitionName() const { return GetLanguageDefinitionName(LanguageDefId); }
 
     void SetTabSize(uint);
     void SetLineSpacing(float);
@@ -162,13 +205,9 @@ private:
 
     struct Glyph {
         char Char;
-        PaletteIndex ColorIndex{PaletteIndex::Default};
-        bool IsComment : 1;
-        bool IsMultiLineComment : 1;
-        bool IsPreprocessor : 1;
+        PaletteIndex PaletteIndex;
 
-        Glyph(char ch, PaletteIndex color_index)
-            : Char(ch), ColorIndex(color_index), IsComment(false), IsMultiLineComment(false), IsPreprocessor(false) {}
+        Glyph(char ch, TextEditor::PaletteIndex palette_index = PaletteIndex::Default) : Char(ch), PaletteIndex(palette_index) {}
 
         bool operator==(char ch) const { return Char == ch; }
         operator char() const { return Char; }
@@ -330,18 +369,18 @@ private:
 
     void AddUndo(UndoRecord &);
 
-    void Colorize(); // Colorize based on the current `ChangedRange`.
-    void ColorizeComments();
-
     bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     uint TabSizeAtColumn(uint column) const { return TabSize - (column % TabSize); }
 
     static const PaletteT *GetPalette(PaletteIdT);
 
+    void Highlight();
+
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
     std::vector<LineT> Lines;
+    std::vector<uint> LineStarts; // Stores the starting byte of each line.
     EditorState State;
 
     std::vector<UndoRecord> UndoBuffer;
@@ -366,8 +405,7 @@ private:
     std::optional<Cursor> MatchingBrackets{};
     std::optional<Cursor> ChangedRange{};
     PaletteT Palette;
-    const LanguageDefinition *LanguageDef{nullptr};
-    std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
+    LanguageDefinitionIdT LanguageDefId{LanguageDefinitionIdT::None};
 
     std::unique_ptr<CodeParser> Parser;
     std::unique_ptr<SyntaxTree> Tree;

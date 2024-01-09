@@ -1,7 +1,5 @@
 #include "TextEditor.h"
 
-#include "LanguageDefinition.h"
-
 #include <algorithm>
 #include <print>
 #include <range/v3/range/conversion.hpp>
@@ -15,7 +13,13 @@
 
 using std::string, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
-extern "C" TSLanguage *tree_sitter_json(); // Implemented by the `tree-sitter-json` library.
+#define LoopOverLinesAndGlyphs(lines, line, glyph)   \
+    for (uint line = 0; line < lines.size(); line++) \
+        for (uint glyph = 0; glyph < lines[line].size(); glyph++)
+
+// Implemented by the grammar libraries in `lib/tree-sitter-grammars/`.
+extern "C" TSLanguage *tree_sitter_json();
+extern "C" TSLanguage *tree_sitter_cpp();
 
 struct TextEditor::CodeParser {
     CodeParser() : parser(ts_parser_new()) {}
@@ -34,13 +38,13 @@ private:
 struct TextEditor::SyntaxTree {
     SyntaxTree(TSParser *parser) : Parser(parser) {}
     ~SyntaxTree() {
-        if (Tree == nullptr) return;
         ts_tree_delete(Tree);
-        Tree = nullptr;
     }
 
+    TSTree *get() const { return Tree; }
+
     void Parse(const string &source) {
-        Tree = ts_parser_parse_string(Parser, Tree, source.c_str(), source.length());
+        Tree = ts_parser_parse_string(Parser, nullptr, source.c_str(), source.length());
     }
 
     TSNode RootNode() const { return ts_tree_root_node(Tree); }
@@ -51,20 +55,119 @@ private:
 };
 
 TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()), Tree(std::make_unique<SyntaxTree>(Parser->get())) {
-    SetPalette(DefaultPaletteId);
     Lines.push_back({});
+    SetLanguageDefinition(LanguageDefinitionIdT::Json);
+    SetPalette(DefaultPaletteId);
 }
 
 TextEditor::~TextEditor() {}
 
+TSLanguage *TextEditor::GetLanguage(LanguageDefinitionIdT language_id) {
+    switch (language_id) {
+        case LanguageDefinitionIdT::Cpp: return tree_sitter_cpp();
+        case LanguageDefinitionIdT::Json: return tree_sitter_json();
+        default: return nullptr;
+    }
+}
+
+void AddPaletteTypes(std::unordered_map<std::string, TextEditor::PaletteIndex> &palette, TextEditor::PaletteIndex index, std::initializer_list<std::string> types) {
+    for (const auto &type : types) palette[type] = index;
+}
+
+TextEditor::LanguagePalette TextEditor::CreateCppPalette() {
+    LanguagePalette palette;
+    AddPaletteTypes(palette, PaletteIndex::Keyword, {"auto", "break", "case", "const", "constexpr", "continue", "default", "do", "else", "extern", "false", "for", "if", "nullptr", "private", "return", "static", "struct", "switch", "this", "true", "using", "while"});
+    AddPaletteTypes(palette, PaletteIndex::Operator, {"!", "!=", "&", "&&", "&=", "*", "++", "+=", "-", "--", "-=", "->", "/", "<", "<=", "=", "==", ">", ">=", "[", "]", "^=", "|", "||", "~"});
+    AddPaletteTypes(palette, PaletteIndex::NumberLiteral, {"number_literal"});
+    AddPaletteTypes(palette, PaletteIndex::CharLiteral, {"character"});
+    AddPaletteTypes(palette, PaletteIndex::StringLiteral, {"string_content", "\"", "'", "system_lib_string"});
+    AddPaletteTypes(palette, PaletteIndex::Identifier, {"identifier", "field_identifier", "namespace_identifier", "translation_unit", "type_identifier"});
+    AddPaletteTypes(palette, PaletteIndex::Type, {"primitive_type"});
+    AddPaletteTypes(palette, PaletteIndex::Preprocessor, {"#define", "#include", "preproc_arg"});
+    AddPaletteTypes(palette, PaletteIndex::Punctuation, {"(", ")", "+", ",", ".", ":", "::", ";", "?", "{", "}"});
+    AddPaletteTypes(palette, PaletteIndex::Comment, {"escape_sequence", "comment"});
+
+    return palette;
+}
+TextEditor::LanguagePalette TextEditor::CreateJsonPalette() {
+    LanguagePalette palette;
+    AddPaletteTypes(palette, PaletteIndex::Type, {"true", "false", "null"});
+    AddPaletteTypes(palette, PaletteIndex::NumberLiteral, {"number"});
+    AddPaletteTypes(palette, PaletteIndex::StringLiteral, {"string_content", "\""});
+    AddPaletteTypes(palette, PaletteIndex::Punctuation, {",", ":", "[", "]", "{", "}"});
+
+    return palette;
+}
+
+const TextEditor::LanguagePalette &TextEditor::GetLanguagePalette(LanguageDefinitionIdT language_id) {
+    static const LanguagePalette
+        CppPalette = CreateCppPalette(),
+        JsonPalette = CreateJsonPalette();
+
+    static const LanguagePalette &DefaultPalette = CppPalette;
+
+    switch (language_id) {
+        case LanguageDefinitionIdT::Cpp: return CppPalette;
+        case LanguageDefinitionIdT::Json: return JsonPalette;
+        default: return DefaultPalette;
+    }
+}
+
 string TextEditor::GetSyntaxTreeSExp() const {
-    Parser->SetLanguage(tree_sitter_json());
     Tree->Parse(GetText());
 
     char *c_string = ts_node_string(Tree->RootNode());
     string s_expression(c_string);
     free(c_string);
     return s_expression;
+}
+
+// todo Re-parse and highlight only `ChangedRange` instead of the whole text after every edit.
+void TextEditor::Highlight() {
+    std::set<string> unknown_type_names{};
+    const LanguagePalette &palette = GetLanguagePalette(LanguageDefId);
+
+    Tree->Parse(GetText());
+    TSNode root_node = Tree->RootNode();
+    TSTreeCursor cursor = ts_tree_cursor_new(root_node);
+    while (true) {
+        TSNode node = ts_tree_cursor_current_node(&cursor);
+        const TSPoint start_point = ts_node_start_point(node), end_point = ts_node_end_point(node);
+
+        const string type_name = ts_node_type(node);
+        // todo Handle node group types other than comments.
+        if (ts_node_child_count(node) == 0 || type_name == "comment") {
+            auto palette_index = PaletteIndex::Default;
+            if (palette.contains(type_name)) {
+                palette_index = palette.at(type_name);
+            } else {
+                std::println("Unknown type name: {}", type_name);
+                unknown_type_names.insert(type_name);
+            }
+
+            // Add palette index for each glyph in the node.
+            for (auto b = start_point; b.row < end_point.row || (b.row == end_point.row && b.column < end_point.column);) {
+                if (b.row >= Lines.size()) break;
+                if (b.column >= Lines[b.row].size()) {
+                    b.row++;
+                    b.column = 0;
+                    continue;
+                }
+                auto &glyph = Lines[b.row][b.column];
+                glyph.PaletteIndex = palette_index;
+                b.column++;
+            }
+        }
+
+        if (ts_tree_cursor_goto_first_child(&cursor)) continue;
+
+        while (!ts_tree_cursor_goto_next_sibling(&cursor)) {
+            if (!ts_tree_cursor_goto_parent(&cursor)) {
+                ts_tree_cursor_delete(&cursor);
+                return;
+            }
+        }
+    }
 }
 
 static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
@@ -96,45 +199,11 @@ void TextEditor::SetPalette(PaletteIdT palette_id) {
     }
 }
 
-static const LanguageDefinition *GetLanguageDefinition(TextEditor::LanguageDefinitionIdT language_def_id) {
-    switch (language_def_id) {
-        case TextEditor::LanguageDefinitionIdT::Cpp:
-            return &LanguageDefinition::Cpp;
-        case TextEditor::LanguageDefinitionIdT::C:
-            return &LanguageDefinition::C;
-        case TextEditor::LanguageDefinitionIdT::Cs:
-            return &LanguageDefinition::Cs;
-        case TextEditor::LanguageDefinitionIdT::Python:
-            return &LanguageDefinition::Python;
-        case TextEditor::LanguageDefinitionIdT::Lua:
-            return &LanguageDefinition::Lua;
-        case TextEditor::LanguageDefinitionIdT::Json:
-            return &LanguageDefinition::Jsn;
-        case TextEditor::LanguageDefinitionIdT::Sql:
-            return &LanguageDefinition::Sql;
-        case TextEditor::LanguageDefinitionIdT::AngelScript:
-            return &LanguageDefinition::AngelScript;
-        case TextEditor::LanguageDefinitionIdT::Glsl:
-            return &LanguageDefinition::Glsl;
-        case TextEditor::LanguageDefinitionIdT::Hlsl:
-            return &LanguageDefinition::Hlsl;
-        case TextEditor::LanguageDefinitionIdT::None:
-            return nullptr;
-    }
-}
-
 void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
-    LanguageDef = GetLanguageDefinition(language_def_id);
-
-    RegexList.clear();
-    for (const auto &r : LanguageDef->TokenRegexStrings) {
-        RegexList.emplace_back(std::regex(r.first, std::regex_constants::optimize), r.second);
-    }
-
+    LanguageDefId = language_def_id;
+    Parser->SetLanguage(GetLanguage(language_def_id));
     OnTextChanged();
 }
-
-const char *TextEditor::GetLanguageDefinitionName() const { return LanguageDef != nullptr ? LanguageDef->Name.c_str() : "None"; }
 
 void TextEditor::SetTabSize(uint tab_size) { TabSize = std::clamp(tab_size, 1u, 8u); }
 void TextEditor::SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(line_spacing, 1.f, 2.f); }
@@ -228,7 +297,7 @@ void TextEditor::SetText(const string &text) {
     for (auto chr : text) {
         if (chr == '\r') continue; // Ignore the carriage return character.
         if (chr == '\n') Lines.push_back({});
-        else Lines.back().emplace_back(chr, PaletteIndex::Default);
+        else Lines.back().emplace_back(chr);
     }
 
     ScrollToTop = true;
@@ -276,8 +345,7 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
     HandleMouseInputs();
 
     if (ChangedRange) {
-        ColorizeComments();
-        Colorize();
+        Highlight();
         ChangedRange = std::nullopt;
     }
 
@@ -680,7 +748,8 @@ void TextEditor::MoveCurrentLines(bool up) {
 }
 
 void TextEditor::ToggleLineComment() {
-    if (LanguageDef == nullptr) return;
+    const string &comment = GetSingleLineComment(LanguageDefId);
+    if (comment.empty()) return;
 
     static const auto FindFirstNonSpace = [](const LineT &line) {
         return std::distance(line.begin(), std::ranges::find_if_not(line, isblank));
@@ -694,7 +763,6 @@ void TextEditor::ToggleLineComment() {
     }
 
     UndoRecord u{State};
-    const string &comment = LanguageDef->SingleLineComment;
     const bool should_add_comment = any_of(affected_lines, [&](uint li) {
         return !Equals(comment, Lines[li], FindFirstNonSpace(Lines[li]));
     });
@@ -914,19 +982,17 @@ void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs, b
 }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
-    if (LanguageDef == nullptr) return Palette[int(PaletteIndex::Default)];
-    if (glyph.IsMultiLineComment) return Palette[int(PaletteIndex::MultiLineComment)];
-    if (glyph.IsComment) return Palette[int(PaletteIndex::Comment)];
+    if (LanguageDefId == LanguageDefinitionIdT::None) return Palette[int(PaletteIndex::Default)];
 
-    const auto color = Palette[int(glyph.ColorIndex)];
-    if (glyph.IsPreprocessor) {
-        const auto ppcolor = Palette[int(PaletteIndex::Preprocessor)];
-        const int c0 = ((ppcolor & 0xff) + (color & 0xff)) / 2;
-        const int c1 = (((ppcolor >> 8) & 0xff) + ((color >> 8) & 0xff)) / 2;
-        const int c2 = (((ppcolor >> 16) & 0xff) + ((color >> 16) & 0xff)) / 2;
-        const int c3 = (((ppcolor >> 24) & 0xff) + ((color >> 24) & 0xff)) / 2;
-        return ImU32(c0 | (c1 << 8) | (c2 << 16) | (c3 << 24));
-    }
+    const auto color = Palette[int(glyph.PaletteIndex)];
+    // if (glyph.IsPreprocessor) {
+    //     const auto ppcolor = Palette[int(PaletteIndex::Preprocessor)];
+    //     const int c0 = ((ppcolor & 0xff) + (color & 0xff)) / 2;
+    //     const int c1 = (((ppcolor >> 8) & 0xff) + ((color >> 8) & 0xff)) / 2;
+    //     const int c2 = (((ppcolor >> 16) & 0xff) + ((color >> 16) & 0xff)) / 2;
+    //     const int c3 = (((ppcolor >> 24) & 0xff) + ((color >> 24) & 0xff)) / 2;
+    //     return ImU32(c0 | (c1 << 8) | (c2 << 16) | (c3 << 24));
+    // }
     return color;
 }
 
@@ -1377,107 +1443,6 @@ void TextEditor::AddUndo(UndoRecord &record) {
     ++UndoIndex;
 }
 
-void TextEditor::Colorize() {
-    if (!ChangedRange || LanguageDef == nullptr) return;
-
-    std::cmatch results;
-    for (uint li = ChangedRange->Start.L; li < std::min(ChangedRange->End.L, uint(Lines.size()) - 1); ++li) {
-        auto &line = Lines[li];
-        if (line.empty()) continue;
-
-        for (auto &glyph : line) glyph.ColorIndex = PaletteIndex::Default;
-
-        const string buffer = line | ranges::to<string>;
-        const char *buffer_begin = &buffer.front(), *buffer_end = buffer_begin + buffer.size();
-        for (auto first = buffer_begin; first != buffer_end;) {
-            const char *token_begin = nullptr, *token_end = nullptr;
-            PaletteIndex token_color = PaletteIndex::Default;
-            bool has_tokenize_results = LanguageDef->Tokenize != nullptr && LanguageDef->Tokenize(first, buffer_end, token_begin, token_end, token_color);
-            if (!has_tokenize_results) {
-                for (const auto &p : RegexList) {
-                    if (std::regex_search(first, buffer_end, results, p.first, std::regex_constants::match_continuous)) {
-                        has_tokenize_results = true;
-
-                        const auto &v = *results.begin();
-                        token_begin = v.first;
-                        token_end = v.second;
-                        token_color = p.second;
-                        break;
-                    }
-                }
-            }
-
-            if (!has_tokenize_results) {
-                first++;
-            } else {
-                const size_t token_length = token_end - token_begin;
-                if (token_color == PaletteIndex::Identifier) {
-                    string id(token_begin, token_end);
-                    if (!LanguageDef->IsCaseSensitive) std::transform(id.begin(), id.end(), id.begin(), toupper);
-                    if (!line[first - buffer_begin].IsPreprocessor) {
-                        if (LanguageDef->Keywords.contains(id)) token_color = PaletteIndex::Keyword;
-                        else if (LanguageDef->Identifiers.contains(id)) token_color = PaletteIndex::KnownIdentifier;
-                    }
-                }
-
-                auto token_begin_it = line.begin() + (token_begin - buffer_begin);
-                for (auto &glyph : subrange(token_begin_it, token_begin_it + token_length)) glyph.ColorIndex = token_color;
-                first = token_end;
-            }
-        }
-    }
-}
-
-void TextEditor::ColorizeComments() {
-    if (LanguageDef == nullptr) return;
-
-    bool in_string = false, in_preproc = false, in_multi_line_comment = false;
-    bool line_continues = false; // For preprocessor.
-
-    for (auto &line : Lines) {
-        if (line.empty()) line_continues = false;
-
-        bool in_single_line_comment = false;
-        for (uint ci = 0; ci < line.size(); ++ci) {
-            auto &glyph = line[ci];
-            const char ch = glyph;
-            if (ci == 0 && !line_continues) in_preproc = (ch == LanguageDef->PreprocChar);
-
-            if (in_preproc) {
-                if (ci == line.size() - 1) line_continues = ch == '\\';
-                glyph.IsPreprocessor = true;
-                glyph.IsComment = glyph.IsMultiLineComment = false; // No comments in preprocessor.
-                continue;
-            }
-            if (!in_string && !in_single_line_comment && !in_multi_line_comment && Equals(LanguageDef->CommentStart, line, ci)) {
-                in_multi_line_comment = true;
-                for (uint j = ci; j < ci + LanguageDef->CommentStart.size() && j < line.size(); ++j) {
-                    line[j].IsComment = line[j].IsMultiLineComment = true;
-                }
-                ci += LanguageDef->CommentStart.size() - 1;
-                continue;
-            } else if (in_multi_line_comment && Equals(LanguageDef->CommentEnd, line, ci)) {
-                for (uint j = ci; j < ci + LanguageDef->CommentEnd.size() && j < line.size(); ++j) {
-                    line[j].IsComment = line[j].IsMultiLineComment = true;
-                }
-                ci += LanguageDef->CommentEnd.size() - 1;
-                in_multi_line_comment = false;
-                continue;
-            } else if (!in_string && !in_multi_line_comment && Equals(LanguageDef->SingleLineComment, line, ci)) {
-                in_single_line_comment = true;
-            } else if (!in_string && !in_multi_line_comment && !in_single_line_comment && ch == '\"') {
-                in_string = true;
-            } else if (in_string && ch == '\"') {
-                in_string = false;
-            }
-
-            glyph.IsPreprocessor = in_preproc;
-            glyph.IsComment = in_multi_line_comment || in_single_line_comment;
-            glyph.IsMultiLineComment = in_multi_line_comment;
-        }
-    }
-}
-
 TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text) {
     uint ci = GetCharIndex(at);
     Coords ret = at;
@@ -1500,7 +1465,7 @@ TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text
         } else {
             std::vector<Glyph> glyphs;
             for (uint d = 0; d < UTF8CharLength(ch) && it != text.end(); d++) {
-                glyphs.emplace_back(*it, PaletteIndex::Default);
+                glyphs.emplace_back(*it);
                 if (d > 0) it++;
             }
             AddGlyphs({ret.L, ci}, glyphs);
@@ -1517,14 +1482,14 @@ const TextEditor::PaletteT TextEditor::DarkPalette = {{
     0xe06c75ff, // Keyword
     0xe5c07bff, // Number
     0x98c379ff, // String
-    0xe0a070ff, // Char literal
+    0xe0a070ff, // Char
     0x6a7384ff, // Punctuation
     0x808040ff, // Preprocessor
+    0x61afefff, // Operator
     0xdcdfe4ff, // Identifier
-    0x61afefff, // Known identifier
-    0xc678ddff, // Preproc identifier
-    0x3696a2ff, // Comment (single line)
-    0x3696a2ff, // Comment (multi line)
+    0xc678ddff, // Type
+    0x3696a2ff, // Comment
+
     0x282c34ff, // Background
     0xe0e0e0ff, // Cursor
     0x2060a080, // Selection
@@ -1542,14 +1507,14 @@ const TextEditor::PaletteT TextEditor::MarianaPalette = {{
     0xc695c6ff, // Keyword
     0xf9ae58ff, // Number
     0x99c794ff, // String
-    0xe0a070ff, // Char literal
+    0xe0a070ff, // Char
     0x5fb4b4ff, // Punctuation
     0x808040ff, // Preprocessor
+    0x4dc69bff, // Operator
     0xffffffff, // Identifier
-    0x4dc69bff, // Known identifier
-    0xe0a0ffff, // Preproc identifier
+    0xe0a0ffff, // Type
     0xa6acb9ff, // Comment (single line)
-    0xa6acb9ff, // Comment (multi line)
+
     0x303841ff, // Background
     0xe0e0e0ff, // Cursor
     0x4e5a6580, // Selection
@@ -1563,18 +1528,18 @@ const TextEditor::PaletteT TextEditor::MarianaPalette = {{
 }};
 
 const TextEditor::PaletteT TextEditor::LightPalette = {{
-    0x404040ff, // None
+    0x404040ff, // Default
     0x060cffff, // Keyword
     0x008000ff, // Number
     0xa02020ff, // String
-    0x704030ff, // Char literal
+    0x704030ff, // Char
     0x000000ff, // Punctuation
     0x606040ff, // Preprocessor
+    0x106060ff, // Operator
     0x404040ff, // Identifier
-    0x106060ff, // Known identifier
-    0xa040c0ff, // Preproc identifier
-    0x205020ff, // Comment (single line)
-    0x205040ff, // Comment (multi line)
+    0xa040c0ff, // Type
+    0x205020ff, // Comment
+
     0xffffffff, // Background
     0x000000ff, // Cursor
     0x00006040, // Selection
@@ -1588,18 +1553,18 @@ const TextEditor::PaletteT TextEditor::LightPalette = {{
 }};
 
 const TextEditor::PaletteT TextEditor::RetroBluePalette = {{
-    0xffff00ff, // None
+    0xffff00ff, // Default
     0x00ffffff, // Keyword
     0x00ff00ff, // Number
     0x008080ff, // String
-    0x008080ff, // Char literal
+    0x008080ff, // Char
     0xffffffff, // Punctuation
     0x008000ff, // Preprocessor
+    0xffffffff, // Operator
     0xffff00ff, // Identifier
-    0xffffffff, // Known identifier
-    0xff00ffff, // Preproc identifier
-    0x808080ff, // Comment (single line)
-    0x404040ff, // Comment (multi line)
+    0xff00ffff, // Type
+    0x808080ff, // Comment
+
     0x000080ff, // Background
     0xff8000ff, // Cursor
     0x00ffff80, // Selection

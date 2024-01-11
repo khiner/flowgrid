@@ -114,6 +114,16 @@ string TextEditor::GetSyntaxTreeSExp() const {
 // todo Re-parse and highlight only `ChangedRange` instead of the whole text after every edit.
 // Use a `TSInput`/`TSInputEdit`: https://tree-sitter.github.io/tree-sitter/using-parsers#basic-parsing
 void TextEditor::Highlight() {
+    // `PaletteIndices` mirrors `Lines` and contains the palette index for each char in the text.
+    PaletteIndices.clear();
+    PaletteIndices.reserve(Lines.size());
+    for (uint li = 0; li < Lines.size(); ++li) {
+        PaletteIndices.emplace_back();
+        for (uint ci = 0; ci < Lines[li].size(); ++ci) {
+            PaletteIndices[li].emplace_back(PaletteIndex::Default);
+        }
+    }
+
     if (Parser->GetLanguage() == nullptr) return;
 
     const auto &palette = GetLanguage().Palette;
@@ -130,7 +140,7 @@ void TextEditor::Highlight() {
             const auto palette_index = palette.contains(type_name) ? palette.at(type_name) : PaletteIndex::Default;
             // if (!palette.contains(type_name)) std::println("Unknown type name: {}", type_name);
 
-            // Add palette index for each glyph in the node.
+            // Add palette index for each char in the node.
             for (auto b = start_point; b.row < end_point.row || (b.row == end_point.row && b.column < end_point.column);) {
                 if (b.row >= Lines.size()) break;
                 if (b.column >= Lines[b.row].size()) {
@@ -138,8 +148,7 @@ void TextEditor::Highlight() {
                     b.column = 0;
                     continue;
                 }
-                auto &glyph = Lines[b.row][b.column];
-                glyph.PaletteIndex = palette_index;
+                PaletteIndices[b.row][b.column] = palette_index;
                 b.column++;
             }
         }
@@ -955,7 +964,7 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     OnTextChanged({c.SelectionStart(), {c.SelectionStart().L + 1, 0}});
 }
 
-void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs, bool is_add) {
+void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bool is_add) {
     auto &line = Lines[lc.L];
     const uint column = GetCharColumn(lc);
 
@@ -975,19 +984,8 @@ void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs, b
     for (const auto &[c, new_ci] : adjusted_ci_for_cursor) SetCursorPosition(ToCoords({lc.L, new_ci}), State.Cursors[c]);
 }
 
-ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
-    if (LanguageId == LanguageDefinition::ID::None) return Palette[int(PaletteIndex::Default)];
-
-    const auto color = Palette[int(glyph.PaletteIndex)];
-    // if (glyph.IsPreprocessor) {
-    //     const auto ppcolor = Palette[int(PaletteIndex::Preprocessor)];
-    //     const int c0 = ((ppcolor & 0xff) + (color & 0xff)) / 2;
-    //     const int c1 = (((ppcolor >> 8) & 0xff) + ((color >> 8) & 0xff)) / 2;
-    //     const int c2 = (((ppcolor >> 16) & 0xff) + ((color >> 16) & 0xff)) / 2;
-    //     const int c3 = (((ppcolor >> 24) & 0xff) + ((color >> 24) & 0xff)) / 2;
-    //     return ImU32(c0 | (c1 << 8) | (c2 << 16) | (c3 << 24));
-    // }
-    return color;
+ImU32 TextEditor::GetGlyphColor(LineChar lc) const {
+    return Palette[int(LanguageId == LanguageDefinition::ID::None ? PaletteIndex::Default : PaletteIndices[lc.L][lc.C])];
 }
 
 static bool IsPressed(ImGuiKey key) {
@@ -1284,9 +1282,9 @@ void TextEditor::Render(bool is_parent_focused) {
 
         // Render colorized text
         for (uint ci = GetFirstVisibleCharIndex(li), column = FirstVisibleCoords.C; ci < Lines[li].size() && column <= LastVisibleCoords.C;) {
-            const auto &glyph = line[ci];
+            const char ch = line[ci];
             const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + TextDistanceToLineStart({li, column}, false), 0};
-            if (glyph == '\t') {
+            if (ch == '\t') {
                 if (ShowWhitespaces) {
                     const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
                     const ImVec2 p2{
@@ -1300,7 +1298,7 @@ void TextEditor::Render(bool is_parent_focused) {
                     dl->AddLine(p2, p3, color);
                     dl->AddLine(p2, p4, color);
                 }
-            } else if (glyph == ' ') {
+            } else if (ch == ' ') {
                 if (ShowWhitespaces) {
                     dl->AddCircleFilled(
                         glyph_pos + ImVec2{space_size, ImGui::GetFontSize()} * 0.5f,
@@ -1308,14 +1306,14 @@ void TextEditor::Render(bool is_parent_focused) {
                     );
                 }
             } else {
-                const uint seq_length = UTF8CharLength(glyph);
+                const uint seq_length = UTF8CharLength(ch);
                 if (seq_length == 1 && MatchingBrackets && (MatchingBrackets->Start == Coords{li, column} || MatchingBrackets->End == Coords{li, column})) {
                     const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, Palette[int(PaletteIndex::Cursor)]);
                 }
                 string glyph_buffer;
                 for (uint i = 0; i < seq_length; i++) glyph_buffer.push_back(line[ci + i]);
-                dl->AddText(glyph_pos, GetGlyphColor(glyph), glyph_buffer.c_str());
+                dl->AddText(glyph_pos, GetGlyphColor({li, ci}), glyph_buffer.c_str());
             }
             MoveCharIndexAndColumn(li, ci, column);
         }
@@ -1457,13 +1455,13 @@ TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text
             ret.L++;
             ret.C = 0;
         } else {
-            std::vector<Glyph> glyphs;
+            std::vector<char> chars;
             for (uint d = 0; d < UTF8CharLength(ch) && it != text.end(); d++) {
-                glyphs.emplace_back(*it);
+                chars.emplace_back(*it);
                 if (d > 0) it++;
             }
-            AddGlyphs({ret.L, ci}, glyphs);
-            ci += glyphs.size();
+            AddGlyphs({ret.L, ci}, chars);
+            ci += chars.size();
             ret.C = GetCharColumn({ret.L, ci});
         }
     }

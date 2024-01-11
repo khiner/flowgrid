@@ -206,18 +206,7 @@ private:
         const Cursor &GetCursor() const { return Cursors.back(); }
     };
 
-    struct Glyph {
-        char Char;
-        PaletteIndex PaletteIndex;
-
-        Glyph(char ch, ::PaletteIndex palette_index = PaletteIndex::Default) : Char(ch), PaletteIndex(palette_index) {}
-
-        bool operator==(char ch) const { return Char == ch; }
-        operator char() const { return Char; }
-    };
-
-    using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
-    using LineT = std::vector<Glyph>;
+    using LineT = std::vector<char>;
 
     struct LineCharIter {
         LineCharIter(const std::vector<LineT> &lines, LineChar lc = {0, 0})
@@ -352,12 +341,12 @@ private:
     void DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
-    void AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph>, bool is_add);
-    void AddGlyphs(LineChar lc, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, true); }
-    void RemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, false); }
+    void AddOrRemoveGlyphs(LineChar lc, std::span<const char>, bool is_add);
+    void AddGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, true); }
+    void RemoveGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, false); }
     void RemoveGlyphs(LineChar lc, uint end_ci) { RemoveGlyphs(lc, {Lines[lc.L].cbegin() + lc.C, Lines[lc.L].cbegin() + end_ci}); }
     void RemoveGlyphs(LineChar lc) { RemoveGlyphs(lc, {Lines[lc.L].cbegin() + lc.C, Lines[lc.L].cend()}); }
-    ImU32 GetGlyphColor(const Glyph &) const;
+    ImU32 GetGlyphColor(LineChar) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
     void HandleMouseInputs();
@@ -376,14 +365,14 @@ private:
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     uint TabSizeAtColumn(uint column) const { return TabSize - (column % TabSize); }
 
-    static const PaletteT *GetPalette(PaletteIdT);
-
     void Highlight();
 
+    using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
+    static const PaletteT *GetPalette(PaletteIdT);
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
     std::vector<LineT> Lines;
-    std::vector<uint> LineStarts; // Stores the starting byte of each line.
+    std::vector<std::vector<PaletteIndex>> PaletteIndices;
     EditorState State;
 
     std::vector<UndoRecord> UndoBuffer;

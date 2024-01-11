@@ -84,9 +84,9 @@ void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
 
     // Find listeners to notify.
     for (const auto id : ChangedIds) {
-        if (!FieldById.contains(id)) continue; // The component was deleted.
+        if (!FieldIds.contains(id)) continue; // The component was deleted.
 
-        auto *changed = FieldById.at(id);
+        auto *changed = ById.at(id);
         changed->Refresh();
 
         const auto &listeners = ChangeListenersById[id];
@@ -464,7 +464,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
     // First, refresh all component containers to ensure the dynamically managed component instances match the JSON.
     for (const ID auxiliary_id : ContainerAuxiliaryIds) {
-        auto *auxiliary_field = FieldById.at(auxiliary_id);
+        auto *auxiliary_field = ById.at(auxiliary_id);
         if (j.contains(auxiliary_field->JsonPointer())) {
             auxiliary_field->SetJson(std::move(j.at(auxiliary_field->JsonPointer())));
             auxiliary_field->Refresh();
@@ -571,7 +571,7 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
 
     std::map<StorePath, u32> gesture_change_counts;
     for (const auto &[id, changed_paths] : GestureChangedPaths) {
-        const auto &field = FieldById[id];
+        const auto &field = ById.at(id);
         for (const PathsMoment &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
                 gesture_change_counts[path == "" ? field->Path : field->Path / path]++;

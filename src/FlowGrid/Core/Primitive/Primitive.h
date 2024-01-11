@@ -4,13 +4,13 @@
 
 template<IsPrimitive T> struct Primitive : Component {
     Primitive(ComponentArgs &&args, T value = {}) : Component(std::move(args)), Value(value) {
-        FieldById.emplace(Id, this);
+        FieldIds.insert(Id);
         if (Exists()) Refresh();
         else Set(value); // We treat the provided value as a default store value.
     }
     virtual ~Primitive() {
         Erase();
-        FieldById.erase(Id);
+        FieldIds.erase(Id);
     }
 
     json ToJson() const override;

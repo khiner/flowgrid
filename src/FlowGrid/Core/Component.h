@@ -90,7 +90,7 @@ struct Component {
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
-    inline static std::unordered_map<ID, Component *> FieldById; // Only "field" components (containers/primitives).
+    inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (Primitives/Containers).
 
     // Use when you expect a component with exactly this path to exist.
     inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IdByPath.at(path)); }
@@ -154,7 +154,7 @@ struct Component {
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
     inline static void RefreshAll() {
-        for (auto &[id, field] : FieldById) field->Refresh();
+        for (auto id : FieldIds) ById.at(id)->Refresh();
     }
 
     // todo gesturing should be project-global, not component-static.

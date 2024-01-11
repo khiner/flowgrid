@@ -14,6 +14,7 @@
 namespace fs = std::filesystem;
 
 struct TSLanguage;
+struct TSTree;
 
 enum class PaletteIndex {
     // Language
@@ -75,7 +76,6 @@ struct LanguageDefinitions {
 struct TextEditor {
     // Forward-declare wrapper structs for Tree-Sitter types.
     struct CodeParser;
-    struct SyntaxTree;
 
     TextEditor();
     ~TextEditor();
@@ -115,7 +115,11 @@ struct TextEditor {
         bool operator!=(const LineChar &) const = default;
     };
 
-    uint GetLineCount() const { return Lines.size(); }
+    using LineT = std::vector<char>;
+
+    uint LineCount() const { return Lines.size(); }
+    const LineT &GetLine(uint li) const { return Lines[li]; }
+
     Coords GetCursorPosition() const { return SanitizeCoords(State.GetCursor().End); }
 
     void SetPalette(PaletteIdT);
@@ -205,8 +209,6 @@ private:
         Cursor &GetCursor() { return Cursors.back(); }
         const Cursor &GetCursor() const { return Cursors.back(); }
     };
-
-    using LineT = std::vector<char>;
 
     struct LineCharIter {
         LineCharIter(const std::vector<LineT> &lines, LineChar lc = {0, 0})
@@ -365,6 +367,7 @@ private:
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     uint TabSizeAtColumn(uint column) const { return TabSize - (column % TabSize); }
 
+    void Parse();
     void Highlight();
 
     using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
@@ -400,5 +403,5 @@ private:
     LanguageDefinition::ID LanguageId{LanguageDefinition::ID::None};
 
     std::unique_ptr<CodeParser> Parser;
-    std::unique_ptr<SyntaxTree> Tree;
+    TSTree *Tree;
 };

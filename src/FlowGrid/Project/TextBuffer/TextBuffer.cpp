@@ -101,7 +101,7 @@ void TextBuffer::Render() const {
     const auto cursor_coords = editor.GetCursorPosition();
     const string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
     ImGui::Text(
-        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, editor.GetLineCount(),
+        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, editor.LineCount(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
         editor.GetLanguage().Name.c_str(),

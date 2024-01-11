@@ -76,43 +76,54 @@ private:
     TSLanguage *Language;
 };
 
-struct TextEditor::SyntaxTree {
-    SyntaxTree(TSParser *parser) : Parser(parser) {}
-    ~SyntaxTree() {
-        ts_tree_delete(Tree);
-    }
-
-    TSTree *get() const { return Tree; }
-
-    void Parse(const string &source) {
-        Tree = ts_parser_parse_string(Parser, nullptr, source.c_str(), source.length());
-    }
-
-    TSNode RootNode() const { return ts_tree_root_node(Tree); }
-
-private:
-    TSParser *Parser{nullptr};
-    TSTree *Tree{nullptr};
-};
-
-TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()), Tree(std::make_unique<SyntaxTree>(Parser->get())) {
+TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()) {
     Lines.push_back({});
     SetPalette(DefaultPaletteId);
 }
 
-TextEditor::~TextEditor() {}
+TextEditor::~TextEditor() {
+    ts_tree_delete(Tree);
+}
+
+const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uint32_t *bytes_read) {
+    (void)byte_index; // Unused.
+    static const char newline = '\n';
+
+    const auto *editor = static_cast<TextEditor *>(payload);
+    if (position.row >= editor->LineCount()) {
+        *bytes_read = 0;
+        return nullptr;
+    }
+    const auto &line = editor->GetLine(position.row);
+    if (position.column > line.size()) { // Sanity check - shouldn't happen.
+        *bytes_read = 0;
+        return nullptr;
+    }
+
+    if (position.column == line.size()) {
+        *bytes_read = 1;
+        return &newline;
+    }
+
+    // Read until the end of the line.
+    *bytes_read = line.size() - position.column;
+    return line.data() + position.column;
+}
+
+void TextEditor::Parse() {
+    TSInput input{this, TSReadText, TSInputEncodingUTF8};
+    Tree = ts_parser_parse(Parser->get(), nullptr, std::move(input));
+}
 
 string TextEditor::GetSyntaxTreeSExp() const {
-    Tree->Parse(GetText());
-
-    char *c_string = ts_node_string(Tree->RootNode());
+    char *c_string = ts_node_string(ts_tree_root_node(Tree));
     string s_expression(c_string);
     free(c_string);
     return s_expression;
 }
 
 // todo Re-parse and highlight only `ChangedRange` instead of the whole text after every edit.
-// Use a `TSInput`/`TSInputEdit`: https://tree-sitter.github.io/tree-sitter/using-parsers#basic-parsing
+// Use a `TSInputEdit`: https://tree-sitter.github.io/tree-sitter/using-parsers#basic-parsing
 void TextEditor::Highlight() {
     // `PaletteIndices` mirrors `Lines` and contains the palette index for each char in the text.
     PaletteIndices.clear();
@@ -127,9 +138,8 @@ void TextEditor::Highlight() {
     if (Parser->GetLanguage() == nullptr) return;
 
     const auto &palette = GetLanguage().Palette;
-
-    Tree->Parse(GetText());
-    TSNode root_node = Tree->RootNode();
+    Parse();
+    TSNode root_node = ts_tree_root_node(Tree);
     TSTreeCursor cursor = ts_tree_cursor_new(root_node);
     while (true) {
         TSNode node = ts_tree_cursor_current_node(&cursor);

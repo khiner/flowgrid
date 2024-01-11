@@ -120,6 +120,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
   - Used to quickly create, store, and restore persistent state snapshot
     (used for undo/redo, and for debugging/inspection/monitoring)
 - [json](https://github.com/nlohmann/json): state serialization
+- [tree-sitter](https://github.com/tree-sitter/tree-sitter): Language parsing for syntax highlighting in text buffers
 - [ConcurrentQueue](https://github.com/cameron314/concurrentqueue): the main action queue
   - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue.
 

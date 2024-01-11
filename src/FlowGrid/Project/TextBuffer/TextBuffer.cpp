@@ -8,31 +8,30 @@
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/Fonts.h"
 
-TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, TextBuffer::FileConfig &&file_config, string_view value)
-    : Primitive(std::move(args.Args), string(value)), ActionableProducer(std::move(args.Q)),
-      FileDialog(file_dialog), FileConf(std::move(file_config)), Editor(std::make_unique<TextEditor>()) {
-    Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Cpp);
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, TextBuffer::FileConfig &&file_config, string_view text)
+    : ActionableComponent(std::move(args)), FileDialog(file_dialog), FileConf(std::move(file_config)), Editor(std::make_unique<TextEditor>()) {
+    Text.Set_(string(text));
 }
-TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_view value)
-    : Primitive(std::move(args.Args), string(value)), ActionableProducer(std::move(args.Q)),
-      FileDialog(file_dialog),
-      FileConf({
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_view text)
+    : TextBuffer(
+          std::move(args), file_dialog,
           {
-              .owner_path = Path,
-              .title = "Open file",
-              .filters = ".json,.cpp",
+              {
+                  .owner_path = Path,
+                  .title = "Open file",
+                  .filters = ".json,.cpp",
+              },
+              {
+                  .owner_path = Path,
+                  .title = "Save file",
+                  .filters = ".json,.cpp",
+                  .default_file_name = "my_json",
+                  .save_mode = true,
+              },
           },
-          {
-              .owner_path = Path,
-              .title = "Save file",
-              .filters = ".json,.cpp",
-              .default_file_name = "my_json",
-              .save_mode = true,
-          },
-      }),
-      Editor(std::make_unique<TextEditor>()) {
+          std::move(text)
+      ) {
     WindowFlags |= ImGuiWindowFlags_MenuBar;
-    Editor->SetLanguageDefinition(TextEditor::LanguageDefinitionIdT::Json);
 }
 
 TextBuffer::~TextBuffer() {}
@@ -40,10 +39,13 @@ TextBuffer::~TextBuffer() {}
 void TextBuffer::Apply(const ActionType &action) const {
     Visit(
         action,
-        [this](const Action::TextBuffer::Set &a) { Set(a.value); },
+        [this](const Action::TextBuffer::Set &a) { Text.Set(a.value); },
         [this](const Action::TextBuffer::ShowOpenDialog &) { FileDialog.Set(FileConf.OpenConfig); },
         [this](const Action::TextBuffer::ShowSaveDialog &) { FileDialog.Set(FileConf.SaveConfig); },
-        [this](const Action::TextBuffer::Open &a) { Set(FileIO::read(a.file_path)); },
+        [this](const Action::TextBuffer::Open &a) {
+            LastOpenedFilePath.Set(a.file_path);
+            Text.Set(FileIO::read(a.file_path));
+        },
         [this](const Action::TextBuffer::Save &a) { FileIO::write(a.file_path, Editor->GetText()); },
     );
 }
@@ -98,7 +100,7 @@ void TextBuffer::Render() const {
     auto &editor = *Editor;
     const auto cursor_coords = editor.GetCursorPosition();
     const string editing_file = "no file";
-    Text(
+    ImGui::Text(
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, editor.GetLineCount(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
@@ -116,9 +118,11 @@ void TextBuffer::Render() const {
     //   Soon I'm incorporating the TextEditor state/undo/redo system into the FlowGrid system.
     const string new_text = editor.GetText();
     if (new_text != prev_text) {
-        IssueSet(new_text);
-    } else if (Value != new_text) {
-        editor.SetText(Value);
+        Text.IssueSet(new_text);
+    } else if (Text != new_text) {
+        editor.SetText(Text);
+        auto language_def_id = editor.GetLanguageDefinitionForFile(string(LastOpenedFilePath));
+        if (language_def_id != editor.GetLanguageDefinitionId()) editor.SetLanguageDefinition(language_def_id);
     }
 }
 

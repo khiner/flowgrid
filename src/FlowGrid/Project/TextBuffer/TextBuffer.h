@@ -2,7 +2,8 @@
 
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Action/ActionableProducer.h"
-#include "Core/Primitive/Primitive.h"
+#include "Core/ActionableComponent.h"
+#include "Core/Primitive/String.h"
 #include "Core/ProducerComponentArgs.h"
 #include "Project/FileDialog/FileDialogData.h"
 #include "TextBufferAction.h"
@@ -10,15 +11,13 @@
 struct FileDialog;
 struct TextEditor;
 
-struct TextBuffer : Primitive<string>, ActionableProducer<Action::TextBuffer::Any> {
-    using ArgsT = ProducerComponentArgs<ProducedActionType>;
-
+struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     struct FileConfig {
         FileDialogData OpenConfig, SaveConfig;
     };
 
-    TextBuffer(ArgsT &&, const FileDialog &, FileConfig &&, string_view value = "");
-    TextBuffer(ArgsT &&, const FileDialog &, string_view value = "");
+    TextBuffer(ArgsT &&, const FileDialog &, FileConfig &&, string_view text = "");
+    TextBuffer(ArgsT &&, const FileDialog &, string_view text = "");
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;
@@ -26,10 +25,13 @@ struct TextBuffer : Primitive<string>, ActionableProducer<Action::TextBuffer::An
 
     void RenderDebug() const override;
 
-    operator bool() const { return !Value.empty(); }
-    operator string_view() const { return Value; }
+    operator bool() const { return bool(Text); }
+    operator string_view() const { return Text; }
+    operator string() const { return Text; }
 
     Prop_(DebugComponent, Debug, "Editor debug");
+    Prop(String, Text);
+    Prop(String, LastOpenedFilePath);
 
 private:
     void Render() const override;

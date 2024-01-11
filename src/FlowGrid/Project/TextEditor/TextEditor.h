@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cassert>
+#include <filesystem>
 #include <iterator>
 #include <memory>
 #include <span>
@@ -12,7 +13,8 @@
 
 #include "imgui.h"
 
-struct LanguageDefinition;
+namespace fs = std::filesystem;
+
 struct TSLanguage;
 
 struct TextEditor {
@@ -71,8 +73,22 @@ struct TextEditor {
         static const std::unordered_map<LanguageDefinitionIdT, std::string> LanguageDefinitionNames{
             {LanguageDefinitionIdT::Cpp, "C++"},
             {LanguageDefinitionIdT::Json, "JSON"},
+            {LanguageDefinitionIdT::None, "None"}
         };
         return LanguageDefinitionNames.at(id);
+    }
+
+    inline static LanguageDefinitionIdT GetLanguageDefinitionForFile(const fs::path &file_path) {
+        static const std::unordered_map<std::string, LanguageDefinitionIdT> LanguageDefinitions{
+            {".h", LanguageDefinitionIdT::Cpp},
+            {".hpp", LanguageDefinitionIdT::Cpp},
+            {".cpp", LanguageDefinitionIdT::Cpp},
+            {".json", LanguageDefinitionIdT::Json},
+        };
+
+        const std::string extension = file_path.extension();
+        if (extension.empty()) return LanguageDefinitionIdT::None;
+        return LanguageDefinitions.contains(extension) ? LanguageDefinitions.at(extension) : LanguageDefinitionIdT::None;
     }
 
     inline static std::string GetSingleLineComment(LanguageDefinitionIdT id) {
@@ -82,6 +98,7 @@ struct TextEditor {
         };
         return SingleLineComments.at(id);
     }
+    LanguageDefinitionIdT GetLanguageDefinitionId() const { return LanguageDefId; }
     static TSLanguage *GetLanguage(LanguageDefinitionIdT);
     static const LanguagePalette &GetLanguagePalette(LanguageDefinitionIdT);
 

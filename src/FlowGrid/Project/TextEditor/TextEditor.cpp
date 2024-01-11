@@ -1,7 +1,6 @@
 #include "TextEditor.h"
 
 #include <algorithm>
-#include <print>
 #include <range/v3/range/conversion.hpp>
 #include <ranges>
 #include <set>
@@ -22,17 +21,20 @@ extern "C" TSLanguage *tree_sitter_json();
 extern "C" TSLanguage *tree_sitter_cpp();
 
 struct TextEditor::CodeParser {
-    CodeParser() : parser(ts_parser_new()) {}
-    ~CodeParser() { ts_parser_delete(parser); }
+    CodeParser() : Parser(ts_parser_new()) {}
+    ~CodeParser() { ts_parser_delete(Parser); }
 
-    void SetLanguage(TSLanguage *language) const {
-        ts_parser_set_language(parser, language);
+    void SetLanguage(TSLanguage *language) {
+        Language = language;
+        ts_parser_set_language(Parser, Language);
     }
+    TSLanguage *GetLanguage() const { return Language; }
 
-    TSParser *get() const { return parser; }
+    TSParser *get() const { return Parser; }
 
 private:
-    TSParser *parser;
+    TSParser *Parser;
+    TSLanguage *Language;
 };
 
 struct TextEditor::SyntaxTree {
@@ -123,8 +125,10 @@ string TextEditor::GetSyntaxTreeSExp() const {
 }
 
 // todo Re-parse and highlight only `ChangedRange` instead of the whole text after every edit.
+// Use a `TSInput`/`TSInputEdit`: https://tree-sitter.github.io/tree-sitter/using-parsers#basic-parsing
 void TextEditor::Highlight() {
-    std::set<string> unknown_type_names{};
+    if (Parser->GetLanguage() == nullptr) return;
+
     const LanguagePalette &palette = GetLanguagePalette(LanguageDefId);
 
     Tree->Parse(GetText());
@@ -133,17 +137,11 @@ void TextEditor::Highlight() {
     while (true) {
         TSNode node = ts_tree_cursor_current_node(&cursor);
         const TSPoint start_point = ts_node_start_point(node), end_point = ts_node_end_point(node);
-
         const string type_name = ts_node_type(node);
         // todo Handle node group types other than comments.
         if (ts_node_child_count(node) == 0 || type_name == "comment") {
-            auto palette_index = PaletteIndex::Default;
-            if (palette.contains(type_name)) {
-                palette_index = palette.at(type_name);
-            } else {
-                std::println("Unknown type name: {}", type_name);
-                unknown_type_names.insert(type_name);
-            }
+            const auto palette_index = palette.contains(type_name) ? palette.at(type_name) : PaletteIndex::Default;
+            // if (!palette.contains(type_name)) std::println("Unknown type name: {}", type_name);
 
             // Add palette index for each glyph in the node.
             for (auto b = start_point; b.row < end_point.row || (b.row == end_point.row && b.column < end_point.column);) {

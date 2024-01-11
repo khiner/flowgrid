@@ -241,7 +241,7 @@ void Project::Apply(const ActionType &action) const {
         action,
         [this](const Action::Primitive::Any &a) { ApplyPrimitiveAction(a); },
         [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
-        [this](const Action::TextBuffer::Any &a) {
+        [](const Action::TextBuffer::Any &a) {
             const auto *buffer = Find(a.GetComponentPath());
             if (buffer == nullptr) throw std::runtime_error(std::format("TextBuffer not found: {}", a.GetComponentPath().string()));
             static_cast<const TextBuffer *>(buffer)->Apply(a);

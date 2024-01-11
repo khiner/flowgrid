@@ -84,6 +84,7 @@ struct Component {
         virtual void OnComponentChanged() = 0;
     };
 
+    // todo these should be non-static members on the Project (root) component.
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
     inline static std::unordered_map<StorePath, ID, PathHash> IdByPath;
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
@@ -91,9 +92,9 @@ struct Component {
 
     inline static std::unordered_map<ID, Component *> FieldById; // Only "field" components (containers/primitives).
 
-    // Use when you expect a field with exactly this path to exist.
-    inline static Component *ByPath(const StorePath &path) noexcept { return FieldById.at(IdByPath.at(path)); }
-    inline static Component *ByPath(StorePath &&path) noexcept { return FieldById.at(IdByPath.at(std::move(path))); }
+    // Use when you expect a component with exactly this path to exist.
+    inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IdByPath.at(path)); }
+    inline static Component *ByPath(StorePath &&path) noexcept { return ById.at(IdByPath.at(std::move(path))); }
 
     inline static Component *Find(const StorePath &search_path) noexcept {
         if (IdByPath.contains(search_path)) return ByPath(search_path);

@@ -99,12 +99,12 @@ void TextBuffer::Render() const {
 
     auto &editor = *Editor;
     const auto cursor_coords = editor.GetCursorPosition();
-    const string editing_file = "no file";
+    const string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
     ImGui::Text(
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, editor.GetLineCount(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
-        editor.GetLanguageDefinitionName().c_str(),
+        editor.GetLanguage().Name.c_str(),
         editing_file.c_str()
     );
 
@@ -121,8 +121,7 @@ void TextBuffer::Render() const {
         Text.IssueSet(new_text);
     } else if (Text != new_text) {
         editor.SetText(Text);
-        auto language_def_id = editor.GetLanguageDefinitionForFile(string(LastOpenedFilePath));
-        if (language_def_id != editor.GetLanguageDefinitionId()) editor.SetLanguageDefinition(language_def_id);
+        editor.SetFilePath(string(LastOpenedFilePath));
     }
 }
 

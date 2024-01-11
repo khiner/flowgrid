@@ -12,13 +12,52 @@
 
 using std::string, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
-#define LoopOverLinesAndGlyphs(lines, line, glyph)   \
-    for (uint line = 0; line < lines.size(); line++) \
-        for (uint glyph = 0; glyph < lines[line].size(); glyph++)
-
 // Implemented by the grammar libraries in `lib/tree-sitter-grammars/`.
 extern "C" TSLanguage *tree_sitter_json();
 extern "C" TSLanguage *tree_sitter_cpp();
+
+void AddTypes(LanguageDefinition::PaletteT &palette, PaletteIndex index, std::initializer_list<std::string> types) {
+    for (const auto &type : types) palette[type] = index;
+}
+
+LanguageDefinition::PaletteT LanguageDefinition::CreatePalette(ID id) {
+    PaletteT p;
+    using PI = PaletteIndex;
+    switch (id) {
+        case ID::Cpp:
+            AddTypes(p, PI::Keyword, {"auto", "break", "case", "const", "constexpr", "continue", "default", "do", "else", "extern", "false", "for", "if", "nullptr", "private", "return", "static", "struct", "switch", "this", "true", "using", "while"});
+            AddTypes(p, PI::Operator, {"!", "!=", "&", "&&", "&=", "*", "++", "+=", "-", "--", "-=", "->", "/", "<", "<=", "=", "==", ">", ">=", "[", "]", "^=", "|", "||", "~"});
+            AddTypes(p, PI::NumberLiteral, {"number_literal"});
+            AddTypes(p, PI::CharLiteral, {"character"});
+            AddTypes(p, PI::StringLiteral, {"string_content", "\"", "'", "system_lib_string"});
+            AddTypes(p, PI::Identifier, {"identifier", "field_identifier", "namespace_identifier", "translation_unit", "type_identifier"});
+            AddTypes(p, PI::Type, {"primitive_type"});
+            AddTypes(p, PI::Preprocessor, {"#define", "#include", "preproc_arg"});
+            AddTypes(p, PI::Punctuation, {"(", ")", "+", ",", ".", ":", "::", ";", "?", "{", "}"});
+            AddTypes(p, PI::Comment, {"escape_sequence", "comment"});
+            break;
+        case ID::Json:
+            AddTypes(p, PI::Type, {"true", "false", "null"});
+            AddTypes(p, PI::NumberLiteral, {"number"});
+            AddTypes(p, PI::StringLiteral, {"string_content", "\""});
+            AddTypes(p, PI::Punctuation, {",", ":", "[", "]", "{", "}"});
+            break;
+        default:
+    }
+
+    return p;
+}
+
+LanguageDefinitions::LanguageDefinitions() {
+    ById = {
+        {ID::None, {ID::None, "None"}},
+        {ID::Cpp, {ID::Cpp, "C++", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
+        {ID::Json, {ID::Json, "JSON", tree_sitter_json(), {".json"}}},
+    };
+    for (const auto &[id, lang_def] : ById) {
+        for (const auto &ext : lang_def.FileExtensions) ByFileExtension[ext] = id;
+    }
+}
 
 struct TextEditor::CodeParser {
     CodeParser() : Parser(ts_parser_new()) {}
@@ -58,62 +97,10 @@ private:
 
 TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()), Tree(std::make_unique<SyntaxTree>(Parser->get())) {
     Lines.push_back({});
-    SetLanguageDefinition(LanguageDefinitionIdT::Json);
     SetPalette(DefaultPaletteId);
 }
 
 TextEditor::~TextEditor() {}
-
-TSLanguage *TextEditor::GetLanguage(LanguageDefinitionIdT language_id) {
-    switch (language_id) {
-        case LanguageDefinitionIdT::Cpp: return tree_sitter_cpp();
-        case LanguageDefinitionIdT::Json: return tree_sitter_json();
-        default: return nullptr;
-    }
-}
-
-void AddPaletteTypes(std::unordered_map<std::string, TextEditor::PaletteIndex> &palette, TextEditor::PaletteIndex index, std::initializer_list<std::string> types) {
-    for (const auto &type : types) palette[type] = index;
-}
-
-TextEditor::LanguagePalette TextEditor::CreateCppPalette() {
-    LanguagePalette palette;
-    AddPaletteTypes(palette, PaletteIndex::Keyword, {"auto", "break", "case", "const", "constexpr", "continue", "default", "do", "else", "extern", "false", "for", "if", "nullptr", "private", "return", "static", "struct", "switch", "this", "true", "using", "while"});
-    AddPaletteTypes(palette, PaletteIndex::Operator, {"!", "!=", "&", "&&", "&=", "*", "++", "+=", "-", "--", "-=", "->", "/", "<", "<=", "=", "==", ">", ">=", "[", "]", "^=", "|", "||", "~"});
-    AddPaletteTypes(palette, PaletteIndex::NumberLiteral, {"number_literal"});
-    AddPaletteTypes(palette, PaletteIndex::CharLiteral, {"character"});
-    AddPaletteTypes(palette, PaletteIndex::StringLiteral, {"string_content", "\"", "'", "system_lib_string"});
-    AddPaletteTypes(palette, PaletteIndex::Identifier, {"identifier", "field_identifier", "namespace_identifier", "translation_unit", "type_identifier"});
-    AddPaletteTypes(palette, PaletteIndex::Type, {"primitive_type"});
-    AddPaletteTypes(palette, PaletteIndex::Preprocessor, {"#define", "#include", "preproc_arg"});
-    AddPaletteTypes(palette, PaletteIndex::Punctuation, {"(", ")", "+", ",", ".", ":", "::", ";", "?", "{", "}"});
-    AddPaletteTypes(palette, PaletteIndex::Comment, {"escape_sequence", "comment"});
-
-    return palette;
-}
-TextEditor::LanguagePalette TextEditor::CreateJsonPalette() {
-    LanguagePalette palette;
-    AddPaletteTypes(palette, PaletteIndex::Type, {"true", "false", "null"});
-    AddPaletteTypes(palette, PaletteIndex::NumberLiteral, {"number"});
-    AddPaletteTypes(palette, PaletteIndex::StringLiteral, {"string_content", "\""});
-    AddPaletteTypes(palette, PaletteIndex::Punctuation, {",", ":", "[", "]", "{", "}"});
-
-    return palette;
-}
-
-const TextEditor::LanguagePalette &TextEditor::GetLanguagePalette(LanguageDefinitionIdT language_id) {
-    static const LanguagePalette
-        CppPalette = CreateCppPalette(),
-        JsonPalette = CreateJsonPalette();
-
-    static const LanguagePalette &DefaultPalette = CppPalette;
-
-    switch (language_id) {
-        case LanguageDefinitionIdT::Cpp: return CppPalette;
-        case LanguageDefinitionIdT::Json: return JsonPalette;
-        default: return DefaultPalette;
-    }
-}
 
 string TextEditor::GetSyntaxTreeSExp() const {
     Tree->Parse(GetText());
@@ -129,7 +116,7 @@ string TextEditor::GetSyntaxTreeSExp() const {
 void TextEditor::Highlight() {
     if (Parser->GetLanguage() == nullptr) return;
 
-    const LanguagePalette &palette = GetLanguagePalette(LanguageDefId);
+    const auto &palette = GetLanguage().Palette;
 
     Tree->Parse(GetText());
     TSNode root_node = Tree->RootNode();
@@ -197,9 +184,11 @@ void TextEditor::SetPalette(PaletteIdT palette_id) {
     }
 }
 
-void TextEditor::SetLanguageDefinition(LanguageDefinitionIdT language_def_id) {
-    LanguageDefId = language_def_id;
-    Parser->SetLanguage(GetLanguage(language_def_id));
+void TextEditor::SetLanguage(LanguageDefinition::ID language_def_id) {
+    if (LanguageId == language_def_id) return;
+
+    LanguageId = language_def_id;
+    Parser->SetLanguage(GetLanguage().TsLanguage);
     OnTextChanged();
 }
 
@@ -304,6 +293,13 @@ void TextEditor::SetText(const string &text) {
     UndoIndex = 0;
 
     OnTextChanged();
+}
+
+void TextEditor::SetFilePath(const fs::path &file_path) {
+    const string extension = file_path.extension();
+    if (extension.empty()) return;
+
+    SetLanguage(Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageDefinition::ID::None);
 }
 
 void TextEditor::AddUndoOp(UndoRecord &record, UndoOperationType type, const Coords &start, const Coords &end) {
@@ -746,7 +742,7 @@ void TextEditor::MoveCurrentLines(bool up) {
 }
 
 void TextEditor::ToggleLineComment() {
-    const string &comment = GetSingleLineComment(LanguageDefId);
+    const string &comment = GetLanguage().SingleLineComment;
     if (comment.empty()) return;
 
     static const auto FindFirstNonSpace = [](const LineT &line) {
@@ -980,7 +976,7 @@ void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const Glyph> glyphs, b
 }
 
 ImU32 TextEditor::GetGlyphColor(const Glyph &glyph) const {
-    if (LanguageDefId == LanguageDefinitionIdT::None) return Palette[int(PaletteIndex::Default)];
+    if (LanguageId == LanguageDefinition::ID::None) return Palette[int(PaletteIndex::Default)];
 
     const auto color = Palette[int(glyph.PaletteIndex)];
     // if (glyph.IsPreprocessor) {

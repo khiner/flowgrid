@@ -1,9 +1,7 @@
 #pragma once
 
 #include <array>
-#include <cassert>
 #include <filesystem>
-#include <iterator>
 #include <memory>
 #include <span>
 #include <string>
@@ -17,6 +15,63 @@ namespace fs = std::filesystem;
 
 struct TSLanguage;
 
+enum class PaletteIndex {
+    // Language
+    Default,
+    Keyword,
+    NumberLiteral,
+    StringLiteral,
+    CharLiteral,
+    Punctuation,
+    Preprocessor,
+    Operator,
+    Identifier,
+    Type,
+    Comment,
+    // Application
+    Background,
+    Cursor,
+    Selection,
+    ErrorMarker,
+    ControlCharacter,
+    Breakpoint,
+    LineNumber,
+    CurrentLineFill,
+    CurrentLineFillInactive,
+    CurrentLineEdge,
+    Max
+};
+
+struct LanguageDefinition {
+    enum class ID {
+        None,
+        Cpp,
+        Json,
+    };
+
+    using PaletteT = std::unordered_map<std::string, PaletteIndex>; // Key is TS node type name.
+
+    static PaletteT CreatePalette(ID);
+
+    ID Id;
+    std::string Name;
+    TSLanguage *TsLanguage{nullptr};
+    std::unordered_set<std::string> FileExtensions{};
+    std::string SingleLineComment{""};
+    PaletteT Palette{CreatePalette(Id)};
+};
+
+struct LanguageDefinitions {
+    using ID = LanguageDefinition::ID;
+
+    LanguageDefinitions();
+
+    const LanguageDefinition &Get(ID id) const { return ById.at(id); }
+
+    std::unordered_map<ID, LanguageDefinition> ById;
+    std::unordered_map<std::string, LanguageDefinition::ID> ByFileExtension;
+};
+
 struct TextEditor {
     // Forward-declare wrapper structs for Tree-Sitter types.
     struct CodeParser;
@@ -25,35 +80,6 @@ struct TextEditor {
     TextEditor();
     ~TextEditor();
 
-    // todo group all language data/functionality into a struct.
-
-    enum class PaletteIndex {
-        // Language
-        Default,
-        Keyword,
-        NumberLiteral,
-        StringLiteral,
-        CharLiteral,
-        Punctuation,
-        Preprocessor,
-        Operator,
-        Identifier,
-        Type,
-        Comment,
-        // Application
-        Background,
-        Cursor,
-        Selection,
-        ErrorMarker,
-        ControlCharacter,
-        Breakpoint,
-        LineNumber,
-        CurrentLineFill,
-        CurrentLineFillInactive,
-        CurrentLineEdge,
-        Max
-    };
-
     enum class PaletteIdT {
         Dark,
         Light,
@@ -61,49 +87,8 @@ struct TextEditor {
         RetroBlue
     };
 
-    using LanguagePalette = std::unordered_map<std::string, PaletteIndex>;
-
-    enum class LanguageDefinitionIdT {
-        None,
-        Cpp,
-        Json,
-    };
-
-    inline static std::string GetLanguageDefinitionName(LanguageDefinitionIdT id) {
-        static const std::unordered_map<LanguageDefinitionIdT, std::string> LanguageDefinitionNames{
-            {LanguageDefinitionIdT::Cpp, "C++"},
-            {LanguageDefinitionIdT::Json, "JSON"},
-            {LanguageDefinitionIdT::None, "None"}
-        };
-        return LanguageDefinitionNames.at(id);
-    }
-
-    inline static LanguageDefinitionIdT GetLanguageDefinitionForFile(const fs::path &file_path) {
-        static const std::unordered_map<std::string, LanguageDefinitionIdT> LanguageDefinitions{
-            {".h", LanguageDefinitionIdT::Cpp},
-            {".hpp", LanguageDefinitionIdT::Cpp},
-            {".cpp", LanguageDefinitionIdT::Cpp},
-            {".json", LanguageDefinitionIdT::Json},
-        };
-
-        const std::string extension = file_path.extension();
-        if (extension.empty()) return LanguageDefinitionIdT::None;
-        return LanguageDefinitions.contains(extension) ? LanguageDefinitions.at(extension) : LanguageDefinitionIdT::None;
-    }
-
-    inline static std::string GetSingleLineComment(LanguageDefinitionIdT id) {
-        static const std::unordered_map<LanguageDefinitionIdT, std::string> SingleLineComments{
-            {LanguageDefinitionIdT::Cpp, "//"},
-            {LanguageDefinitionIdT::Json, "//"},
-        };
-        return SingleLineComments.at(id);
-    }
-    LanguageDefinitionIdT GetLanguageDefinitionId() const { return LanguageDefId; }
-    static TSLanguage *GetLanguage(LanguageDefinitionIdT);
-    static const LanguagePalette &GetLanguagePalette(LanguageDefinitionIdT);
-
-    static LanguagePalette CreateCppPalette();
-    static LanguagePalette CreateJsonPalette();
+    inline static const LanguageDefinitions Languages{};
+    const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -134,8 +119,7 @@ struct TextEditor {
     Coords GetCursorPosition() const { return SanitizeCoords(State.GetCursor().End); }
 
     void SetPalette(PaletteIdT);
-    void SetLanguageDefinition(LanguageDefinitionIdT);
-    std::string GetLanguageDefinitionName() const { return GetLanguageDefinitionName(LanguageDefId); }
+    void SetLanguage(LanguageDefinition::ID);
 
     void SetTabSize(uint);
     void SetLineSpacing(float);
@@ -153,7 +137,9 @@ struct TextEditor {
     bool CanUndo() const { return !ReadOnly && UndoIndex > 0; }
     bool CanRedo() const { return !ReadOnly && UndoIndex < uint(UndoBuffer.size()); }
 
-    void SetText(const std::string &text);
+    void SetText(const std::string &);
+    void SetFilePath(const fs::path &);
+
     std::string GetText(const Coords &start, const Coords &end) const;
     std::string GetText() const { return Lines.empty() ? "" : GetText({}, LineMaxCoords(Lines.size() - 1)); }
 
@@ -224,7 +210,7 @@ private:
         char Char;
         PaletteIndex PaletteIndex;
 
-        Glyph(char ch, TextEditor::PaletteIndex palette_index = PaletteIndex::Default) : Char(ch), PaletteIndex(palette_index) {}
+        Glyph(char ch, ::PaletteIndex palette_index = PaletteIndex::Default) : Char(ch), PaletteIndex(palette_index) {}
 
         bool operator==(char ch) const { return Char == ch; }
         operator char() const { return Char; }
@@ -422,7 +408,7 @@ private:
     std::optional<Cursor> MatchingBrackets{};
     std::optional<Cursor> ChangedRange{};
     PaletteT Palette;
-    LanguageDefinitionIdT LanguageDefId{LanguageDefinitionIdT::None};
+    LanguageDefinition::ID LanguageId{LanguageDefinition::ID::None};
 
     std::unique_ptr<CodeParser> Parser;
     std::unique_ptr<SyntaxTree> Tree;

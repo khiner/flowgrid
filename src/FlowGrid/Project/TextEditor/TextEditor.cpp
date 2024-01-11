@@ -78,6 +78,7 @@ private:
 
 TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()) {
     Lines.push_back({});
+    PaletteIndices.push_back({});
     SetPalette(DefaultPaletteId);
 }
 
@@ -125,16 +126,6 @@ string TextEditor::GetSyntaxTreeSExp() const {
 // todo Re-parse and highlight only `ChangedRange` instead of the whole text after every edit.
 // Use a `TSInputEdit`: https://tree-sitter.github.io/tree-sitter/using-parsers#basic-parsing
 void TextEditor::Highlight() {
-    // `PaletteIndices` mirrors `Lines` and contains the palette index for each char in the text.
-    PaletteIndices.clear();
-    PaletteIndices.reserve(Lines.size());
-    for (uint li = 0; li < Lines.size(); ++li) {
-        PaletteIndices.emplace_back();
-        for (uint ci = 0; ci < Lines[li].size(); ++ci) {
-            PaletteIndices[li].emplace_back(PaletteIndex::Default);
-        }
-    }
-
     if (Parser->GetLanguage() == nullptr) return;
 
     const auto &palette = GetLanguage().Palette;
@@ -300,10 +291,17 @@ void TextEditor::Redo(uint steps) {
 void TextEditor::SetText(const string &text) {
     Lines.clear();
     Lines.push_back({});
+    PaletteIndices.clear();
+    PaletteIndices.push_back({});
     for (auto chr : text) {
         if (chr == '\r') continue; // Ignore the carriage return character.
-        if (chr == '\n') Lines.push_back({});
-        else Lines.back().emplace_back(chr);
+        if (chr == '\n') {
+            Lines.push_back({});
+            PaletteIndices.push_back({});
+        } else {
+            Lines.back().emplace_back(chr);
+            PaletteIndices.back().emplace_back(PaletteIndex::Default);
+        }
     }
 
     ScrollToTop = true;
@@ -824,6 +822,7 @@ void TextEditor::RemoveCurrentLines() {
         AddUndoOp(u, UndoOperationType::Delete, to_delete_start, to_delete_end);
         if (to_delete_start.L != to_delete_end.L) {
             Lines.erase(Lines.begin() + li);
+            PaletteIndices.erase(PaletteIndices.begin() + li);
             for (const auto &other_c : State.Cursors) {
                 if (other_c == c) continue;
                 if (other_c.End.L >= li) SetCursorPosition({other_c.End.L - 1, other_c.End.C}, c);
@@ -928,15 +927,6 @@ uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
     return column;
 }
 
-TextEditor::LineT &TextEditor::InsertLine(uint li) {
-    auto &result = *Lines.insert(Lines.begin() + li, LineT{});
-    for (auto &c : State.Cursors) {
-        if (c.End.L >= li) SetCursorPosition({c.End.L + 1, c.End.C}, c);
-    }
-
-    return result;
-}
-
 void TextEditor::DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor) {
     if (end <= start) return;
 
@@ -962,6 +952,7 @@ void TextEditor::DeleteRange(const Coords &start, const Coords &end, const Curso
     }
 
     Lines.erase(Lines.begin() + start.L + 1, Lines.begin() + end.L + 1);
+    PaletteIndices.erase(PaletteIndices.begin() + start.L + 1, PaletteIndices.begin() + end.L + 1);
 }
 
 void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
@@ -974,6 +965,13 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     OnTextChanged({c.SelectionStart(), {c.SelectionStart().L + 1, 0}});
 }
 
+void TextEditor::InsertLine(uint li) {
+    Lines.insert(Lines.begin() + li, LineT{});
+    PaletteIndices.insert(PaletteIndices.begin() + li, std::vector<PaletteIndex>{});
+    for (auto &c : State.Cursors) {
+        if (c.End.L >= li) SetCursorPosition({c.End.L + 1, c.End.C}, c);
+    }
+}
 void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bool is_add) {
     auto &line = Lines[lc.L];
     const uint column = GetCharColumn(lc);
@@ -988,8 +986,14 @@ void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bo
         }
     }
 
-    if (is_add) line.insert(line.begin() + lc.C, glyphs.begin(), glyphs.end());
-    else line.erase(glyphs.begin(), glyphs.end());
+    auto &palette_line = PaletteIndices[lc.L];
+    if (is_add) {
+        line.insert(line.begin() + lc.C, glyphs.begin(), glyphs.end());
+        palette_line.insert(palette_line.begin() + lc.C, glyphs.size(), PaletteIndex::Default);
+    } else {
+        line.erase(glyphs.begin(), glyphs.end());
+        palette_line.erase(palette_line.begin() + lc.C, palette_line.begin() + lc.C + glyphs.size());
+    }
 
     for (const auto &[c, new_ci] : adjusted_ci_for_cursor) SetCursorPosition(ToCoords({lc.L, new_ci}), State.Cursors[c]);
 }

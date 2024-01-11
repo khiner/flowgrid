@@ -339,10 +339,10 @@ private:
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;
 
-    LineT &InsertLine(uint li);
     void DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
+    void InsertLine(uint li);
     void AddOrRemoveGlyphs(LineChar lc, std::span<const char>, bool is_add);
     void AddGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, true); }
     void RemoveGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, false); }

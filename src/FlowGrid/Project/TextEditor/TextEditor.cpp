@@ -1439,39 +1439,36 @@ void TextEditor::AddUndo(UndoRecord &record) {
 }
 
 TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text) {
-    uint ci = GetCharIndex(at);
-    Coords ret = at;
+    const LineChar start = ToLineChar(at);
+    LineChar end = start;
     for (auto it = text.begin(); it != text.end(); it++) {
         const char ch = *it;
         if (ch == '\r') continue;
 
         if (ch == '\n') {
-            if (ci < Lines[ret.L].size()) {
-                InsertLine(ret.L + 1);
-                const auto &line = Lines[ret.L];
-                AddGlyphs({ret.L + 1, 0}, {line.cbegin() + ci, line.cend()});
-                RemoveGlyphs({ret.L, ci});
+            if (end.C < Lines[end.L].size()) {
+                InsertLine(end.L + 1);
+                const auto &line = Lines[end.L];
+                AddGlyphs({end.L + 1, 0}, {line.cbegin() + end.C, line.cend()});
+                RemoveGlyphs(end);
             } else {
-                InsertLine(ret.L + 1);
+                InsertLine(end.L + 1);
             }
-            ci = 0;
-            ret.L++;
-            ret.C = 0;
+            end.C = 0;
+            end.L++;
         } else {
             std::vector<char> chars;
             for (uint d = 0; d < UTF8CharLength(ch) && it != text.end(); d++) {
                 chars.emplace_back(*it);
                 if (d > 0) it++;
             }
-            AddGlyphs({ret.L, ci}, chars);
-            ci += chars.size();
-            ret.C = GetCharColumn({ret.L, ci});
+            AddGlyphs(end, chars);
+            end.C += chars.size();
         }
     }
 
-    const LineChar start = ToLineChar(at), end = ToLineChar(ret);
     OnTextChanged(start, start, end);
-    return ret;
+    return ToCoords(end);
 }
 
 const TextEditor::PaletteT TextEditor::DarkPalette = {{

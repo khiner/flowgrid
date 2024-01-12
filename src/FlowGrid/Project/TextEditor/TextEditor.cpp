@@ -842,17 +842,16 @@ TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool 
     const auto local = ImVec2{screen_pos.x + 3.0f, screen_pos.y} - ImGui::GetCursorScreenPos();
     if (is_over_li != nullptr) *is_over_li = local.x < TextStart;
 
-    Coords out{
-        std::max(0u, uint(floor(local.y / CharAdvance.y))),
-        std::max(0u, uint(floor((local.x - TextStart) / CharAdvance.x)))
+    Coords coords{
+        uint(std::max(0.f, floor(local.y / CharAdvance.y))),
+        uint(std::max(0.f, floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)))
     };
-    const uint ci = GetCharIndex(out);
-    if (out.L < Lines.size() && ci < Lines[out.L].size() && Lines[out.L][ci] == '\t') {
-        out.C -= GetCharColumn({out.L, ci});
-    } else {
-        out.C = std::max(0u, uint(floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)));
+    // Check if the coord is in the middle of a tab character.
+    if (coords.L < Lines.size()) {
+        const uint ci = GetCharIndex(coords);
+        if (ci < Lines[coords.L].size() && Lines[coords.L][ci] == '\t') coords.C = GetCharColumn({coords.L, ci});
     }
-    return SanitizeCoords(out);
+    return SanitizeCoords(coords);
 }
 
 TextEditor::Coords TextEditor::FindWordBoundary(const Coords &from, bool is_start) const {

@@ -269,10 +269,8 @@ void TextEditor::Paste() {
 
         for (int c = State.Cursors.size() - 1; c > -1; c--) {
             auto &cursor = State.Cursors[c];
-            const auto before_end = SanitizeCoords(cursor.End);
             const string insert_text = can_paste_to_multiple_cursors ? clip_text.substr(clip_text_lines[c].first, clip_text_lines[c].second - clip_text_lines[c].first) : clip_text;
-            InsertTextAtCursor(insert_text, cursor);
-            u.Operations.emplace_back(insert_text, before_end, SanitizeCoords(cursor.End), UndoOperationType::Add);
+            InsertTextAtCursor(insert_text, cursor, u);
         }
 
         AddUndo(u);
@@ -444,11 +442,12 @@ void TextEditor::SetCursorPosition(const Coords &position, Cursor &c, bool clear
     }
 }
 
-void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
+void TextEditor::InsertTextAtCursor(const string &text, Cursor &c, UndoRecord &u) {
     if (text.empty()) return;
 
-    const auto start = std::min(SanitizeCoords(c.End), c.SelectionStart());
+    const auto start = c.SelectionStart();
     SetCursorPosition(InsertTextAt(start, text), c);
+    u.Operations.emplace_back(text, start, c.End, UndoOperationType::Add);
 }
 
 void TextEditor::LineCharIter::MoveRight() {
@@ -551,13 +550,12 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
 
     // Order is important here for typing '\n' in the same line with multiple cursors.
     for (auto &c : reverse_view(State.Cursors)) {
-        const auto coord = SanitizeCoords(c.End);
         string insert_text;
         if (ch == '\n') {
             insert_text = "\n";
             if (AutoIndent) {
                 // Match the indentation of the current or next line, whichever has more indentation.
-                const uint li = coord.L;
+                const uint li = c.End.L;
                 const uint indent_li = li < Lines.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
                 const auto &indent_line = Lines[indent_li];
                 for (uint i = 0; i < indent_line.size() && isblank(indent_line[i]); i++) insert_text += indent_line[i];
@@ -568,8 +566,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
             insert_text = buf;
         }
 
-        InsertTextAtCursor(insert_text, c);
-        u.Operations.emplace_back(insert_text, coord, SanitizeCoords(c.End), UndoOperationType::Add);
+        InsertTextAtCursor(insert_text, c, u);
     }
 
     AddUndo(u);
@@ -1116,8 +1113,7 @@ void TextEditor::HandleMouseInputs() {
     IsDraggingSelection &= ImGui::IsMouseDown(0);
     if (IsDraggingSelection && ImGui::IsMouseDragging(0)) {
         io.WantCaptureMouse = true;
-        const auto cursor_coords = ScreenPosToCoords(ImGui::GetMousePos());
-        SetCursorPosition(cursor_coords, State.GetLastAddedCursor(), false);
+        SetCursorPosition(ScreenPosToCoords(ImGui::GetMousePos()), State.GetLastAddedCursor(), false);
     }
 
     if (ImGui::IsWindowHovered()) {
@@ -1177,8 +1173,7 @@ void TextEditor::HandleMouseInputs() {
                 SortAndMergeCursors();
             }
         } else if (shift && is_click) {
-            const auto new_selection = ScreenPosToCoords(ImGui::GetMousePos());
-            SetCursorPosition(SanitizeCoords(new_selection), State.GetCursor(), false);
+            SetCursorPosition(ScreenPosToCoords(ImGui::GetMousePos()), State.GetCursor(), false);
         }
     }
 }

@@ -294,7 +294,7 @@ private:
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
     Coords InsertTextAt(const Coords &, const std::string &); // Returns insertion end.
-    void InsertTextAtCursor(const std::string &, Cursor &);
+    void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
 
     enum class MoveDirection {
         Right = 0,

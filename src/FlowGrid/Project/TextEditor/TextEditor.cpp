@@ -162,13 +162,6 @@ void TextEditor::Highlight() {
     }
 }
 
-static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
-    if (c2.size() + c2_offset < c1.size()) return false;
-
-    const auto begin = c2.cbegin() + c2_offset;
-    return std::ranges::equal(c1, subrange(begin, begin + c1.size()), [](const auto &a, const auto &b) { return a == b; });
-}
-
 const TextEditor::PaletteT *TextEditor::GetPalette(PaletteIdT palette_id) {
     switch (palette_id) {
         case PaletteIdT::Dark:
@@ -287,8 +280,8 @@ void TextEditor::Redo(uint steps) {
 void TextEditor::SetText(const string &text) {
     const LineChar old_end{uint(Lines.size() - 1), uint(Lines.back().size())};
     Lines.clear();
-    Lines.push_back({});
     PaletteIndices.clear();
+    Lines.push_back({});
     PaletteIndices.push_back({});
     for (auto chr : text) {
         if (chr == '\r') continue; // Ignore the carriage return character.
@@ -743,6 +736,13 @@ void TextEditor::MoveCurrentLines(bool up) {
     AddUndo(u);
 }
 
+static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
+    if (c2.size() + c2_offset < c1.size()) return false;
+
+    const auto begin = c2.cbegin() + c2_offset;
+    return std::ranges::equal(c1, subrange(begin, begin + c1.size()));
+}
+
 void TextEditor::ToggleLineComment() {
     const string &comment = GetLanguage().SingleLineComment;
     if (comment.empty()) return;
@@ -910,16 +910,76 @@ uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
     return column;
 }
 
+void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bool is_add) {
+    auto &line = Lines[lc.L];
+    auto &palette_line = PaletteIndices[lc.L];
+    const uint column = GetCharColumn(lc);
+
+    if (is_add) {
+        line.insert(line.begin() + lc.C, glyphs.begin(), glyphs.end());
+        palette_line.insert(palette_line.begin() + lc.C, glyphs.size(), PaletteIndex::Default);
+    } else {
+        line.erase(glyphs.begin(), glyphs.end());
+        palette_line.erase(palette_line.begin() + lc.C, palette_line.begin() + lc.C + glyphs.size());
+    }
+
+    // Adjust cursors to the right of a change, without a selection.
+    for (uint c = 0; c < State.Cursors.size(); c++) {
+        auto &cursor = State.Cursors[c];
+        if (cursor.End.L == lc.L && cursor.End.C > column && !cursor.HasSelection()) {
+            const uint new_ci = GetCharIndex(cursor.End) + (is_add ? glyphs.size() : -glyphs.size());
+            SetCursorPosition(ToCoords({lc.L, new_ci}), cursor);
+        }
+    }
+}
+
+// todo: all add/remove glyphs calls are made here in `InsertTextAt` and `DeleteRange`.
+//   We can make multi-line insertion much more efficient by handling all cursor bookkeeping once instead of once per add/remove-glyphs call.
+TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text) {
+    const LineChar start = ToLineChar(at);
+    const uint num_newlines = std::ranges::count(text, '\n');
+    if (num_newlines > 0) {
+        Lines.insert(Lines.begin() + start.L + 1, num_newlines, LineT{});
+        PaletteIndices.insert(PaletteIndices.begin() + start.L + 1, num_newlines, std::vector<PaletteIndex>{});
+        for (auto &c : State.Cursors) {
+            if (c.End.L >= start.L) SetCursorPosition({c.End.L + num_newlines, c.End.C}, c);
+        }
+    }
+
+    LineChar end = start;
+    for (auto it = text.begin(); it != text.end(); it++) {
+        const char ch = *it;
+        if (ch == '\r') continue;
+
+        if (ch == '\n') {
+            const auto &line = Lines[end.L];
+            AddGlyphs({end.L + 1, 0}, {line.cbegin() + end.C, line.cend()});
+            RemoveGlyphs(end, {Lines[end.L].cbegin() + end.C, Lines[end.L].cend()}); // from start to end of line
+            ++end.L;
+            end.C = 0;
+        } else {
+            // Add all characters up to the next newline.
+            const string chars = std::string(it, std::find(it, text.end(), '\n'));
+            AddGlyphs(end, chars);
+            std::advance(it, chars.size() - 1);
+            end.C += chars.size();
+        }
+    }
+
+    OnTextChanged(start, start, end);
+    return ToCoords(end);
+}
+
 void TextEditor::DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor) {
     if (end <= start) return;
 
     const LineChar start_lc = ToLineChar(start), end_lc = ToLineChar(end);
     if (start.L == end.L) {
-        RemoveGlyphs(start_lc, end_lc.C);
+        RemoveGlyphs(start_lc, {Lines[start_lc.L].cbegin() + start_lc.C, Lines[start_lc.L].cbegin() + end_lc.C});
     } else {
         // At least one line completely removed.
-        RemoveGlyphs(start_lc); // from start to end of line
-        RemoveGlyphs({end_lc.L, 0}, end_lc.C);
+        RemoveGlyphs(start_lc, {Lines[start_lc.L].cbegin() + start_lc.C, Lines[start_lc.L].cend()}); // from start to end of line
+        RemoveGlyphs({end_lc.L, 0}, {Lines[end_lc.L].cbegin(), Lines[end_lc.L].cbegin() + end_lc.C}); // from beginning of line to end
         AddGlyphs({start_lc.L, uint(Lines[start_lc.L].size())}, Lines[end_lc.L]);
 
         // Move up all cursors after the last removed line.
@@ -946,39 +1006,6 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
     DeleteRange(c.SelectionStart(), c.SelectionEnd(), &c);
     SetCursorPosition(c.SelectionStart(), c);
-}
-
-void TextEditor::InsertLine(uint li) {
-    Lines.insert(Lines.begin() + li, LineT{});
-    PaletteIndices.insert(PaletteIndices.begin() + li, std::vector<PaletteIndex>{});
-    for (auto &c : State.Cursors) {
-        if (c.End.L >= li) SetCursorPosition({c.End.L + 1, c.End.C}, c);
-    }
-}
-void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bool is_add) {
-    auto &line = Lines[lc.L];
-    const uint column = GetCharColumn(lc);
-
-    // New character index for each affected cursor when other cursor writes/deletes are on the same line.
-    std::unordered_map<uint, uint> adjusted_ci_for_cursor;
-    for (uint c = 0; c < State.Cursors.size(); c++) {
-        const auto &cursor = State.Cursors[c];
-        // Cursor needs adjusting if it's to the right of a change, without a selection.
-        if (cursor.End.L == lc.L && cursor.End.C > column && !cursor.HasSelection()) {
-            adjusted_ci_for_cursor[c] = GetCharIndex({lc.L, cursor.End.C}) + (is_add ? glyphs.size() : -glyphs.size());
-        }
-    }
-
-    auto &palette_line = PaletteIndices[lc.L];
-    if (is_add) {
-        line.insert(line.begin() + lc.C, glyphs.begin(), glyphs.end());
-        palette_line.insert(palette_line.begin() + lc.C, glyphs.size(), PaletteIndex::Default);
-    } else {
-        line.erase(glyphs.begin(), glyphs.end());
-        palette_line.erase(palette_line.begin() + lc.C, palette_line.begin() + lc.C + glyphs.size());
-    }
-
-    for (const auto &[c, new_ci] : adjusted_ci_for_cursor) SetCursorPosition(ToCoords({lc.L, new_ci}), State.Cursors[c]);
 }
 
 ImU32 TextEditor::GetGlyphColor(LineChar lc) const {
@@ -1430,39 +1457,6 @@ void TextEditor::AddUndo(UndoRecord &record) {
     UndoBuffer.resize(UndoIndex + 1);
     UndoBuffer.back() = record;
     ++UndoIndex;
-}
-
-TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text) {
-    const LineChar start = ToLineChar(at);
-    LineChar end = start;
-    for (auto it = text.begin(); it != text.end(); it++) {
-        const char ch = *it;
-        if (ch == '\r') continue;
-
-        if (ch == '\n') {
-            if (end.C < Lines[end.L].size()) {
-                InsertLine(end.L + 1);
-                const auto &line = Lines[end.L];
-                AddGlyphs({end.L + 1, 0}, {line.cbegin() + end.C, line.cend()});
-                RemoveGlyphs(end);
-            } else {
-                InsertLine(end.L + 1);
-            }
-            end.C = 0;
-            end.L++;
-        } else {
-            std::vector<char> chars;
-            for (uint d = 0; d < UTF8CharLength(ch) && it != text.end(); d++) {
-                chars.emplace_back(*it);
-                if (d > 0) it++;
-            }
-            AddGlyphs(end, chars);
-            end.C += chars.size();
-        }
-    }
-
-    OnTextChanged(start, start, end);
-    return ToCoords(end);
 }
 
 const TextEditor::PaletteT TextEditor::DarkPalette = {{

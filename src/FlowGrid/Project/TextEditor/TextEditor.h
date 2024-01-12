@@ -290,11 +290,8 @@ private:
 
     void AddUndoOp(UndoRecord &, UndoOperationType, const Coords &start, const Coords &end);
 
-    void SetCursorPosition(const Coords &position, Cursor &cursor, bool clear_selection = true);
-
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
-    Coords InsertTextAt(const Coords &, const std::string &); // Returns insertion end.
-    void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
+    ImU32 GetGlyphColor(LineChar) const;
 
     enum class MoveDirection {
         Right = 0,
@@ -319,8 +316,9 @@ private:
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
     void SetSelection(Coords start, Coords end, Cursor &);
-
+    void SetCursorPosition(const Coords &position, Cursor &cursor, bool clear_selection = true);
     void AddCursorForNextOccurrence(bool case_sensitive = true);
+
     // Returns a cursor containing the start/end coords of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
     std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &start, bool case_sensitive = true);
     std::optional<Cursor> FindMatchingBrackets(const Cursor &);
@@ -348,16 +346,14 @@ private:
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;
 
+    Coords InsertTextAt(const Coords &, const std::string &); // Returns insertion end.
+    void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
     void DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
-    void InsertLine(uint li);
     void AddOrRemoveGlyphs(LineChar lc, std::span<const char>, bool is_add);
     void AddGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, true); }
     void RemoveGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, false); }
-    void RemoveGlyphs(LineChar lc, uint end_ci) { RemoveGlyphs(lc, {Lines[lc.L].cbegin() + lc.C, Lines[lc.L].cbegin() + end_ci}); }
-    void RemoveGlyphs(LineChar lc) { RemoveGlyphs(lc, {Lines[lc.L].cbegin() + lc.C, Lines[lc.L].cend()}); }
-    ImU32 GetGlyphColor(LineChar) const;
 
     void HandleKeyboardInputs(bool is_parent_focused = false);
     void HandleMouseInputs();

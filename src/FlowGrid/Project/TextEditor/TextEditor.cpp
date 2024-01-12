@@ -1,6 +1,7 @@
 #include "TextEditor.h"
 
 #include <algorithm>
+#include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <ranges>
 #include <set>
@@ -77,8 +78,6 @@ private:
 };
 
 TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()) {
-    Lines.push_back({});
-    PaletteIndices.push_back({});
     SetPalette(DefaultPaletteId);
 }
 
@@ -113,7 +112,7 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
 
 void TextEditor::Parse() {
     TSInput input{this, TSReadText, TSInputEncodingUTF8};
-    Tree = ts_parser_parse(Parser->get(), nullptr, std::move(input));
+    Tree = ts_parser_parse(Parser->get(), Tree, std::move(input));
 }
 
 string TextEditor::GetSyntaxTreeSExp() const {
@@ -123,13 +122,11 @@ string TextEditor::GetSyntaxTreeSExp() const {
     return s_expression;
 }
 
-// todo Re-parse and highlight only `ChangedRange` instead of the whole text after every edit.
-// Use a `TSInputEdit`: https://tree-sitter.github.io/tree-sitter/using-parsers#basic-parsing
 void TextEditor::Highlight() {
     if (Parser->GetLanguage() == nullptr) return;
 
-    const auto &palette = GetLanguage().Palette;
     Parse();
+    const auto &palette = GetLanguage().Palette;
     TSNode root_node = ts_tree_root_node(Tree);
     TSTreeCursor cursor = ts_tree_cursor_new(root_node);
     while (true) {
@@ -199,7 +196,8 @@ void TextEditor::SetLanguage(LanguageDefinition::ID language_def_id) {
 
     LanguageId = language_def_id;
     Parser->SetLanguage(GetLanguage().TsLanguage);
-    OnTextChanged();
+    Tree = nullptr;
+    TextChanged = true;
 }
 
 void TextEditor::SetTabSize(uint tab_size) { TabSize = std::clamp(tab_size, 1u, 8u); }
@@ -289,6 +287,7 @@ void TextEditor::Redo(uint steps) {
 }
 
 void TextEditor::SetText(const string &text) {
+    const LineChar old_end{uint(Lines.size() - 1), uint(Lines.back().size())};
     Lines.clear();
     Lines.push_back({});
     PaletteIndices.clear();
@@ -309,7 +308,7 @@ void TextEditor::SetText(const string &text) {
     UndoBuffer.clear();
     UndoIndex = 0;
 
-    OnTextChanged();
+    OnTextChanged({0, 0}, old_end, {uint(Lines.size() - 1), uint(Lines.back().size())});
 }
 
 void TextEditor::SetFilePath(const fs::path &file_path) {
@@ -355,9 +354,9 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
     HandleKeyboardInputs(is_parent_focused);
     HandleMouseInputs();
 
-    if (ChangedRange) {
+    if (TextChanged) {
         Highlight();
-        ChangedRange = std::nullopt;
+        TextChanged = false;
     }
 
     Render(is_parent_focused);
@@ -401,12 +400,10 @@ void TextEditor::UndoRecord::Undo(TextEditor *editor) {
         switch (op.Type) {
             case UndoOperationType::Delete: {
                 editor->InsertTextAt(op.Start, op.Text);
-                editor->OnTextChanged({op.Start, op.End});
                 break;
             }
             case UndoOperationType::Add: {
                 editor->DeleteRange(op.Start, op.End);
-                editor->OnTextChanged({op.Start, {op.Start.L + 1, 0}});
                 break;
             }
         }
@@ -423,12 +420,10 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
         switch (op.Type) {
             case UndoOperationType::Delete: {
                 editor->DeleteRange(op.Start, op.End);
-                editor->OnTextChanged({op.Start, {op.Start.L + 1, 0}});
                 break;
             }
             case UndoOperationType::Add: {
                 editor->InsertTextAt(op.Start, op.Text);
-                editor->OnTextChanged({op.Start, op.End});
                 break;
             }
         }
@@ -452,11 +447,8 @@ void TextEditor::SetCursorPosition(const Coords &position, Cursor &c, bool clear
 void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
     if (text.empty()) return;
 
-    const auto pos = SanitizeCoords(c.End);
-    const auto start = std::min(pos, c.SelectionStart());
-    const auto insertion_end = InsertTextAt(pos, text);
-    SetCursorPosition(insertion_end, c);
-    OnTextChanged({start, insertion_end});
+    const auto start = std::min(SanitizeCoords(c.End), c.SelectionStart());
+    SetCursorPosition(InsertTextAt(start, text), c);
 }
 
 void TextEditor::LineCharIter::MoveRight() {
@@ -474,7 +466,7 @@ void TextEditor::LineCharIter::MoveLeft() {
 
     if (LC.C == 0) {
         LC.L--;
-        LC.C = Lines[LC.L].size() - 1;
+        LC.C = Lines[LC.L].size();
     } else {
         do { LC.C--; } while (LC.C > 0 && IsUTFSequence(Lines[LC.L][LC.C]));
     }
@@ -669,11 +661,11 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
         OpenToCloseChar{{'{', '}'}, {'(', ')'}, {'[', ']'}},
         CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
 
-    const uint li = c.End.L;
-    const auto &line = Lines[li];
+    const LineChar cursor_lc = ToLineChar(c.End);
+    const auto &line = Lines[cursor_lc.L];
     if (c.HasSelection() || line.empty()) return {};
 
-    uint ci = GetCharIndex(c.End);
+    uint ci = cursor_lc.C;
     // Considered on bracket if cursor is to the left or right of it.
     if (ci > 0 && (CloseToOpenChar.contains(line[ci - 1]) || OpenToCloseChar.contains(line[ci - 1]))) ci--;
 
@@ -682,7 +674,6 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
     if (!is_close_char && !is_open_char) return {};
 
     const char other_ch = is_close_char ? CloseToOpenChar.at(ch) : OpenToCloseChar.at(ch);
-    const LineChar cursor_lc{li, ci};
     uint match_count = 0;
     for (LineCharIter lci{Lines, cursor_lc}; lci != (is_close_char ? lci.begin() : lci.end()); is_close_char ? --lci : ++lci) {
         const char ch_inner = lci;
@@ -703,20 +694,17 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
             const auto &line = Lines[li];
             if (increase) {
                 if (!line.empty()) {
-                    const Coords line_start{li, 0};
-                    const auto insertion_end = InsertTextAt(line_start, "\t");
-                    u.Operations.emplace_back("\t", line_start, insertion_end, UndoOperationType::Add);
-                    OnTextChanged(line_start.L);
+                    const Coords start{li, 0}, end = InsertTextAt(start, "\t");
+                    u.Operations.emplace_back("\t", start, end, UndoOperationType::Add);
                 }
             } else {
-                Coords start{li, 0}, end{li, TabSize};
+                const Coords start{li, 0}, end{li, TabSize};
                 int ci = int(GetCharIndex(end)) - 1;
                 while (ci > -1 && isblank(line[ci])) ci--;
                 const bool only_space_chars_found = ci == -1;
                 if (only_space_chars_found) {
                     u.Operations.emplace_back(GetText(start, end), start, end, UndoOperationType::Delete);
                     DeleteRange(start, end);
-                    OnTextChanged(li);
                 }
             }
         }
@@ -791,7 +779,6 @@ void TextEditor::ToggleLineComment() {
             AddUndoOp(u, UndoOperationType::Delete, start, end);
             DeleteRange(start, end);
         }
-        OnTextChanged(li);
     }
     AddUndo(u);
 }
@@ -930,29 +917,30 @@ uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
 void TextEditor::DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor) {
     if (end <= start) return;
 
-    const uint start_ci = GetCharIndex(start), end_ci = GetCharIndex(end);
-    if (start.L == end.L) return RemoveGlyphs({start.L, start_ci}, end_ci);
+    const LineChar start_lc = ToLineChar(start), end_lc = ToLineChar(end);
+    if (start.L == end.L) {
+        RemoveGlyphs(start_lc, end_lc.C);
+    } else {
+        // At least one line completely removed.
+        RemoveGlyphs(start_lc); // from start to end of line
+        RemoveGlyphs({end_lc.L, 0}, end_lc.C);
+        AddGlyphs({start_lc.L, uint(Lines[start_lc.L].size())}, Lines[end_lc.L]);
 
-    RemoveGlyphs({start.L, start_ci}); // from start to end of line
-    RemoveGlyphs({end.L, 0}, end_ci);
-    if (start.L == end.L) return;
+        // Move up all cursors after the last removed line.
+        const uint num_removed_lines = end_lc.L - start_lc.L;
+        for (auto &c : State.Cursors) {
+            if (exclude_cursor != nullptr && c == *exclude_cursor) continue;
 
-    // At least one line completely removed.
-    AddGlyphs({start.L, uint(Lines[start.L].size())}, Lines[end.L]);
-
-    // Move up all cursors after the last removed line.
-    const uint num_removed_lines = end.L - start.L;
-    for (auto &c : State.Cursors) {
-        if (exclude_cursor != nullptr && c == *exclude_cursor) continue;
-
-        if (c.End.L >= end.L) {
-            c.Start.L -= num_removed_lines;
-            c.End.L -= num_removed_lines;
+            if (c.End.L >= end_lc.L) {
+                c.Start.L -= num_removed_lines;
+                c.End.L -= num_removed_lines;
+            }
         }
-    }
 
-    Lines.erase(Lines.begin() + start.L + 1, Lines.begin() + end.L + 1);
-    PaletteIndices.erase(PaletteIndices.begin() + start.L + 1, PaletteIndices.begin() + end.L + 1);
+        Lines.erase(Lines.begin() + start.L + 1, Lines.begin() + end.L + 1);
+        PaletteIndices.erase(PaletteIndices.begin() + start.L + 1, PaletteIndices.begin() + end.L + 1);
+    }
+    OnTextChanged(start_lc, end_lc, start_lc);
 }
 
 void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
@@ -962,7 +950,6 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
     DeleteRange(c.SelectionStart(), c.SelectionEnd(), &c);
     SetCursorPosition(c.SelectionStart(), c);
-    OnTextChanged({c.SelectionStart(), {c.SelectionStart().L + 1, 0}});
 }
 
 void TextEditor::InsertLine(uint li) {
@@ -1386,19 +1373,21 @@ void TextEditor::Render(bool is_parent_focused) {
     }
 }
 
-void TextEditor::OnTextChanged(Cursor &&range) {
-    if (!ChangedRange) {
-        ChangedRange = std::move(range);
-    } else {
-        ChangedRange = Cursor{
-            {std::min(ChangedRange->SelectionStart().L, range.Start.L), 0},
-            {std::max(ChangedRange->SelectionEnd().L, std::clamp(range.End.L, ChangedRange->SelectionStart().L, uint(Lines.size()))), 0},
-        };
-    }
+uint TextEditor::ToByteIndex(LineChar lc) const {
+    return ranges::accumulate(subrange(Lines.begin(), Lines.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
 }
 
-void TextEditor::OnTextChanged() { OnTextChanged({{0, 0}, {uint(Lines.size()), uint(Lines.back().size())}}); }
-void TextEditor::OnTextChanged(uint li) { OnTextChanged({{li, 0}, {li + 1, 0}}); }
+void TextEditor::OnTextChanged(LineChar start, LineChar old_end, LineChar new_end) {
+    if (Tree) {
+        TSInputEdit edit;
+        // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
+        edit.start_byte = ToByteIndex(start);
+        edit.old_end_byte = ToByteIndex(old_end);
+        edit.new_end_byte = ToByteIndex(new_end);
+        ts_tree_edit(Tree, &edit);
+    }
+    TextChanged = true;
+}
 
 void TextEditor::OnCursorPositionChanged() {
     const auto &c = State.Cursors[0];
@@ -1480,6 +1469,8 @@ TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text
         }
     }
 
+    const LineChar start = ToLineChar(at), end = ToLineChar(ret);
+    OnTextChanged(start, start, end);
     return ret;
 }
 

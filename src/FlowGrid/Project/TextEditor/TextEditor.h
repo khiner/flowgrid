@@ -111,6 +111,10 @@ struct TextEditor {
     struct LineChar {
         uint L{0}, C{0};
 
+        auto operator<=>(const LineChar &o) const {
+            if (auto cmp = L <=> o.L; cmp != 0) return cmp;
+            return C <=> o.C;
+        }
         bool operator==(const LineChar &) const = default;
         bool operator!=(const LineChar &) const = default;
     };
@@ -222,7 +226,10 @@ private:
             return *this;
         }
 
-        operator char() const { return Lines[LC.L][LC.C]; }
+        operator char() const {
+            const auto &line = Lines[LC.L];
+            return LC.C < line.size() ? line[LC.C] : '\0';
+        }
 
         LineChar operator*() const { return LC; }
 
@@ -330,6 +337,8 @@ private:
     Coords LineMaxCoords(uint li) const { return {li, GetLineMaxColumn(li)}; }
     Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(lc)}; }
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(coords)}; }
+    uint ToByteIndex(LineChar) const;
+
     Coords SanitizeCoords(const Coords &) const;
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     Coords FindWordBoundary(const Coords &from, bool is_start = false) const;
@@ -355,9 +364,20 @@ private:
     void UpdateViewVariables(float scroll_x, float scroll_y);
     void Render(bool is_parent_focused = false);
 
-    void OnTextChanged(Cursor &&range);
-    void OnTextChanged(); // All text changed.
-    void OnTextChanged(uint li); // Line changed.
+    /**
+    `start`: Start position of the text change.
+
+    `old_end`: End position of the original text before the change.
+      - For insertion, same as `start`.
+      - For replacement, where the replaced text ended.
+      - For deletion, where the deleted text ended.
+
+    `new_end`: End position of the new text after the change.
+      - For insertion or replacement, where the new text ends.
+      - For deletion, same as `start`.
+    **/
+    void OnTextChanged(LineChar start, LineChar old_end, LineChar new_end);
+
     void OnCursorPositionChanged();
     void SortAndMergeCursors();
 
@@ -374,8 +394,8 @@ private:
     static const PaletteT *GetPalette(PaletteIdT);
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
-    std::vector<LineT> Lines;
-    std::vector<std::vector<PaletteIndex>> PaletteIndices;
+    std::vector<LineT> Lines{LineT{}};
+    std::vector<std::vector<PaletteIndex>> PaletteIndices{std::vector<PaletteIndex>{}};
     EditorState State;
 
     std::vector<UndoRecord> UndoBuffer;
@@ -398,10 +418,10 @@ private:
     ImVec2 LastMousePos;
     bool CursorPositionChanged{false};
     std::optional<Cursor> MatchingBrackets{};
-    std::optional<Cursor> ChangedRange{};
     PaletteT Palette;
     LanguageDefinition::ID LanguageId{LanguageDefinition::ID::None};
 
     std::unique_ptr<CodeParser> Parser;
-    TSTree *Tree;
+    TSTree *Tree{nullptr};
+    bool TextChanged{false};
 };

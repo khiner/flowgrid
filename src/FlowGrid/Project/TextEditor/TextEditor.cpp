@@ -488,8 +488,8 @@ void TextEditor::LineCharIter::MoveLeft() {
 
 static uint NextTabstop(uint column, uint tab_size) { return ((column / tab_size) + 1) * tab_size; }
 
-void TextEditor::MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const {
-    const char ch = Lines[li][ci];
+void TextEditor::MoveCharIndexAndColumn(const LineT &line, uint &ci, uint &column) const {
+    const char ch = line[ci];
     ci += UTF8CharLength(ch);
     column = ch == '\t' ? NextTabstop(column, TabSize) : column + 1;
 }
@@ -497,7 +497,7 @@ void TextEditor::MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const {
 uint TextEditor::NumStartingSpaceColumns(uint li) const {
     const auto &line = Lines[li];
     uint column = 0;
-    for (uint ci = 0; ci < line.size() && isblank(line[ci]);) MoveCharIndexAndColumn(li, ci, column);
+    for (uint ci = 0; ci < line.size() && isblank(line[ci]);) MoveCharIndexAndColumn(line, ci, column);
     return column;
 }
 
@@ -711,7 +711,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
                 }
             } else {
                 const Coords start{li, 0}, end{li, TabSize};
-                int ci = int(GetCharIndex(end)) - 1;
+                int ci = int(GetCharIndex(line, TabSize)) - 1;
                 while (ci > -1 && isblank(line[ci])) ci--;
                 const bool only_space_chars_found = ci == -1;
                 if (only_space_chars_found) {
@@ -841,18 +841,9 @@ void TextEditor::RemoveCurrentLines() {
     AddUndo(u);
 }
 
-float TextEditor::TextDistanceToLineStart(const Coords &from, bool sanitize_coords) const {
-    return (sanitize_coords ? SanitizeCoords(from) : from).C * CharAdvance.x;
-}
-
 void TextEditor::EnsureCursorVisible(bool start_too) {
     LastEnsureCursorVisible = State.GetLastAddedCursorIndex();
     LastEnsureCursorVisibleStartToo = start_too;
-}
-
-TextEditor::Coords TextEditor::SanitizeCoords(const Coords &coords) const {
-    if (coords.L >= Lines.size()) return LineMaxCoords(Lines.size() - 1);
-    return {coords.L, Lines.empty() ? 0 : GetLineMaxColumn(coords.L, coords.C)};
 }
 
 TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li) const {
@@ -867,17 +858,20 @@ TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool 
     };
     // Check if the coord is in the middle of a tab character.
     if (coords.L < Lines.size()) {
-        const uint ci = GetCharIndex(coords);
-        if (ci < Lines[coords.L].size() && Lines[coords.L][ci] == '\t') coords.C = GetCharColumn({coords.L, ci});
+        const auto &line = Lines[coords.L];
+        const uint ci = GetCharIndex(line, coords.C);
+        if (ci < line.size() && line[ci] == '\t') coords.C = GetCharColumn(line, ci);
     }
-    return SanitizeCoords(coords);
+
+    if (coords.L >= Lines.size()) return LineMaxCoords(Lines.size() - 1);
+    return {coords.L, GetLineMaxColumn(coords.L, coords.C)};
 }
 
 TextEditor::Coords TextEditor::FindWordBoundary(const Coords &from, bool is_start) const {
     if (from.L >= Lines.size()) return from;
 
     const auto &line = Lines[from.L];
-    uint ci = GetCharIndex(from);
+    uint ci = GetCharIndex(line, from.C);
     if (ci >= line.size()) return from;
 
     const bool init_is_word_char = IsWordChar(line[ci]), init_is_space = isspace(line[ci]);
@@ -894,41 +888,45 @@ TextEditor::Coords TextEditor::FindWordBoundary(const Coords &from, bool is_star
     return ToCoords({from.L, ci});
 }
 
-uint TextEditor::GetCharIndex(const Coords &coords) const {
-    const uint li = std::min(coords.L, uint(Lines.size() - 1));
+uint TextEditor::GetCharIndex(const LineT &line, uint column) const {
     uint ci = 0;
-    for (uint column = 0; ci < Lines[li].size() && column < coords.C;) MoveCharIndexAndColumn(li, ci, column);
+    for (uint column_i = 0; ci < line.size() && column_i < column;) MoveCharIndexAndColumn(line, ci, column_i);
     return ci;
 }
 
-uint TextEditor::GetCharColumn(LineChar lc) const {
-    if (lc.L >= Lines.size()) return 0;
+uint TextEditor::GetCharIndex(const Coords &coords) const {
+    return GetCharIndex(Lines[std::min(coords.L, uint(Lines.size() - 1))], coords.C);
+}
 
+uint TextEditor::GetCharColumn(const LineT &line, uint ci) const {
     uint column = 0;
-    for (uint ci = 0; ci < lc.C && ci < Lines[lc.L].size();) MoveCharIndexAndColumn(lc.L, ci, column);
+    for (uint ci_i = 0; ci_i < ci && ci_i < line.size();) MoveCharIndexAndColumn(line, ci_i, column);
     return column;
 }
 
 uint TextEditor::GetFirstVisibleCharIndex(uint li) const {
     if (li >= Lines.size()) return 0;
 
+    const auto &line = Lines[li];
     uint ci = 0, column = 0;
-    while (column < FirstVisibleCoords.C && ci < Lines[li].size()) MoveCharIndexAndColumn(li, ci, column);
+    while (column < FirstVisibleCoords.C && ci < line.size()) MoveCharIndexAndColumn(line, ci, column);
     return column > FirstVisibleCoords.C && ci > 0 ? ci - 1 : ci;
 }
 
 uint TextEditor::GetLineMaxColumn(uint li) const {
     if (li >= Lines.size()) return 0;
 
+    const auto &line = Lines[li];
     uint column = 0;
-    for (uint ci = 0; ci < Lines[li].size();) MoveCharIndexAndColumn(li, ci, column);
+    for (uint ci = 0; ci < line.size();) MoveCharIndexAndColumn(line, ci, column);
     return column;
 }
 uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
     if (li >= Lines.size()) return 0;
 
+    const auto &line = Lines[li];
     uint column = 0;
-    for (uint ci = 0; ci < Lines[li].size() && column < limit;) MoveCharIndexAndColumn(li, ci, column);
+    for (uint ci = 0; ci < line.size() && column < limit;) MoveCharIndexAndColumn(line, ci, column);
     return column;
 }
 
@@ -937,7 +935,15 @@ void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bo
 
     auto &line = Lines[lc.L];
     auto &palette_line = PaletteIndices[lc.L];
-    const uint column = GetCharColumn(lc);
+    // Adjust no-selection cursors to the right of the change.
+    std::unordered_map<uint, uint> new_ci_for_cursor;
+    for (uint c = 0; c < State.Cursors.size(); c++) {
+        auto &cursor = State.Cursors[c];
+        if (cursor.End.L == lc.L && !cursor.HasSelection()) {
+            const uint cursor_ci = GetCharIndex(line, cursor.End.C);
+            if (cursor_ci > lc.C) new_ci_for_cursor[c] = cursor_ci + (is_add ? glyphs.size() : -glyphs.size());
+        }
+    }
 
     if (is_add) {
         line.insert(line.begin() + lc.C, glyphs.begin(), glyphs.end());
@@ -947,12 +953,10 @@ void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bo
         palette_line.erase(palette_line.begin() + lc.C, palette_line.begin() + lc.C + glyphs.size());
     }
 
-    // Adjust cursors to the right of a change, without a selection.
     for (uint c = 0; c < State.Cursors.size(); c++) {
-        auto &cursor = State.Cursors[c];
-        if (cursor.End.L == lc.L && cursor.End.C > column && !cursor.HasSelection()) {
-            const uint new_ci = GetCharIndex(cursor.End) + (is_add ? glyphs.size() : -glyphs.size());
-            SetCursorPosition(ToCoords({lc.L, new_ci}), cursor);
+        if (new_ci_for_cursor.contains(c)) {
+            auto &cursor = State.Cursors[c];
+            SetCursorPosition({cursor.End.L, GetCharColumn(line, new_ci_for_cursor.at(c))}, cursor);
         }
     }
 }
@@ -1279,9 +1283,9 @@ void TextEditor::Render(bool is_parent_focused) {
             const auto selection_start = c.SelectionStart(), selection_end = c.SelectionEnd();
             float rect_start = -1.0f, rect_end = -1.0f;
             if (selection_start <= line_end_coord)
-                rect_start = selection_start > line_start_coord ? TextDistanceToLineStart(selection_start) : 0.0f;
+                rect_start = selection_start > line_start_coord ? selection_start.C * CharAdvance.x : 0.0f;
             if (selection_end > line_start_coord)
-                rect_end = TextDistanceToLineStart(selection_end < line_end_coord ? selection_end : line_end_coord);
+                rect_end = (selection_end < line_end_coord ? selection_end.C : line_end_coord.C) * CharAdvance.x;
             if (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord))
                 rect_end += CharAdvance.x;
 
@@ -1301,38 +1305,36 @@ void TextEditor::Render(bool is_parent_focused) {
             dl->AddText({text_screen_pos_x - line_num_width, line_start_screen_pos.y}, Palette[int(PaletteIndex::LineNumber)], li_buffer);
         }
 
-        std::vector<Coords> cursor_coords_in_this_line;
+        std::vector<uint> line_cursor_columns;
         for (const auto &c : State.Cursors) {
-            if (c.End.L == li) cursor_coords_in_this_line.push_back(c.End);
+            if (c.End.L == li) line_cursor_columns.push_back(c.End.C);
         }
-        if (cursor_coords_in_this_line.size() > 0) {
-            // Render the cursors
-            if (ImGui::IsWindowFocused() || is_parent_focused) {
-                for (const auto &cursor_coords : cursor_coords_in_this_line) {
-                    float width = 1.0f;
-                    const uint ci = GetCharIndex(cursor_coords);
-                    const float cx = TextDistanceToLineStart(cursor_coords);
-                    if (Overwrite && ci < line.size()) {
-                        if (line[ci] == '\t') {
-                            const auto x = (1.0f + std::floor((1.0f + cx) / (TabSize * space_size))) * (TabSize * space_size);
-                            width = x - cx;
-                        } else {
-                            width = CharAdvance.x;
-                        }
+        // Render the cursors
+        if (ImGui::IsWindowFocused() || is_parent_focused) {
+            for (const uint cursor_column : line_cursor_columns) {
+                float width = 1.0f;
+                const uint ci = GetCharIndex(line, cursor_column);
+                const float cx = cursor_column * CharAdvance.x;
+                if (Overwrite && ci < line.size()) {
+                    if (line[ci] == '\t') {
+                        const auto x = (1.0f + std::floor((1.0f + cx) / (TabSize * space_size))) * (TabSize * space_size);
+                        width = x - cx;
+                    } else {
+                        width = CharAdvance.x;
                     }
-                    dl->AddRectFilled(
-                        {text_screen_pos_x + cx, line_start_screen_pos.y},
-                        {text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y},
-                        Palette[int(PaletteIndex::Cursor)]
-                    );
                 }
+                dl->AddRectFilled(
+                    {text_screen_pos_x + cx, line_start_screen_pos.y},
+                    {text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y},
+                    Palette[int(PaletteIndex::Cursor)]
+                );
             }
         }
 
         // Render colorized text
-        for (uint ci = GetFirstVisibleCharIndex(li), column = FirstVisibleCoords.C; ci < Lines[li].size() && column <= LastVisibleCoords.C;) {
+        for (uint ci = GetFirstVisibleCharIndex(li), column = FirstVisibleCoords.C; ci < line.size() && column <= LastVisibleCoords.C;) {
             const char ch = line[ci];
-            const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + TextDistanceToLineStart({li, column}, false), 0};
+            const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + column * CharAdvance.x, 0};
             if (ch == '\t') {
                 if (ShowWhitespaces) {
                     const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
@@ -1364,7 +1366,7 @@ void TextEditor::Render(bool is_parent_focused) {
                 for (uint i = 0; i < seq_length; i++) glyph_buffer.push_back(line[ci + i]);
                 dl->AddText(glyph_pos, GetGlyphColor({li, ci}), glyph_buffer.c_str());
             }
-            MoveCharIndexAndColumn(li, ci, column);
+            MoveCharIndexAndColumn(line, ci, column);
         }
     }
     CurrentSpaceHeight = (Lines.size() + std::min(VisibleLineCount - 1, uint(Lines.size()))) * CharAdvance.y;
@@ -1377,7 +1379,7 @@ void TextEditor::Render(bool is_parent_focused) {
         for (uint i = 0; i < (LastEnsureCursorVisibleStartToo ? 2 : 1); i++) {
             if (i) UpdateViewVariables(ScrollX, ScrollY); // Second pass depends on changes made in first pass
             const auto &cursor = State.GetCursor(LastEnsureCursorVisible);
-            const auto target = SanitizeCoords(i > 0 ? cursor.Start : cursor.End);
+            const auto target = i > 0 ? cursor.Start : cursor.End;
             if (target.L <= FirstVisibleCoords.L) {
                 float scroll = std::max(0.0f, (target.L - 0.5f) * CharAdvance.y);
                 if (scroll < ScrollY) ImGui::SetScrollY(scroll);

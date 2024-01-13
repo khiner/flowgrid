@@ -122,7 +122,7 @@ struct TextEditor {
     uint LineCount() const { return Lines.size(); }
     const LineT &GetLine(uint li) const { return Lines[li]; }
 
-    Coords GetCursorPosition() const { return SanitizeCoords(State.GetCursor().End); }
+    Coords GetCursorPosition() const { return State.GetCursor().End; }
 
     void SetPalette(PaletteIdT);
     void SetLanguage(LanguageID);
@@ -147,7 +147,7 @@ struct TextEditor {
     void SetFilePath(const fs::path &);
 
     std::string GetText(const Coords &start, const Coords &end) const;
-    std::string GetText() const { return Lines.empty() ? "" : GetText({}, LineMaxCoords(Lines.size() - 1)); }
+    std::string GetText() const { return GetText({}, LineMaxCoords(Lines.size() - 1)); }
 
     std::string GetSyntaxTreeSExp() const;
 
@@ -300,7 +300,7 @@ private:
 
     Coords MoveCoords(const Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
 
-    void MoveCharIndexAndColumn(uint li, uint &ci, uint &column) const;
+    void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
     void MoveUp(uint amount = 1, bool select = false);
     void MoveDown(uint amount = 1, bool select = false);
     void MoveLeft(bool select = false, bool is_word_mode = false);
@@ -327,20 +327,19 @@ private:
     void ToggleLineComment();
     void RemoveCurrentLines();
 
-    float TextDistanceToLineStart(const Coords &from, bool sanitize_coords = true) const;
     void EnsureCursorVisible(bool start_too = false);
 
     Coords LineMaxCoords(uint li) const { return {li, GetLineMaxColumn(li)}; }
-    Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(lc)}; }
+    Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(Lines[lc.L], lc.C)}; }
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(coords)}; }
     uint ToByteIndex(LineChar) const;
     uint EndByteIndex() const { return ToByteIndex({uint(Lines.size() - 1), uint(Lines.back().size())}); }
 
-    Coords SanitizeCoords(const Coords &) const;
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     Coords FindWordBoundary(const Coords &from, bool is_start = false) const;
     uint GetCharIndex(const Coords &) const;
-    uint GetCharColumn(LineChar) const;
+    uint GetCharIndex(const LineT &, uint column) const;
+    uint GetCharColumn(const LineT &line, uint ci) const;
     uint GetFirstVisibleCharIndex(uint li) const;
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;

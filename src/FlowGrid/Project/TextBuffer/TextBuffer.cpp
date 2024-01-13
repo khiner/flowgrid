@@ -19,12 +19,12 @@ TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_vie
               {
                   .owner_path = Path,
                   .title = "Open file",
-                  .filters = ".json,.cpp",
+                  .filters = TextEditor::Languages.AllFileExtensionsFilter,
               },
               {
                   .owner_path = Path,
                   .title = "Save file",
-                  .filters = ".json,.cpp",
+                  .filters = TextEditor::Languages.AllFileExtensionsFilter,
                   .default_file_name = "my_json",
                   .save_mode = true,
               },

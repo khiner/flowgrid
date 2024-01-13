@@ -49,15 +49,16 @@ LanguageDefinition::PaletteT LanguageDefinition::CreatePalette(LanguageID id) {
     return p;
 }
 
-LanguageDefinitions::LanguageDefinitions() {
-    ById = {
-        {ID::None, {ID::None, "None"}},
-        {ID::Cpp, {ID::Cpp, "C++", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
-        {ID::Json, {ID::Json, "JSON", tree_sitter_json(), {".json"}}},
-    };
+LanguageDefinitions::LanguageDefinitions()
+    : ById{
+          {ID::None, {ID::None, "None"}},
+          {ID::Cpp, {ID::Cpp, "C++", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
+          {ID::Json, {ID::Json, "JSON", tree_sitter_json(), {".json"}}},
+      } {
     for (const auto &[id, lang] : ById) {
         for (const auto &ext : lang.FileExtensions) ByFileExtension[ext] = id;
     }
+    for (const auto &ext : ByFileExtension | std::views::keys) AllFileExtensionsFilter += ext + ',';
 }
 
 struct TextEditor::CodeParser {

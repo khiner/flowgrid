@@ -67,6 +67,7 @@ struct LanguageDefinitions {
 
     std::unordered_map<ID, LanguageDefinition> ById;
     std::unordered_map<std::string, LanguageID> ByFileExtension;
+    std::string AllFileExtensionsFilter;
 };
 
 struct TextEditor {

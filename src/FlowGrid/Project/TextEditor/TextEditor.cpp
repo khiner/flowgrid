@@ -300,7 +300,7 @@ void TextEditor::Redo(uint steps) {
 }
 
 void TextEditor::SetText(const string &text) {
-    const LineChar old_end{uint(Lines.size() - 1), uint(Lines.back().size())};
+    const uint old_end_byte = EndByteIndex();
     Lines.clear();
     PaletteIndices.clear();
     Lines.push_back({});
@@ -321,7 +321,7 @@ void TextEditor::SetText(const string &text) {
     UndoBuffer.clear();
     UndoIndex = 0;
 
-    OnTextChanged({0, 0}, old_end, {uint(Lines.size() - 1), uint(Lines.back().size())});
+    OnTextChanged(0, old_end_byte, EndByteIndex());
 }
 
 void TextEditor::SetFilePath(const fs::path &file_path) {
@@ -933,6 +933,8 @@ uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
 }
 
 void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bool is_add) {
+    if (glyphs.empty()) return;
+
     auto &line = Lines[lc.L];
     auto &palette_line = PaletteIndices[lc.L];
     const uint column = GetCharColumn(lc);
@@ -959,6 +961,7 @@ void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bo
 //   We can make multi-line insertion much more efficient by handling all cursor bookkeeping once instead of once per add/remove-glyphs call.
 TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text) {
     const LineChar start = ToLineChar(at);
+    const uint start_byte = ToByteIndex(start);
     const uint num_newlines = std::ranges::count(text, '\n');
     if (num_newlines > 0) {
         Lines.insert(Lines.begin() + start.L + 1, num_newlines, LineT{});
@@ -988,37 +991,39 @@ TextEditor::Coords TextEditor::InsertTextAt(const Coords &at, const string &text
         }
     }
 
-    OnTextChanged(start, start, end);
+    OnTextChanged(start_byte, start_byte, ToByteIndex(end));
     return ToCoords(end);
 }
 
-void TextEditor::DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor) {
-    if (end <= start) return;
+void TextEditor::DeleteRange(const Coords &start_coord, const Coords &end_coord, const Cursor *exclude_cursor) {
+    if (end_coord <= start_coord) return;
 
-    const LineChar start_lc = ToLineChar(start), end_lc = ToLineChar(end);
+    const LineChar start = ToLineChar(start_coord), end = ToLineChar(end_coord);
+    const uint start_byte = ToByteIndex(start), end_byte = ToByteIndex(end);
+
     if (start.L == end.L) {
-        RemoveGlyphs(start_lc, {Lines[start_lc.L].cbegin() + start_lc.C, Lines[start_lc.L].cbegin() + end_lc.C});
+        RemoveGlyphs(start, {Lines[start.L].cbegin() + start.C, Lines[start.L].cbegin() + end.C});
     } else {
         // At least one line completely removed.
-        RemoveGlyphs(start_lc, {Lines[start_lc.L].cbegin() + start_lc.C, Lines[start_lc.L].cend()}); // from start to end of line
-        RemoveGlyphs({end_lc.L, 0}, {Lines[end_lc.L].cbegin(), Lines[end_lc.L].cbegin() + end_lc.C}); // from beginning of line to end
-        AddGlyphs({start_lc.L, uint(Lines[start_lc.L].size())}, Lines[end_lc.L]);
+        RemoveGlyphs(start, {Lines[start.L].cbegin() + start.C, Lines[start.L].cend()}); // from start to end of line
+        RemoveGlyphs({end.L, 0}, {Lines[end.L].cbegin(), Lines[end.L].cbegin() + end.C}); // from beginning of line to end
+        AddGlyphs({start.L, uint(Lines[start.L].size())}, Lines[end.L]);
 
         // Move up all cursors after the last removed line.
-        const uint num_removed_lines = end_lc.L - start_lc.L;
+        const uint removed_line_count = end.L - start.L;
         for (auto &c : State.Cursors) {
             if (exclude_cursor != nullptr && c == *exclude_cursor) continue;
 
-            if (c.End.L >= end_lc.L) {
-                c.Start.L -= num_removed_lines;
-                c.End.L -= num_removed_lines;
+            if (c.End.L >= end.L) {
+                c.Start.L -= removed_line_count;
+                c.End.L -= removed_line_count;
             }
         }
 
         Lines.erase(Lines.begin() + start.L + 1, Lines.begin() + end.L + 1);
         PaletteIndices.erase(PaletteIndices.begin() + start.L + 1, PaletteIndices.begin() + end.L + 1);
     }
-    OnTextChanged(start_lc, end_lc, start_lc);
+    OnTextChanged(start_byte, end_byte, start_byte);
 }
 
 void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
@@ -1420,13 +1425,13 @@ uint TextEditor::ToByteIndex(LineChar lc) const {
     return ranges::accumulate(subrange(Lines.begin(), Lines.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
 }
 
-void TextEditor::OnTextChanged(LineChar start, LineChar old_end, LineChar new_end) {
+void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
     if (Tree) {
         TSInputEdit edit;
         // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
-        edit.start_byte = ToByteIndex(start);
-        edit.old_end_byte = ToByteIndex(old_end);
-        edit.new_end_byte = ToByteIndex(new_end);
+        edit.start_byte = start_byte;
+        edit.old_end_byte = old_end_byte;
+        edit.new_end_byte = new_end_byte;
         ts_tree_edit(Tree, &edit);
     }
     TextChanged = true;

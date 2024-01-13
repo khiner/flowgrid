@@ -334,6 +334,7 @@ private:
     Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(lc)}; }
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(coords)}; }
     uint ToByteIndex(LineChar) const;
+    uint EndByteIndex() const { return ToByteIndex({uint(Lines.size() - 1), uint(Lines.back().size())}); }
 
     Coords SanitizeCoords(const Coords &) const;
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
@@ -359,18 +360,16 @@ private:
     void Render(bool is_parent_focused = false);
 
     /**
-    `start`: Start position of the text change.
-
-    `old_end`: End position of the original text before the change.
+    `start_byte`: Start position of the text change.
+    `old_end_byte`: End position of the original text before the change.
       - For insertion, same as `start`.
       - For replacement, where the replaced text ended.
       - For deletion, where the deleted text ended.
-
-    `new_end`: End position of the new text after the change.
+    `new_end_byte`: End position of the new text after the change.
       - For insertion or replacement, where the new text ends.
       - For deletion, same as `start`.
     **/
-    void OnTextChanged(LineChar start, LineChar old_end, LineChar new_end);
+    void OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte);
 
     void OnCursorPositionChanged();
     void SortAndMergeCursors();

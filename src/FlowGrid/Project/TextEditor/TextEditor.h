@@ -11,6 +11,8 @@
 
 #include "imgui.h"
 
+#include "LanguageID.h"
+
 namespace fs = std::filesystem;
 
 struct TSLanguage;
@@ -44,17 +46,11 @@ enum class PaletteIndex {
 };
 
 struct LanguageDefinition {
-    enum class ID {
-        None,
-        Cpp,
-        Json,
-    };
-
     using PaletteT = std::unordered_map<std::string, PaletteIndex>; // Key is TS node type name.
 
-    static PaletteT CreatePalette(ID);
+    static PaletteT CreatePalette(LanguageID);
 
-    ID Id;
+    LanguageID Id;
     std::string Name;
     TSLanguage *TsLanguage{nullptr};
     std::unordered_set<std::string> FileExtensions{};
@@ -63,21 +59,21 @@ struct LanguageDefinition {
 };
 
 struct LanguageDefinitions {
-    using ID = LanguageDefinition::ID;
+    using ID = LanguageID;
 
     LanguageDefinitions();
 
     const LanguageDefinition &Get(ID id) const { return ById.at(id); }
 
     std::unordered_map<ID, LanguageDefinition> ById;
-    std::unordered_map<std::string, LanguageDefinition::ID> ByFileExtension;
+    std::unordered_map<std::string, LanguageID> ByFileExtension;
 };
 
 struct TextEditor {
     // Forward-declare wrapper structs for Tree-Sitter types.
     struct CodeParser;
 
-    TextEditor();
+    TextEditor(std::string_view text = "", LanguageID language_id = LanguageID::None);
     ~TextEditor();
 
     enum class PaletteIdT {
@@ -127,7 +123,7 @@ struct TextEditor {
     Coords GetCursorPosition() const { return SanitizeCoords(State.GetCursor().End); }
 
     void SetPalette(PaletteIdT);
-    void SetLanguage(LanguageDefinition::ID);
+    void SetLanguage(LanguageID);
 
     void SetTabSize(uint);
     void SetLineSpacing(float);
@@ -415,7 +411,7 @@ private:
     bool CursorPositionChanged{false};
     std::optional<Cursor> MatchingBrackets{};
     PaletteT Palette;
-    LanguageDefinition::ID LanguageId{LanguageDefinition::ID::None};
+    LanguageID LanguageId{LanguageID::None};
 
     std::unique_ptr<CodeParser> Parser;
     TSTree *Tree{nullptr};

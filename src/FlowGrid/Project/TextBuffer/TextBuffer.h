@@ -6,6 +6,7 @@
 #include "Core/Primitive/String.h"
 #include "Core/ProducerComponentArgs.h"
 #include "Project/FileDialog/FileDialogData.h"
+#include "Project/TextEditor/LanguageID.h"
 #include "TextBufferAction.h"
 
 struct FileDialog;
@@ -16,8 +17,8 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
         FileDialogData OpenConfig, SaveConfig;
     };
 
-    TextBuffer(ArgsT &&, const FileDialog &, FileConfig &&, string_view text = "");
-    TextBuffer(ArgsT &&, const FileDialog &, string_view text = "");
+    TextBuffer(ArgsT &&, const FileDialog &, FileConfig &&, string_view text = "", LanguageID language_id = LanguageID::None);
+    TextBuffer(ArgsT &&, const FileDialog &, string_view text = "", LanguageID language_id = LanguageID::None);
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;

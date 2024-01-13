@@ -8,11 +8,11 @@
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/Fonts.h"
 
-TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, TextBuffer::FileConfig &&file_config, string_view text)
-    : ActionableComponent(std::move(args)), FileDialog(file_dialog), FileConf(std::move(file_config)), Editor(std::make_unique<TextEditor>()) {
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, TextBuffer::FileConfig &&file_config, string_view text, LanguageID language_id)
+    : ActionableComponent(std::move(args)), FileDialog(file_dialog), FileConf(std::move(file_config)), Editor(std::make_unique<TextEditor>(text, language_id)) {
     Text.Set_(string(text));
 }
-TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_view text)
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_view text, LanguageID language_id)
     : TextBuffer(
           std::move(args), file_dialog,
           {
@@ -29,7 +29,7 @@ TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_vie
                   .save_mode = true,
               },
           },
-          std::move(text)
+          std::move(text), language_id
       ) {
     WindowFlags |= ImGuiWindowFlags_MenuBar;
 }

@@ -21,11 +21,11 @@ void AddTypes(LanguageDefinition::PaletteT &palette, PaletteIndex index, std::in
     for (const auto &type : types) palette[type] = index;
 }
 
-LanguageDefinition::PaletteT LanguageDefinition::CreatePalette(ID id) {
+LanguageDefinition::PaletteT LanguageDefinition::CreatePalette(LanguageID id) {
     PaletteT p;
     using PI = PaletteIndex;
     switch (id) {
-        case ID::Cpp:
+        case LanguageID::Cpp:
             AddTypes(p, PI::Keyword, {"auto", "break", "case", "const", "constexpr", "continue", "default", "do", "else", "extern", "false", "for", "if", "nullptr", "private", "return", "static", "struct", "switch", "this", "true", "using", "while"});
             AddTypes(p, PI::Operator, {"!", "!=", "&", "&&", "&=", "*", "++", "+=", "-", "--", "-=", "->", "/", "<", "<=", "=", "==", ">", ">=", "[", "]", "^=", "|", "||", "~"});
             AddTypes(p, PI::NumberLiteral, {"number_literal"});
@@ -37,7 +37,7 @@ LanguageDefinition::PaletteT LanguageDefinition::CreatePalette(ID id) {
             AddTypes(p, PI::Punctuation, {"(", ")", "+", ",", ".", ":", "::", ";", "?", "{", "}"});
             AddTypes(p, PI::Comment, {"escape_sequence", "comment"});
             break;
-        case ID::Json:
+        case LanguageID::Json:
             AddTypes(p, PI::Type, {"true", "false", "null"});
             AddTypes(p, PI::NumberLiteral, {"number"});
             AddTypes(p, PI::StringLiteral, {"string_content", "\""});
@@ -55,8 +55,8 @@ LanguageDefinitions::LanguageDefinitions() {
         {ID::Cpp, {ID::Cpp, "C++", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
         {ID::Json, {ID::Json, "JSON", tree_sitter_json(), {".json"}}},
     };
-    for (const auto &[id, lang_def] : ById) {
-        for (const auto &ext : lang_def.FileExtensions) ByFileExtension[ext] = id;
+    for (const auto &[id, lang] : ById) {
+        for (const auto &ext : lang.FileExtensions) ByFileExtension[ext] = id;
     }
 }
 
@@ -77,7 +77,9 @@ private:
     TSLanguage *Language;
 };
 
-TextEditor::TextEditor() : Parser(std::make_unique<CodeParser>()) {
+TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(std::make_unique<CodeParser>()) {
+    SetText(string(text));
+    SetLanguage(language_id);
     SetPalette(DefaultPaletteId);
 }
 
@@ -184,10 +186,10 @@ void TextEditor::SetPalette(PaletteIdT palette_id) {
     }
 }
 
-void TextEditor::SetLanguage(LanguageDefinition::ID language_def_id) {
-    if (LanguageId == language_def_id) return;
+void TextEditor::SetLanguage(LanguageID language_id) {
+    if (LanguageId == language_id) return;
 
-    LanguageId = language_def_id;
+    LanguageId = language_id;
     Parser->SetLanguage(GetLanguage().TsLanguage);
     Tree = nullptr;
     TextChanged = true;
@@ -306,7 +308,7 @@ void TextEditor::SetFilePath(const fs::path &file_path) {
     const string extension = file_path.extension();
     if (extension.empty()) return;
 
-    SetLanguage(Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageDefinition::ID::None);
+    SetLanguage(Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None);
 }
 
 void TextEditor::AddUndoOp(UndoRecord &record, UndoOperationType type, const Coords &start, const Coords &end) {
@@ -1009,7 +1011,7 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
 }
 
 ImU32 TextEditor::GetGlyphColor(LineChar lc) const {
-    return Palette[int(LanguageId == LanguageDefinition::ID::None ? PaletteIndex::Default : PaletteIndices[lc.L][lc.C])];
+    return Palette[int(LanguageId == LanguageID::None ? PaletteIndex::Default : PaletteIndices[lc.L][lc.C])];
 }
 
 static bool IsPressed(ImGuiKey key) {

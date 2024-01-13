@@ -11,6 +11,8 @@
 
 #include "imgui_internal.h"
 
+#include "Helper/File.h"
+
 using std::string, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
 // Implemented by the grammar libraries in `lib/tree-sitter-grammars/`.
@@ -81,6 +83,11 @@ private:
 TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(std::make_unique<CodeParser>()) {
     SetText(string(text));
     SetLanguage(language_id);
+    SetPalette(DefaultPaletteId);
+}
+TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<CodeParser>()) {
+    SetText(FileIO::read(file_path));
+    SetFilePath(file_path);
     SetPalette(DefaultPaletteId);
 }
 

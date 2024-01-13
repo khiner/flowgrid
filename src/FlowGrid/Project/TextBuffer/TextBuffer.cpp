@@ -8,30 +8,36 @@
 #include "Project/TextEditor/TextEditor.h"
 #include "UI/Fonts.h"
 
+static TextBuffer::FileConfig CreateDefaultFileConfig(const fs::path &path) {
+    return {
+        {
+            .owner_path = path,
+            .title = "Open file",
+            .filters = TextEditor::Languages.AllFileExtensionsFilter,
+        },
+        {
+            .owner_path = path,
+            .title = "Save file",
+            .filters = TextEditor::Languages.AllFileExtensionsFilter,
+            .default_file_name = "my_json",
+            .save_mode = true,
+        },
+    };
+}
+
 TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, TextBuffer::FileConfig &&file_config, string_view text, LanguageID language_id)
     : ActionableComponent(std::move(args)), FileDialog(file_dialog), FileConf(std::move(file_config)), Editor(std::make_unique<TextEditor>(text, language_id)) {
     Text.Set_(string(text));
 }
 TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, string_view text, LanguageID language_id)
-    : TextBuffer(
-          std::move(args), file_dialog,
-          {
-              {
-                  .owner_path = Path,
-                  .title = "Open file",
-                  .filters = TextEditor::Languages.AllFileExtensionsFilter,
-              },
-              {
-                  .owner_path = Path,
-                  .title = "Save file",
-                  .filters = TextEditor::Languages.AllFileExtensionsFilter,
-                  .default_file_name = "my_json",
-                  .save_mode = true,
-              },
-          },
-          std::move(text), language_id
-      ) {
+    : TextBuffer(std::move(args), file_dialog, CreateDefaultFileConfig(Path), std::move(text), language_id) {
     WindowFlags |= ImGuiWindowFlags_MenuBar;
+}
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
+    : ActionableComponent(std::move(args)), FileDialog(file_dialog), FileConf(CreateDefaultFileConfig(Path)), Editor(std::make_unique<TextEditor>(file_path)) {
+    WindowFlags |= ImGuiWindowFlags_MenuBar;
+    Text.Set_(Editor->GetText());
+    LastOpenedFilePath.Set(file_path);
 }
 
 TextBuffer::~TextBuffer() {}

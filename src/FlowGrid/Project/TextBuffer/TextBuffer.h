@@ -19,6 +19,7 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
 
     TextBuffer(ArgsT &&, const FileDialog &, FileConfig &&, string_view text = "", LanguageID language_id = LanguageID::None);
     TextBuffer(ArgsT &&, const FileDialog &, string_view text = "", LanguageID language_id = LanguageID::None);
+    TextBuffer(ArgsT &&, const FileDialog &, const fs::path &file_path);
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;

@@ -75,6 +75,7 @@ struct TextEditor {
     struct CodeParser;
 
     TextEditor(std::string_view text = "", LanguageID language_id = LanguageID::None);
+    TextEditor(const fs::path &);
     ~TextEditor();
 
     enum class PaletteIdT {

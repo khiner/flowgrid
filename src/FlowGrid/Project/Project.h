@@ -183,7 +183,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
     ProducerProp(fg::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
-    ProducerProp(TextBuffer, TextEditor, FileDialog, "", LanguageID::Cpp);
+    ProducerProp(TextBuffer, TextEditor, FileDialog, fs::path("../src") / "FlowGrid" / "Project" / "TextEditor" / "TextEditor.cpp");
     ProducerProp(Audio, Audio, FileDialog);
     Prop(ProjectSettings, Settings);
     Prop(Info, Info);

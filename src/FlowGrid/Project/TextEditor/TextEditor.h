@@ -35,7 +35,7 @@ enum class PaletteIndex {
     Background,
     Cursor,
     Selection,
-    ErrorMarker,
+    Error,
     ControlCharacter,
     Breakpoint,
     LineNumber,

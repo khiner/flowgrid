@@ -135,9 +135,12 @@ void TextEditor::Highlight() {
         TSNode node = ts_tree_cursor_current_node(&cursor);
         const TSPoint start_point = ts_node_start_point(node), end_point = ts_node_end_point(node);
         const string type_name = ts_node_type(node);
+        const bool is_error = type_name == "ERROR";
         // todo Handle node group types other than comments.
-        if (ts_node_child_count(node) == 0 || type_name == "comment") {
-            const auto palette_index = palette.contains(type_name) ? palette.at(type_name) : PaletteIndex::Default;
+        if (ts_node_child_count(node) == 0 || type_name == "comment" || is_error) {
+            const auto palette_index = is_error ? PaletteIndex::Error :
+                palette.contains(type_name)     ? palette.at(type_name) :
+                                                  PaletteIndex::Default;
             // if (!palette.contains(type_name)) std::println("Unknown type name: {}", type_name);
 
             // Add palette index for each char in the node.
@@ -153,7 +156,16 @@ void TextEditor::Highlight() {
             }
         }
 
-        if (ts_tree_cursor_goto_first_child(&cursor)) continue;
+        /**
+          Highlight everything within an error node as an error.
+          E.g. TS will parse an incomplete multi-line comment as an "ERROR" token, with the children:
+            (Operator '/'), (pointer dereference '*'), ... identifiers, etc.
+          Note that most text editors highlight the remainder of incomplete nodes (like unclosed string literals of multi-line comments)
+          as a continuation of the incomplete type (e.g. highlighting all chars in the document after an unclosed multi-line comment in comment color).
+          Rather than doing manual language-specific work to emulate this common behavior, we lean into tree-sitter's focus on accuracy.
+          Highlighting incomplete tokens as errors is a feature!
+        */
+        if (!is_error && ts_tree_cursor_goto_first_child(&cursor)) continue;
 
         while (!ts_tree_cursor_goto_next_sibling(&cursor)) {
             if (!ts_tree_cursor_goto_parent(&cursor)) {
@@ -1477,7 +1489,7 @@ const TextEditor::PaletteT TextEditor::DarkPalette = {{
     0x282c34ff, // Background
     0xe0e0e0ff, // Cursor
     0x2060a080, // Selection
-    0xff200080, // ErrorMarker
+    0xff200080, // Error
     0xffffff15, // ControlCharacter
     0x0080f040, // Breakpoint
     0x7a8394ff, // Line number
@@ -1502,7 +1514,7 @@ const TextEditor::PaletteT TextEditor::MarianaPalette = {{
     0x303841ff, // Background
     0xe0e0e0ff, // Cursor
     0x4e5a6580, // Selection
-    0xec5f6680, // ErrorMarker
+    0xec5f6680, // Error
     0xffffff30, // ControlCharacter
     0x0080f040, // Breakpoint
     0xffffffb0, // Line number
@@ -1527,7 +1539,7 @@ const TextEditor::PaletteT TextEditor::LightPalette = {{
     0xffffffff, // Background
     0x000000ff, // Cursor
     0x00006040, // Selection
-    0xff1000a0, // ErrorMarker
+    0xff1000a0, // Error
     0x90909090, // ControlCharacter
     0x0080f080, // Breakpoint
     0x005050ff, // Line number
@@ -1552,7 +1564,7 @@ const TextEditor::PaletteT TextEditor::RetroBluePalette = {{
     0x000080ff, // Background
     0xff8000ff, // Cursor
     0x00ffff80, // Selection
-    0xff0000a0, // ErrorMarker
+    0xff0000a0, // Error
     0x0080ff80, // Breakpoint
     0x008080ff, // Line number
     0x00000040, // Current line fill

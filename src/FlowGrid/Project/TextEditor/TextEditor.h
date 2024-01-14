@@ -90,8 +90,8 @@ struct TextEditor {
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
-    // Tabs are counted as [1..TabSize] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
-    // For example, `Coords{1, 5}` represents the character 'B' in the line "\tABC", when TabSize = 4, since it is rendered as "    ABC" on the screen.
+    // Tabs are counted as [1..NumTabSpaces] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
+    // For example, `Coords{1, 5}` represents the character 'B' in the line "\tABC", when NumTabSpaces = 4, since it is rendered as "    ABC" on the screen.
     struct Coords {
         uint L{0}, C{0}; // Line, Column
 
@@ -122,12 +122,12 @@ struct TextEditor {
     uint LineCount() const { return Lines.size(); }
     const LineT &GetLine(uint li) const { return Lines[li]; }
 
-    Coords GetCursorPosition() const { return State.GetCursor().End; }
+    LineChar GetCursorPosition() const { return State.GetCursor().End; }
 
     void SetPalette(PaletteIdT);
     void SetLanguage(LanguageID);
 
-    void SetTabSize(uint);
+    void SetNumTabSpaces(uint);
     void SetLineSpacing(float);
 
     void SelectAll();
@@ -146,8 +146,8 @@ struct TextEditor {
     void SetText(const std::string &);
     void SetFilePath(const fs::path &);
 
-    std::string GetText(const Coords &start, const Coords &end) const;
-    std::string GetText() const { return GetText({}, LineMaxCoords(Lines.size() - 1)); }
+    std::string GetText(LineChar start, LineChar end) const;
+    std::string GetText() const { return GetText({}, LineMaxLC(Lines.size() - 1)); }
 
     std::string GetSyntaxTreeSExp() const;
 
@@ -184,15 +184,16 @@ private:
     inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
 
     struct Cursor {
-        // These coordinates reflect the order of interaction.
-        // For ordered coordinates, use `SelectionStart()` and `SelectionEnd()`.
-        Coords Start{}, End{};
+        // todo next up: We store `Coords` in addition to `LineChar` to keep the visual column at max(column, line_end) when navigating cursors up and down.
+        // `Start` and `End` are the the first and second coordinate _set in an interaction_.
+        // For position-ordered coordinates, use `SelectionStart()` and `SelectionEnd()`.
+        LineChar Start{}, End{};
 
         bool operator==(const Cursor &) const = default;
         bool operator!=(const Cursor &) const = default;
 
-        Coords SelectionStart() const { return Start < End ? Start : End; }
-        Coords SelectionEnd() const { return Start > End ? Start : End; }
+        LineChar SelectionStart() const { return Start < End ? Start : End; }
+        LineChar SelectionEnd() const { return Start > End ? Start : End; }
         bool HasSelection() const { return Start != End; }
         bool HasMultilineSelection() const { return SelectionStart().L != SelectionEnd().L; }
     };
@@ -206,8 +207,6 @@ private:
         void ResetCursors();
         uint GetLastAddedCursorIndex() { return LastAddedCursorIndex >= Cursors.size() ? 0 : LastAddedCursorIndex; }
         Cursor &GetLastAddedCursor() { return Cursors[GetLastAddedCursorIndex()]; }
-        Cursor &GetCursor(uint c) { return Cursors[c]; }
-        const Cursor &GetCursor(uint c) const { return Cursors[c]; }
         Cursor &GetCursor() { return Cursors.back(); }
         const Cursor &GetCursor() const { return Cursors.back(); }
     };
@@ -261,7 +260,7 @@ private:
     };
     struct UndoOperation {
         std::string Text;
-        Coords Start, End;
+        LineChar Start, End;
         UndoOperationType Type;
     };
 
@@ -286,7 +285,7 @@ private:
 
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
-    void AddUndoOp(UndoRecord &, UndoOperationType, const Coords &start, const Coords &end);
+    void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
     ImU32 GetGlyphColor(LineChar) const;
@@ -298,7 +297,7 @@ private:
         Down = 3
     };
 
-    Coords MoveCoords(const Coords &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
+    LineChar MoveLC(LineChar, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
 
     void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
     void MoveUp(uint amount = 1, bool select = false);
@@ -307,18 +306,18 @@ private:
     void MoveRight(bool select = false, bool is_word_mode = false);
     void MoveTop(bool select = false);
     void MoveBottom(bool select = false);
-    void MoveHome(bool select = false);
+    void MoveStart(bool select = false);
     void MoveEnd(bool select = false);
     void EnterChar(ImWchar, bool is_shift);
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
-    void SetSelection(Coords start, Coords end, Cursor &);
-    void SetCursorPosition(const Coords &position, Cursor &cursor, bool clear_selection = true);
+    void SetSelection(LineChar start, LineChar end, Cursor &);
+    void SetCursorPosition(LineChar position, Cursor &cursor, bool clear_selection = true);
     void AddCursorForNextOccurrence(bool case_sensitive = true);
 
-    // Returns a cursor containing the start/end coords of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
-    std::optional<Cursor> FindNextOccurrence(const std::string &text, const Coords &start, bool case_sensitive = true);
+    // Returns a cursor containing the start/end positions of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
+    std::optional<Cursor> FindNextOccurrence(const std::string &text, LineChar start, bool case_sensitive = true);
     std::optional<Cursor> FindMatchingBrackets(const Cursor &);
     uint NumStartingSpaceColumns(uint li) const;
 
@@ -329,24 +328,24 @@ private:
 
     void EnsureCursorVisible(bool start_too = false);
 
-    Coords LineMaxCoords(uint li) const { return {li, GetLineMaxColumn(li)}; }
+    LineChar LineMaxLC(uint li) const { return {li, uint(Lines[li].size())}; }
     Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(Lines[lc.L], lc.C)}; }
-    LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(coords)}; }
+    LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(Lines[coords.L], coords.C)}; }
     uint ToByteIndex(LineChar) const;
     uint EndByteIndex() const { return ToByteIndex({uint(Lines.size() - 1), uint(Lines.back().size())}); }
 
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
-    Coords FindWordBoundary(const Coords &from, bool is_start = false) const;
-    uint GetCharIndex(const Coords &) const;
+    LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
+    LineChar FindWordBoundary(LineChar from, bool is_start = false) const;
     uint GetCharIndex(const LineT &, uint column) const;
     uint GetCharColumn(const LineT &line, uint ci) const;
     uint GetFirstVisibleCharIndex(uint li) const;
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;
 
-    Coords InsertTextAt(const Coords &, const std::string &); // Returns insertion end.
+    LineChar InsertTextAt(LineChar, const std::string &); // Returns insertion end.
     void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
-    void DeleteRange(const Coords &start, const Coords &end, const Cursor *exclude_cursor = nullptr);
+    void DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
 
     void AddOrRemoveGlyphs(LineChar lc, std::span<const char>, bool is_add);
@@ -377,7 +376,7 @@ private:
 
     bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
-    uint TabSizeAtColumn(uint column) const { return TabSize - (column % TabSize); }
+    uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
     void Parse();
     void Highlight();
@@ -393,7 +392,7 @@ private:
     std::vector<UndoRecord> UndoBuffer;
     uint UndoIndex{0};
 
-    uint TabSize{4};
+    uint NumTabSpaces{4};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
     uint LeftMargin{10};
     int LastEnsureCursorVisible{-1};

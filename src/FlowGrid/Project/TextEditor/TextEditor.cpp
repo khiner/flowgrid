@@ -742,19 +742,25 @@ void TextEditor::MoveCurrentLines(bool up) {
     if ((up && min_li == 0) || (!up && max_li == Lines.size() - 1)) return; // Can't move up/down anymore.
 
     const uint start_li = min_li - (up ? 1 : 0), end_li = max_li + (up ? 0 : 1);
-    const Coords start{start_li, 0}, end{LineMaxCoords(end_li)};
-    AddUndoOp(u, UndoOperationType::Delete, start, end);
+    const Coords start{start_li, 0};
+    AddUndoOp(u, UndoOperationType::Delete, start, LineMaxCoords(end_li));
     if (up) {
-        for (const uint li : affected_lines) std::swap(Lines[li - 1], Lines[li]);
+        for (const uint li : affected_lines) {
+            std::swap(Lines[li - 1], Lines[li]);
+            std::swap(PaletteIndices[li - 1], PaletteIndices[li]);
+        }
     } else {
-        for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); it++) std::swap(Lines[*it + 1], Lines[*it]);
+        for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); it++) {
+            std::swap(Lines[*it + 1], Lines[*it]);
+            std::swap(PaletteIndices[*it + 1], PaletteIndices[*it]);
+        }
     }
     for (auto &c : State.Cursors) {
         c.Start.L += (up ? -1 : 1);
         c.End.L += (up ? -1 : 1);
     }
     // No need to set CursorPositionChanged as cursors will remain sorted.
-    AddUndoOp(u, UndoOperationType::Add, start, end);
+    AddUndoOp(u, UndoOperationType::Add, start, LineMaxCoords(end_li));
     AddUndo(u);
 }
 

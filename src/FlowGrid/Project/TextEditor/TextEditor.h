@@ -123,8 +123,6 @@ struct TextEditor {
     uint LineCount() const { return Lines.size(); }
     const LineT &GetLine(uint li) const { return Lines[li]; }
 
-    LineChar GetCursorPosition() const { return State.GetCursor().End; }
-
     void SetPalette(PaletteIdT);
     void SetLanguage(LanguageID);
 
@@ -132,6 +130,8 @@ struct TextEditor {
     void SetLineSpacing(float);
 
     void SelectAll();
+
+    LineChar GetCursorPosition() const { return GetCursor().End; }
     bool AnyCursorHasSelection() const;
     bool AnyCursorHasMultilineSelection() const;
     bool AllCursorsHaveSelection() const;
@@ -199,17 +199,10 @@ private:
         bool HasMultilineSelection() const { return SelectionStart().L != SelectionEnd().L; }
     };
 
-    // State to be restored with undo/redo.
+    // State to be restored with undo/redo (in addition to the text).
     struct EditorState {
-        uint LastAddedCursorIndex{0};
         std::vector<Cursor> Cursors{{{0, 0}}};
-
-        void AddCursor();
-        void ResetCursors();
-        uint GetLastAddedCursorIndex() { return LastAddedCursorIndex >= Cursors.size() ? 0 : LastAddedCursorIndex; }
-        Cursor &GetLastAddedCursor() { return Cursors[GetLastAddedCursorIndex()]; }
-        Cursor &GetCursor() { return Cursors.back(); }
-        const Cursor &GetCursor() const { return Cursors.back(); }
+        uint LastAddedCursorIndex{0};
     };
 
     struct LinesIter {
@@ -286,6 +279,17 @@ private:
 
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
+    void AddCursor();
+    void ResetCursors();
+    uint GetLastAddedCursorIndex() { return State.LastAddedCursorIndex >= State.Cursors.size() ? 0 : State.LastAddedCursorIndex; }
+    Cursor &GetLastAddedCursor() { return State.Cursors[GetLastAddedCursorIndex()]; }
+    Cursor &GetCursor() { return State.Cursors.back(); }
+    const Cursor &GetCursor() const { return State.Cursors.back(); }
+    void SetCursorPosition(LineChar position, Cursor &cursor, bool clear_selection = true);
+    void EnsureCursorVisible(bool start_too = false);
+    void OnCursorPositionChanged();
+    void SortAndMergeCursors();
+
     void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
@@ -332,7 +336,6 @@ private:
     void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
 
     void SetSelection(LineChar start, LineChar end, Cursor &);
-    void SetCursorPosition(LineChar position, Cursor &cursor, bool clear_selection = true);
     void AddCursorForNextOccurrence(bool case_sensitive = true);
 
     LineChar FindWordBoundary(LineChar from, bool is_start = false) const;
@@ -345,8 +348,6 @@ private:
     void MoveCurrentLines(bool up);
     void ToggleLineComment();
     void RemoveCurrentLines();
-
-    void EnsureCursorVisible(bool start_too = false);
 
     LineChar InsertTextAt(LineChar, const std::string &); // Returns insertion end.
     void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
@@ -373,9 +374,6 @@ private:
       - For deletion, same as `start`.
     **/
     void OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte);
-
-    void OnCursorPositionChanged();
-    void SortAndMergeCursors();
 
     void AddUndo(UndoRecord &);
 

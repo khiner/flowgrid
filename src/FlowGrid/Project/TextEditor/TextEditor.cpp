@@ -222,7 +222,7 @@ void TextEditor::SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(l
 
 void TextEditor::SelectAll() {
     for (auto &c : State.Cursors) c.End = c.Start = c.SelectionEnd();
-    State.ResetCursors();
+    ResetCursors();
     MoveTop();
     MoveBottom(true);
 }
@@ -392,14 +392,14 @@ static bool IsWordChar(char ch) {
     return UTF8CharLength(ch) > 1 || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
 }
 
-void TextEditor::EditorState::AddCursor() {
-    Cursors.push_back({});
-    LastAddedCursorIndex = Cursors.size() - 1;
+void TextEditor::AddCursor() {
+    State.Cursors.push_back({});
+    State.LastAddedCursorIndex = State.Cursors.size() - 1;
 }
-void TextEditor::EditorState::ResetCursors() {
-    Cursors.clear();
-    Cursors.push_back({});
-    LastAddedCursorIndex = 0;
+void TextEditor::ResetCursors() {
+    State.Cursors.clear();
+    State.Cursors.push_back({});
+    State.LastAddedCursorIndex = 0;
 }
 
 void TextEditor::UndoRecord::Undo(TextEditor *editor) {
@@ -545,8 +545,8 @@ void TextEditor::MoveRight(bool select, bool is_word_mode) {
     EnsureCursorVisible();
 }
 
-void TextEditor::MoveTop(bool select) { SetCursorPosition({0, 0}, State.GetCursor(), !select); }
-void TextEditor::TextEditor::MoveBottom(bool select) { SetCursorPosition(LineMaxLC(Lines.size() - 1), State.GetCursor(), !select); }
+void TextEditor::MoveTop(bool select) { SetCursorPosition({0, 0}, GetCursor(), !select); }
+void TextEditor::TextEditor::MoveBottom(bool select) { SetCursorPosition(LineMaxLC(Lines.size() - 1), GetCursor(), !select); }
 
 void TextEditor::MoveStart(bool select) {
     for (auto &c : State.Cursors) SetCursorPosition({c.End.L, 0}, c, !select);
@@ -583,7 +583,6 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
     }
 
     AddUndo(u);
-
     EnsureCursorVisible();
 }
 
@@ -629,10 +628,10 @@ void TextEditor::SetSelection(LineChar start, LineChar end, Cursor &c) {
 }
 
 void TextEditor::AddCursorForNextOccurrence(bool case_sensitive) {
-    const auto &c = State.GetLastAddedCursor();
+    const auto &c = GetLastAddedCursor();
     if (const auto match_range = FindNextOccurrence(GetSelectedText(c), c.SelectionEnd(), case_sensitive)) {
-        State.AddCursor();
-        SetSelection(match_range->Start, match_range->End, State.GetCursor());
+        AddCursor();
+        SetSelection(match_range->Start, match_range->End, GetCursor());
         SortAndMergeCursors();
         EnsureCursorVisible(true);
     }
@@ -837,7 +836,7 @@ void TextEditor::RemoveCurrentLines() {
 }
 
 void TextEditor::EnsureCursorVisible(bool start_too) {
-    LastEnsureCursorVisible = State.GetLastAddedCursorIndex();
+    LastEnsureCursorVisible = GetLastAddedCursorIndex();
     LastEnsureCursorVisibleStartToo = start_too;
 }
 
@@ -1144,7 +1143,7 @@ void TextEditor::HandleMouseInputs() {
     IsDraggingSelection &= ImGui::IsMouseDown(0);
     if (IsDraggingSelection && ImGui::IsMouseDragging(0)) {
         io.WantCaptureMouse = true;
-        SetCursorPosition(ScreenPosToLC(ImGui::GetMousePos()), State.GetLastAddedCursor(), false);
+        SetCursorPosition(ScreenPosToLC(ImGui::GetMousePos()), GetLastAddedCursor(), false);
     }
 
     if (ImGui::IsWindowHovered()) {
@@ -1162,29 +1161,29 @@ void TextEditor::HandleMouseInputs() {
             const auto t = ImGui::GetTime();
             const bool is_triple_click = is_click && !is_double_click && (LastClickTime != -1.0f && (t - LastClickTime) < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f);
             if (is_triple_click) {
-                if (ctrl) State.AddCursor();
-                else State.ResetCursors();
+                if (ctrl) AddCursor();
+                else ResetCursors();
 
                 const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
                 SetSelection(
                     {cursor_lc.L, 0},
                     cursor_lc.L < Lines.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
-                    State.GetCursor()
+                    GetCursor()
                 );
 
                 LastClickTime = -1.0f;
             } else if (is_double_click) {
-                if (ctrl) State.AddCursor();
-                else State.ResetCursors();
+                if (ctrl) AddCursor();
+                else ResetCursors();
 
                 const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
-                SetSelection(FindWordBoundary(cursor_lc, true), FindWordBoundary(cursor_lc, false), State.GetCursor());
+                SetSelection(FindWordBoundary(cursor_lc, true), FindWordBoundary(cursor_lc, false), GetCursor());
 
                 LastClickTime = float(ImGui::GetTime());
                 LastClickPos = io.MousePos;
             } else if (is_click) {
-                if (ctrl) State.AddCursor();
-                else State.ResetCursors();
+                if (ctrl) AddCursor();
+                else ResetCursors();
 
                 bool is_over_li;
                 const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos(), &is_over_li);
@@ -1192,10 +1191,10 @@ void TextEditor::HandleMouseInputs() {
                     SetSelection(
                         {cursor_lc.L, 0},
                         cursor_lc.L < Lines.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
-                        State.GetCursor()
+                        GetCursor()
                     );
                 } else {
-                    SetCursorPosition(cursor_lc, State.GetLastAddedCursor());
+                    SetCursorPosition(cursor_lc, GetLastAddedCursor());
                 }
 
                 LastClickTime = float(ImGui::GetTime());
@@ -1204,7 +1203,7 @@ void TextEditor::HandleMouseInputs() {
                 SortAndMergeCursors();
             }
         } else if (shift && is_click) {
-            SetCursorPosition(ScreenPosToLC(ImGui::GetMousePos()), State.GetCursor(), false);
+            SetCursorPosition(ScreenPosToLC(ImGui::GetMousePos()), GetCursor(), false);
         }
     }
 }
@@ -1415,7 +1414,7 @@ void TextEditor::SortAndMergeCursors() {
     if (State.Cursors.size() <= 1) return;
 
     // Sort cursors.
-    const auto last_added_cursor_end = State.GetLastAddedCursor().End;
+    const auto last_added_cursor_end = GetLastAddedCursor().End;
     std::ranges::sort(State.Cursors, [](const auto &a, const auto &b) { return a.SelectionStart() < b.SelectionStart(); });
 
     // Merge overlapping cursors.

@@ -132,9 +132,9 @@ struct TextEditor {
     void SelectAll();
 
     LineChar GetCursorPosition() const { return GetCursor().End; }
-    bool AnyCursorHasSelection() const;
-    bool AnyCursorHasMultilineSelection() const;
-    bool AllCursorsHaveSelection() const;
+    bool AnyCursorIsRange() const;
+    bool AnyCursorIsMultiline() const;
+    bool AllCursorsHaveRange() const;
 
     void Copy();
     void Cut();
@@ -187,16 +187,16 @@ private:
     struct Cursor {
         // todo next up: We store `Coords` in addition to `LineChar` to keep the visual column at max(column, line_end) when navigating cursors up and down.
         // `Start` and `End` are the the first and second coordinate _set in an interaction_.
-        // For position-ordered coordinates, use `SelectionStart()` and `SelectionEnd()`.
-        LineChar Start{}, End{};
+        // For position-ordered coordinates, use `Min()` and `Max()`.
+        LineChar Start{}, End{Start};
 
         bool operator==(const Cursor &) const = default;
         bool operator!=(const Cursor &) const = default;
 
-        LineChar SelectionStart() const { return Start < End ? Start : End; }
-        LineChar SelectionEnd() const { return Start > End ? Start : End; }
-        bool HasSelection() const { return Start != End; }
-        bool HasMultilineSelection() const { return SelectionStart().L != SelectionEnd().L; }
+        LineChar Min() const { return std::min(Start, End); }
+        LineChar Max() const { return std::max(Start, End); }
+        bool IsRange() const { return Start != End; }
+        bool IsMultiline() const { return Start.L != End.L; }
     };
 
     // State to be restored with undo/redo (in addition to the text).
@@ -292,7 +292,7 @@ private:
 
     void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
 
-    std::string GetSelectedText(const Cursor &c) const { return GetText(c.SelectionStart(), c.SelectionEnd()); }
+    std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
     ImU32 GetGlyphColor(LineChar) const;
 
     enum class MoveDirection {

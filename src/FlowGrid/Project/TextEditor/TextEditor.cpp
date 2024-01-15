@@ -157,12 +157,12 @@ void TextEditor::Highlight() {
             for (auto b = start_point; b.row < end_point.row || (b.row == end_point.row && b.column < end_point.column);) {
                 if (b.row >= Lines.size()) break;
                 if (b.column >= Lines[b.row].size()) {
-                    b.row++;
+                    ++b.row;
                     b.column = 0;
                     continue;
                 }
                 PaletteIndices[b.row][b.column] = palette_index;
-                b.column++;
+                ++b.column;
             }
         }
 
@@ -257,7 +257,7 @@ void TextEditor::Paste() {
     std::vector<std::pair<uint, uint>> clip_text_lines;
     if (State.Cursors.size() > 1) {
         clip_text_lines.push_back({0, 0});
-        for (uint i = 0; i < clip_text.length(); i++) {
+        for (uint i = 0; i < clip_text.length(); ++i) {
             if (clip_text[i] == '\n') {
                 clip_text_lines.back().second = i;
                 clip_text_lines.push_back({i + 1, 0});
@@ -271,7 +271,7 @@ void TextEditor::Paste() {
         UndoRecord u{State};
         for (auto &c : reverse_view(State.Cursors)) DeleteSelection(c, u);
 
-        for (int c = State.Cursors.size() - 1; c > -1; c--) {
+        for (int c = State.Cursors.size() - 1; c > -1; --c) {
             auto &cursor = State.Cursors[c];
             const string insert_text = can_paste_to_multiple_cursors ? clip_text.substr(clip_text_lines[c].first, clip_text_lines[c].second - clip_text_lines[c].first) : clip_text;
             InsertTextAtCursor(insert_text, cursor, u);
@@ -458,7 +458,7 @@ void TextEditor::LinesIter::MoveRight() {
     if (LC == End) return;
 
     if (LC.C == Lines[LC.L].size()) {
-        LC.L++;
+        ++LC.L;
         LC.C = 0;
     } else {
         LC.C = std::min(LC.C + UTF8CharLength(Lines[LC.L][LC.C]), uint(Lines[LC.L].size()));
@@ -468,10 +468,10 @@ void TextEditor::LinesIter::MoveLeft() {
     if (LC == Begin) return;
 
     if (LC.C == 0) {
-        LC.L--;
+        --LC.L;
         LC.C = Lines[LC.L].size();
     } else {
-        do { LC.C--; } while (LC.C > 0 && IsUTFSequence(Lines[LC.L][LC.C]));
+        do { --LC.C; } while (LC.C > 0 && IsUTFSequence(Lines[LC.L][LC.C]));
     }
 }
 
@@ -564,7 +564,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
                 const uint li = c.End.L;
                 const uint indent_li = li < Lines.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
                 const auto &indent_line = Lines[indent_li];
-                for (uint i = 0; i < indent_line.size() && isblank(indent_line[i]); i++) insert_text += indent_line[i];
+                for (uint i = 0; i < indent_line.size() && isblank(indent_line[i]); ++i) insert_text += indent_line[i];
             }
         } else {
             char buf[5];
@@ -638,7 +638,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &t
     auto find_lci = Iter(start);
     do {
         auto match_lci = find_lci;
-        for (uint i = 0; i < text.size(); i++) {
+        for (uint i = 0; i < text.size(); ++i) {
             const auto &match_lc = *match_lci;
             if (match_lc.C == Lines[match_lc.L].size()) {
                 if (text[i] != '\n' || match_lc.L + 1 >= Lines.size()) break;
@@ -668,7 +668,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
 
     uint ci = cursor_lc.C;
     // Considered on bracket if cursor is to the left or right of it.
-    if (ci > 0 && (CloseToOpenChar.contains(line[ci - 1]) || OpenToCloseChar.contains(line[ci - 1]))) ci--;
+    if (ci > 0 && (CloseToOpenChar.contains(line[ci - 1]) || OpenToCloseChar.contains(line[ci - 1]))) --ci;
 
     const char ch = line[ci];
     const bool is_close_char = CloseToOpenChar.contains(ch), is_open_char = OpenToCloseChar.contains(ch);
@@ -678,7 +678,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
     uint match_count = 0;
     for (auto lci = Iter(cursor_lc); is_close_char ? lci.IsBegin() : lci.IsEnd(); is_close_char ? --lci : ++lci) {
         const char ch_inner = lci;
-        if (ch_inner == ch) match_count++;
+        if (ch_inner == ch) ++match_count;
         else if (ch_inner == other_ch && (match_count == 0 || --match_count == 0)) return Cursor{cursor_lc, *lci};
     }
 
@@ -688,7 +688,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
 void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
     UndoRecord u{State};
     for (const auto &c : reverse_view(State.Cursors)) {
-        for (uint li = c.Min().L; li <= c.Max().L; li++) {
+        for (uint li = c.Min().L; li <= c.Max().L; ++li) {
             // Check if selection ends at line start.
             if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
 
@@ -700,7 +700,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
                 }
             } else {
                 int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
-                while (ci > -1 && isblank(line[ci])) ci--;
+                while (ci > -1 && isblank(line[ci])) --ci;
                 const bool only_space_chars_found = ci == -1;
                 if (only_space_chars_found) {
                     const LineChar start{li, 0}, end = {li, GetCharIndex(line, NumTabSpaces)};
@@ -720,7 +720,7 @@ void TextEditor::MoveCurrentLines(bool up) {
     std::set<uint> affected_lines;
     uint min_li = std::numeric_limits<uint>::max(), max_li = std::numeric_limits<uint>::min();
     for (const auto &c : State.Cursors) {
-        for (uint li = c.Min().L; li <= c.Max().L; li++) {
+        for (uint li = c.Min().L; li <= c.Max().L; ++li) {
             // Check if selection ends at line start.
             if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
 
@@ -740,7 +740,7 @@ void TextEditor::MoveCurrentLines(bool up) {
             std::swap(PaletteIndices[li - 1], PaletteIndices[li]);
         }
     } else {
-        for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); it++) {
+        for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) {
             std::swap(Lines[*it + 1], Lines[*it]);
             std::swap(PaletteIndices[*it + 1], PaletteIndices[*it]);
         }
@@ -771,7 +771,7 @@ void TextEditor::ToggleLineComment() {
 
     std::unordered_set<uint> affected_lines;
     for (const auto &c : State.Cursors) {
-        for (uint li = c.Min().L; li <= c.Max().L; li++) {
+        for (uint li = c.Min().L; li <= c.Max().L; ++li) {
             if (!(c.IsRange() && c.Max() == LineChar{li, 0}) && !Lines[li].empty()) affected_lines.insert(li);
         }
     }
@@ -788,7 +788,7 @@ void TextEditor::ToggleLineComment() {
             const auto &line = Lines[li];
             const uint ci = FindFirstNonSpace(line);
             uint comment_ci = ci + comment.length();
-            if (comment_ci < line.size() && line[comment_ci] == ' ') comment_ci++;
+            if (comment_ci < line.size() && line[comment_ci] == ' ') ++comment_ci;
 
             const LineChar start = {li, ci}, end = {li, comment_ci};
             AddUndoOp(u, UndoOperationType::Delete, start, end);
@@ -943,7 +943,7 @@ TextEditor::LineChar TextEditor::InsertTextAt(LineChar start, const string &text
     }
 
     LineChar end = start;
-    for (auto it = text.begin(); it != text.end(); it++) {
+    for (auto it = text.begin(); it != text.end(); ++it) {
         const char ch = *it;
         if (ch == '\r') continue;
 
@@ -1228,7 +1228,7 @@ void TextEditor::Render(bool is_parent_focused) {
     const float font_size = ImGui::GetFontSize();
     const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
 
-    for (uint li = FirstVisibleCoords.L; li <= LastVisibleCoords.L && li < Lines.size(); li++) {
+    for (uint li = FirstVisibleCoords.L; li <= LastVisibleCoords.L && li < Lines.size(); ++li) {
         const auto &line = Lines[li];
         const uint line_max_column_limited = GetLineMaxColumn(li, LastVisibleCoords.C);
         max_column_limited = std::max(line_max_column_limited, max_column_limited);
@@ -1312,7 +1312,7 @@ void TextEditor::Render(bool is_parent_focused) {
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
                 string glyph_buffer;
-                for (uint i = 0; i < seq_length; i++) glyph_buffer.push_back(line[ci + i]);
+                for (uint i = 0; i < seq_length; ++i) glyph_buffer.push_back(line[ci + i]);
                 dl->AddText(glyph_pos, GetColor({li, ci}), glyph_buffer.c_str());
             }
             MoveCharIndexAndColumn(line, ci, column);
@@ -1325,7 +1325,7 @@ void TextEditor::Render(bool is_parent_focused) {
     ImGui::Dummy({CurrentSpaceWidth, CurrentSpaceHeight});
     if (LastEnsureCursorVisible > -1) {
         // First pass for interactive end and second pass for interactive start.
-        for (uint i = 0; i < (LastEnsureCursorVisibleStartToo ? 2 : 1); i++) {
+        for (uint i = 0; i < (LastEnsureCursorVisibleStartToo ? 2 : 1); ++i) {
             if (i) UpdateViewVariables(ScrollX, ScrollY); // Second pass depends on changes made in first pass.
             const auto &cursor = State.Cursors[LastEnsureCursorVisible];
             const auto target = i > 0 ? cursor.Start : cursor.End;

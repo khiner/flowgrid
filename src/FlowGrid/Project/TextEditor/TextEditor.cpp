@@ -186,20 +186,20 @@ void TextEditor::Highlight() {
     }
 }
 
-const TextEditor::PaletteT *TextEditor::GetPalette(PaletteIdT palette_id) {
-    switch (palette_id) {
+const TextEditor::PaletteT &TextEditor::GetPalette() const {
+    switch (PaletteId) {
         case PaletteIdT::Dark:
-            return &DarkPalette;
+            return DarkPalette;
         case PaletteIdT::Light:
-            return &LightPalette;
+            return LightPalette;
         case PaletteIdT::Mariana:
-            return &MarianaPalette;
+            return MarianaPalette;
         case PaletteIdT::RetroBlue:
-            return &RetroBluePalette;
+            return RetroBluePalette;
     }
 }
 
-void TextEditor::SetPalette(PaletteIdT palette_id) { Palette = *GetPalette(palette_id); }
+void TextEditor::SetPalette(PaletteIdT palette_id) { PaletteId = palette_id; }
 
 void TextEditor::SetLanguage(LanguageID language_id) {
     if (LanguageId == language_id) return;
@@ -348,7 +348,7 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
     if (CursorPositionChanged) OnCursorPositionChanged();
     CursorPositionChanged = false;
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertU32ToFloat4(Palette[int(PaletteIndex::Background)]));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, GetColor(PaletteIndex::Background));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
     ImGui::BeginChild(title, size, border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
 
@@ -1004,10 +1004,6 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     SetCursorPosition(start, c);
 }
 
-ImU32 TextEditor::GetGlyphColor(LineChar lc) const {
-    return Palette[uint(LanguageId == LanguageID::None ? PaletteIndex::Default : PaletteIndices[lc.L][lc.C])];
-}
-
 static bool IsPressed(ImGuiKey key) {
     const auto key_index = ImGui::GetKeyIndex(key);
     const auto window_id = ImGui::GetCurrentWindowRead()->ID;
@@ -1259,7 +1255,7 @@ void TextEditor::Render(bool is_parent_focused) {
                 dl->AddRectFilled(
                     {text_screen_pos_x + rect_start, line_start_screen_pos.y},
                     {text_screen_pos_x + rect_end, line_start_screen_pos.y + CharAdvance.y},
-                    Palette[int(PaletteIndex::Selection)]
+                    GetColor(PaletteIndex::Selection)
                 );
             }
         }
@@ -1268,7 +1264,7 @@ void TextEditor::Render(bool is_parent_focused) {
         if (ShowLineNumbers) {
             snprintf(li_buffer, 16, "%d  ", li + 1);
             const float line_num_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, li_buffer).x;
-            dl->AddText({text_screen_pos_x - line_num_width, line_start_screen_pos.y}, Palette[int(PaletteIndex::LineNumber)], li_buffer);
+            dl->AddText({text_screen_pos_x - line_num_width, line_start_screen_pos.y}, GetColor(PaletteIndex::LineNumber), li_buffer);
         }
 
         // Render cursors
@@ -1283,7 +1279,7 @@ void TextEditor::Render(bool is_parent_focused) {
                 dl->AddRectFilled(
                     {text_screen_pos_x + cx, line_start_screen_pos.y},
                     {text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y},
-                    Palette[int(PaletteIndex::Cursor)]
+                    GetColor(PaletteIndex::Cursor)
                 );
             }
         }
@@ -1301,7 +1297,7 @@ void TextEditor::Render(bool is_parent_focused) {
                     };
                     const float gap = ImGui::GetFontSize() * (ShortTabs ? 0.16f : 0.2f);
                     const ImVec2 p3{p2.x - gap, p1.y - gap}, p4{p2.x - gap, p1.y + gap};
-                    const ImU32 color = Palette[int(PaletteIndex::ControlCharacter)];
+                    const ImU32 color = GetColor(PaletteIndex::ControlCharacter);
                     dl->AddLine(p1, p2, color);
                     dl->AddLine(p2, p3, color);
                     dl->AddLine(p2, p4, color);
@@ -1310,18 +1306,18 @@ void TextEditor::Render(bool is_parent_focused) {
                 if (ShowWhitespaces) {
                     dl->AddCircleFilled(
                         glyph_pos + ImVec2{space_size, ImGui::GetFontSize()} * 0.5f,
-                        1.5f, Palette[int(PaletteIndex::ControlCharacter)], 4
+                        1.5f, GetColor(PaletteIndex::ControlCharacter), 4
                     );
                 }
             } else {
                 const uint seq_length = UTF8CharLength(ch);
                 if (seq_length == 1 && MatchingBrackets && (MatchingBrackets->Start == LineChar{li, ci} || MatchingBrackets->End == LineChar{li, ci})) {
                     const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
-                    dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, Palette[int(PaletteIndex::Cursor)]);
+                    dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
                 string glyph_buffer;
                 for (uint i = 0; i < seq_length; i++) glyph_buffer.push_back(line[ci + i]);
-                dl->AddText(glyph_pos, GetGlyphColor({li, ci}), glyph_buffer.c_str());
+                dl->AddText(glyph_pos, GetColor({li, ci}), glyph_buffer.c_str());
             }
             MoveCharIndexAndColumn(line, ci, column);
         }

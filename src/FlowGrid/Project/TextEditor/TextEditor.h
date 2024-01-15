@@ -283,7 +283,8 @@ private:
     void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
-    ImU32 GetGlyphColor(LineChar) const;
+    ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
+    ImU32 GetColor(LineChar lc) const { return GetColor(PaletteIndices[lc.L][lc.C]); }
 
     enum class MoveDirection {
         Right = 0,
@@ -375,8 +376,9 @@ private:
     void Highlight();
 
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
-    static const PaletteT *GetPalette(PaletteIdT);
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
+
+    const PaletteT &GetPalette() const;
 
     LinesT Lines{LineT{}};
     std::vector<std::vector<PaletteIndex>> PaletteIndices{std::vector<PaletteIndex>{}};
@@ -402,7 +404,7 @@ private:
     ImVec2 LastMousePos;
     bool CursorPositionChanged{false};
     std::optional<Cursor> MatchingBrackets{};
-    PaletteT Palette;
+    PaletteIdT PaletteId;
     LanguageID LanguageId{LanguageID::None};
 
     std::unique_ptr<CodeParser> Parser;

@@ -118,6 +118,7 @@ struct TextEditor {
     };
 
     using LineT = std::vector<char>;
+    using LinesT = std::vector<LineT>;
 
     uint LineCount() const { return Lines.size(); }
     const LineT &GetLine(uint li) const { return Lines[li]; }
@@ -147,7 +148,7 @@ struct TextEditor {
     void SetFilePath(const fs::path &);
 
     std::string GetText(LineChar start, LineChar end) const;
-    std::string GetText() const { return GetText({}, LineMaxLC(Lines.size() - 1)); }
+    std::string GetText() const { return GetText(BeginLC(), EndLC()); }
 
     std::string GetSyntaxTreeSExp() const;
 
@@ -211,12 +212,12 @@ private:
         const Cursor &GetCursor() const { return Cursors.back(); }
     };
 
-    struct LineCharIter {
-        LineCharIter(const std::vector<LineT> &lines, LineChar lc = {0, 0})
-            : Lines(lines), LC(std::move(lc)), Begin({0, 0}), End({uint(Lines.size() - 1), uint(Lines.back().size())}) {}
-        LineCharIter(const LineCharIter &) = default; // Needed since we have an assignment operator.
+    struct LinesIter {
+        LinesIter(const LinesT &lines, LineChar lc, LineChar begin, LineChar end)
+            : Lines(lines), LC(std::move(lc)), Begin(std::move(begin)), End(std::move(end)) {}
+        LinesIter(const LinesIter &) = default; // Needed since we have an assignment operator.
 
-        LineCharIter &operator=(const LineCharIter &o) {
+        LinesIter &operator=(const LinesIter &o) {
             LC = o.LC;
             Begin = o.Begin;
             End = o.End;
@@ -230,25 +231,25 @@ private:
 
         LineChar operator*() const { return LC; }
 
-        LineCharIter &operator++() {
+        LinesIter &operator++() {
             MoveRight();
             return *this;
         }
-        LineCharIter &operator--() {
+        LinesIter &operator--() {
             MoveLeft();
             return *this;
         }
 
-        bool operator==(const LineCharIter &o) const { return LC == o.LC; }
-        bool operator!=(const LineCharIter &o) const { return LC != o.LC; }
+        bool operator==(const LinesIter &o) const { return LC == o.LC; }
+        bool operator!=(const LinesIter &o) const { return LC != o.LC; }
 
-        LineCharIter begin() const { return {Lines, Begin}; }
-        LineCharIter end() const { return {Lines, End}; }
+        bool IsBegin() const { return LC == Begin; }
+        bool IsEnd() const { return LC == End; }
+        void Reset() { LC = Begin; }
 
     private:
-        const std::vector<LineT> &Lines;
-        LineChar LC;
-        LineChar Begin, End;
+        const LinesT &Lines;
+        LineChar LC, Begin, End;
 
         void MoveRight();
         void MoveLeft();
@@ -297,6 +298,24 @@ private:
         Down = 3
     };
 
+    static LineChar BeginLC() { return {0, 0}; }
+    LineChar EndLC() const { return {uint(Lines.size() - 1), uint(Lines.back().size())}; }
+    LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Lines, std::move(lc), std::move(begin), std::move(end)}; }
+    LinesIter Iter(LineChar lc = BeginLC()) const { return Iter(std::move(lc), BeginLC(), EndLC()); }
+
+    LineChar LineMaxLC(uint li) const { return {li, uint(Lines[li].size())}; }
+    Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(Lines[lc.L], lc.C)}; }
+    LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(Lines[coords.L], coords.C)}; }
+    uint ToByteIndex(LineChar) const;
+
+    Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
+    LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
+    uint GetCharIndex(const LineT &, uint column) const;
+    uint GetCharColumn(const LineT &line, uint ci) const;
+    uint GetFirstVisibleCharIndex(uint li) const;
+    uint GetLineMaxColumn(uint li) const;
+    uint GetLineMaxColumn(uint li, uint limit) const;
+
     LineChar MoveLC(LineChar, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
 
     void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
@@ -316,6 +335,7 @@ private:
     void SetCursorPosition(LineChar position, Cursor &cursor, bool clear_selection = true);
     void AddCursorForNextOccurrence(bool case_sensitive = true);
 
+    LineChar FindWordBoundary(LineChar from, bool is_start = false) const;
     // Returns a cursor containing the start/end positions of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
     std::optional<Cursor> FindNextOccurrence(const std::string &text, LineChar start, bool case_sensitive = true);
     std::optional<Cursor> FindMatchingBrackets(const Cursor &);
@@ -327,21 +347,6 @@ private:
     void RemoveCurrentLines();
 
     void EnsureCursorVisible(bool start_too = false);
-
-    LineChar LineMaxLC(uint li) const { return {li, uint(Lines[li].size())}; }
-    Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(Lines[lc.L], lc.C)}; }
-    LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(Lines[coords.L], coords.C)}; }
-    uint ToByteIndex(LineChar) const;
-    uint EndByteIndex() const { return ToByteIndex({uint(Lines.size() - 1), uint(Lines.back().size())}); }
-
-    Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
-    LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
-    LineChar FindWordBoundary(LineChar from, bool is_start = false) const;
-    uint GetCharIndex(const LineT &, uint column) const;
-    uint GetCharColumn(const LineT &line, uint ci) const;
-    uint GetFirstVisibleCharIndex(uint li) const;
-    uint GetLineMaxColumn(uint li) const;
-    uint GetLineMaxColumn(uint li, uint limit) const;
 
     LineChar InsertTextAt(LineChar, const std::string &); // Returns insertion end.
     void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
@@ -385,7 +390,7 @@ private:
     static const PaletteT *GetPalette(PaletteIdT);
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
-    std::vector<LineT> Lines{LineT{}};
+    LinesT Lines{LineT{}};
     std::vector<std::vector<PaletteIndex>> PaletteIndices{std::vector<PaletteIndex>{}};
     EditorState State;
 

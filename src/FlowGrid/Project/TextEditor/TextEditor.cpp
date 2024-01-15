@@ -296,7 +296,7 @@ void TextEditor::Redo(uint steps) {
 }
 
 void TextEditor::SetText(const string &text) {
-    const uint old_end_byte = EndByteIndex();
+    const uint old_end_byte = ToByteIndex(EndLC());
     Lines.clear();
     PaletteIndices.clear();
     Lines.push_back({});
@@ -317,7 +317,7 @@ void TextEditor::SetText(const string &text) {
     UndoBuffer.clear();
     UndoIndex = 0;
 
-    OnTextChanged(0, old_end_byte, EndByteIndex());
+    OnTextChanged(0, old_end_byte, ToByteIndex(EndLC()));
 }
 
 void TextEditor::SetFilePath(const fs::path &file_path) {
@@ -461,7 +461,7 @@ void TextEditor::InsertTextAtCursor(const string &text, Cursor &c, UndoRecord &u
     u.Operations.emplace_back(text, start, c.End, UndoOperationType::Add);
 }
 
-void TextEditor::LineCharIter::MoveRight() {
+void TextEditor::LinesIter::MoveRight() {
     if (LC == End) return;
 
     if (LC.C == Lines[LC.L].size()) {
@@ -471,7 +471,7 @@ void TextEditor::LineCharIter::MoveRight() {
         LC.C = std::min(LC.C + UTF8CharLength(Lines[LC.L][LC.C]), uint(Lines[LC.L].size()));
     }
 }
-void TextEditor::LineCharIter::MoveLeft() {
+void TextEditor::LinesIter::MoveLeft() {
     if (LC == Begin) return;
 
     if (LC.C == 0) {
@@ -498,15 +498,15 @@ uint TextEditor::NumStartingSpaceColumns(uint li) const {
 }
 
 TextEditor::LineChar TextEditor::MoveLC(LineChar lc, MoveDirection direction, bool is_word_mode, uint line_count) const {
-    LineCharIter lci{Lines, lc};
+    auto lci = Iter(lc);
     switch (direction) {
         case MoveDirection::Right:
-            if (lci == lci.end()) return lc;
+            if (lci.IsEnd()) return lc;
             ++lci;
             if (is_word_mode) return FindWordBoundary(*lci, false);
             return *lci;
         case MoveDirection::Left:
-            if (lci == lci.begin()) return lc;
+            if (lci.IsBegin()) return lc;
             --lci;
             if (is_word_mode) return FindWordBoundary(*lci, true);
             return *lci;
@@ -643,9 +643,9 @@ static char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && c
 std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &text, LineChar start, bool case_sensitive) {
     if (text.empty()) return {};
 
-    LineCharIter find_lci{Lines, start};
+    auto find_lci = Iter(start);
     do {
-        LineCharIter match_lci = find_lci;
+        auto match_lci = find_lci;
         for (uint i = 0; i < text.size(); i++) {
             const auto &match_lc = *match_lci;
             if (match_lc.C == Lines[match_lc.L].size()) {
@@ -659,7 +659,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindNextOccurrence(const string &t
         }
 
         ++find_lci;
-        if (find_lci == find_lci.end()) find_lci = find_lci.begin();
+        if (find_lci.IsEnd()) find_lci.Reset();
     } while (*find_lci != start);
 
     return {};
@@ -684,7 +684,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
 
     const char other_ch = is_close_char ? CloseToOpenChar.at(ch) : OpenToCloseChar.at(ch);
     uint match_count = 0;
-    for (LineCharIter lci{Lines, cursor_lc}; lci != (is_close_char ? lci.begin() : lci.end()); is_close_char ? --lci : ++lci) {
+    for (auto lci = Iter(cursor_lc); is_close_char ? lci.IsBegin() : lci.IsEnd(); is_close_char ? --lci : ++lci) {
         const char ch_inner = lci;
         if (ch_inner == ch) match_count++;
         else if (ch_inner == other_ch && (match_count == 0 || --match_count == 0)) return Cursor{cursor_lc, *lci};

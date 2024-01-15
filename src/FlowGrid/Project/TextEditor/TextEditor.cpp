@@ -1012,97 +1012,93 @@ static bool IsPressed(ImGuiKey key) {
 }
 
 void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
-    if (ImGui::IsWindowFocused() || is_parent_focused) {
-        if (ImGui::IsWindowHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
+    if (!ImGui::IsWindowFocused() && !is_parent_focused) return;
 
-        auto &io = ImGui::GetIO();
-        const auto is_osx = io.ConfigMacOSXBehaviors;
-        const auto alt = io.KeyAlt;
-        const auto ctrl = io.KeyCtrl;
-        const auto shift = io.KeyShift;
-        const auto super = io.KeySuper;
+    if (ImGui::IsWindowHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
 
-        const bool is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift;
-        const bool is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt;
-        const bool is_wordmove_key = is_osx ? alt : ctrl;
-        const bool is_alt_only = alt && !ctrl && !shift && !super;
-        const bool is_ctrl_only = ctrl && !alt && !shift && !super;
-        const bool is_shift_only = shift && !alt && !ctrl && !super;
+    auto &io = ImGui::GetIO();
+    io.WantCaptureKeyboard = io.WantTextInput = true;
 
-        io.WantCaptureKeyboard = true;
-        io.WantTextInput = true;
+    const bool
+        is_osx = io.ConfigMacOSXBehaviors,
+        alt = io.KeyAlt, ctrl = io.KeyCtrl, shift = io.KeyShift, super = io.KeySuper,
+        is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift,
+        is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt,
+        is_wordmove_key = is_osx ? alt : ctrl,
+        is_alt_only = alt && !ctrl && !shift && !super,
+        is_ctrl_only = ctrl && !alt && !shift && !super,
+        is_shift_only = shift && !alt && !ctrl && !super;
 
-        if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Z))
-            Undo();
-        else if (!ReadOnly && is_alt_only && IsPressed(ImGuiKey_Backspace))
-            Undo();
-        else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Y))
-            Redo();
-        else if (!ReadOnly && is_shift_shortcut && IsPressed(ImGuiKey_Z))
-            Redo();
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
-            MoveUp(1, shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_DownArrow))
-            MoveDown(1, shift);
-        else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_LeftArrow))
-            MoveLeft(shift, is_wordmove_key);
-        else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
-            MoveRight(shift, is_wordmove_key);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
-            MoveUp(VisibleLineCount - 2, shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
-            MoveDown(VisibleLineCount - 2, shift);
-        else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
-            MoveTop(shift);
-        else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
-            MoveBottom(shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_Home))
-            MoveStart(shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_End))
-            MoveEnd(shift);
-        else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Delete))
-            Delete(ctrl);
-        else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Backspace))
-            Backspace(ctrl);
-        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_K))
-            RemoveCurrentLines();
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_LeftBracket))
-            ChangeCurrentLinesIndentation(false);
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
-            ChangeCurrentLinesIndentation(true);
-        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
-            MoveCurrentLines(true);
-        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
-            MoveCurrentLines(false);
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
-            ToggleLineComment();
-        else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
-            Overwrite ^= true;
-        else if (is_ctrl_only && IsPressed(ImGuiKey_Insert))
-            Copy();
-        else if (is_shortcut && IsPressed(ImGuiKey_C))
-            Copy();
-        else if (!ReadOnly && is_shift_only && IsPressed(ImGuiKey_Insert))
-            Paste();
-        else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_V))
-            Paste();
-        else if ((is_shortcut && IsPressed(ImGuiKey_X)) || (is_shift_only && IsPressed(ImGuiKey_Delete)))
-            if (ReadOnly) Copy();
-            else Cut();
-        else if (is_shortcut && IsPressed(ImGuiKey_A))
-            SelectAll();
-        else if (is_shortcut && IsPressed(ImGuiKey_D))
-            AddCursorForNextOccurrence();
-        else if (!ReadOnly && !alt && !ctrl && !shift && !super && (IsPressed(ImGuiKey_Enter) || IsPressed(ImGuiKey_KeypadEnter)))
-            EnterChar('\n', false);
-        else if (!ReadOnly && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
-            EnterChar('\t', shift);
-        if (!ReadOnly && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
-            for (const auto ch : io.InputQueueCharacters) {
-                if (ch != 0 && (ch == '\n' || ch >= 32)) EnterChar(ch, shift);
-            }
-            io.InputQueueCharacters.resize(0);
+    if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Z))
+        Undo();
+    else if (!ReadOnly && is_alt_only && IsPressed(ImGuiKey_Backspace))
+        Undo();
+    else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Y))
+        Redo();
+    else if (!ReadOnly && is_shift_shortcut && IsPressed(ImGuiKey_Z))
+        Redo();
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
+        MoveUp(1, shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_DownArrow))
+        MoveDown(1, shift);
+    else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_LeftArrow))
+        MoveLeft(shift, is_wordmove_key);
+    else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
+        MoveRight(shift, is_wordmove_key);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
+        MoveUp(VisibleLineCount - 2, shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
+        MoveDown(VisibleLineCount - 2, shift);
+    else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
+        MoveTop(shift);
+    else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
+        MoveBottom(shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_Home))
+        MoveStart(shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_End))
+        MoveEnd(shift);
+    else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Delete))
+        Delete(ctrl);
+    else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Backspace))
+        Backspace(ctrl);
+    else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_K))
+        RemoveCurrentLines();
+    else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_LeftBracket))
+        ChangeCurrentLinesIndentation(false);
+    else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
+        ChangeCurrentLinesIndentation(true);
+    else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
+        MoveCurrentLines(true);
+    else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
+        MoveCurrentLines(false);
+    else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
+        ToggleLineComment();
+    else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
+        Overwrite ^= true;
+    else if (is_ctrl_only && IsPressed(ImGuiKey_Insert))
+        Copy();
+    else if (is_shortcut && IsPressed(ImGuiKey_C))
+        Copy();
+    else if (!ReadOnly && is_shift_only && IsPressed(ImGuiKey_Insert))
+        Paste();
+    else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_V))
+        Paste();
+    else if ((is_shortcut && IsPressed(ImGuiKey_X)) || (is_shift_only && IsPressed(ImGuiKey_Delete)))
+        if (ReadOnly) Copy();
+        else Cut();
+    else if (is_shortcut && IsPressed(ImGuiKey_A))
+        SelectAll();
+    else if (is_shortcut && IsPressed(ImGuiKey_D))
+        AddCursorForNextOccurrence();
+    else if (!ReadOnly && !alt && !ctrl && !shift && !super && (IsPressed(ImGuiKey_Enter) || IsPressed(ImGuiKey_KeypadEnter)))
+        EnterChar('\n', false);
+    else if (!ReadOnly && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
+        EnterChar('\t', shift);
+    if (!ReadOnly && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
+        for (const auto ch : io.InputQueueCharacters) {
+            if (ch != 0 && (ch == '\n' || ch >= 32)) EnterChar(ch, shift);
         }
+        io.InputQueueCharacters.resize(0);
     }
 }
 

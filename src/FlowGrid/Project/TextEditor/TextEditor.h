@@ -85,6 +85,8 @@ struct TextEditor {
         RetroBlue
     };
 
+    inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
+
     inline static const LanguageDefinitions Languages{};
     const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
 
@@ -131,7 +133,7 @@ struct TextEditor {
 
     void SelectAll();
 
-    LineChar GetCursorPosition() const { return GetCursor().End; }
+    LineChar GetCursorPosition() const { return Cursors.back().End; }
     bool AnyCursorIsRange() const;
     bool AnyCursorIsMultiline() const;
     bool AllCursorsHaveRange() const;
@@ -172,29 +174,6 @@ struct TextEditor {
     SetViewAtLineMode SetViewAtLineMode{SetViewAtLineMode::FirstVisibleLine};
 
 private:
-    inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
-
-    struct Cursor {
-        // todo next up: We store `Coords` in addition to `LineChar` to keep the visual column at max(column, line_end) when navigating cursors up and down.
-        // `Start` and `End` are the the first and second coordinate _set in an interaction_.
-        // For position-ordered coordinates, use `Min()` and `Max()`.
-        LineChar Start{}, End{Start};
-
-        bool operator==(const Cursor &) const = default;
-        bool operator!=(const Cursor &) const = default;
-
-        LineChar Min() const { return std::min(Start, End); }
-        LineChar Max() const { return std::max(Start, End); }
-        bool IsRange() const { return Start != End; }
-        bool IsMultiline() const { return Start.L != End.L; }
-    };
-
-    // State to be restored with undo/redo (in addition to the text).
-    struct EditorState {
-        std::vector<Cursor> Cursors{{{0, 0}}};
-        uint LastAddedCursorIndex{0};
-    };
-
     struct LinesIter {
         LinesIter(const LinesT &lines, LineChar lc, LineChar begin, LineChar end)
             : Lines(lines), LC(std::move(lc)), Begin(std::move(begin)), End(std::move(end)) {}
@@ -238,6 +217,48 @@ private:
         void MoveLeft();
     };
 
+    struct Cursor {
+        // todo next up: We store `Coords` in addition to `LineChar` to keep the visual column at max(column, line_end) when navigating cursors up and down.
+        // `Start` and `End` are the the first and second coordinate _set in an interaction_.
+        // For position-ordered coordinates, use `Min()` and `Max()`.
+        LineChar Start{}, End{Start};
+
+        bool operator==(const Cursor &) const = default;
+        bool operator!=(const Cursor &) const = default;
+
+        LineChar Min() const { return std::min(Start, End); }
+        LineChar Max() const { return std::max(Start, End); }
+        bool IsRange() const { return Start != End; }
+        bool IsMultiline() const { return Start.L != End.L; }
+    };
+
+    struct Cursors {
+        auto begin() const { return Cursors.begin(); }
+        auto end() const { return Cursors.end(); }
+        auto begin() { return Cursors.begin(); }
+        auto end() { return Cursors.end(); }
+        auto cbegin() const { return Cursors.cbegin(); }
+        auto cend() const { return Cursors.cend(); }
+
+        Cursor &operator[](uint i) { return Cursors[i]; }
+        const Cursor &operator[](uint i) const { return Cursors[i]; }
+        const Cursor &front() const { return Cursors.front(); }
+        const Cursor &back() const { return Cursors.back(); }
+        Cursor &front() { return Cursors.front(); }
+        Cursor &back() { return Cursors.back(); }
+        auto size() const { return Cursors.size(); }
+
+        void Add();
+        void Reset();
+        uint GetLastAddedIndex() { return LastAddedIndex >= size() ? 0 : LastAddedIndex; }
+        Cursor &GetLastAdded() { return Cursors[GetLastAddedIndex()]; }
+        void SortAndMerge();
+
+    private:
+        std::vector<Cursor> Cursors{{{0, 0}}};
+        uint LastAddedIndex{0};
+    };
+
     enum class UndoOperationType {
         Add,
         Delete,
@@ -250,35 +271,26 @@ private:
 
     struct UndoRecord {
         UndoRecord() {}
-        UndoRecord(const std::vector<UndoOperation> &ops, const EditorState &before, const EditorState &after)
+        UndoRecord(const std::vector<UndoOperation> &ops, const Cursors &before, const Cursors &after)
             : Operations(ops), Before(before), After(after) {
             // for (const UndoOperation &o : Operations) assert(o.Start <= o.End);
         }
-        UndoRecord(const EditorState &before) : Before(before) {}
-        UndoRecord(std::vector<UndoOperation> &&ops, EditorState &&before, EditorState &&after)
+        UndoRecord(const Cursors &before) : Before(before) {}
+        UndoRecord(std::vector<UndoOperation> &&ops, Cursors &&before, Cursors &&after)
             : Operations(std::move(ops)), Before(std::move(before)), After(std::move(after)) {}
-        UndoRecord(EditorState &&before) : Before(std::move(before)) {}
+        UndoRecord(Cursors &&before) : Before(std::move(before)) {}
         ~UndoRecord() = default;
 
         void Undo(TextEditor *);
         void Redo(TextEditor *);
 
         std::vector<UndoOperation> Operations{};
-        EditorState Before{}, After{};
+        Cursors Before{}, After{};
     };
 
-    inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
-
-    void AddCursor();
-    void ResetCursors();
-    uint GetLastAddedCursorIndex() { return State.LastAddedCursorIndex >= State.Cursors.size() ? 0 : State.LastAddedCursorIndex; }
-    Cursor &GetLastAddedCursor() { return State.Cursors[GetLastAddedCursorIndex()]; }
-    Cursor &GetCursor() { return State.Cursors.back(); }
-    const Cursor &GetCursor() const { return State.Cursors.back(); }
     void SetCursorPosition(LineChar position, Cursor &cursor, bool clear_selection = true);
     void EnsureCursorVisible(bool start_too = false);
     void OnCursorPositionChanged();
-    void SortAndMergeCursors();
 
     void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
 
@@ -311,7 +323,7 @@ private:
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;
 
-    LineChar MoveLC(LineChar, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
+    LineChar MoveCursor(const Cursor &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
 
     void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
     void MoveUp(uint amount = 1, bool select = false);
@@ -324,7 +336,7 @@ private:
     void MoveEnd(bool select = false);
     void EnterChar(ImWchar, bool is_shift);
     void Backspace(bool is_word_mode = false);
-    void Delete(bool is_word_mode = false, const EditorState *editor_state = nullptr);
+    void Delete(bool is_word_mode = false, const TextEditor::Cursors *editor_state = nullptr);
 
     void SetSelection(LineChar start, LineChar end, Cursor &);
     void AddCursorForNextOccurrence(bool case_sensitive = true);
@@ -382,7 +394,7 @@ private:
 
     LinesT Lines{LineT{}};
     std::vector<std::vector<PaletteIndex>> PaletteIndices{std::vector<PaletteIndex>{}};
-    EditorState State;
+    Cursors Cursors;
 
     std::vector<UndoRecord> UndoBuffer;
     uint UndoIndex{0};

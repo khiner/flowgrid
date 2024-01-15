@@ -172,16 +172,6 @@ struct TextEditor {
     SetViewAtLineMode SetViewAtLineMode{SetViewAtLineMode::FirstVisibleLine};
 
 private:
-    inline static ImVec4 U32ColorToVec4(ImU32 in) {
-        static constexpr float s = 1.0f / 255.0f;
-        return ImVec4(
-            ((in >> IM_COL32_A_SHIFT) & 0xFF) * s,
-            ((in >> IM_COL32_B_SHIFT) & 0xFF) * s,
-            ((in >> IM_COL32_G_SHIFT) & 0xFF) * s,
-            ((in >> IM_COL32_R_SHIFT) & 0xFF) * s
-        );
-    }
-
     inline static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
 
     struct Cursor {
@@ -384,7 +374,7 @@ private:
     void Parse();
     void Highlight();
 
-    using PaletteT = std::array<ImU32, (unsigned)PaletteIndex::Max>;
+    using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
     static const PaletteT *GetPalette(PaletteIdT);
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 

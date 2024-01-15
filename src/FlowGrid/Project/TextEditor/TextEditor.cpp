@@ -199,14 +199,7 @@ const TextEditor::PaletteT *TextEditor::GetPalette(PaletteIdT palette_id) {
     }
 }
 
-void TextEditor::SetPalette(PaletteIdT palette_id) {
-    const PaletteT *palette_base = GetPalette(palette_id);
-    for (uint i = 0; i < uint(PaletteIndex::Max); ++i) {
-        const ImVec4 color = U32ColorToVec4((*palette_base)[i]);
-        // color.w *= ImGui::GetStyle().Alpha; todo bring this back.
-        Palette[i] = ImGui::ColorConvertFloat4ToU32(color);
-    }
-}
+void TextEditor::SetPalette(PaletteIdT palette_id) { Palette = *GetPalette(palette_id); }
 
 void TextEditor::SetLanguage(LanguageID language_id) {
     if (LanguageId == language_id) return;
@@ -1012,7 +1005,7 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
 }
 
 ImU32 TextEditor::GetGlyphColor(LineChar lc) const {
-    return Palette[int(LanguageId == LanguageID::None ? PaletteIndex::Default : PaletteIndices[lc.L][lc.C])];
+    return Palette[uint(LanguageId == LanguageID::None ? PaletteIndex::Default : PaletteIndices[lc.L][lc.C])];
 }
 
 static bool IsPressed(ImGuiKey key) {
@@ -1453,100 +1446,100 @@ void TextEditor::AddUndo(UndoRecord &record) {
 }
 
 const TextEditor::PaletteT TextEditor::DarkPalette = {{
-    0xdcdfe4ff, // Default
-    0xe06c75ff, // Keyword
-    0xe5c07bff, // Number
-    0x98c379ff, // String
-    0xe0a070ff, // Char
-    0x6a7384ff, // Punctuation
-    0x808040ff, // Preprocessor
-    0x61afefff, // Operator
-    0xdcdfe4ff, // Identifier
-    0xc678ddff, // Type
-    0x3696a2ff, // Comment
+    0xffe4dfdc, // Default
+    0xff756ce0, // Keyword
+    0xff7bc0e5, // Number
+    0xff79c398, // String
+    0xff70a0e0, // Char
+    0xff84736a, // Punctuation
+    0xff408080, // Preprocessor
+    0xffefaf61, // Operator
+    0xffe4dfdc, // Identifier
+    0xffdd78c6, // Type
+    0xffa29636, // Comment
 
-    0x282c34ff, // Background
-    0xe0e0e0ff, // Cursor
-    0x2060a080, // Selection
-    0xff200080, // Error
-    0xffffff15, // ControlCharacter
-    0x0080f040, // Breakpoint
-    0x7a8394ff, // Line number
-    0x00000040, // Current line fill
-    0x80808040, // Current line fill (inactive)
-    0xa0a0a040, // Current line edge
+    0xff342c28, // Background
+    0xffe0e0e0, // Cursor
+    0x80a06020, // Selection
+    0x800020ff, // Error
+    0x15ffffff, // ControlCharacter
+    0x40f08000, // Breakpoint
+    0xff94837a, // Line number
+    0x40000000, // Current line fill
+    0x40808080, // Current line fill (inactive)
+    0x40a0a0a0, // Current line edge
 }};
 
 const TextEditor::PaletteT TextEditor::MarianaPalette = {{
     0xffffffff, // Default
-    0xc695c6ff, // Keyword
-    0xf9ae58ff, // Number
-    0x99c794ff, // String
-    0xe0a070ff, // Char
-    0x5fb4b4ff, // Punctuation
-    0x808040ff, // Preprocessor
-    0x4dc69bff, // Operator
+    0xffc695c6, // Keyword
+    0xff58aef9, // Number
+    0xff94c799, // String
+    0xff70a0e0, // Char
+    0xffb4b45f, // Punctuation
+    0xff408080, // Preprocessor
+    0xff9bc64d, // Operator
     0xffffffff, // Identifier
-    0xe0a0ffff, // Type
-    0xa6acb9ff, // Comment (single line)
+    0xffffa0e0, // Type
 
-    0x303841ff, // Background
-    0xe0e0e0ff, // Cursor
-    0x4e5a6580, // Selection
-    0xec5f6680, // Error
-    0xffffff30, // ControlCharacter
-    0x0080f040, // Breakpoint
-    0xffffffb0, // Line number
-    0x4e5a6580, // Current line fill
-    0x4e5a6530, // Current line fill (inactive)
-    0x4e5a65b0, // Current line edge
+    0xffb9aca6, // Comment
+    0xff413830, // Background
+    0xffe0e0e0, // Cursor
+    0x80655a4e, // Selection
+    0x80665fec, // Error
+    0x30ffffff, // ControlCharacter
+    0x40f08000, // Breakpoint
+    0xb0ffffff, // Line number
+    0x80655a4e, // Current line fill
+    0x30655a4e, // Current line fill (inactive)
+    0xb0655a4e, // Current line edge
 }};
 
 const TextEditor::PaletteT TextEditor::LightPalette = {{
-    0x404040ff, // Default
-    0x060cffff, // Keyword
-    0x008000ff, // Number
-    0xa02020ff, // String
-    0x704030ff, // Char
-    0x000000ff, // Punctuation
-    0x606040ff, // Preprocessor
-    0x106060ff, // Operator
-    0x404040ff, // Identifier
-    0xa040c0ff, // Type
-    0x205020ff, // Comment
+    0xff404040, // Default
+    0xffff0c06, // Keyword
+    0xff008000, // Number
+    0xff2020a0, // String
+    0xff304070, // Char
+    0xff000000, // Punctuation
+    0xff406060, // Preprocessor
+    0xff606010, // Operator
+    0xff404040, // Identifier
+    0xffc040a0, // Type
+    0xff205020, // Comment
 
     0xffffffff, // Background
-    0x000000ff, // Cursor
-    0x00006040, // Selection
-    0xff1000a0, // Error
+    0xff000000, // Cursor
+    0x40600000, // Selection
+    0xa00010ff, // Error
     0x90909090, // ControlCharacter
-    0x0080f080, // Breakpoint
-    0x005050ff, // Line number
-    0x00000040, // Current line fill
-    0x80808040, // Current line fill (inactive)
-    0x00000040, // Current line edge
+    0x80f08000, // Breakpoint
+    0xff505000, // Line number
+    0x40000000, // Current line fill
+    0x40808080, // Current line fill (inactive)
+    0x40000000, // Current line edge
 }};
 
 const TextEditor::PaletteT TextEditor::RetroBluePalette = {{
-    0xffff00ff, // Default
-    0x00ffffff, // Keyword
-    0x00ff00ff, // Number
-    0x008080ff, // String
-    0x008080ff, // Char
+    0xff00ffff, // Default
+    0xffffff00, // Keyword
+    0xff00ff00, // Number
+    0xff808000, // String
+    0xff808000, // Char
     0xffffffff, // Punctuation
-    0x008000ff, // Preprocessor
+    0xff008000, // Preprocessor
     0xffffffff, // Operator
-    0xffff00ff, // Identifier
-    0xff00ffff, // Type
-    0x808080ff, // Comment
+    0xff00ffff, // Identifier
+    0xffff00ff, // Type
 
-    0x000080ff, // Background
-    0xff8000ff, // Cursor
-    0x00ffff80, // Selection
-    0xff0000a0, // Error
-    0x0080ff80, // Breakpoint
-    0x008080ff, // Line number
-    0x00000040, // Current line fill
-    0x80808040, // Current line fill (inactive)
-    0x00000040, // Current line edge
+    0xff808080, // Comment
+    0xff800000, // Background
+    0xff0080ff, // Cursor
+    0x80ffff00, // Selection
+    0xa00000ff, // Error
+    0x80ff8000, // Breakpoint
+    0xff808000, // Line number
+    0x40000000, // Current line fill
+    0x40808080, // Current line fill (inactive)
+    0x40000000, // Current line edge
 }};

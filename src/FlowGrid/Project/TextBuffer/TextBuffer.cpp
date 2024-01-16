@@ -68,8 +68,8 @@ void TextBuffer::RenderMenu() const {
             if (MenuItem("Undo", "ALT-Backspace", nullptr, !editor.ReadOnly && editor.CanUndo())) editor.Undo();
             if (MenuItem("Redo", "Ctrl-Y", nullptr, !editor.ReadOnly && editor.CanRedo())) editor.Redo();
             Separator();
-            if (MenuItem("Copy", "Ctrl-C", nullptr, editor.AnyCursorIsRange())) editor.Copy();
-            if (MenuItem("Cut", "Ctrl-X", nullptr, !editor.ReadOnly && editor.AnyCursorIsRange())) editor.Cut();
+            if (MenuItem("Copy", "Ctrl-C", nullptr, editor.CanCopy())) editor.Copy();
+            if (MenuItem("Cut", "Ctrl-X", nullptr, !editor.ReadOnly && editor.CanCopy())) editor.Cut();
             if (MenuItem("Paste", "Ctrl-V", nullptr, !editor.ReadOnly && ImGui::GetClipboardText() != nullptr)) editor.Paste();
             Separator();
             if (MenuItem("Select all", nullptr, nullptr)) editor.SelectAll();

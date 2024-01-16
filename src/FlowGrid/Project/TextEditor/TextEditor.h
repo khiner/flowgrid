@@ -134,9 +134,7 @@ struct TextEditor {
     void SelectAll();
 
     LineChar GetCursorPosition() const { return Cursors.back().LC(); }
-    bool AnyCursorIsRange() const;
-    bool AnyCursorIsMultiline() const;
-    bool AllCursorsHaveRange() const;
+    bool CanCopy() const { return Cursors.AnyRanged(); }
 
     void Copy();
     void Cut();
@@ -219,6 +217,18 @@ private:
 
     struct Cursor {
         Cursor() = default;
+        Cursor(const Cursor &cursor) {
+            *this = cursor;
+        }
+        // Copy everything but `Modified` fields.
+        Cursor &operator=(const Cursor &other) {
+            Start = other.Start;
+            End = other.End;
+            StartColumn = other.StartColumn;
+            EndColumn = other.EndColumn;
+            return *this;
+        }
+
         Cursor(LineChar lc) : Start(lc), End(lc) {}
         Cursor(LineChar start, LineChar end) : Start(start), End(end) {}
 
@@ -227,27 +237,68 @@ private:
 
         LineChar GetStart() const { return Start; }
         LineChar GetEnd() const { return End; }
+        Coords GetStartCoords(const TextEditor &editor) {
+            if (!StartColumn) StartColumn = editor.GetCharColumn(Start);
+            return {Start.L, *StartColumn};
+        }
+        Coords GetEndCoords(const TextEditor &editor) {
+            if (!EndColumn) EndColumn = editor.GetCharColumn(End);
+            return {End.L, *EndColumn};
+        }
         uint Line() const { return End.L; }
         uint CharIndex() const { return End.C; }
         LineChar LC() const { return End; } // Be careful if this is a multiline cursor!
 
-        void Set(LineChar lc) { Start = End = std::move(lc); }
-        void Set(LineChar start, LineChar end) { Start = std::move(start), End = std::move(end); }
-        void SetStart(LineChar start) { Start = std::move(start); }
-        void SetEnd(LineChar end) { End = std::move(end); }
-
         LineChar Min() const { return std::min(Start, End); }
         LineChar Max() const { return std::max(Start, End); }
+
         bool IsRange() const { return Start != End; }
         bool IsMultiline() const { return Start.L != End.L; }
         bool IsRightOf(LineChar lc) const { return End.L == lc.L && End.C > lc.C; }
 
-        void MoveLines(int line_count) { Start.L += line_count, End.L += line_count; }
+        bool IsEdited() const { return StartModified || EndModified; }
+        bool IsStartEdited() const { return StartModified; }
+        bool IsEndEdited() const { return EndModified; }
+        void ClearEdited() { StartModified = EndModified = false; }
+
+        void SetStart(LineChar start, std::optional<uint> column = std::nullopt) {
+            Start = std::move(start);
+            StartColumn = column;
+            EndModified = true; // todo maybe only if changed?
+        }
+        void SetEnd(LineChar end, std::optional<uint> column = std::nullopt) {
+            End = std::move(end);
+            EndColumn = column;
+            EndModified = true; // todo maybe only if changed?
+        }
+        void Set(LineChar lc, std::optional<uint> column = std::nullopt) {
+            SetStart(lc, column);
+            SetEnd(lc, column);
+        }
+        void Set(LineChar lc, bool both) {
+            if (both) SetStart(lc);
+            SetEnd(lc);
+        }
+        void Set(LineChar start, LineChar end, std::optional<uint> start_column = std::nullopt, std::optional<uint> end_column = std::nullopt) {
+            SetStart(start, start_column);
+            SetEnd(end, end_column);
+        }
+
+        void MoveChar(const TextEditor &, bool right = true, bool select = false, bool is_word_mode = false);
+        void MoveLines(const TextEditor &, int amount = 1, bool select = false);
 
     private:
         // `Start` and `End` are the the first and second coordinate _set in an interaction_.
-        // For position-ordered coordinates, use `Min()` and `Max()`.
+        // Use `Min()` and `Max()` for position ordering.
         LineChar Start{}, End{Start};
+
+        // A column is emptied when its respective `LineChar` is changed without the caller providing an explicit column.
+        // A column is computed and set on demand when its `LineChar` is read.
+        // Operationally, this means that if a column is never read, it is never computed,
+        // and a non-empty column is always up-to-date with its latest `LineChar` value.
+        std::optional<uint> StartColumn{}, EndColumn{};
+        // Cleared every frame. Used to keep recently edited cursors visible.
+        bool StartModified{false}, EndModified{false};
     };
 
     struct Cursors {
@@ -266,11 +317,29 @@ private:
         Cursor &back() { return Cursors.back(); }
         auto size() const { return Cursors.size(); }
 
+        bool AnyRanged() const;
+        bool AllRanged() const;
+        bool AnyMultiline() const;
+
         void Add();
         void Reset();
+        void ClearEdited() {
+            for (Cursor &c : Cursors) c.ClearEdited();
+        }
         uint GetLastAddedIndex() { return LastAddedIndex >= size() ? 0 : LastAddedIndex; }
         Cursor &GetLastAdded() { return Cursors[GetLastAddedIndex()]; }
         void SortAndMerge();
+
+        void MoveLines(const TextEditor &, int amount = 1, bool select = false);
+        void MoveChar(const TextEditor &, bool right = true, bool select = false, bool is_word_mode = false);
+        void MoveTop(bool select = false);
+        void MoveBottom(const TextEditor &, bool select = false);
+        void MoveStart(bool select = false);
+        void MoveEnd(const TextEditor &, bool select = false);
+
+        // Returns the range of all edited cursor starts/ends since the last call to `ClearEdited()`.
+        // Used for updating the scroll range.
+        std::optional<std::pair<Coords, Coords>> GetEditedCoordRange(const TextEditor &);
 
     private:
         std::vector<Cursor> Cursors{{{0, 0}}};
@@ -306,8 +375,6 @@ private:
         Cursors Before{}, After{};
     };
 
-    void SetCursorPosition(LineChar position, Cursor &cursor, bool clear_selection = true);
-    void EnsureCursorVisible(bool start_too = false);
     void OnCursorPositionChanged();
 
     void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
@@ -315,13 +382,6 @@ private:
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
     ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
     ImU32 GetColor(LineChar lc) const { return GetColor(PaletteIndices[lc.L][lc.C]); }
-
-    enum class MoveDirection {
-        Right = 0,
-        Left = 1,
-        Up = 2,
-        Down = 3
-    };
 
     static LineChar BeginLC() { return {0, 0}; }
     LineChar EndLC() const { return {uint(Lines.size() - 1), uint(Lines.back().size())}; }
@@ -332,26 +392,17 @@ private:
     Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(Lines[lc.L], lc.C)}; }
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(Lines[coords.L], coords.C)}; }
     uint ToByteIndex(LineChar) const;
+    void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
 
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
     uint GetCharIndex(const LineT &, uint column) const;
-    uint GetCharColumn(const LineT &line, uint ci) const;
+    uint GetCharColumn(const LineT &, uint ci) const;
+    uint GetCharColumn(LineChar lc) const { return GetCharColumn(Lines[lc.L], lc.C); }
     uint GetFirstVisibleCharIndex(uint li) const;
     uint GetLineMaxColumn(uint li) const;
     uint GetLineMaxColumn(uint li, uint limit) const;
 
-    LineChar MoveCursor(const Cursor &, MoveDirection, bool is_word_mode = false, uint line_count = 1) const;
-
-    void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
-    void MoveUp(uint amount = 1, bool select = false);
-    void MoveDown(uint amount = 1, bool select = false);
-    void MoveLeft(bool select = false, bool is_word_mode = false);
-    void MoveRight(bool select = false, bool is_word_mode = false);
-    void MoveTop(bool select = false);
-    void MoveBottom(bool select = false);
-    void MoveStart(bool select = false);
-    void MoveEnd(bool select = false);
     void EnterChar(ImWchar, bool is_shift);
     void Backspace(bool is_word_mode = false);
     void Delete(bool is_word_mode = false, const TextEditor::Cursors *editor_state = nullptr);
@@ -420,8 +471,6 @@ private:
     uint NumTabSpaces{4};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
     uint LeftMargin{10};
-    int LastEnsureCursorVisible{-1};
-    bool LastEnsureCursorVisibleStartToo{false};
     ImVec2 CharAdvance;
     float LastClickTime{-1}; // In ImGui time.
     ImVec2 LastClickPos{-1, -1};

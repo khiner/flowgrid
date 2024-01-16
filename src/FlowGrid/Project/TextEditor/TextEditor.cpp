@@ -429,15 +429,14 @@ std::optional<std::pair<TextEditor::Coords, TextEditor::Coords>> TextEditor::Cur
     std::optional<Coords> min_coord, max_coord;
     for (auto &c : Cursors) {
         if (c.IsStartEdited()) {
-            c.SetStart({0, 0});
-            auto start = c.GetStartCoords(editor);
-            min_coord = std::min(min_coord.value_or(start), start);
-            max_coord = std::max(max_coord.value_or(start), start);
+            const auto start = c.GetStartCoords(editor);
+            min_coord = min_coord ? std::min(*min_coord, start) : start;
+            max_coord = max_coord ? std::max(*max_coord, start) : start;
         }
         if (c.IsEndEdited()) {
-            auto end = c.GetEndCoords(editor);
-            min_coord = std::min(min_coord.value_or(end), end);
-            max_coord = std::max(max_coord.value_or(end), end);
+            const auto end = c.GetEndCoords(editor);
+            min_coord = min_coord ? std::min(*min_coord, end) : end;
+            max_coord = max_coord ? std::max(*max_coord, end) : end;
         }
     }
     if (min_coord.has_value() && max_coord.has_value()) return std::make_pair(*min_coord, *max_coord);
@@ -524,7 +523,12 @@ uint TextEditor::NumStartingSpaceColumns(uint li) const {
 }
 
 void TextEditor::Cursor::MoveLines(const TextEditor &editor, int amount, bool select) {
-    Set({uint(std::clamp(int(Line()) + amount, 0, int(editor.LineCount() - 1))), CharIndex()}, !select);
+    // Track the cursor's column to return back to it after moving to a line long enough.
+    // (This is the only place we worry about this.)
+    const uint new_column = EndColumn.value_or(editor.ToCoords(LC()).C);
+    const uint new_li = std::clamp(int(Line()) + amount, 0, int(editor.LineCount() - 1));
+    const uint new_ci = std::min(editor.GetCharIndex({new_li, new_column}), editor.GetLineMaxCharIndex(new_li));
+    Set({new_li, new_ci}, !select, new_column);
 }
 
 void TextEditor::Cursor::MoveChar(const TextEditor &editor, bool right, bool select, bool is_word_mode) {
@@ -841,13 +845,12 @@ TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool 
         uint(std::max(0.f, floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)))
     };
     // Check if the coord is in the middle of a tab character.
-    if (coords.L < Lines.size()) {
-        const auto &line = Lines[coords.L];
-        const uint ci = GetCharIndex(line, coords.C);
-        if (ci < line.size() && line[ci] == '\t') coords.C = GetCharColumn(line, ci);
-    }
+    const uint li = std::min(coords.L, uint(Lines.size()) - 1);
+    const auto &line = Lines[li];
+    const uint ci = GetCharIndex(line, coords.C);
+    if (ci < line.size() && line[ci] == '\t') coords.C = GetColumn(line, ci);
 
-    return {coords.L, GetLineMaxColumn(coords.L, coords.C)};
+    return {coords.L, GetLineMaxColumn(line, coords.C)};
 }
 
 TextEditor::LineChar TextEditor::FindWordBoundary(LineChar from, bool is_start) const {
@@ -877,7 +880,7 @@ uint TextEditor::GetCharIndex(const LineT &line, uint column) const {
     return ci;
 }
 
-uint TextEditor::GetCharColumn(const LineT &line, uint ci) const {
+uint TextEditor::GetColumn(const LineT &line, uint ci) const {
     uint column = 0;
     for (uint ci_i = 0; ci_i < ci && ci_i < line.size();) MoveCharIndexAndColumn(line, ci_i, column);
     return column;
@@ -892,18 +895,12 @@ uint TextEditor::GetFirstVisibleCharIndex(uint li) const {
     return column > FirstVisibleCoords.C && ci > 0 ? ci - 1 : ci;
 }
 
-uint TextEditor::GetLineMaxColumn(uint li) const {
-    if (li >= Lines.size()) return 0;
-
-    const auto &line = Lines[li];
+uint TextEditor::GetLineMaxColumn(const LineT &line) const {
     uint column = 0;
     for (uint ci = 0; ci < line.size();) MoveCharIndexAndColumn(line, ci, column);
     return column;
 }
-uint TextEditor::GetLineMaxColumn(uint li, uint limit) const {
-    if (li >= Lines.size()) return 0;
-
-    const auto &line = Lines[li];
+uint TextEditor::GetLineMaxColumn(const LineT &line, uint limit) const {
     uint column = 0;
     for (uint ci = 0; ci < line.size() && column < limit;) MoveCharIndexAndColumn(line, ci, column);
     return column;
@@ -1221,7 +1218,7 @@ void TextEditor::Render(bool is_parent_focused) {
 
     for (uint li = FirstVisibleCoords.L; li <= LastVisibleCoords.L && li < Lines.size(); ++li) {
         const auto &line = Lines[li];
-        const uint line_max_column_limited = GetLineMaxColumn(li, LastVisibleCoords.C);
+        const uint line_max_column_limited = GetLineMaxColumn(line, LastVisibleCoords.C);
         max_column_limited = std::max(line_max_column_limited, max_column_limited);
 
         const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * CharAdvance.y};
@@ -1258,7 +1255,7 @@ void TextEditor::Render(bool is_parent_focused) {
         if (ImGui::IsWindowFocused() || is_parent_focused) {
             for (const auto &c : filter(Cursors, [li](const auto &c) { return c.Line() == li; })) {
                 const uint ci = c.CharIndex();
-                const float cx = GetCharColumn(line, ci) * CharAdvance.x;
+                const float cx = GetColumn(line, ci) * CharAdvance.x;
                 float width = 1.0f;
                 if (Overwrite && ci < line.size()) {
                     width = line[ci] == '\t' ? (1.f + std::floor((1.f + cx) / (NumTabSpaces * space_size))) * (NumTabSpaces * space_size) - cx : CharAdvance.x;

@@ -237,14 +237,16 @@ private:
 
         LineChar GetStart() const { return Start; }
         LineChar GetEnd() const { return End; }
-        Coords GetStartCoords(const TextEditor &editor) {
-            if (!StartColumn) StartColumn = editor.GetCharColumn(Start);
-            return {Start.L, *StartColumn};
+        uint GetStartColumn(const TextEditor &editor) {
+            if (!StartColumn) StartColumn = editor.GetColumn(Start);
+            return *StartColumn;
         }
-        Coords GetEndCoords(const TextEditor &editor) {
-            if (!EndColumn) EndColumn = editor.GetCharColumn(End);
-            return {End.L, *EndColumn};
+        uint GetEndColumn(const TextEditor &editor) {
+            if (!EndColumn) EndColumn = editor.GetColumn(End);
+            return *EndColumn;
         }
+        Coords GetStartCoords(const TextEditor &editor) { return {Start.L, GetStartColumn(editor)}; }
+        Coords GetEndCoords(const TextEditor &editor) { return {End.L, GetEndColumn(editor)}; }
         uint Line() const { return End.L; }
         uint CharIndex() const { return End.C; }
         LineChar LC() const { return End; } // Be careful if this is a multiline cursor!
@@ -275,9 +277,9 @@ private:
             SetStart(lc, column);
             SetEnd(lc, column);
         }
-        void Set(LineChar lc, bool both) {
-            if (both) SetStart(lc);
-            SetEnd(lc);
+        void Set(LineChar lc, bool both, std::optional<uint> column = std::nullopt) {
+            if (both) SetStart(lc, column);
+            SetEnd(lc, column);
         }
         void Set(LineChar start, LineChar end, std::optional<uint> start_column = std::nullopt, std::optional<uint> end_column = std::nullopt) {
             SetStart(start, start_column);
@@ -388,20 +390,22 @@ private:
     LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Lines, std::move(lc), std::move(begin), std::move(end)}; }
     LinesIter Iter(LineChar lc = BeginLC()) const { return Iter(std::move(lc), BeginLC(), EndLC()); }
 
-    LineChar LineMaxLC(uint li) const { return {li, uint(Lines[li].size())}; }
-    Coords ToCoords(LineChar lc) const { return {lc.L, GetCharColumn(Lines[lc.L], lc.C)}; }
-    LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(Lines[coords.L], coords.C)}; }
+    LineChar LineMaxLC(uint li) const { return {li, GetLineMaxCharIndex(li)}; }
+    Coords ToCoords(LineChar lc) const { return {lc.L, GetColumn(Lines[lc.L], lc.C)}; }
+    LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(std::move(coords))}; }
     uint ToByteIndex(LineChar) const;
     void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
 
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
     uint GetCharIndex(const LineT &, uint column) const;
-    uint GetCharColumn(const LineT &, uint ci) const;
-    uint GetCharColumn(LineChar lc) const { return GetCharColumn(Lines[lc.L], lc.C); }
+    uint GetCharIndex(Coords coords) const { return GetCharIndex(Lines[coords.L], coords.C); }
+    uint GetColumn(const LineT &, uint ci) const;
+    uint GetColumn(LineChar lc) const { return GetColumn(Lines[lc.L], lc.C); }
     uint GetFirstVisibleCharIndex(uint li) const;
-    uint GetLineMaxColumn(uint li) const;
-    uint GetLineMaxColumn(uint li, uint limit) const;
+    uint GetLineMaxColumn(const LineT &) const;
+    uint GetLineMaxColumn(const LineT &, uint limit) const;
+    uint GetLineMaxCharIndex(uint li) const { return Lines[li].size(); }
 
     void EnterChar(ImWchar, bool is_shift);
     void Backspace(bool is_word_mode = false);

@@ -133,7 +133,7 @@ struct TextEditor {
 
     void SelectAll();
 
-    LineChar GetCursorPosition() const { return Cursors.back().End; }
+    LineChar GetCursorPosition() const { return Cursors.back().LC(); }
     bool AnyCursorIsRange() const;
     bool AnyCursorIsMultiline() const;
     bool AllCursorsHaveRange() const;
@@ -218,18 +218,36 @@ private:
     };
 
     struct Cursor {
-        // todo next up: We store `Coords` in addition to `LineChar` to keep the visual column at max(column, line_end) when navigating cursors up and down.
-        // `Start` and `End` are the the first and second coordinate _set in an interaction_.
-        // For position-ordered coordinates, use `Min()` and `Max()`.
-        LineChar Start{}, End{Start};
+        Cursor() = default;
+        Cursor(LineChar lc) : Start(lc), End(lc) {}
+        Cursor(LineChar start, LineChar end) : Start(start), End(end) {}
 
         bool operator==(const Cursor &) const = default;
         bool operator!=(const Cursor &) const = default;
+
+        LineChar GetStart() const { return Start; }
+        LineChar GetEnd() const { return End; }
+        uint Line() const { return End.L; }
+        uint CharIndex() const { return End.C; }
+        LineChar LC() const { return End; } // Be careful if this is a multiline cursor!
+
+        void Set(LineChar lc) { Start = End = std::move(lc); }
+        void Set(LineChar start, LineChar end) { Start = std::move(start), End = std::move(end); }
+        void SetStart(LineChar start) { Start = std::move(start); }
+        void SetEnd(LineChar end) { End = std::move(end); }
 
         LineChar Min() const { return std::min(Start, End); }
         LineChar Max() const { return std::max(Start, End); }
         bool IsRange() const { return Start != End; }
         bool IsMultiline() const { return Start.L != End.L; }
+        bool IsRightOf(LineChar lc) const { return End.L == lc.L && End.C > lc.C; }
+
+        void MoveLines(int line_count) { Start.L += line_count, End.L += line_count; }
+
+    private:
+        // `Start` and `End` are the the first and second coordinate _set in an interaction_.
+        // For position-ordered coordinates, use `Min()` and `Max()`.
+        LineChar Start{}, End{Start};
     };
 
     struct Cursors {

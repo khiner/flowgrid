@@ -966,6 +966,50 @@ void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
     c.Set(start);
 }
 
+void TextEditor::UpdateViewVariables(float scroll_x, float scroll_y) {
+    static constexpr float ImGuiScrollbarWidth = 14;
+
+    ContentHeight = ImGui::GetWindowHeight() - (IsHorizontalScrollbarVisible() ? ImGuiScrollbarWidth : 0.0f);
+    ContentWidth = ImGui::GetWindowWidth() - (IsVerticalScrollbarVisible() ? ImGuiScrollbarWidth : 0.0f);
+
+    VisibleLineCount = std::max(uint(ceil(ContentHeight / CharAdvance.y)), 0u);
+    VisibleColumnCount = std::max(uint(ceil((ContentWidth - std::max(TextStart - scroll_x, 0.0f)) / CharAdvance.x)), 0u);
+    FirstVisibleCoords = {uint(scroll_y / CharAdvance.y), uint(std::max(scroll_x - TextStart, 0.0f) / CharAdvance.x)};
+    LastVisibleCoords = {uint((ContentHeight + scroll_y) / CharAdvance.y), uint((ContentWidth + scroll_x - TextStart) / CharAdvance.x)};
+}
+
+uint TextEditor::ToByteIndex(LineChar lc) const {
+    return ranges::accumulate(subrange(Lines.begin(), Lines.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
+}
+
+void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
+    if (Tree) {
+        TSInputEdit edit;
+        // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
+        edit.start_byte = start_byte;
+        edit.old_end_byte = old_end_byte;
+        edit.new_end_byte = new_end_byte;
+        ts_tree_edit(Tree, &edit);
+    }
+    TextChanged = true;
+}
+
+void TextEditor::OnCursorPositionChanged() {
+    const auto &c = Cursors[0];
+    MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
+
+    if (!IsDraggingSelection) Cursors.SortAndMerge();
+}
+
+void TextEditor::AddUndo(UndoRecord &record) {
+    if (record.Operations.empty()) return;
+
+    record.After = Cursors;
+    UndoBuffer.resize(UndoIndex + 1);
+    UndoBuffer.back() = record;
+    ++UndoIndex;
+}
+
 static bool IsPressed(ImGuiKey key) {
     const auto key_index = ImGui::GetKeyIndex(key);
     const auto window_id = ImGui::GetCurrentWindowRead()->ID;
@@ -973,9 +1017,7 @@ static bool IsPressed(ImGuiKey key) {
     return ImGui::IsKeyPressed(key_index, window_id);
 }
 
-void TextEditor::HandleKeyboardInputs(bool is_parent_focused) {
-    if (!ImGui::IsWindowFocused() && !is_parent_focused) return;
-
+void TextEditor::HandleKeyboardInputs() {
     if (ImGui::IsWindowHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
 
     auto &io = ImGui::GetIO();
@@ -1155,60 +1197,12 @@ void TextEditor::HandleMouseInputs() {
     }
 }
 
-void TextEditor::UpdateViewVariables(float scroll_x, float scroll_y) {
-    static constexpr float ImGuiScrollbarWidth = 14;
-
-    ContentHeight = ImGui::GetWindowHeight() - (IsHorizontalScrollbarVisible() ? ImGuiScrollbarWidth : 0.0f);
-    ContentWidth = ImGui::GetWindowWidth() - (IsVerticalScrollbarVisible() ? ImGuiScrollbarWidth : 0.0f);
-
-    VisibleLineCount = std::max(uint(ceil(ContentHeight / CharAdvance.y)), 0u);
-    VisibleColumnCount = std::max(uint(ceil((ContentWidth - std::max(TextStart - scroll_x, 0.0f)) / CharAdvance.x)), 0u);
-    FirstVisibleCoords = {uint(scroll_y / CharAdvance.y), uint(std::max(scroll_x - TextStart, 0.0f) / CharAdvance.x)};
-    LastVisibleCoords = {uint((ContentHeight + scroll_y) / CharAdvance.y), uint((ContentWidth + scroll_x - TextStart) / CharAdvance.x)};
-}
-
-uint TextEditor::ToByteIndex(LineChar lc) const {
-    return ranges::accumulate(subrange(Lines.begin(), Lines.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
-}
-
-void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
-    if (Tree) {
-        TSInputEdit edit;
-        // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
-        edit.start_byte = start_byte;
-        edit.old_end_byte = old_end_byte;
-        edit.new_end_byte = new_end_byte;
-        ts_tree_edit(Tree, &edit);
-    }
-    TextChanged = true;
-}
-
-void TextEditor::OnCursorPositionChanged() {
-    const auto &c = Cursors[0];
-    MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
-
-    if (!IsDraggingSelection) Cursors.SortAndMerge();
-}
-
-void TextEditor::AddUndo(UndoRecord &record) {
-    if (record.Operations.empty()) return;
-
-    record.After = Cursors;
-    UndoBuffer.resize(UndoIndex + 1);
-    UndoBuffer.back() = record;
-    ++UndoIndex;
-}
-
-bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 &size, bool border) {
+bool TextEditor::Render(bool is_parent_focused) {
     if (CursorPositionChanged) OnCursorPositionChanged();
     CursorPositionChanged = false;
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, GetColor(PaletteIndex::Background));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
-    ImGui::BeginChild(title, size, border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
-
-    const bool is_focused = ImGui::IsWindowFocused();
-    HandleKeyboardInputs(is_parent_focused);
+    const bool is_focused = ImGui::IsWindowFocused() || is_parent_focused;
+    if (is_focused) HandleKeyboardInputs();
     HandleMouseInputs();
 
     if (TextChanged) {
@@ -1274,7 +1268,7 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
         }
 
         // Render cursors
-        if (ImGui::IsWindowFocused() || is_parent_focused) {
+        if (is_focused) {
             for (const auto &c : filter(Cursors, [li](const auto &c) { return c.Line() == li; })) {
                 const uint ci = c.CharIndex();
                 const float cx = GetColumn(line, ci) * CharAdvance.x;
@@ -1379,10 +1373,6 @@ bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 
         ImGui::SetScrollY(scroll);
         SetViewAtLineI = -1;
     }
-
-    ImGui::EndChild();
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor();
 
     return is_focused;
 }

@@ -89,6 +89,7 @@ struct TextEditor {
 
     inline static const LanguageDefinitions Languages{};
     const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
+    ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -152,7 +153,7 @@ struct TextEditor {
 
     std::string GetSyntaxTreeSExp() const;
 
-    bool Render(const char *title, bool is_parent_focused = false, const ImVec2 &size = ImVec2(), bool border = false);
+    bool Render(bool is_parent_focused = false);
     void DebugPanel();
 
     enum class SetViewAtLineMode {
@@ -382,7 +383,6 @@ private:
     void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
-    ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
     ImU32 GetColor(LineChar lc) const { return GetColor(PaletteIndices[lc.L][lc.C]); }
 
     static LineChar BeginLC() { return {0, 0}; }
@@ -434,7 +434,7 @@ private:
     void AddGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, true); }
     void RemoveGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, false); }
 
-    void HandleKeyboardInputs(bool is_parent_focused = false);
+    void HandleKeyboardInputs();
     void HandleMouseInputs();
     void UpdateViewVariables(float scroll_x, float scroll_y);
 

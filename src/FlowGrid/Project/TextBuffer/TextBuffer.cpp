@@ -70,7 +70,7 @@ void TextBuffer::RenderMenu() const {
             Separator();
             if (MenuItem("Copy", "Ctrl-C", nullptr, editor.CanCopy())) editor.Copy();
             if (MenuItem("Cut", "Ctrl-X", nullptr, !editor.ReadOnly && editor.CanCopy())) editor.Cut();
-            if (MenuItem("Paste", "Ctrl-V", nullptr, !editor.ReadOnly && ImGui::GetClipboardText() != nullptr)) editor.Paste();
+            if (MenuItem("Paste", "Ctrl-V", nullptr, !editor.ReadOnly && GetClipboardText() != nullptr)) editor.Paste();
             Separator();
             if (MenuItem("Select all", nullptr, nullptr)) editor.SelectAll();
             EndMenu();
@@ -115,8 +115,15 @@ void TextBuffer::Render() const {
     );
 
     const string prev_text = editor.GetText();
+    const bool is_parent_focused = IsWindowFocused();
     PushFont(gFonts.FixedWidth);
-    editor.Render("TextEditor");
+    PushStyleColor(ImGuiCol_ChildBg, editor.GetColor(PaletteIndex::Background));
+    PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
+    BeginChild("TextEditor", {}, false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
+    editor.Render(is_parent_focused);
+    EndChild();
+    PopStyleVar();
+    PopStyleColor();
     PopFont();
 
     // TODO this is not the usual immediate-mode case. Only set text if the text changed.

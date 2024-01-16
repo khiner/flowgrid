@@ -332,32 +332,6 @@ string TextEditor::GetText(LineChar start, LineChar end) const {
     return result;
 }
 
-bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 &size, bool border) {
-    if (CursorPositionChanged) OnCursorPositionChanged();
-    CursorPositionChanged = false;
-
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, GetColor(PaletteIndex::Background));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
-    ImGui::BeginChild(title, size, border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
-
-    const bool is_focused = ImGui::IsWindowFocused();
-    HandleKeyboardInputs(is_parent_focused);
-    HandleMouseInputs();
-
-    if (TextChanged) {
-        Highlight();
-        TextChanged = false;
-    }
-
-    Render(is_parent_focused);
-
-    ImGui::EndChild();
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor();
-
-    return is_focused;
-}
-
 // https://en.wikipedia.org/wiki/UTF-8
 // We assume that the char is a standalone character (<128) or a leading byte of an UTF-8 code sequence (non-10xxxxxx code)
 static uint UTF8CharLength(char ch) {
@@ -1193,7 +1167,55 @@ void TextEditor::UpdateViewVariables(float scroll_x, float scroll_y) {
     LastVisibleCoords = {uint((ContentHeight + scroll_y) / CharAdvance.y), uint((ContentWidth + scroll_x - TextStart) / CharAdvance.x)};
 }
 
-void TextEditor::Render(bool is_parent_focused) {
+uint TextEditor::ToByteIndex(LineChar lc) const {
+    return ranges::accumulate(subrange(Lines.begin(), Lines.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
+}
+
+void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
+    if (Tree) {
+        TSInputEdit edit;
+        // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
+        edit.start_byte = start_byte;
+        edit.old_end_byte = old_end_byte;
+        edit.new_end_byte = new_end_byte;
+        ts_tree_edit(Tree, &edit);
+    }
+    TextChanged = true;
+}
+
+void TextEditor::OnCursorPositionChanged() {
+    const auto &c = Cursors[0];
+    MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
+
+    if (!IsDraggingSelection) Cursors.SortAndMerge();
+}
+
+void TextEditor::AddUndo(UndoRecord &record) {
+    if (record.Operations.empty()) return;
+
+    record.After = Cursors;
+    UndoBuffer.resize(UndoIndex + 1);
+    UndoBuffer.back() = record;
+    ++UndoIndex;
+}
+
+bool TextEditor::Render(const char *title, bool is_parent_focused, const ImVec2 &size, bool border) {
+    if (CursorPositionChanged) OnCursorPositionChanged();
+    CursorPositionChanged = false;
+
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, GetColor(PaletteIndex::Background));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
+    ImGui::BeginChild(title, size, border, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
+
+    const bool is_focused = ImGui::IsWindowFocused();
+    HandleKeyboardInputs(is_parent_focused);
+    HandleMouseInputs();
+
+    if (TextChanged) {
+        Highlight();
+        TextChanged = false;
+    }
+
     /* Compute CharAdvance regarding to scaled font size (Ctrl + mouse wheel)*/
     const float font_width = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
     const float font_height = ImGui::GetTextLineHeightWithSpacing();
@@ -1357,38 +1379,53 @@ void TextEditor::Render(bool is_parent_focused) {
         ImGui::SetScrollY(scroll);
         SetViewAtLineI = -1;
     }
+
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+
+    return is_focused;
 }
 
-uint TextEditor::ToByteIndex(LineChar lc) const {
-    return ranges::accumulate(subrange(Lines.begin(), Lines.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
-}
+using namespace ImGui;
 
-void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
-    if (Tree) {
-        TSInputEdit edit;
-        // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
-        edit.start_byte = start_byte;
-        edit.old_end_byte = old_end_byte;
-        edit.new_end_byte = new_end_byte;
-        ts_tree_edit(Tree, &edit);
+void TextEditor::DebugPanel() {
+    if (CollapsingHeader("Editor state info")) {
+        BeginDisabled();
+        Checkbox("Panning", &Panning);
+        Checkbox("Dragging selection", &IsDraggingSelection);
+        EndDisabled();
+        Text("Cursor count: %lu", Cursors.size());
+        for (auto &c : Cursors) {
+            const auto &start = c.GetStart(), &end = c.GetEnd();
+            Text("Start: {%d, %d}", start.L, start.C);
+            Text("End: {%d, %d}", end.L, end.C);
+            Spacing();
+        }
     }
-    TextChanged = true;
-}
-
-void TextEditor::OnCursorPositionChanged() {
-    const auto &c = Cursors[0];
-    MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
-
-    if (!IsDraggingSelection) Cursors.SortAndMerge();
-}
-
-void TextEditor::AddUndo(UndoRecord &record) {
-    if (record.Operations.empty()) return;
-
-    record.After = Cursors;
-    UndoBuffer.resize(UndoIndex + 1);
-    UndoBuffer.back() = record;
-    ++UndoIndex;
+    if (CollapsingHeader("Lines")) {
+        for (uint i = 0; i < Lines.size(); i++) Text("%lu", Lines[i].size());
+    }
+    if (CollapsingHeader("Undo")) {
+        Text("Number of records: %lu", UndoBuffer.size());
+        Text("Undo index: %d", UndoIndex);
+        for (size_t i = 0; i < UndoBuffer.size(); i++) {
+            const auto &record = UndoBuffer[i];
+            if (CollapsingHeader(std::to_string(i).c_str())) {
+                TextUnformatted("Operations");
+                for (const auto &operation : record.Operations) {
+                    TextUnformatted(operation.Text.c_str());
+                    TextUnformatted(operation.Type == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
+                    Text("Start: %d", operation.Start.L);
+                    Text("End: %d", operation.End.L);
+                    Separator();
+                }
+            }
+        }
+    }
+    if (CollapsingHeader("Tree-Sitter")) {
+        Text("S-expression:\n%s", GetSyntaxTreeSExp().c_str());
+    }
 }
 
 const TextEditor::PaletteT TextEditor::DarkPalette = {{

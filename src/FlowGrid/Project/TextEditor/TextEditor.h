@@ -437,7 +437,6 @@ private:
     void HandleKeyboardInputs(bool is_parent_focused = false);
     void HandleMouseInputs();
     void UpdateViewVariables(float scroll_x, float scroll_y);
-    void Render(bool is_parent_focused = false);
 
     /**
     `start_byte`: Start position of the text change.

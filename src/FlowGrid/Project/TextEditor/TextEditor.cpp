@@ -422,7 +422,7 @@ void TextEditor::UndoRecord::Undo(TextEditor *editor) {
     for (const auto &op : reverse_view(Operations)) {
         switch (op.Type) {
             case UndoOperationType::Delete: {
-                editor->InsertTextAt(op.Start, op.Text);
+                editor->InsertText(op.Text, op.Start);
                 break;
             }
             case UndoOperationType::Add: {
@@ -443,7 +443,7 @@ void TextEditor::UndoRecord::Redo(TextEditor *editor) {
                 break;
             }
             case UndoOperationType::Add: {
-                editor->InsertTextAt(op.Start, op.Text);
+                editor->InsertText(op.Text, op.Start);
                 break;
             }
         }
@@ -455,7 +455,7 @@ void TextEditor::InsertTextAtCursor(const string &text, Cursor &c, UndoRecord &u
     if (text.empty()) return;
 
     const auto start = c.Min();
-    c.Set(InsertTextAt(start, text));
+    c.Set(InsertText(text, start));
     u.Operations.emplace_back(text, start, c.GetEnd(), UndoOperationType::Add);
 }
 
@@ -544,7 +544,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
         string insert_text;
         if (ch == '\n') {
             insert_text = "\n";
-            if (AutoIndent) {
+            if (AutoIndent && c.CharIndex() != 0) {
                 // Match the indentation of the current or next line, whichever has more indentation.
                 const uint li = c.Line();
                 const uint indent_li = li < Lines.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
@@ -677,8 +677,8 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
             const auto &line = Lines[li];
             if (increase) {
                 if (!line.empty()) {
-                    const LineChar start{li, 0}, end = InsertTextAt(start, "\t");
-                    u.Operations.emplace_back("\t", start, end, UndoOperationType::Add);
+                    const LineChar start{li, 0};
+                    u.Operations.emplace_back("\t", start, InsertText("\t", start), UndoOperationType::Add);
                 }
             } else {
                 int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
@@ -762,8 +762,8 @@ void TextEditor::ToggleLineComment() {
     });
     for (uint li : affected_lines) {
         if (should_add_comment) {
-            const LineChar line_start{li, 0}, insertion_end = InsertTextAt(line_start, comment + ' ');
-            u.Operations.emplace_back(comment + ' ', line_start, insertion_end, UndoOperationType::Add);
+            const LineChar line_start{li, 0};
+            u.Operations.emplace_back(comment + ' ', line_start, InsertText(comment + ' ', line_start), UndoOperationType::Add);
         } else {
             const auto &line = Lines[li];
             const uint ci = FindFirstNonSpace(line);
@@ -880,79 +880,79 @@ uint TextEditor::GetLineMaxColumn(const LineT &line, uint limit) const {
     return column;
 }
 
-void TextEditor::AddOrRemoveGlyphs(LineChar lc, std::span<const char> glyphs, bool is_add) {
-    if (glyphs.empty()) return;
+TextEditor::LineChar TextEditor::InsertText(const string &text, LineChar start) {
+    if (text.empty()) return start;
 
-    auto cursors_to_right = Cursors | filter([&lc](const auto &c) { return !c.IsRange() && c.IsRightOf(lc); });
-    for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() + (is_add ? glyphs.size() : -glyphs.size()))});
-
-    auto &line = Lines[lc.L];
-    auto &palette_line = PaletteIndices[lc.L];
-    if (is_add) {
-        line.insert(line.begin() + lc.C, glyphs.begin(), glyphs.end());
-        palette_line.insert(palette_line.begin() + lc.C, glyphs.size(), PaletteIndex::Default);
-    } else {
-        line.erase(glyphs.begin(), glyphs.end());
-        palette_line.erase(palette_line.begin() + lc.C, palette_line.begin() + lc.C + glyphs.size());
-    }
-}
-
-// todo: all add/remove glyphs calls are made here in `InsertTextAt` and `DeleteRange`.
-//   We can make multi-line insertion much more efficient by handling all cursor bookkeeping once instead of once per add/remove-glyphs call.
-TextEditor::LineChar TextEditor::InsertTextAt(LineChar start, const string &text) {
     const uint start_byte = ToByteIndex(start);
-    if (const uint num_newlines = std::ranges::count(text, '\n'); num_newlines > 0) {
-        Lines.insert(Lines.begin() + start.L + 1, num_newlines, LineT{});
-        PaletteIndices.insert(PaletteIndices.begin() + start.L + 1, num_newlines, std::vector<PaletteIndex>{});
-        auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() >= start.L; });
-        for (auto &c : cursors_below) c.Set({c.Line() + num_newlines, c.CharIndex()});
-    }
+    auto &line = Lines[start.L];
+    auto &palette_line = PaletteIndices[start.L];
+    LineChar insert_end;
+    if (!text.contains('\n')) {
+        insert_end = {start.L, uint(start.C + text.size())};
 
-    LineChar end = start;
-    for (auto it = text.begin(); it != text.end(); ++it) {
-        const char ch = *it;
-        if (ch == '\r') continue;
+        line.insert(line.begin() + start.C, text.begin(), text.end());
+        palette_line.insert(palette_line.begin() + start.C, text.size(), PaletteIndex::Default);
 
-        if (ch == '\n') {
-            const auto &line = Lines[end.L];
-            AddGlyphs({end.L + 1, 0}, {line.cbegin() + end.C, line.cend()});
-            RemoveGlyphs(end, {Lines[end.L].cbegin() + end.C, Lines[end.L].cend()}); // from start to end of line
-            ++end.L;
-            end.C = 0;
-        } else {
-            // Add all characters up to the next newline.
-            const string chars = std::string(it, std::find(it, text.end(), '\n'));
-            AddGlyphs(end, chars);
-            std::advance(it, chars.size() - 1);
-            end.C += chars.size();
+        auto cursors_to_right = Cursors | filter([&start](const auto &c) { return c.IsRightOf(start); });
+        for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() + text.size())});
+    } else {
+        auto text_lines = std::views::split(text, '\n');
+        const string original_line_ending = line | std::views::drop(start.C) | ranges::to<string>;
+        line.resize(start.C), palette_line.resize(start.C);
+        std::ranges::copy(text_lines.front(), std::back_inserter(line));
+        std::fill_n(std::back_inserter(palette_line), text_lines.front().size(), PaletteIndex::Default);
+
+        uint num_new_lines = 0, last_line_size = 0;
+        auto remaining_lines = text_lines | std::views::drop(1);
+        for (auto it = remaining_lines.begin(); it != remaining_lines.end(); ++it) {
+            auto text_line = *it;
+            Lines.insert(Lines.begin() + start.L + num_new_lines + 1, text_line | ranges::to<LineT>);
+            PaletteIndices.insert(PaletteIndices.begin() + start.L + num_new_lines + 1, std::vector(text_line.size(), PaletteIndex::Default));
+            if (std::next(it) == remaining_lines.end()) {
+                last_line_size = text_line.size();
+                auto &last_line = Lines[start.L + num_new_lines + 1];
+                auto &last_palette_line = PaletteIndices[start.L + num_new_lines + 1];
+                std::ranges::copy(original_line_ending, std::back_inserter(last_line));
+                std::fill_n(std::back_inserter(last_palette_line), original_line_ending.size(), PaletteIndex::Default);
+            }
+            ++num_new_lines;
         }
+
+        auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() >= start.L; });
+        for (auto &c : cursors_below) c.Set({c.Line() + num_new_lines, c.CharIndex()});
+
+        insert_end = {start.L + num_new_lines, last_line_size};
     }
 
-    OnTextChanged(start_byte, start_byte, ToByteIndex(end));
-    return end;
+    OnTextChanged(start_byte, start_byte, start_byte + text.size());
+    return insert_end;
 }
 
 void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor) {
     if (end <= start) return;
 
+    auto &start_line = Lines[start.L], &end_line = Lines[end.L];
+    auto &start_palette_line = PaletteIndices[start.L], &end_palette_line = PaletteIndices[end.L];
     const uint start_byte = ToByteIndex(start), old_end_byte = ToByteIndex(end);
-
     if (start.L == end.L) {
-        RemoveGlyphs(start, {Lines[start.L].cbegin() + start.C, Lines[start.L].cbegin() + end.C});
-    } else {
-        RemoveGlyphs(start, {Lines[start.L].cbegin() + start.C, Lines[start.L].cend()}); // from start to end of line
-        RemoveGlyphs({end.L, 0}, {Lines[end.L].cbegin(), Lines[end.L].cbegin() + end.C}); // from beginning of line to end
-        AddGlyphs({start.L, uint(Lines[start.L].size())}, Lines[end.L]);
+        start_line.erase(start_line.begin() + start.C, start_line.begin() + end.C);
+        start_palette_line.erase(start_palette_line.begin() + start.C, start_palette_line.begin() + end.C);
 
-        // Move up all cursors after the last removed line.
-        if (const uint line_count = end.L - start.L; line_count > 0) {
-            auto cursors_below = Cursors | filter([&](const auto &c) { return (!exclude_cursor || c != *exclude_cursor) && c.Line() >= end.L; });
-            for (auto &c : cursors_below) c.MoveLines(*this, -line_count, false);
-        }
+        auto cursors_to_right = Cursors | filter([&start](const auto &c) { return !c.IsRange() && c.IsRightOf(start); });
+        for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() - (end.C - start.C))});
+    } else {
+        start_line.resize(start.C), start_palette_line.resize(start.C);
+        end_line.erase(end_line.begin(), end_line.begin() + end.C), end_palette_line.erase(end_palette_line.begin(), end_palette_line.begin() + end.C);
+        std::ranges::copy(end_line, std::back_inserter(start_line));
+        std::ranges::copy(end_palette_line, std::back_inserter(start_palette_line));
 
         Lines.erase(Lines.begin() + start.L + 1, Lines.begin() + end.L + 1);
         PaletteIndices.erase(PaletteIndices.begin() + start.L + 1, PaletteIndices.begin() + end.L + 1);
+
+        auto cursors_below = Cursors | filter([&](const auto &c) { return (!exclude_cursor || c != *exclude_cursor) && c.Line() >= end.L; });
+        for (auto &c : cursors_below) c.Set({c.Line() - (end.L - start.L), c.CharIndex()});
     }
+
     OnTextChanged(start_byte, old_end_byte, start_byte);
 }
 

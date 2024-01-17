@@ -425,14 +425,10 @@ private:
     void ToggleLineComment();
     void RemoveCurrentLines();
 
-    LineChar InsertTextAt(LineChar, const std::string &); // Returns insertion end.
+    LineChar InsertText(const std::string &, LineChar); // Returns insertion end.
     void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
     void DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &, UndoRecord &);
-
-    void AddOrRemoveGlyphs(LineChar lc, std::span<const char>, bool is_add);
-    void AddGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, true); }
-    void RemoveGlyphs(LineChar lc, std::span<const char> glyphs) { AddOrRemoveGlyphs(std::move(lc), glyphs, false); }
 
     void HandleKeyboardInputs();
     void HandleMouseInputs();

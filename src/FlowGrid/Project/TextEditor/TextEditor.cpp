@@ -86,11 +86,13 @@ TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(s
     SetText(string(text));
     SetLanguage(language_id);
     SetPalette(DefaultPaletteId);
+    Record();
 }
 TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<CodeParser>()) {
     SetText(FileIO::read(file_path));
     SetFilePath(file_path);
     SetPalette(DefaultPaletteId);
+    Record();
 }
 
 TextEditor::~TextEditor() {
@@ -119,12 +121,11 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
 
     // Read until the end of the line.
     *bytes_read = line.size() - position.column;
-    return line.data() + position.column;
+    return &line.front() + position.column;
 }
 
 void TextEditor::Parse() {
-    TSInput input{this, TSReadText, TSInputEncodingUTF8};
-    Tree = ts_parser_parse(Parser->get(), Tree, std::move(input));
+    Tree = ts_parser_parse(Parser->get(), Tree, {this, TSReadText, TSInputEncodingUTF8});
 }
 
 string TextEditor::GetSyntaxTreeSExp() const {
@@ -139,6 +140,7 @@ void TextEditor::Highlight() {
 
     Parse();
     const auto &palette = GetLanguage().Palette;
+    auto palette_indices_transient = PaletteIndices.transient();
     TSNode root_node = ts_tree_root_node(Tree);
     TSTreeCursor cursor = ts_tree_cursor_new(root_node);
     while (true) {
@@ -161,7 +163,7 @@ void TextEditor::Highlight() {
                     b.column = 0;
                     continue;
                 }
-                PaletteIndices[b.row][b.column] = palette_index;
+                palette_indices_transient.set(b.row, palette_indices_transient[b.row].set(b.column, palette_index));
                 ++b.column;
             }
         }
@@ -180,6 +182,7 @@ void TextEditor::Highlight() {
         while (!ts_tree_cursor_goto_next_sibling(&cursor)) {
             if (!ts_tree_cursor_goto_parent(&cursor)) {
                 ts_tree_cursor_delete(&cursor);
+                PaletteIndices = palette_indices_transient.persistent();
                 return;
             }
         }
@@ -207,7 +210,7 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     LanguageId = language_id;
     Parser->SetLanguage(GetLanguage().TsLanguage);
     Tree = nullptr;
-    TextChanged = true;
+    Highlight();
 }
 
 void TextEditor::SetNumTabSpaces(uint tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
@@ -233,13 +236,14 @@ void TextEditor::Copy() {
 void TextEditor::Cut() {
     if (!Cursors.AnyRanged()) return;
 
-    UndoRecord u{Cursors};
+    BeforeCursors = Cursors;
     Copy();
-    for (auto &c : reverse_view(Cursors)) DeleteSelection(c, u);
-    AddUndo(u);
+    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+    Record();
 }
 
 void TextEditor::Paste() {
+    BeforeCursors = Cursors;
     // Check if we should do multicursor paste.
     const string clip_text = ImGui::GetClipboardText();
     bool can_paste_to_multiple_cursors = false;
@@ -255,49 +259,64 @@ void TextEditor::Paste() {
         clip_text_lines.back().second = clip_text.length();
         can_paste_to_multiple_cursors = clip_text_lines.size() == Cursors.size() + 1;
     }
+    if (clip_text.empty()) return;
 
-    if (clip_text.length() > 0) {
-        UndoRecord u{Cursors};
-        for (auto &c : reverse_view(Cursors)) DeleteSelection(c, u);
-
-        for (int c = Cursors.size() - 1; c > -1; --c) {
-            auto &cursor = Cursors[c];
-            const string insert_text = can_paste_to_multiple_cursors ? clip_text.substr(clip_text_lines[c].first, clip_text_lines[c].second - clip_text_lines[c].first) : clip_text;
-            InsertTextAtCursor(insert_text, cursor, u);
-        }
-
-        AddUndo(u);
+    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+    for (int c = Cursors.size() - 1; c > -1; --c) {
+        auto &cursor = Cursors[c];
+        const string insert_text = can_paste_to_multiple_cursors ? clip_text.substr(clip_text_lines[c].first, clip_text_lines[c].second - clip_text_lines[c].first) : clip_text;
+        InsertTextAtCursor(insert_text, cursor);
     }
+    Record();
 }
 
-void TextEditor::Undo(uint steps) {
-    while (CanUndo() && steps-- > 0) UndoBuffer[--UndoIndex].Undo(this);
+void TextEditor::Undo() {
+    if (!CanUndo()) return;
+
+    const auto before_cursors = History[HistoryIndex].BeforeCursors;
+    const auto restore = History[--HistoryIndex];
+    Lines = restore.Lines;
+    PaletteIndices = restore.PaletteIndices;
+    Cursors = before_cursors;
+    Tree = restore.Tree;
 }
-void TextEditor::Redo(uint steps) {
-    while (CanRedo() && steps-- > 0) UndoBuffer[UndoIndex++].Redo(this);
+void TextEditor::Redo() {
+    if (!CanRedo()) return;
+
+    const auto restore = History[++HistoryIndex];
+    Lines = restore.Lines;
+    PaletteIndices = restore.PaletteIndices;
+    Cursors = restore.Cursors;
+    Tree = restore.Tree;
 }
 
 void TextEditor::SetText(const string &text) {
     const uint old_end_byte = ToByteIndex(EndLC());
-    Lines.clear();
-    PaletteIndices.clear();
-    Lines.push_back({});
-    PaletteIndices.push_back({});
-    for (auto chr : text) {
-        if (chr == '\r') continue; // Ignore the carriage return character.
-        if (chr == '\n') {
-            Lines.push_back({});
-            PaletteIndices.push_back({});
+    immer::flex_vector_transient<LineT> transient_lines{};
+    immer::flex_vector_transient<PaletteLineT> transient_palette_lines{};
+    immer::flex_vector_transient<char> current_line{};
+    immer::flex_vector_transient<PaletteIndex> current_palette_line{};
+    for (auto ch : text) {
+        if (ch == '\r') continue; // Ignore the carriage return character.
+        if (ch == '\n') {
+            transient_lines.push_back(current_line.persistent());
+            transient_palette_lines.push_back(current_palette_line.persistent());
+            current_line = {};
+            current_palette_line = {};
         } else {
-            Lines.back().emplace_back(chr);
-            PaletteIndices.back().emplace_back(PaletteIndex::Default);
+            current_line.push_back(ch);
+            current_palette_line.push_back(PaletteIndex::Default);
         }
     }
+    transient_lines.push_back(current_line.persistent());
+    transient_palette_lines.push_back(current_palette_line.persistent());
+    Lines = transient_lines.persistent();
+    PaletteIndices = transient_palette_lines.persistent();
 
     ScrollToTop = true;
 
-    UndoBuffer.clear();
-    UndoIndex = 0;
+    History = {};
+    HistoryIndex = -1;
 
     OnTextChanged(0, old_end_byte, ToByteIndex(EndLC()));
 }
@@ -307,9 +326,11 @@ void TextEditor::SetFilePath(const fs::path &file_path) {
     SetLanguage(!extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None);
 }
 
-void TextEditor::AddUndoOp(UndoRecord &record, UndoOperationType type, LineChar start, LineChar end) {
-    auto text = GetText(start, end);
-    if (!text.empty()) record.Operations.emplace_back(std::move(text), std::move(start), std::move(end), type);
+void TextEditor::Record() {
+    if (!History.empty() && History.back().Lines == Lines) return;
+
+    History = History.take(++HistoryIndex);
+    History = History.push_back({Lines, PaletteIndices, Cursors, BeforeCursors, Tree});
 }
 
 string TextEditor::GetText(LineChar start, LineChar end) const {
@@ -417,46 +438,8 @@ std::optional<std::pair<TextEditor::Coords, TextEditor::Coords>> TextEditor::Cur
     return {};
 }
 
-void TextEditor::UndoRecord::Undo(TextEditor *editor) {
-    editor->Cursors = After; // todo this needs work
-    for (const auto &op : reverse_view(Operations)) {
-        switch (op.Type) {
-            case UndoOperationType::Delete: {
-                editor->InsertText(op.Text, op.Start);
-                break;
-            }
-            case UndoOperationType::Add: {
-                editor->DeleteRange(op.Start, op.End);
-                break;
-            }
-        }
-    }
-    editor->Cursors = Before;
-}
-
-void TextEditor::UndoRecord::Redo(TextEditor *editor) {
-    editor->Cursors = Before;
-    for (const auto &op : Operations) {
-        switch (op.Type) {
-            case UndoOperationType::Delete: {
-                editor->DeleteRange(op.Start, op.End);
-                break;
-            }
-            case UndoOperationType::Add: {
-                editor->InsertText(op.Text, op.Start);
-                break;
-            }
-        }
-    }
-    editor->Cursors = After;
-}
-
-void TextEditor::InsertTextAtCursor(const string &text, Cursor &c, UndoRecord &u) {
-    if (text.empty()) return;
-
-    const auto start = c.Min();
-    c.Set(InsertText(text, start));
-    u.Operations.emplace_back(text, start, c.GetEnd(), UndoOperationType::Add);
+void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
+    if (!text.empty()) c.Set(InsertText(text, c.Min()));
 }
 
 void TextEditor::LinesIter::MoveRight() {
@@ -496,7 +479,7 @@ uint TextEditor::NumStartingSpaceColumns(uint li) const {
     return column;
 }
 
-void TextEditor::Cursor::MoveLines(const TextEditor &editor, int amount,  bool select, bool move_start, bool move_end) {
+void TextEditor::Cursor::MoveLines(const TextEditor &editor, int amount, bool select, bool move_start, bool move_end) {
     if (!move_start && !move_end) return;
 
     // Track the cursor's column to return back to it after moving to a line long enough.
@@ -549,8 +532,8 @@ void TextEditor::Cursors::MoveEnd(const TextEditor &editor, bool select) {
 void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
     if (ch == '\t' && Cursors.AnyMultiline()) return ChangeCurrentLinesIndentation(!is_shift);
 
-    UndoRecord u{Cursors};
-    for (auto &c : reverse_view(Cursors)) DeleteSelection(c, u);
+    BeforeCursors = Cursors;
+    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
 
     // Order is important here for typing '\n' in the same line with multiple cursors.
     for (auto &c : reverse_view(Cursors)) {
@@ -570,45 +553,40 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
             insert_text = buf;
         }
 
-        InsertTextAtCursor(insert_text, c, u);
+        InsertTextAtCursor(insert_text, c);
     }
 
-    AddUndo(u);
+    Record();
 }
 
 void TextEditor::Backspace(bool is_word_mode) {
-    if (Cursors.AnyRanged()) {
-        Delete(is_word_mode);
-    } else {
-        auto before_state = Cursors;
+    BeforeCursors = Cursors;
+    if (!Cursors.AnyRanged()) {
         Cursors.MoveChar(*this, false, true, is_word_mode);
         // Can't do backspace if any cursor is at {0,0}.
         if (!Cursors.AllRanged()) {
-            if (Cursors.AnyRanged()) Cursors.MoveChar(*this, true);
+            if (Cursors.AnyRanged()) Cursors.MoveChar(*this, true); // Restore cursors.
             return;
         }
         OnCursorPositionChanged(); // Might combine cursors.
-        Delete(is_word_mode, &before_state);
     }
+    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+    Record();
 }
 
-void TextEditor::Delete(bool is_word_mode, const struct Cursors *editor_state) {
-    if (Cursors.AnyRanged()) {
-        UndoRecord u{editor_state == nullptr ? Cursors : *editor_state};
-        for (auto &c : reverse_view(Cursors)) DeleteSelection(c, u);
-        AddUndo(u);
-    } else {
-        auto before_state = Cursors;
+void TextEditor::Delete(bool is_word_mode) {
+    BeforeCursors = Cursors;
+    if (!Cursors.AnyRanged()) {
         Cursors.MoveChar(*this, true, true, is_word_mode);
         // Can't do delete if any cursor is at the end of the last line.
         if (!Cursors.AllRanged()) {
-            if (Cursors.AnyRanged()) Cursors.MoveChar(*this, false);
+            if (Cursors.AnyRanged()) Cursors.MoveChar(*this, false); // Restore cursors.
             return;
         }
-
         OnCursorPositionChanged(); // Might combine cursors.
-        Delete(is_word_mode, &before_state);
     }
+    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+    Record();
 }
 
 void TextEditor::SetSelection(LineChar start, LineChar end, Cursor &c) {
@@ -681,7 +659,7 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
 }
 
 void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
-    UndoRecord u{Cursors};
+    BeforeCursors = Cursors;
     for (const auto &c : reverse_view(Cursors)) {
         for (uint li = c.Min().L; li <= c.Max().L; ++li) {
             // Check if selection ends at line start.
@@ -689,29 +667,39 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
 
             const auto &line = Lines[li];
             if (increase) {
-                if (!line.empty()) {
-                    const LineChar start{li, 0};
-                    u.Operations.emplace_back("\t", start, InsertText("\t", start), UndoOperationType::Add);
-                }
+                if (!line.empty()) InsertText("\t", {li, 0});
             } else {
                 int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
                 while (ci > -1 && isblank(line[ci])) --ci;
                 const bool only_space_chars_found = ci == -1;
                 if (only_space_chars_found) {
                     const LineChar start{li, 0}, end = {li, GetCharIndex(line, NumTabSpaces)};
-                    const auto &text = GetText(start, end);
-                    u.Operations.emplace_back(text, start, end, UndoOperationType::Delete);
                     DeleteRange(start, end);
                 }
             }
         }
     }
+    Record();
+}
 
-    AddUndo(u);
+void TextEditor::SwapLines(uint li1, uint li2) {
+    if (li1 == li2) return;
+
+    auto transient_lines = Lines.transient();
+    auto tmp_line = transient_lines[li1];
+    transient_lines.set(li1, transient_lines[li2]);
+    transient_lines.set(li2, tmp_line);
+    Lines = transient_lines.persistent();
+
+    auto transient_palette_lines = PaletteIndices.transient();
+    auto tmp_palette_line = transient_palette_lines[li1];
+    transient_palette_lines.set(li1, transient_palette_lines[li2]);
+    transient_palette_lines.set(li2, tmp_palette_line);
+    PaletteIndices = transient_palette_lines.persistent();
 }
 
 void TextEditor::MoveCurrentLines(bool up) {
-    UndoRecord u{Cursors};
+    BeforeCursors = Cursors;
     std::set<uint> affected_lines;
     uint min_li = std::numeric_limits<uint>::max(), max_li = std::numeric_limits<uint>::min();
     for (const auto &c : Cursors) {
@@ -726,31 +714,20 @@ void TextEditor::MoveCurrentLines(bool up) {
     }
     if ((up && min_li == 0) || (!up && max_li == Lines.size() - 1)) return; // Can't move up/down anymore.
 
-    const uint start_li = min_li - (up ? 1 : 0), end_li = max_li + (up ? 0 : 1);
-    const LineChar start{start_li, 0};
-    AddUndoOp(u, UndoOperationType::Delete, start, LineMaxLC(end_li));
     if (up) {
-        for (const uint li : affected_lines) {
-            std::swap(Lines[li - 1], Lines[li]);
-            std::swap(PaletteIndices[li - 1], PaletteIndices[li]);
-        }
+        for (const uint li : affected_lines) SwapLines(li - 1, li);
     } else {
-        for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) {
-            std::swap(Lines[*it + 1], Lines[*it]);
-            std::swap(PaletteIndices[*it + 1], PaletteIndices[*it]);
-        }
+        for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) SwapLines(*it, *it + 1);
     }
     Cursors.MoveLines(*this, up ? -1 : 1, true, true, true);
 
-    // No need to set CursorPositionChanged as cursors will remain sorted.
-    AddUndoOp(u, UndoOperationType::Add, start, LineMaxLC(end_li));
-    AddUndo(u);
+    Record();
 }
 
 static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
     if (c2.size() + c2_offset < c1.size()) return false;
 
-    const auto begin = c2.cbegin() + c2_offset;
+    const auto begin = c2.begin() + c2_offset;
     return std::ranges::equal(c1, subrange(begin, begin + c1.size()));
 }
 
@@ -758,6 +735,7 @@ void TextEditor::ToggleLineComment() {
     const string &comment = GetLanguage().SingleLineComment;
     if (comment.empty()) return;
 
+    BeforeCursors = Cursors;
     static const auto FindFirstNonSpace = [](const LineT &line) {
         return std::distance(line.begin(), std::ranges::find_if_not(line, isblank));
     };
@@ -769,31 +747,27 @@ void TextEditor::ToggleLineComment() {
         }
     }
 
-    UndoRecord u{Cursors};
     const bool should_add_comment = any_of(affected_lines, [&](uint li) {
         return !Equals(comment, Lines[li], FindFirstNonSpace(Lines[li]));
     });
     for (uint li : affected_lines) {
         if (should_add_comment) {
-            const LineChar line_start{li, 0};
-            u.Operations.emplace_back(comment + ' ', line_start, InsertText(comment + ' ', line_start), UndoOperationType::Add);
+            InsertText(comment + ' ', {li, 0});
         } else {
             const auto &line = Lines[li];
             const uint ci = FindFirstNonSpace(line);
             uint comment_ci = ci + comment.length();
             if (comment_ci < line.size() && line[comment_ci] == ' ') ++comment_ci;
 
-            const LineChar start = {li, ci}, end = {li, comment_ci};
-            AddUndoOp(u, UndoOperationType::Delete, start, end);
-            DeleteRange(start, end);
+            DeleteRange({li, ci}, {li, comment_ci});
         }
     }
-    AddUndo(u);
+    Record();
 }
 
 void TextEditor::RemoveCurrentLines() {
-    UndoRecord u{Cursors};
-    for (auto &c : reverse_view(Cursors)) DeleteSelection(c, u);
+    BeforeCursors = Cursors;
+    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
     Cursors.MoveStart();
     OnCursorPositionChanged(); // Might combine cursors.
 
@@ -813,12 +787,9 @@ void TextEditor::RemoveCurrentLines() {
             to_delete_end = LineMaxLC(li);
             c.Set({li, 0});
         }
-
-        AddUndoOp(u, UndoOperationType::Delete, to_delete_start, to_delete_end);
         DeleteRange(to_delete_start, to_delete_end);
     }
-
-    AddUndo(u);
+    Record();
 }
 
 TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li) const {
@@ -897,35 +868,34 @@ TextEditor::LineChar TextEditor::InsertText(const string &text, LineChar start) 
     if (text.empty()) return start;
 
     const uint start_byte = ToByteIndex(start);
-    auto &line = Lines[start.L];
-    auto &palette_line = PaletteIndices[start.L];
+    auto line = Lines[start.L];
+    auto palette_line = PaletteIndices[start.L];
     LineChar insert_end;
     if (!text.contains('\n')) {
         insert_end = {start.L, uint(start.C + text.size())};
 
-        line.insert(line.begin() + start.C, text.begin(), text.end());
-        palette_line.insert(palette_line.begin() + start.C, text.size(), PaletteIndex::Default);
+        Lines = Lines.set(start.L, line.insert(start.C, immer::flex_vector<char>(text.begin(), text.end())));
+        PaletteIndices = PaletteIndices.set(start.L, palette_line.insert(start.C, immer::flex_vector(text.size(), PaletteIndex::Default)));
 
         auto cursors_to_right = Cursors | filter([&start](const auto &c) { return c.IsRightOf(start); });
         for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() + text.size())});
     } else {
         auto text_lines = std::views::split(text, '\n');
-        const string original_line_ending = line | std::views::drop(start.C) | ranges::to<string>;
-        line.resize(start.C), palette_line.resize(start.C);
-        std::ranges::copy(text_lines.front(), std::back_inserter(line));
-        std::fill_n(std::back_inserter(palette_line), text_lines.front().size(), PaletteIndex::Default);
+        const auto original_line_ending = line.drop(start.C) | ranges::to<LineT>;
+        Lines = Lines.set(start.L, line.take(start.C) + (text_lines.front() | ranges::to<LineT>));
+        PaletteIndices = PaletteIndices.set(start.L, palette_line.take(start.C) + immer::flex_vector(text_lines.front().size(), PaletteIndex::Default));
 
         uint num_new_lines = 0, last_line_size = 0;
         auto remaining_lines = text_lines | std::views::drop(1);
         for (auto it = remaining_lines.begin(); it != remaining_lines.end(); ++it) {
             auto text_line = *it;
-            Lines.insert(Lines.begin() + start.L + num_new_lines + 1, text_line | ranges::to<LineT>);
-            PaletteIndices.insert(PaletteIndices.begin() + start.L + num_new_lines + 1, std::vector(text_line.size(), PaletteIndex::Default));
+            Lines = Lines.insert(start.L + num_new_lines + 1, text_line | ranges::to<LineT>);
+            PaletteIndices = PaletteIndices.insert(start.L + num_new_lines + 1, immer::flex_vector(text_line.size(), PaletteIndex::Default));
             if (std::next(it) == remaining_lines.end()) {
                 last_line_size = text_line.size();
-                auto &last_line = Lines[start.L + num_new_lines + 1];
+                const uint last_line_i = start.L + num_new_lines + 1;
+                Lines = Lines.set(last_line_i, Lines[last_line_i] + original_line_ending);
                 auto &last_palette_line = PaletteIndices[start.L + num_new_lines + 1];
-                std::ranges::copy(original_line_ending, std::back_inserter(last_line));
                 std::fill_n(std::back_inserter(last_palette_line), original_line_ending.size(), PaletteIndex::Default);
             }
             ++num_new_lines;
@@ -944,23 +914,24 @@ TextEditor::LineChar TextEditor::InsertText(const string &text, LineChar start) 
 void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor) {
     if (end <= start) return;
 
-    auto &start_line = Lines[start.L], &end_line = Lines[end.L];
-    auto &start_palette_line = PaletteIndices[start.L], &end_palette_line = PaletteIndices[end.L];
+    auto start_line = Lines[start.L], end_line = Lines[end.L];
+    auto start_palette_line = PaletteIndices[start.L], end_palette_line = PaletteIndices[end.L];
     const uint start_byte = ToByteIndex(start), old_end_byte = ToByteIndex(end);
     if (start.L == end.L) {
-        start_line.erase(start_line.begin() + start.C, start_line.begin() + end.C);
-        start_palette_line.erase(start_palette_line.begin() + start.C, start_palette_line.begin() + end.C);
+        Lines = Lines.set(start.L, start_line.erase(start.C, end.C));
+        PaletteIndices = PaletteIndices.set(start.L, start_palette_line.erase(start.C, end.C));
 
         auto cursors_to_right = Cursors | filter([&start](const auto &c) { return !c.IsRange() && c.IsRightOf(start); });
         for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() - (end.C - start.C))});
     } else {
-        start_line.resize(start.C), start_palette_line.resize(start.C);
-        end_line.erase(end_line.begin(), end_line.begin() + end.C), end_palette_line.erase(end_palette_line.begin(), end_palette_line.begin() + end.C);
-        std::ranges::copy(end_line, std::back_inserter(start_line));
-        std::ranges::copy(end_palette_line, std::back_inserter(start_palette_line));
+        end_line = end_line.drop(end.C);
+        Lines = Lines.set(end.L, end_line);
+        end_palette_line = end_palette_line.drop(end.C);
+        Lines = Lines.set(start.L, start_line.take(start.C) + end_line);
+        PaletteIndices = PaletteIndices.set(start.L, start_palette_line.take(start.C) + end_palette_line);
 
-        Lines.erase(Lines.begin() + start.L + 1, Lines.begin() + end.L + 1);
-        PaletteIndices.erase(PaletteIndices.begin() + start.L + 1, PaletteIndices.begin() + end.L + 1);
+        Lines = Lines.erase(start.L + 1, end.L + 1);
+        PaletteIndices = PaletteIndices.erase(start.L + 1, end.L + 1);
 
         auto cursors_below = Cursors | filter([&](const auto &c) { return (!exclude_cursor || c != *exclude_cursor) && c.Line() >= end.L; });
         for (auto &c : cursors_below) c.Set({c.Line() - (end.L - start.L), c.CharIndex()});
@@ -969,14 +940,12 @@ void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude
     OnTextChanged(start_byte, old_end_byte, start_byte);
 }
 
-void TextEditor::DeleteSelection(Cursor &c, UndoRecord &record) {
+void TextEditor::DeleteSelection(Cursor &c) {
     if (!c.IsRange()) return;
 
-    const auto start = c.Min(), end = c.Max();
-    AddUndoOp(record, UndoOperationType::Delete, start, end);
     // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
-    DeleteRange(start, end, &c);
-    c.Set(start);
+    DeleteRange(c.Min(), c.Max(), &c);
+    c.Set(c.Min());
 }
 
 void TextEditor::UpdateViewVariables(float scroll_x, float scroll_y) {
@@ -1004,7 +973,7 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
         edit.new_end_byte = new_end_byte;
         ts_tree_edit(Tree, &edit);
     }
-    TextChanged = true;
+    Highlight();
 }
 
 void TextEditor::OnCursorPositionChanged() {
@@ -1012,15 +981,6 @@ void TextEditor::OnCursorPositionChanged() {
     MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
 
     if (!IsDraggingSelection) Cursors.SortAndMerge();
-}
-
-void TextEditor::AddUndo(UndoRecord &record) {
-    if (record.Operations.empty()) return;
-
-    record.After = Cursors;
-    UndoBuffer.resize(UndoIndex + 1);
-    UndoBuffer.back() = record;
-    ++UndoIndex;
 }
 
 static bool IsPressed(ImGuiKey key) {
@@ -1218,11 +1178,6 @@ bool TextEditor::Render(bool is_parent_focused) {
     if (is_focused) HandleKeyboardInputs();
     HandleMouseInputs();
 
-    if (TextChanged) {
-        Highlight();
-        TextChanged = false;
-    }
-
     /* Compute CharAdvance regarding to scaled font size (Ctrl + mouse wheel)*/
     const float font_width = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
     const float font_height = ImGui::GetTextLineHeightWithSpacing();
@@ -1410,19 +1365,19 @@ void TextEditor::DebugPanel() {
         for (uint i = 0; i < Lines.size(); i++) Text("%lu", Lines[i].size());
     }
     if (CollapsingHeader("Undo")) {
-        Text("Number of records: %lu", UndoBuffer.size());
-        Text("Undo index: %d", UndoIndex);
-        for (size_t i = 0; i < UndoBuffer.size(); i++) {
-            const auto &record = UndoBuffer[i];
+        Text("Number of records: %lu", History.size());
+        Text("Undo index: %d", HistoryIndex);
+        for (size_t i = 0; i < History.size(); i++) {
+            // const auto &record = History[i];
             if (CollapsingHeader(std::to_string(i).c_str())) {
                 TextUnformatted("Operations");
-                for (const auto &operation : record.Operations) {
-                    TextUnformatted(operation.Text.c_str());
-                    TextUnformatted(operation.Type == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
-                    Text("Start: %d", operation.Start.L);
-                    Text("End: %d", operation.End.L);
-                    Separator();
-                }
+                // for (const auto &operation : record.Operations) {
+                //     TextUnformatted(operation.Text.c_str());
+                //     TextUnformatted(operation.Type == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
+                //     Text("Start: %d", operation.Start.L);
+                //     Text("End: %d", operation.End.L);
+                //     Separator();
+                // }
             }
         }
     }

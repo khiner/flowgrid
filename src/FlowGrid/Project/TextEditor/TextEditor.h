@@ -9,6 +9,11 @@
 #include <unordered_set>
 #include <vector>
 
+#include <immer/algorithm.hpp>
+#include <immer/flex_vector.hpp>
+#include <immer/flex_vector_transient.hpp>
+#include <immer/vector.hpp>
+
 #include "imgui.h"
 
 #include "LanguageID.h"
@@ -94,7 +99,7 @@ struct TextEditor {
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
     // Tabs are counted as [1..NumTabSpaces] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
-    // For example, `Coords{1, 5}` represents the character 'B' in the line "\tABC", when NumTabSpaces = 4, since it is rendered as "    ABC" on the screen.
+    // For example, `Coords{1, 5}` represents the character 'B' in the line "\tABC", when NumTabSpaces = 4, since it is rendered as "    ABC".
     struct Coords {
         uint L{0}, C{0}; // Line, Column
 
@@ -120,8 +125,10 @@ struct TextEditor {
         bool operator!=(const LineChar &) const = default;
     };
 
-    using LineT = std::vector<char>;
-    using LinesT = std::vector<LineT>;
+    using LineT = immer::flex_vector<char>;
+    using LinesT = immer::flex_vector<LineT>;
+    using PaletteLineT = immer::flex_vector<PaletteIndex>;
+    using PaletteLinesT = immer::flex_vector<PaletteLineT>;
 
     uint LineCount() const { return Lines.size(); }
     const LineT &GetLine(uint li) const { return Lines[li]; }
@@ -140,10 +147,10 @@ struct TextEditor {
     void Copy();
     void Cut();
     void Paste();
-    void Undo(uint steps = 1);
-    void Redo(uint steps = 1);
-    bool CanUndo() const { return !ReadOnly && UndoIndex > 0; }
-    bool CanRedo() const { return !ReadOnly && UndoIndex < uint(UndoBuffer.size()); }
+    void Undo();
+    void Redo();
+    bool CanUndo() const { return !ReadOnly && HistoryIndex > 0; }
+    bool CanRedo() const { return !ReadOnly && History.size() > 1 && HistoryIndex < uint(History.size() - 1); }
 
     void SetText(const std::string &);
     void SetFilePath(const fs::path &);
@@ -218,17 +225,6 @@ private:
 
     struct Cursor {
         Cursor() = default;
-        Cursor(const Cursor &cursor) {
-            *this = cursor;
-        }
-        // Copy everything but `Modified` fields.
-        Cursor &operator=(const Cursor &other) {
-            Start = other.Start;
-            End = other.End;
-            StartColumn = other.StartColumn;
-            EndColumn = other.EndColumn;
-            return *this;
-        }
 
         Cursor(LineChar lc) : Start(lc), End(lc) {}
         Cursor(LineChar start, LineChar end) : Start(start), End(end) {}
@@ -339,6 +335,7 @@ private:
 
         // Returns the range of all edited cursor starts/ends since the last call to `ClearEdited()`.
         // Used for updating the scroll range.
+        // todo need to update the approach here after switching to persistent undo.
         std::optional<std::pair<Coords, Coords>> GetEditedCoordRange(const TextEditor &);
 
     private:
@@ -346,38 +343,9 @@ private:
         uint LastAddedIndex{0};
     };
 
-    enum class UndoOperationType {
-        Add,
-        Delete,
-    };
-    struct UndoOperation {
-        std::string Text;
-        LineChar Start, End;
-        UndoOperationType Type;
-    };
-
-    struct UndoRecord {
-        UndoRecord() {}
-        UndoRecord(const std::vector<UndoOperation> &ops, const Cursors &before, const Cursors &after)
-            : Operations(ops), Before(before), After(after) {
-            // for (const UndoOperation &o : Operations) assert(o.Start <= o.End);
-        }
-        UndoRecord(const Cursors &before) : Before(before) {}
-        UndoRecord(std::vector<UndoOperation> &&ops, Cursors &&before, Cursors &&after)
-            : Operations(std::move(ops)), Before(std::move(before)), After(std::move(after)) {}
-        UndoRecord(Cursors &&before) : Before(std::move(before)) {}
-        ~UndoRecord() = default;
-
-        void Undo(TextEditor *);
-        void Redo(TextEditor *);
-
-        std::vector<UndoOperation> Operations{};
-        Cursors Before{}, After{};
-    };
-
     void OnCursorPositionChanged();
 
-    void AddUndoOp(UndoRecord &, UndoOperationType, LineChar start, LineChar end);
+    void Record(); // Every `Record` should be paired with a `BeforeCursors = Cursors`.
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
     ImU32 GetColor(LineChar lc) const { return GetColor(PaletteIndices[lc.L][lc.C]); }
@@ -406,7 +374,7 @@ private:
 
     void EnterChar(ImWchar, bool is_shift);
     void Backspace(bool is_word_mode = false);
-    void Delete(bool is_word_mode = false, const TextEditor::Cursors *editor_state = nullptr);
+    void Delete(bool is_word_mode = false);
 
     void SetSelection(LineChar start, LineChar end, Cursor &);
     void AddCursorForNextOccurrence(bool case_sensitive = true);
@@ -421,11 +389,12 @@ private:
     void MoveCurrentLines(bool up);
     void ToggleLineComment();
     void RemoveCurrentLines();
+    void SwapLines(uint li1, uint li2);
 
     LineChar InsertText(const std::string &, LineChar); // Returns insertion end.
-    void InsertTextAtCursor(const std::string &, Cursor &, UndoRecord &);
+    void InsertTextAtCursor(const std::string &, Cursor &);
     void DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor = nullptr);
-    void DeleteSelection(Cursor &, UndoRecord &);
+    void DeleteSelection(Cursor &);
 
     void HandleKeyboardInputs();
     void HandleMouseInputs();
@@ -443,8 +412,6 @@ private:
     **/
     void OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte);
 
-    void AddUndo(UndoRecord &);
-
     bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
     bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
@@ -458,11 +425,8 @@ private:
     const PaletteT &GetPalette() const;
 
     LinesT Lines{LineT{}};
-    std::vector<std::vector<PaletteIndex>> PaletteIndices{std::vector<PaletteIndex>{}};
-    Cursors Cursors;
-
-    std::vector<UndoRecord> UndoBuffer;
-    uint UndoIndex{0};
+    PaletteLinesT PaletteIndices{PaletteLineT{}};
+    Cursors Cursors, BeforeCursors;
 
     uint NumTabSpaces{4};
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
@@ -484,5 +448,14 @@ private:
 
     std::unique_ptr<CodeParser> Parser;
     TSTree *Tree{nullptr};
-    bool TextChanged{false};
+
+    struct Snapshot {
+        LinesT Lines;
+        PaletteLinesT PaletteIndices;
+        struct Cursors Cursors, BeforeCursors;
+        TSTree *Tree;
+    };
+    // The first history record is the initial state (after construction), and it's never removed from the history.
+    immer::vector<Snapshot> History;
+    uint HistoryIndex{0};
 };

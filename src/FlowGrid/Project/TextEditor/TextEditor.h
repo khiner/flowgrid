@@ -264,31 +264,28 @@ private:
         bool IsEndEdited() const { return EndModified; }
         void ClearEdited() { StartModified = EndModified = false; }
 
-        void SetStart(LineChar start, std::optional<uint> column = std::nullopt) {
+        void SetStart(LineChar start, std::optional<uint> start_column = std::nullopt) {
             Start = std::move(start);
-            StartColumn = column;
+            StartColumn = start_column;
             EndModified = true; // todo maybe only if changed?
         }
-        void SetEnd(LineChar end, std::optional<uint> column = std::nullopt) {
+        void SetEnd(LineChar end, std::optional<uint> end_column = std::nullopt) {
             End = std::move(end);
-            EndColumn = column;
+            EndColumn = end_column;
             EndModified = true; // todo maybe only if changed?
         }
-        void Set(LineChar lc, std::optional<uint> column = std::nullopt) {
-            SetStart(lc, column);
-            SetEnd(lc, column);
+        void Set(LineChar end, bool set_both, std::optional<uint> end_column = std::nullopt) {
+            if (set_both) SetStart(end, end_column);
+            SetEnd(end, end_column);
         }
-        void Set(LineChar lc, bool both, std::optional<uint> column = std::nullopt) {
-            if (both) SetStart(lc, column);
-            SetEnd(lc, column);
-        }
+        void Set(LineChar lc, std::optional<uint> column = std::nullopt) { Set(lc, true, column); }
         void Set(LineChar start, LineChar end, std::optional<uint> start_column = std::nullopt, std::optional<uint> end_column = std::nullopt) {
             SetStart(start, start_column);
             SetEnd(end, end_column);
         }
 
         void MoveChar(const TextEditor &, bool right = true, bool select = false, bool is_word_mode = false);
-        void MoveLines(const TextEditor &, int amount = 1, bool select = false);
+        void MoveLines(const TextEditor &, int amount = 1, bool select = false, bool move_start = false, bool move_end = true);
 
     private:
         // `Start` and `End` are the the first and second coordinate _set in an interaction_.
@@ -333,7 +330,7 @@ private:
         Cursor &GetLastAdded() { return Cursors[GetLastAddedIndex()]; }
         void SortAndMerge();
 
-        void MoveLines(const TextEditor &, int amount = 1, bool select = false);
+        void MoveLines(const TextEditor &, int amount = 1, bool select = false, bool move_start = false, bool move_end = true);
         void MoveChar(const TextEditor &, bool right = true, bool select = false, bool is_word_mode = false);
         void MoveTop(bool select = false);
         void MoveBottom(const TextEditor &, bool select = false);

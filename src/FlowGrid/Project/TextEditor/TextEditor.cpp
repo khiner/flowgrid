@@ -496,13 +496,26 @@ uint TextEditor::NumStartingSpaceColumns(uint li) const {
     return column;
 }
 
-void TextEditor::Cursor::MoveLines(const TextEditor &editor, int amount, bool select) {
+void TextEditor::Cursor::MoveLines(const TextEditor &editor, int amount,  bool select, bool move_start, bool move_end) {
+    if (!move_start && !move_end) return;
+
     // Track the cursor's column to return back to it after moving to a line long enough.
     // (This is the only place we worry about this.)
-    const uint new_column = EndColumn.value_or(editor.ToCoords(LC()).C);
-    const uint new_li = std::clamp(int(Line()) + amount, 0, int(editor.LineCount() - 1));
-    const uint new_ci = std::min(editor.GetCharIndex({new_li, new_column}), editor.GetLineMaxCharIndex(new_li));
-    Set({new_li, new_ci}, !select, new_column);
+    const uint new_end_column = EndColumn.value_or(editor.ToCoords(End).C);
+    const uint new_end_li = std::clamp(int(End.L) + amount, 0, int(editor.LineCount() - 1));
+    const LineChar new_end{
+        new_end_li,
+        std::min(editor.GetCharIndex({new_end_li, new_end_column}), editor.GetLineMaxCharIndex(new_end_li)),
+    };
+    if (!select) return Set(new_end, true, new_end_column);
+    if (!move_start) return Set(new_end, false, new_end_column);
+    const uint new_start_column = StartColumn.value_or(editor.ToCoords(Start).C);
+    const uint new_start_li = std::clamp(int(Start.L) + amount, 0, int(editor.LineCount() - 1));
+    const LineChar new_start{
+        new_start_li,
+        std::min(editor.GetCharIndex({new_start_li, new_start_column}), editor.GetLineMaxCharIndex(new_start_li)),
+    };
+    Set(new_start, new_end, new_start_column, new_end_column);
 }
 
 void TextEditor::Cursor::MoveChar(const TextEditor &editor, bool right, bool select, bool is_word_mode) {
@@ -514,8 +527,8 @@ void TextEditor::Cursor::MoveChar(const TextEditor &editor, bool right, bool sel
     }
 }
 
-void TextEditor::Cursors::MoveLines(const TextEditor &editor, int amount, bool select) {
-    for (auto &c : Cursors) c.MoveLines(editor, amount, select);
+void TextEditor::Cursors::MoveLines(const TextEditor &editor, int amount, bool select, bool move_start, bool move_end) {
+    for (auto &c : Cursors) c.MoveLines(editor, amount, select, move_start, move_end);
 }
 void TextEditor::Cursors::MoveChar(const TextEditor &editor, bool right, bool select, bool is_word_mode) {
     const bool any_selections = AnyRanged();
@@ -727,7 +740,7 @@ void TextEditor::MoveCurrentLines(bool up) {
             std::swap(PaletteIndices[*it + 1], PaletteIndices[*it]);
         }
     }
-    Cursors.MoveLines(*this, up ? -1 : 1);
+    Cursors.MoveLines(*this, up ? -1 : 1, true, true, true);
 
     // No need to set CursorPositionChanged as cursors will remain sorted.
     AddUndoOp(u, UndoOperationType::Add, start, LineMaxLC(end_li));

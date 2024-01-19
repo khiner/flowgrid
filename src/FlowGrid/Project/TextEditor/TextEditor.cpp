@@ -124,6 +124,20 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     return &line.front() + position.column;
 }
 
+ImU32 TextEditor::GetColor(LineChar lc) const {
+    if (Tree == nullptr) return GetColor(PaletteIndex::Default);
+
+    TSPoint point{lc.L, lc.C};
+    TSNode node = ts_node_descendant_for_point_range(ts_tree_root_node(Tree), point, point);
+    const string type_name = ts_node_type(node);
+    const bool is_error = type_name == "ERROR";
+    const auto &palette = GetLanguage().Palette;
+    const auto palette_index = is_error ? PaletteIndex::Error :
+        palette.contains(type_name)     ? palette.at(type_name) :
+                                          PaletteIndex::Default;
+    return GetColor(palette_index);
+}
+
 void TextEditor::Parse() {
     Tree = ts_parser_parse(Parser->get(), Tree, {this, TSReadText, TSInputEncodingUTF8});
 }
@@ -133,60 +147,6 @@ string TextEditor::GetSyntaxTreeSExp() const {
     string s_expression(c_string);
     free(c_string);
     return s_expression;
-}
-
-void TextEditor::Highlight() {
-    if (Parser->GetLanguage() == nullptr) return;
-
-    Parse();
-    const auto &palette = GetLanguage().Palette;
-    auto palette_indices_transient = PaletteIndices.transient();
-    TSNode root_node = ts_tree_root_node(Tree);
-    TSTreeCursor cursor = ts_tree_cursor_new(root_node);
-    while (true) {
-        TSNode node = ts_tree_cursor_current_node(&cursor);
-        const TSPoint start_point = ts_node_start_point(node), end_point = ts_node_end_point(node);
-        const string type_name = ts_node_type(node);
-        const bool is_error = type_name == "ERROR";
-        // todo Handle node group types other than comments.
-        if (ts_node_child_count(node) == 0 || type_name == "comment" || is_error) {
-            const auto palette_index = is_error ? PaletteIndex::Error :
-                palette.contains(type_name)     ? palette.at(type_name) :
-                                                  PaletteIndex::Default;
-            // if (!palette.contains(type_name)) std::println("Unknown type name: {}", type_name);
-
-            // Add palette index for each char in the node.
-            for (auto b = start_point; b.row < end_point.row || (b.row == end_point.row && b.column < end_point.column);) {
-                if (b.row >= Lines.size()) break;
-                if (b.column >= Lines[b.row].size()) {
-                    ++b.row;
-                    b.column = 0;
-                    continue;
-                }
-                palette_indices_transient.set(b.row, palette_indices_transient[b.row].set(b.column, palette_index));
-                ++b.column;
-            }
-        }
-
-        /**
-          Highlight everything within an error node as an error.
-          E.g. TS will parse an incomplete multi-line comment as an "ERROR" token, with the children:
-            (Operator '/'), (pointer dereference '*'), ... identifiers, etc.
-          Note that most text editors highlight the remainder of incomplete nodes (like unclosed string literals of multi-line comments)
-          as a continuation of the incomplete type (e.g. highlighting all chars in the document after an unclosed multi-line comment in comment color).
-          Rather than doing manual language-specific work to emulate this common behavior, we lean into tree-sitter's focus on accuracy.
-          Highlighting incomplete tokens as errors is a feature!
-        */
-        if (!is_error && ts_tree_cursor_goto_first_child(&cursor)) continue;
-
-        while (!ts_tree_cursor_goto_next_sibling(&cursor)) {
-            if (!ts_tree_cursor_goto_parent(&cursor)) {
-                ts_tree_cursor_delete(&cursor);
-                PaletteIndices = palette_indices_transient.persistent();
-                return;
-            }
-        }
-    }
 }
 
 const TextEditor::PaletteT &TextEditor::GetPalette() const {
@@ -210,7 +170,7 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     LanguageId = language_id;
     Parser->SetLanguage(GetLanguage().TsLanguage);
     Tree = nullptr;
-    Highlight();
+    Parse();
 }
 
 void TextEditor::SetNumTabSpaces(uint tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
@@ -276,42 +236,44 @@ void TextEditor::Undo() {
     const auto before_cursors = History[HistoryIndex].BeforeCursors;
     const auto restore = History[--HistoryIndex];
     Lines = restore.Lines;
-    PaletteIndices = restore.PaletteIndices;
     Cursors = before_cursors;
+    ts_tree_delete(Tree);
     Tree = restore.Tree;
+    Parse();
 }
 void TextEditor::Redo() {
     if (!CanRedo()) return;
 
     const auto restore = History[++HistoryIndex];
     Lines = restore.Lines;
-    PaletteIndices = restore.PaletteIndices;
     Cursors = restore.Cursors;
+    ts_tree_delete(Tree);
     Tree = restore.Tree;
+    Parse();
+}
+
+void TextEditor::Record() {
+    if (!History.empty() && History.back().Lines == Lines) return;
+
+    History = History.take(++HistoryIndex);
+    History = History.push_back({Lines, Cursors, BeforeCursors, Tree == nullptr ? nullptr : ts_tree_copy(Tree)});
 }
 
 void TextEditor::SetText(const string &text) {
     const uint old_end_byte = ToByteIndex(EndLC());
     immer::flex_vector_transient<LineT> transient_lines{};
-    immer::flex_vector_transient<PaletteLineT> transient_palette_lines{};
     immer::flex_vector_transient<char> current_line{};
-    immer::flex_vector_transient<PaletteIndex> current_palette_line{};
     for (auto ch : text) {
         if (ch == '\r') continue; // Ignore the carriage return character.
         if (ch == '\n') {
             transient_lines.push_back(current_line.persistent());
-            transient_palette_lines.push_back(current_palette_line.persistent());
             current_line = {};
-            current_palette_line = {};
         } else {
             current_line.push_back(ch);
-            current_palette_line.push_back(PaletteIndex::Default);
         }
     }
     transient_lines.push_back(current_line.persistent());
-    transient_palette_lines.push_back(current_palette_line.persistent());
     Lines = transient_lines.persistent();
-    PaletteIndices = transient_palette_lines.persistent();
 
     ScrollToTop = true;
 
@@ -324,13 +286,6 @@ void TextEditor::SetText(const string &text) {
 void TextEditor::SetFilePath(const fs::path &file_path) {
     const string extension = file_path.extension();
     SetLanguage(!extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None);
-}
-
-void TextEditor::Record() {
-    if (!History.empty() && History.back().Lines == Lines) return;
-
-    History = History.take(++HistoryIndex);
-    History = History.push_back({Lines, PaletteIndices, Cursors, BeforeCursors, Tree});
 }
 
 string TextEditor::GetText(LineChar start, LineChar end) const {
@@ -690,12 +645,6 @@ void TextEditor::SwapLines(uint li1, uint li2) {
     transient_lines.set(li1, transient_lines[li2]);
     transient_lines.set(li2, tmp_line);
     Lines = transient_lines.persistent();
-
-    auto transient_palette_lines = PaletteIndices.transient();
-    auto tmp_palette_line = transient_palette_lines[li1];
-    transient_palette_lines.set(li1, transient_palette_lines[li2]);
-    transient_palette_lines.set(li2, tmp_palette_line);
-    PaletteIndices = transient_palette_lines.persistent();
 }
 
 void TextEditor::MoveCurrentLines(bool up) {
@@ -868,35 +817,27 @@ TextEditor::LineChar TextEditor::InsertText(const string &text, LineChar start) 
     if (text.empty()) return start;
 
     const uint start_byte = ToByteIndex(start);
-    auto line = Lines[start.L];
-    auto palette_line = PaletteIndices[start.L];
     LineChar insert_end;
     if (!text.contains('\n')) {
         insert_end = {start.L, uint(start.C + text.size())};
-
-        Lines = Lines.set(start.L, line.insert(start.C, immer::flex_vector<char>(text.begin(), text.end())));
-        PaletteIndices = PaletteIndices.set(start.L, palette_line.insert(start.C, immer::flex_vector(text.size(), PaletteIndex::Default)));
+        Lines = Lines.set(start.L, Lines[start.L].insert(start.C, immer::flex_vector<char>(text.begin(), text.end())));
 
         auto cursors_to_right = Cursors | filter([&start](const auto &c) { return c.IsRightOf(start); });
         for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() + text.size())});
     } else {
         auto text_lines = std::views::split(text, '\n');
-        const auto original_line_ending = line.drop(start.C) | ranges::to<LineT>;
-        Lines = Lines.set(start.L, line.take(start.C) + (text_lines.front() | ranges::to<LineT>));
-        PaletteIndices = PaletteIndices.set(start.L, palette_line.take(start.C) + immer::flex_vector(text_lines.front().size(), PaletteIndex::Default));
+        const auto original_line_ending = Lines[start.L].drop(start.C) | ranges::to<LineT>;
+        Lines = Lines.set(start.L, Lines[start.L].take(start.C) + (text_lines.front() | ranges::to<LineT>));
 
         uint num_new_lines = 0, last_line_size = 0;
         auto remaining_lines = text_lines | std::views::drop(1);
         for (auto it = remaining_lines.begin(); it != remaining_lines.end(); ++it) {
             auto text_line = *it;
             Lines = Lines.insert(start.L + num_new_lines + 1, text_line | ranges::to<LineT>);
-            PaletteIndices = PaletteIndices.insert(start.L + num_new_lines + 1, immer::flex_vector(text_line.size(), PaletteIndex::Default));
             if (std::next(it) == remaining_lines.end()) {
                 last_line_size = text_line.size();
                 const uint last_line_i = start.L + num_new_lines + 1;
                 Lines = Lines.set(last_line_i, Lines[last_line_i] + original_line_ending);
-                auto &last_palette_line = PaletteIndices[start.L + num_new_lines + 1];
-                std::fill_n(std::back_inserter(last_palette_line), original_line_ending.size(), PaletteIndex::Default);
             }
             ++num_new_lines;
         }
@@ -915,23 +856,17 @@ void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude
     if (end <= start) return;
 
     auto start_line = Lines[start.L], end_line = Lines[end.L];
-    auto start_palette_line = PaletteIndices[start.L], end_palette_line = PaletteIndices[end.L];
     const uint start_byte = ToByteIndex(start), old_end_byte = ToByteIndex(end);
     if (start.L == end.L) {
         Lines = Lines.set(start.L, start_line.erase(start.C, end.C));
-        PaletteIndices = PaletteIndices.set(start.L, start_palette_line.erase(start.C, end.C));
 
         auto cursors_to_right = Cursors | filter([&start](const auto &c) { return !c.IsRange() && c.IsRightOf(start); });
         for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() - (end.C - start.C))});
     } else {
         end_line = end_line.drop(end.C);
         Lines = Lines.set(end.L, end_line);
-        end_palette_line = end_palette_line.drop(end.C);
         Lines = Lines.set(start.L, start_line.take(start.C) + end_line);
-        PaletteIndices = PaletteIndices.set(start.L, start_palette_line.take(start.C) + end_palette_line);
-
         Lines = Lines.erase(start.L + 1, end.L + 1);
-        PaletteIndices = PaletteIndices.erase(start.L + 1, end.L + 1);
 
         auto cursors_below = Cursors | filter([&](const auto &c) { return (!exclude_cursor || c != *exclude_cursor) && c.Line() >= end.L; });
         for (auto &c : cursors_below) c.Set({c.Line() - (end.L - start.L), c.CharIndex()});
@@ -973,7 +908,7 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
         edit.new_end_byte = new_end_byte;
         ts_tree_edit(Tree, &edit);
     }
-    Highlight();
+    Parse();
 }
 
 void TextEditor::OnCursorPositionChanged() {

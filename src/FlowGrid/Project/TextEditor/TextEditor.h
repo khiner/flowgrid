@@ -348,7 +348,7 @@ private:
     void Record(); // Every `Record` should be paired with a `BeforeCursors = Cursors`.
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
-    ImU32 GetColor(LineChar lc) const { return GetColor(PaletteIndices[lc.L][lc.C]); }
+    ImU32 GetColor(LineChar lc) const;
 
     static LineChar BeginLC() { return {0, 0}; }
     LineChar EndLC() const { return {uint(Lines.size() - 1), uint(Lines.back().size())}; }
@@ -417,7 +417,6 @@ private:
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
     void Parse();
-    void Highlight();
 
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
@@ -425,7 +424,6 @@ private:
     const PaletteT &GetPalette() const;
 
     LinesT Lines{LineT{}};
-    PaletteLinesT PaletteIndices{PaletteLineT{}};
     Cursors Cursors, BeforeCursors;
 
     uint NumTabSpaces{4};
@@ -451,7 +449,6 @@ private:
 
     struct Snapshot {
         LinesT Lines;
-        PaletteLinesT PaletteIndices;
         struct Cursors Cursors, BeforeCursors;
         TSTree *Tree;
     };

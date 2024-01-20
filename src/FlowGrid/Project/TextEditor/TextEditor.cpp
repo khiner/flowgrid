@@ -525,7 +525,7 @@ void TextEditor::Backspace(bool is_word_mode) {
             if (Cursors.AnyRanged()) Cursors.MoveChar(*this, true); // Restore cursors.
             return;
         }
-        OnCursorPositionChanged(); // Might combine cursors.
+        Cursors.SortAndMerge();
     }
     for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
     Record();
@@ -540,7 +540,7 @@ void TextEditor::Delete(bool is_word_mode) {
             if (Cursors.AnyRanged()) Cursors.MoveChar(*this, false); // Restore cursors.
             return;
         }
-        OnCursorPositionChanged(); // Might combine cursors.
+        Cursors.SortAndMerge();
     }
     for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
     Record();
@@ -721,7 +721,7 @@ void TextEditor::RemoveCurrentLines() {
     BeforeCursors = Cursors;
     for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
     Cursors.MoveStart();
-    OnCursorPositionChanged(); // Might combine cursors.
+    Cursors.SortAndMerge();
 
     for (auto &c : reverse_view(Cursors)) {
         const uint li = c.Line();
@@ -914,10 +914,6 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
     Parse();
 }
 
-void TextEditor::OnCursorPositionChanged() {
-    if (!IsDraggingSelection) Cursors.SortAndMerge();
-}
-
 static bool IsPressed(ImGuiKey key) {
     const auto key_index = ImGui::GetKeyIndex(key);
     const auto window_id = ImGui::GetCurrentWindowRead()->ID;
@@ -1015,88 +1011,81 @@ static float Distance(const ImVec2 &a, const ImVec2 &b) {
 }
 
 void TextEditor::HandleMouseInputs() {
-    auto &io = ImGui::GetIO();
+    constexpr static ImGuiMouseButton MouseLeft = ImGuiMouseButton_Left, MouseMiddle = ImGuiMouseButton_Middle;
+
+    const auto &io = ImGui::GetIO();
     const bool shift = io.KeyShift,
                ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
                alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
     // Pan with middle mouse button
-    Panning &= ImGui::IsMouseDown(2);
-    if (Panning && ImGui::IsMouseDragging(2)) {
-        ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
-        ImVec2 mouse_pos = ImGui::GetMouseDragDelta(2);
-        ImVec2 mouse_delta = mouse_pos - LastMousePos;
+    Panning &= ImGui::IsMouseDown(MouseMiddle);
+    if (Panning && ImGui::IsMouseDragging(MouseMiddle)) {
+        const ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
+        const ImVec2 mouse_pos = ImGui::GetMouseDragDelta(MouseMiddle);
+        const ImVec2 mouse_delta = mouse_pos - LastMousePos;
         ImGui::SetScrollY(scroll.y - mouse_delta.y);
         ImGui::SetScrollX(scroll.x - mouse_delta.x);
         LastMousePos = mouse_pos;
     }
 
-    // Mouse left button dragging (=> update selection)
-    IsDraggingSelection &= ImGui::IsMouseDown(0);
-    if (IsDraggingSelection && ImGui::IsMouseDragging(0)) {
-        io.WantCaptureMouse = true;
+    if (ImGui::IsMouseDown(MouseLeft) && ImGui::IsMouseDragging(MouseLeft)) {
         Cursors.GetLastAdded().SetEnd(ScreenPosToLC(ImGui::GetMousePos()));
     }
 
-    if (ImGui::IsWindowHovered()) {
-        const auto is_click = ImGui::IsMouseClicked(0);
-        if (!shift && !alt) {
-            if (is_click) IsDraggingSelection = true;
+    const auto is_click = ImGui::IsMouseClicked(MouseLeft);
+    if (shift && is_click) return Cursors.GetLastAdded().SetEnd(ScreenPosToLC(ImGui::GetMousePos()));
+    if (shift || alt) return;
 
-            // Pan with middle mouse button
-            if (ImGui::IsMouseClicked(2)) {
-                Panning = true;
-                LastMousePos = ImGui::GetMouseDragDelta(2);
-            }
+    if (ImGui::IsMouseClicked(MouseMiddle)) {
+        Panning = true;
+        LastMousePos = ImGui::GetMouseDragDelta(MouseMiddle);
+    }
 
-            const bool is_double_click = ImGui::IsMouseDoubleClicked(0);
-            const auto t = ImGui::GetTime();
-            const bool is_triple_click = is_click && !is_double_click && (LastClickTime != -1.0f && (t - LastClickTime) < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f);
-            if (is_triple_click) {
-                if (ctrl) Cursors.Add();
-                else Cursors.Reset();
+    const bool is_double_click = ImGui::IsMouseDoubleClicked(MouseLeft);
+    const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
+        ImGui::GetTime() - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
+    if (is_triple_click) {
+        if (ctrl) Cursors.Add();
+        else Cursors.Reset();
 
-                const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
-                SetSelection(
-                    {cursor_lc.L, 0},
-                    cursor_lc.L < Lines.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
-                    Cursors.back()
-                );
+        const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
+        SetSelection(
+            {cursor_lc.L, 0},
+            cursor_lc.L < Lines.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
+            Cursors.back()
+        );
 
-                LastClickTime = -1.0f;
-            } else if (is_double_click) {
-                if (ctrl) Cursors.Add();
-                else Cursors.Reset();
+        LastClickTime = -1.0f;
+    } else if (is_double_click) {
+        if (ctrl) Cursors.Add();
+        else Cursors.Reset();
 
-                const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
-                SetSelection(FindWordBoundary(cursor_lc, true), FindWordBoundary(cursor_lc, false), Cursors.back());
+        const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
+        SetSelection(FindWordBoundary(cursor_lc, true), FindWordBoundary(cursor_lc, false), Cursors.back());
 
-                LastClickTime = float(ImGui::GetTime());
-                LastClickPos = io.MousePos;
-            } else if (is_click) {
-                if (ctrl) Cursors.Add();
-                else Cursors.Reset();
+        LastClickTime = float(ImGui::GetTime());
+        LastClickPos = io.MousePos;
+    } else if (is_click) {
+        if (ctrl) Cursors.Add();
+        else Cursors.Reset();
 
-                bool is_over_li;
-                const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos(), &is_over_li);
-                if (is_over_li) {
-                    SetSelection(
-                        {cursor_lc.L, 0},
-                        cursor_lc.L < Lines.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
-                        Cursors.back()
-                    );
-                } else {
-                    Cursors.GetLastAdded().Set(cursor_lc);
-                }
-
-                LastClickTime = float(ImGui::GetTime());
-                LastClickPos = io.MousePos;
-            } else if (ImGui::IsMouseReleased(0)) {
-                Cursors.SortAndMerge();
-            }
-        } else if (shift && is_click) {
-            Cursors.back().SetEnd(ScreenPosToLC(ImGui::GetMousePos()));
+        bool is_over_li;
+        const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos(), &is_over_li);
+        if (is_over_li) {
+            SetSelection(
+                {cursor_lc.L, 0},
+                cursor_lc.L < Lines.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
+                Cursors.back()
+            );
+        } else {
+            Cursors.GetLastAdded().Set(cursor_lc);
         }
+
+        LastClickTime = float(ImGui::GetTime());
+        LastClickPos = io.MousePos;
+    } else if (ImGui::IsMouseReleased(MouseLeft)) {
+        Cursors.SortAndMerge();
     }
 }
 
@@ -1104,12 +1093,12 @@ bool TextEditor::Render(bool is_parent_focused) {
     const auto edited_coord_range = Cursors.GetEditedCoordRange(*this);
     if (edited_coord_range) {
         Cursors.ClearEdited();
-        OnCursorPositionChanged();
+        Cursors.SortAndMerge();
         MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(Cursors.front()) : std::nullopt;
     }
     const bool is_focused = ImGui::IsWindowFocused() || is_parent_focused;
     if (is_focused) HandleKeyboardInputs();
-    HandleMouseInputs();
+    if (ImGui::IsWindowHovered()) HandleMouseInputs();
 
     /* Compute CharAdvance regarding to scaled font size (Ctrl + mouse wheel)*/
     const float font_width = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
@@ -1283,7 +1272,6 @@ void TextEditor::DebugPanel() {
     if (CollapsingHeader("Editor state info")) {
         BeginDisabled();
         Checkbox("Panning", &Panning);
-        Checkbox("Dragging selection", &IsDraggingSelection);
         EndDisabled();
         Text("Cursor count: %lu", Cursors.size());
         for (auto &c : Cursors) {

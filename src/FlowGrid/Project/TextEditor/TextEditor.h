@@ -340,8 +340,6 @@ private:
         uint LastAddedIndex{0};
     };
 
-    void OnCursorPositionChanged();
-
     void Record(); // Every `Record` should be paired with a `BeforeCursors = Cursors`.
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
@@ -434,7 +432,7 @@ private:
     uint VisibleLineCount{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};
     float ScrollX{0}, ScrollY{0};
-    bool Panning{false}, IsDraggingSelection{false}, ScrollToTop{false};
+    bool Panning{false}, ScrollToTop{false};
     ImVec2 LastMousePos;
     std::optional<Cursor> MatchingBrackets{};
     PaletteIdT PaletteId;

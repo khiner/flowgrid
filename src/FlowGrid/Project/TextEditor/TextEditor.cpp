@@ -592,11 +592,11 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
         OpenToCloseChar{{'{', '}'}, {'(', ')'}, {'[', ']'}},
         CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
 
-    const LineChar cursor_lc = c.LC();
-    const auto &line = Lines[cursor_lc.L];
+    const uint li = c.Line();
+    const auto &line = Lines[li];
     if (c.IsRange() || line.empty()) return {};
 
-    uint ci = cursor_lc.C;
+    uint ci = c.CharIndex();
     // Considered on bracket if cursor is to the left or right of it.
     if (ci > 0 && (CloseToOpenChar.contains(line[ci - 1]) || OpenToCloseChar.contains(line[ci - 1]))) --ci;
 
@@ -604,12 +604,13 @@ std::optional<TextEditor::Cursor> TextEditor::FindMatchingBrackets(const Cursor 
     const bool is_close_char = CloseToOpenChar.contains(ch), is_open_char = OpenToCloseChar.contains(ch);
     if (!is_close_char && !is_open_char) return {};
 
+    const LineChar lc{li, ci};
     const char other_ch = is_close_char ? CloseToOpenChar.at(ch) : OpenToCloseChar.at(ch);
     uint match_count = 0;
-    for (auto lci = Iter(cursor_lc); is_close_char ? lci.IsBegin() : lci.IsEnd(); is_close_char ? --lci : ++lci) {
+    for (auto lci = Iter(lc); is_close_char ? !lci.IsBegin() : !lci.IsEnd(); is_close_char ? --lci : ++lci) {
         const char ch_inner = lci;
         if (ch_inner == ch) ++match_count;
-        else if (ch_inner == other_ch && (match_count == 0 || --match_count == 0)) return Cursor{cursor_lc, *lci};
+        else if (ch_inner == other_ch && (match_count == 0 || --match_count == 0)) return Cursor{lc, *lci};
     }
 
     return {};
@@ -914,9 +915,6 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
 }
 
 void TextEditor::OnCursorPositionChanged() {
-    const auto &c = Cursors[0];
-    MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(c) : std::nullopt;
-
     if (!IsDraggingSelection) Cursors.SortAndMerge();
 }
 
@@ -1019,9 +1017,9 @@ static float Distance(const ImVec2 &a, const ImVec2 &b) {
 
 void TextEditor::HandleMouseInputs() {
     auto &io = ImGui::GetIO();
-    const auto shift = io.KeyShift;
-    const auto ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl;
-    const auto alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
+    const bool shift = io.KeyShift,
+               ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
+               alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
     // Pan with middle mouse button
     Panning &= ImGui::IsMouseDown(2);
@@ -1104,9 +1102,12 @@ void TextEditor::HandleMouseInputs() {
 }
 
 bool TextEditor::Render(bool is_parent_focused) {
-    if (CursorPositionChanged) OnCursorPositionChanged();
-    CursorPositionChanged = false;
-
+    const auto edited_coord_range = Cursors.GetEditedCoordRange(*this);
+    if (edited_coord_range) {
+        Cursors.ClearEdited();
+        OnCursorPositionChanged();
+        MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(Cursors.front()) : std::nullopt;
+    }
     const bool is_focused = ImGui::IsWindowFocused() || is_parent_focused;
     if (is_focused) HandleKeyboardInputs();
     HandleMouseInputs();
@@ -1228,7 +1229,7 @@ bool TextEditor::Render(bool is_parent_focused) {
 
     ImGui::SetCursorPos({0, 0});
     ImGui::Dummy({CurrentSpaceWidth, CurrentSpaceHeight});
-    if (const auto edited_coord_range = Cursors.GetEditedCoordRange(*this)) {
+    if (edited_coord_range) {
         // First pass for end and second pass for start.
         for (uint i = 0; i < 1; ++i) {
             if (i) UpdateViewVariables(ScrollX, ScrollY); // Second pass depends on changes made in first pass.
@@ -1251,7 +1252,6 @@ bool TextEditor::Render(bool is_parent_focused) {
                 }
             }
         }
-        Cursors.ClearEdited();
     }
     if (ScrollToTop) {
         ScrollToTop = false;

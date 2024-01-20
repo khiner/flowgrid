@@ -436,7 +436,6 @@ private:
     float ScrollX{0}, ScrollY{0};
     bool Panning{false}, IsDraggingSelection{false}, ScrollToTop{false};
     ImVec2 LastMousePos;
-    bool CursorPositionChanged{false};
     std::optional<Cursor> MatchingBrackets{};
     PaletteIdT PaletteId;
     LanguageID LanguageId{LanguageID::None};

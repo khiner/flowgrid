@@ -1241,23 +1241,6 @@ bool TextEditor::Render(bool is_parent_focused) {
         ScrollToTop = false;
         ImGui::SetScrollY(0);
     }
-    if (SetViewAtLineI > -1) {
-        float scroll;
-        switch (SetViewAtLineMode) {
-            default:
-            case SetViewAtLineMode::FirstVisibleLine:
-                scroll = std::max(0.0f, SetViewAtLineI * CharAdvance.y);
-                break;
-            case SetViewAtLineMode::LastVisibleLine:
-                scroll = std::max(0.0f, (float(SetViewAtLineI) - float((LastVisibleCoords - FirstVisibleCoords).L)) * CharAdvance.y);
-                break;
-            case SetViewAtLineMode::Centered:
-                scroll = std::max(0.0f, (float(SetViewAtLineI) - float((LastVisibleCoords - FirstVisibleCoords).L) * 0.5f) * CharAdvance.y);
-                break;
-        }
-        ImGui::SetScrollY(scroll);
-        SetViewAtLineI = -1;
-    }
 
     return is_focused;
 }

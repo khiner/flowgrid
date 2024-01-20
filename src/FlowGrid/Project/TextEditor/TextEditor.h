@@ -160,12 +160,6 @@ struct TextEditor {
     bool Render(bool is_parent_focused = false);
     void DebugPanel();
 
-    enum class SetViewAtLineMode {
-        FirstVisibleLine,
-        Centered,
-        LastVisibleLine
-    };
-
     bool ReadOnly{false};
     bool Overwrite{false};
     bool AutoIndent{true};
@@ -173,8 +167,6 @@ struct TextEditor {
     bool ShowLineNumbers{true};
     bool ShortTabs{true};
     float LineSpacing{1};
-    int SetViewAtLineI{-1};
-    SetViewAtLineMode SetViewAtLineMode{SetViewAtLineMode::FirstVisibleLine};
 
 private:
     struct LinesIter {

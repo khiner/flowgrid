@@ -940,9 +940,9 @@ void TextEditor::HandleKeyboardInputs() {
         is_ctrl_only = ctrl && !alt && !shift && !super,
         is_shift_only = shift && !alt && !ctrl && !super;
 
-    if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Z))
+    if (is_shortcut && IsPressed(ImGuiKey_Z) && CanUndo())
         Undo();
-    else if (!ReadOnly && is_shift_shortcut && IsPressed(ImGuiKey_Z))
+    else if (is_shift_shortcut && IsPressed(ImGuiKey_Z) && CanRedo())
         Redo();
     else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
         Cursors.MoveLines(*this, -1, shift);
@@ -982,17 +982,16 @@ void TextEditor::HandleKeyboardInputs() {
         ToggleLineComment();
     else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
         Overwrite ^= true;
-    else if (is_ctrl_only && IsPressed(ImGuiKey_Insert))
+    else if (((is_ctrl_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_C))) && CanCopy())
         Copy();
-    else if (is_shortcut && IsPressed(ImGuiKey_C))
-        Copy();
-    else if (!ReadOnly && is_shift_only && IsPressed(ImGuiKey_Insert))
-        Paste();
-    else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_V))
+    else if (((is_shift_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_V))) && CanPaste())
         Paste();
     else if ((is_shortcut && IsPressed(ImGuiKey_X)) || (is_shift_only && IsPressed(ImGuiKey_Delete)))
-        if (ReadOnly) Copy();
-        else Cut();
+        if (ReadOnly) {
+            if (CanCopy()) Copy();
+        } else {
+            if (CanCut()) Cut();
+        }
     else if (is_shortcut && IsPressed(ImGuiKey_A))
         SelectAll();
     else if (is_shortcut && IsPressed(ImGuiKey_D))

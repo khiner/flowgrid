@@ -1018,15 +1018,14 @@ void TextEditor::HandleMouseInputs() {
                ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
                alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
-    // Pan with middle mouse button
-    Panning &= ImGui::IsMouseDown(MouseMiddle);
-    if (Panning && ImGui::IsMouseDragging(MouseMiddle)) {
+    const bool panning = ImGui::IsMouseDown(MouseMiddle);
+    if (panning && ImGui::IsMouseDragging(MouseMiddle)) {
         const ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
         const ImVec2 mouse_pos = ImGui::GetMouseDragDelta(MouseMiddle);
-        const ImVec2 mouse_delta = mouse_pos - LastMousePos;
+        const ImVec2 mouse_delta = mouse_pos - LastPanMousePos;
         ImGui::SetScrollY(scroll.y - mouse_delta.y);
         ImGui::SetScrollX(scroll.x - mouse_delta.x);
-        LastMousePos = mouse_pos;
+        LastPanMousePos = mouse_pos;
     }
 
     if (ImGui::IsMouseDown(MouseLeft) && ImGui::IsMouseDragging(MouseLeft)) {
@@ -1037,10 +1036,7 @@ void TextEditor::HandleMouseInputs() {
     if (shift && is_click) return Cursors.GetLastAdded().SetEnd(ScreenPosToLC(ImGui::GetMousePos()));
     if (shift || alt) return;
 
-    if (ImGui::IsMouseClicked(MouseMiddle)) {
-        Panning = true;
-        LastMousePos = ImGui::GetMouseDragDelta(MouseMiddle);
-    }
+    if (ImGui::IsMouseClicked(MouseMiddle)) LastPanMousePos = ImGui::GetMouseDragDelta(MouseMiddle);
 
     const bool is_double_click = ImGui::IsMouseDoubleClicked(MouseLeft);
     const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
@@ -1270,9 +1266,6 @@ using namespace ImGui;
 
 void TextEditor::DebugPanel() {
     if (CollapsingHeader("Editor state info")) {
-        BeginDisabled();
-        Checkbox("Panning", &Panning);
-        EndDisabled();
         Text("Cursor count: %lu", Cursors.size());
         for (auto &c : Cursors) {
             const auto &start = c.GetStart(), &end = c.GetEnd();

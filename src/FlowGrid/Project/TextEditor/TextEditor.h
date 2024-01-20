@@ -426,14 +426,13 @@ private:
     uint LeftMargin{10};
     ImVec2 CharAdvance;
     float LastClickTime{-1}; // In ImGui time.
-    ImVec2 LastClickPos{-1, -1};
+    ImVec2 LastClickPos{-1, -1}, LastPanMousePos{-1, -1};
     float CurrentSpaceWidth{20}, CurrentSpaceHeight{20.0f};
     Coords FirstVisibleCoords{0, 0}, LastVisibleCoords{0, 0};
     uint VisibleLineCount{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};
     float ScrollX{0}, ScrollY{0};
     bool Panning{false}, ScrollToTop{false};
-    ImVec2 LastMousePos;
     std::optional<Cursor> MatchingBrackets{};
     PaletteIdT PaletteId;
     LanguageID LanguageId{LanguageID::None};

@@ -202,6 +202,8 @@ void TextEditor::Cut() {
     Record();
 }
 
+bool TextEditor::CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
+
 void TextEditor::Paste() {
     BeforeCursors = Cursors;
     // Check if we should do multicursor paste.
@@ -937,16 +939,11 @@ void TextEditor::HandleKeyboardInputs() {
         is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift,
         is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt,
         is_wordmove_key = is_osx ? alt : ctrl,
-        is_alt_only = alt && !ctrl && !shift && !super,
         is_ctrl_only = ctrl && !alt && !shift && !super,
         is_shift_only = shift && !alt && !ctrl && !super;
 
     if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Z))
         Undo();
-    else if (!ReadOnly && is_alt_only && IsPressed(ImGuiKey_Backspace))
-        Undo();
-    else if (!ReadOnly && is_shortcut && IsPressed(ImGuiKey_Y))
-        Redo();
     else if (!ReadOnly && is_shift_shortcut && IsPressed(ImGuiKey_Z))
         Redo();
     else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
@@ -1006,6 +1003,7 @@ void TextEditor::HandleKeyboardInputs() {
         EnterChar('\n', false);
     else if (!ReadOnly && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
         EnterChar('\t', shift);
+
     if (!ReadOnly && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
         for (const auto ch : io.InputQueueCharacters) {
             if (ch != 0 && (ch == '\n' || ch >= 32)) EnterChar(ch, shift);

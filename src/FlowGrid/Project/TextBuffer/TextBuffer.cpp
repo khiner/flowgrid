@@ -67,12 +67,12 @@ void TextBuffer::RenderMenu() const {
         if (BeginMenu("Edit")) {
             MenuItem("Read-only mode", nullptr, &editor.ReadOnly);
             Separator();
-            if (MenuItem("Undo", "ALT-Backspace", nullptr, !editor.ReadOnly && editor.CanUndo())) editor.Undo();
-            if (MenuItem("Redo", "Ctrl-Y", nullptr, !editor.ReadOnly && editor.CanRedo())) editor.Redo();
+            if (MenuItem("Undo", "cmd+z", nullptr, !editor.ReadOnly && editor.CanUndo())) editor.Undo();
+            if (MenuItem("Redo", "shift+cmd+z", nullptr, !editor.ReadOnly && editor.CanRedo())) editor.Redo();
             Separator();
-            if (MenuItem("Copy", "Ctrl-C", nullptr, editor.CanCopy())) editor.Copy();
-            if (MenuItem("Cut", "Ctrl-X", nullptr, !editor.ReadOnly && editor.CanCopy())) editor.Cut();
-            if (MenuItem("Paste", "Ctrl-V", nullptr, !editor.ReadOnly && GetClipboardText() != nullptr)) editor.Paste();
+            if (MenuItem("Copy", "cmd+c", nullptr, editor.CanCopy())) editor.Copy();
+            if (MenuItem("Cut", "cmd+x", nullptr, editor.CanCut())) editor.Cut();
+            if (MenuItem("Paste", "cmd+v", nullptr, editor.CanPaste())) editor.Paste();
             Separator();
             if (MenuItem("Select all", nullptr, nullptr)) editor.SelectAll();
             EndMenu();

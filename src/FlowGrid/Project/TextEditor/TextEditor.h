@@ -93,8 +93,6 @@ struct TextEditor {
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
 
     inline static const LanguageDefinitions Languages{};
-    const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
-    ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -132,33 +130,32 @@ struct TextEditor {
 
     uint LineCount() const { return Lines.size(); }
     const LineT &GetLine(uint li) const { return Lines[li]; }
+    LineChar GetCursorPosition() const { return Cursors.back().LC(); }
+    std::string GetText(LineChar start, LineChar end) const;
+    std::string GetText() const { return GetText(BeginLC(), EndLC()); }
+    std::string GetSyntaxTreeSExp() const;
+    const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
+    ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
 
+    void SetText(const std::string &);
+    void SetFilePath(const fs::path &);
     void SetPalette(PaletteIdT);
     void SetLanguage(LanguageID);
-
     void SetNumTabSpaces(uint);
     void SetLineSpacing(float);
 
     void SelectAll();
 
-    LineChar GetCursorPosition() const { return Cursors.back().LC(); }
-    bool CanCopy() const { return Cursors.AnyRanged(); }
-
+    void Undo();
+    void Redo();
     void Copy();
     void Cut();
     void Paste();
-    void Undo();
-    void Redo();
     bool CanUndo() const { return !ReadOnly && HistoryIndex > 0; }
     bool CanRedo() const { return !ReadOnly && History.size() > 1 && HistoryIndex < uint(History.size() - 1); }
-
-    void SetText(const std::string &);
-    void SetFilePath(const fs::path &);
-
-    std::string GetText(LineChar start, LineChar end) const;
-    std::string GetText() const { return GetText(BeginLC(), EndLC()); }
-
-    std::string GetSyntaxTreeSExp() const;
+    bool CanCopy() const { return Cursors.AnyRanged(); }
+    bool CanCut() const { return !ReadOnly && CanCopy(); }
+    bool CanPaste() const;
 
     bool Render(bool is_parent_focused = false);
     void DebugPanel();

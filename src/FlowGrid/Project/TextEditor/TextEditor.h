@@ -305,6 +305,7 @@ private:
         bool AnyRanged() const;
         bool AllRanged() const;
         bool AnyMultiline() const;
+        bool AnyEdited() const;
 
         void Add();
         void Reset();
@@ -325,7 +326,7 @@ private:
         // Returns the range of all edited cursor starts/ends since the last call to `ClearEdited()`.
         // Used for updating the scroll range.
         // todo need to update the approach here after switching to persistent undo.
-        std::optional<std::pair<Coords, Coords>> GetEditedCoordRange(const TextEditor &);
+        std::optional<Cursor> GetEditedCursor();
 
     private:
         std::vector<Cursor> Cursors{{{0, 0}}};
@@ -354,7 +355,7 @@ private:
     uint GetCharIndex(Coords coords) const { return GetCharIndex(Lines[coords.L], coords.C); }
     uint GetColumn(const LineT &, uint ci) const;
     uint GetColumn(LineChar lc) const { return GetColumn(Lines[lc.L], lc.C); }
-    uint GetFirstVisibleCharIndex(uint li) const;
+    uint GetFirstVisibleCharIndex(const LineT &, uint first_visible_column) const;
     uint GetLineMaxColumn(const LineT &) const;
     uint GetLineMaxColumn(const LineT &, uint limit) const;
     uint GetLineMaxCharIndex(uint li) const { return Lines[li].size(); }
@@ -385,7 +386,6 @@ private:
 
     void HandleKeyboardInputs();
     void HandleMouseInputs();
-    void UpdateViewVariables(float scroll_x, float scroll_y);
 
     /**
     `start_byte`: Start position of the text change.
@@ -399,8 +399,6 @@ private:
     **/
     void OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte);
 
-    bool IsHorizontalScrollbarVisible() const { return CurrentSpaceWidth > ContentWidth; }
-    bool IsVerticalScrollbarVisible() const { return CurrentSpaceHeight > ContentHeight; }
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
     void Parse();
@@ -420,11 +418,9 @@ private:
     float LastClickTime{-1}; // In ImGui time.
     ImVec2 LastClickPos{-1, -1}, LastPanMousePos{-1, -1};
     float CurrentSpaceWidth{20}, CurrentSpaceHeight{20.0f};
-    Coords FirstVisibleCoords{0, 0}, LastVisibleCoords{0, 0};
     uint VisibleLineCount{0}, VisibleColumnCount{0};
     float ContentWidth{0}, ContentHeight{0};
-    float ScrollX{0}, ScrollY{0};
-    bool Panning{false}, ScrollToTop{false};
+    bool ScrollToTop{false};
     std::optional<Cursor> MatchingBrackets{};
     PaletteIdT PaletteId;
     LanguageID LanguageId{LanguageID::None};

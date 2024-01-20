@@ -18,22 +18,24 @@ void Windows::ToggleVisible(ID component_id) const {
 }
 
 void Windows::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Windows::ToggleVisible &a) { ToggleVisible(a.component_id); },
-        [this](const Action::Windows::ToggleDebug &a) {
-            const bool toggling_on = !VisibleComponents.Contains(a.component_id);
-            ToggleVisible(a.component_id);
-            if (!toggling_on) return;
+    std::visit(
+        Match{
+            [this](const Action::Windows::ToggleVisible &a) { ToggleVisible(a.component_id); },
+            [this](const Action::Windows::ToggleDebug &a) {
+                const bool toggling_on = !VisibleComponents.Contains(a.component_id);
+                ToggleVisible(a.component_id);
+                if (!toggling_on) return;
 
-            auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
-            if (auto *window = debug_component->FindDockWindow()) {
-                auto docknode_id = window->DockId;
-                auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
-                debug_component->Dock(debug_node_id);
-            }
+                auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
+                if (auto *window = debug_component->FindDockWindow()) {
+                    auto docknode_id = window->DockId;
+                    auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
+                    debug_component->Dock(debug_node_id);
+                }
+            },
         },
-    )
+        action
+    );
 }
 
 using namespace ImGui;

@@ -149,11 +149,13 @@ void Menu::Render() const {
     const bool is_menu_bar = Label.empty();
     if (IsMain ? BeginMainMenuBar() : (is_menu_bar ? BeginMenuBar() : BeginMenu(Label.c_str()))) {
         for (const auto &item : Items) {
-            Visit(
-                item,
-                [](const Menu &menu) { menu.Draw(); },
-                [](const MenuItemDrawable &drawable) { drawable.MenuItem(); },
-                [](const std::function<void()> &draw) { draw(); }
+            std::visit(
+                Match{
+                    [](const Menu &menu) { menu.Draw(); },
+                    [](const MenuItemDrawable &drawable) { drawable.MenuItem(); },
+                    [](const std::function<void()> &draw) { draw(); }
+                },
+                item
             );
         }
         if (IsMain) EndMainMenuBar();

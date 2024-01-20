@@ -18,9 +18,11 @@ void Store::ApplyPatch(const Patch &patch) const {
 }
 
 void Store::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); },
+    std::visit(
+        Match{
+            [this](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); },
+        },
+        action
     );
 }
 

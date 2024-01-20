@@ -8,22 +8,24 @@ FaustGraphStyle::FaustGraphStyle(ArgsT &&args) : ActionableComponent(std::move(a
 }
 
 void FaustGraphStyle::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
-            switch (a.id) {
-                case 0: return ColorsDark();
-                case 1: return ColorsLight();
-                case 2: return ColorsClassic();
-                case 3: return ColorsFaust();
-            }
+    std::visit(
+        Match{
+            [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
+                switch (a.id) {
+                    case 0: return ColorsDark();
+                    case 1: return ColorsLight();
+                    case 2: return ColorsClassic();
+                    case 3: return ColorsFaust();
+                }
+            },
+            [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
+                switch (a.id) {
+                    case 0: return LayoutFlowGrid();
+                    case 1: return LayoutFaust();
+                }
+            },
         },
-        [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
-            switch (a.id) {
-                case 0: return LayoutFlowGrid();
-                case 1: return LayoutFaust();
-            }
-        },
+        action
     );
 }
 

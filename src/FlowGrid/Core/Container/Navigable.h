@@ -17,18 +17,22 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
     Navigable(ArgsT &&args) : Container(std::move(args.Args)), ActionableProducer<ProducedActionType>(std::move(args.Q)) {}
 
     void Apply(const ActionType &action) const override {
-        Visit(
-            action,
-            [this](const ActionT::Push &a) { Push(a.value); },
-            [this](const ActionT::MoveTo &a) { MoveTo(a.index); },
+        std::visit(
+            Match{
+                [this](const ActionT::Push &a) { Push(a.value); },
+                [this](const ActionT::MoveTo &a) { MoveTo(a.index); },
+            },
+            action
         );
     }
 
     bool CanApply(const ActionType &action) const override {
-        return Visit(
-            action,
-            [](const ActionT::Push &) { return true; },
-            [this](const ActionT::MoveTo &a) { return CanMoveTo(a.index); },
+        return std::visit(
+            Match{
+                [](const ActionT::Push &) { return true; },
+                [this](const ActionT::MoveTo &a) { return CanMoveTo(a.index); },
+            },
+            action
         );
     }
 

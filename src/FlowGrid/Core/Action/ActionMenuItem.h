@@ -18,10 +18,12 @@ template<typename ActionType> struct ActionMenuItem : MenuItemDrawable {
     void MenuItem() const override {
         if (ImGui::MenuItem(Action.GetMenuLabel().c_str(), Action.GetShortcut().c_str(), false, Actionable.CanApply(Action))) {
             auto action = ActionType{Action}; // Make a copy.
-            Visit(
-                Q,
-                [&action](const ActionProducer<ActionType> &producer) { producer.Q(std::move(action)); },
-                [&action](const EnqueueFn &q) { q(std::move(action)); }
+            std::visit(
+                Match{
+                    [&action](const ActionProducer<ActionType> &producer) { producer.Q(std::move(action)); },
+                    [&action](const EnqueueFn &q) { q(std::move(action)); },
+                },
+                Q
             );
         }
     }

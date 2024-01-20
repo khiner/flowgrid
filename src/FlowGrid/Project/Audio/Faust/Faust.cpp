@@ -8,20 +8,24 @@
 Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionableComponent(std::move(args)), FileDialog(file_dialog) {}
 
 void Faust::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Faust::DSP::Any &a) { FaustDsps.Apply(a); },
-        [this](const Action::Faust::Graph::Any &a) { Graphs.Apply(a); },
-        [this](const Action::Faust::GraphStyle::Any &a) { Graphs.Style.Apply(a); },
+    std::visit(
+        Match{
+            [this](const Action::Faust::DSP::Any &a) { FaustDsps.Apply(a); },
+            [this](const Action::Faust::Graph::Any &a) { Graphs.Apply(a); },
+            [this](const Action::Faust::GraphStyle::Any &a) { Graphs.Style.Apply(a); },
+        },
+        action
     );
 }
 
 bool Faust::CanApply(const ActionType &action) const {
-    return Visit(
-        action,
-        [this](const Action::Faust::DSP::Any &a) { return FaustDsps.CanApply(a); },
-        [this](const Action::Faust::Graph::Any &a) { return Graphs.CanApply(a); },
-        [this](const Action::Faust::GraphStyle::Any &a) { return Graphs.Style.CanApply(a); },
+    return std::visit(
+        Match{
+            [this](const Action::Faust::DSP::Any &a) { return FaustDsps.CanApply(a); },
+            [this](const Action::Faust::Graph::Any &a) { return Graphs.CanApply(a); },
+            [this](const Action::Faust::GraphStyle::Any &a) { return Graphs.Style.CanApply(a); },
+        },
+        action
     );
 }
 
@@ -85,31 +89,35 @@ void FaustGraphs::OnComponentChanged() {
 }
 
 void FaustGraphs::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
-        [this](const Action::Faust::Graph::ShowSaveSvgDialog &) {
-            FileDialog.Set({
-                .owner_path = Path,
-                .title = Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(),
-                .default_file_name = "faust_graph",
-                .save_mode = true,
-            });
+    std::visit(
+        Match{
+            // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
+            [this](const Action::Faust::Graph::ShowSaveSvgDialog &) {
+                FileDialog.Set({
+                    .owner_path = Path,
+                    .title = Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(),
+                    .default_file_name = "faust_graph",
+                    .save_mode = true,
+                });
+            },
+            [this](const Action::Faust::Graph::SaveSvgFile &a) {
+                if (const auto *graph = FindGraph(a.dsp_id)) graph->SaveBoxSvg(a.dir_path);
+            },
         },
-        [this](const Action::Faust::Graph::SaveSvgFile &a) {
-            if (const auto *graph = FindGraph(a.dsp_id)) graph->SaveBoxSvg(a.dir_path);
-        },
+        action
     );
 }
 
 bool FaustGraphs::CanApply(const ActionType &action) const {
-    return Visit(
-        action,
-        [this](const Action::Faust::Graph::ShowSaveSvgDialog &) { return !Empty(); },
-        [this](const Action::Faust::Graph::SaveSvgFile &a) {
-            const auto *graph = FindGraph(a.dsp_id);
-            return graph && graph->RootNode;
+    return std::visit(
+        Match{
+            [this](const Action::Faust::Graph::ShowSaveSvgDialog &) { return !Empty(); },
+            [this](const Action::Faust::Graph::SaveSvgFile &a) {
+                const auto *graph = FindGraph(a.dsp_id);
+                return graph && graph->RootNode;
+            },
         },
+        action
     );
 }
 
@@ -263,10 +271,12 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
 }
 
 void FaustDSPs::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Faust::DSP::Create &) { EmplaceBack(FaustDspPathSegment); },
-        [this](const Action::Faust::DSP::Delete &a) { EraseId(a.id); },
+    std::visit(
+        Match{
+            [this](const Action::Faust::DSP::Create &) { EmplaceBack(FaustDspPathSegment); },
+            [this](const Action::Faust::DSP::Delete &a) { EraseId(a.id); },
+        },
+        action
     );
 }
 

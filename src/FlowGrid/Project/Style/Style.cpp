@@ -14,31 +14,33 @@ std::vector<ImVec4> Style::ImGuiStyle::ColorPresetBuffer(ImGuiCol_COUNT);
 std::vector<ImVec4> Style::ImPlotStyle::ColorPresetBuffer(ImPlotCol_COUNT);
 
 void Style::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        // todo enum types instead of raw integers
-        [this](const Action::Style::SetImGuiColorPreset &a) {
-            switch (a.id) {
-                case 0: return ImGui.ColorsDark();
-                case 1: return ImGui.ColorsLight();
-                case 2: return ImGui.ColorsClassic();
-            }
+    std::visit(
+        Match{
+            // todo enum types instead of raw integers
+            [this](const Action::Style::SetImGuiColorPreset &a) {
+                switch (a.id) {
+                    case 0: return ImGui.ColorsDark();
+                    case 1: return ImGui.ColorsLight();
+                    case 2: return ImGui.ColorsClassic();
+                }
+            },
+            [this](const Action::Style::SetImPlotColorPreset &a) {
+                switch (a.id) {
+                    case 0: return ImPlot.ColorsAuto();
+                    case 1: return ImPlot.ColorsDark();
+                    case 2: return ImPlot.ColorsLight();
+                    case 3: return ImPlot.ColorsClassic();
+                }
+            },
+            [this](const Action::Style::SetFlowGridColorPreset &a) {
+                switch (a.id) {
+                    case 0: return FlowGrid.ColorsDark();
+                    case 1: return FlowGrid.ColorsLight();
+                    case 2: return FlowGrid.ColorsClassic();
+                }
+            },
         },
-        [this](const Action::Style::SetImPlotColorPreset &a) {
-            switch (a.id) {
-                case 0: return ImPlot.ColorsAuto();
-                case 1: return ImPlot.ColorsDark();
-                case 2: return ImPlot.ColorsLight();
-                case 3: return ImPlot.ColorsClassic();
-            }
-        },
-        [this](const Action::Style::SetFlowGridColorPreset &a) {
-            switch (a.id) {
-                case 0: return FlowGrid.ColorsDark();
-                case 1: return FlowGrid.ColorsLight();
-                case 2: return FlowGrid.ColorsClassic();
-            }
-        },
+        action
     );
 }
 

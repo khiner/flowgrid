@@ -14,9 +14,11 @@ Flags::Item::Item(const char *name_and_help) {
 }
 
 void Flags::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Primitive::Flags::Set &a) { Set(a.value); },
+    std::visit(
+        Match{
+            [this](const Action::Primitive::Flags::Set &a) { Set(a.value); },
+        },
+        action
     );
 }
 

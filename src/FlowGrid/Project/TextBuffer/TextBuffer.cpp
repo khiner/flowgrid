@@ -43,16 +43,18 @@ TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::
 TextBuffer::~TextBuffer() {}
 
 void TextBuffer::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::TextBuffer::Set &a) { Text.Set(a.value); },
-        [this](const Action::TextBuffer::ShowOpenDialog &) { FileDialog.Set(FileConf.OpenConfig); },
-        [this](const Action::TextBuffer::ShowSaveDialog &) { FileDialog.Set(FileConf.SaveConfig); },
-        [this](const Action::TextBuffer::Open &a) {
-            LastOpenedFilePath.Set(a.file_path);
-            Text.Set(FileIO::read(a.file_path));
+    std::visit(
+        Match{
+            [this](const Action::TextBuffer::Set &a) { Text.Set(a.value); },
+            [this](const Action::TextBuffer::ShowOpenDialog &) { FileDialog.Set(FileConf.OpenConfig); },
+            [this](const Action::TextBuffer::ShowSaveDialog &) { FileDialog.Set(FileConf.SaveConfig); },
+            [this](const Action::TextBuffer::Open &a) {
+                LastOpenedFilePath.Set(a.file_path);
+                Text.Set(FileIO::read(a.file_path));
+            },
+            [this](const Action::TextBuffer::Save &a) { FileIO::write(a.file_path, Editor->GetText()); },
         },
-        [this](const Action::TextBuffer::Save &a) { FileIO::write(a.file_path, Editor->GetText()); },
+        action
     );
 }
 

@@ -13,9 +13,11 @@ struct AdjacencyList : Container, ActionableProducer<Action::AdjacencyList::Any>
     AdjacencyList(ArgsT &&);
 
     void Apply(const ActionType &action) const override {
-        Visit(
-            action,
-            [this](const Action::AdjacencyList::ToggleConnection &a) { ToggleConnection(a.source, a.destination); },
+        std::visit(
+            Match{
+                [this](const Action::AdjacencyList::ToggleConnection &a) { ToggleConnection(a.source, a.destination); },
+            },
+            action
         );
     }
     bool CanApply(const ActionType &) const override { return true; }

@@ -12,18 +12,22 @@ Audio::~Audio() {
 }
 
 void Audio::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::AudioGraph::Any &a) { Graph.Apply(a); },
-        [this](const Action::Faust::Any &a) { Faust.Apply(a); },
+    std::visit(
+        Match{
+            [this](const Action::AudioGraph::Any &a) { Graph.Apply(a); },
+            [this](const Action::Faust::Any &a) { Faust.Apply(a); },
+        },
+        action
     );
 }
 
 bool Audio::CanApply(const ActionType &action) const {
-    return Visit(
-        action,
-        [this](const Action::AudioGraph::Any &a) { return Graph.CanApply(a); },
-        [this](const Action::Faust::Any &a) { return Faust.CanApply(a); },
+    return std::visit(
+        Match{
+            [this](const Action::AudioGraph::Any &a) { return Graph.CanApply(a); },
+            [this](const Action::Faust::Any &a) { return Faust.CanApply(a); },
+        },
+        action
     );
 }
 

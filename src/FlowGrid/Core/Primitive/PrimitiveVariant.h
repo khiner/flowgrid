@@ -9,4 +9,4 @@
 using PrimitiveVariant = std::variant<bool, u32, s32, float, std::string>;
 
 template<typename T>
-concept IsPrimitive = Variant::IsMember<T, PrimitiveVariant>::value;
+concept IsPrimitive = IsMember<T, PrimitiveVariant>::value;

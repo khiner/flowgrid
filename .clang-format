@@ -32,4 +32,3 @@ SpaceAfterTemplateKeyword: false
 SpaceBeforeParens: ControlStatements
 TabWidth: 4
 UseTab: Never
-...

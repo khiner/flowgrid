@@ -6,9 +6,11 @@ Float::Float(ComponentArgs &&args, float value, float min, float max, const char
     : Primitive(std::move(args), value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
 void Float::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Primitive::Float::Set &a) { Set(a.value); },
+    std::visit(
+        Match{
+            [this](const Action::Primitive::Float::Set &a) { Set(a.value); },
+        },
+        action
     );
 }
 

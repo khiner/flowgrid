@@ -6,9 +6,11 @@
 #include "UI/HelpMarker.h"
 
 void Bool::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Primitive::Bool::Toggle &) { Set(!Get()); },
+    std::visit(
+        Match{
+            [this](const Action::Primitive::Bool::Toggle &) { Set(!Get()); },
+        },
+        action
     );
 }
 

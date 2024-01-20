@@ -5,9 +5,11 @@
 String::String(ComponentArgs &&args, string_view value) : Primitive(std::move(args), string(value)) {}
 
 void String::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Primitive::String::Set &a) { Set(a.value); },
+    std::visit(
+        Match{
+            [this](const Action::Primitive::String::Set &a) { Set(a.value); },
+        },
+        action
     );
 }
 

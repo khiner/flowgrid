@@ -12,9 +12,11 @@ template<IsPrimitive T> struct PrimitiveVector2D : Container, Actionable<typenam
     using typename Actionable<typename ActionT::Any>::ActionType; // See note in `PrimitiveVector.h`.
 
     void Apply(const ActionType &action) const override {
-        Visit(
-            action,
-            [this](const ActionT::Set &a) { Set(a.value); },
+        std::visit(
+            Match{
+                [this](const ActionT::Set &a) { Set(a.value); },
+            },
+            action
         );
     }
     bool CanApply(const ActionType &) const override { return true; }

@@ -503,25 +503,27 @@ std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(ComponentArgs &
 }
 
 void AudioGraph::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::AudioGraph::CreateNode &a) {
-            Nodes.EmplaceBack(a.node_type_id);
-        },
-        [this](const Action::AudioGraph::CreateFaustNode &a) {
-            latest_dsp_id = a.dsp_id;
-            Nodes.EmplaceBack(FaustNodeTypeId);
-        },
-        [this](const Action::AudioGraph::DeleteNode &a) {
-            Nodes.EraseId(a.id);
-            Connections.DisconnectOutput(a.id);
-        },
-        [](const Action::AudioGraph::SetDeviceDataFormat &a) {
-            if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device data format with id {} exists.", a.id));
+    std::visit(
+        Match{
+            [this](const Action::AudioGraph::CreateNode &a) {
+                Nodes.EmplaceBack(a.node_type_id);
+            },
+            [this](const Action::AudioGraph::CreateFaustNode &a) {
+                latest_dsp_id = a.dsp_id;
+                Nodes.EmplaceBack(FaustNodeTypeId);
+            },
+            [this](const Action::AudioGraph::DeleteNode &a) {
+                Nodes.EraseId(a.id);
+                Connections.DisconnectOutput(a.id);
+            },
+            [](const Action::AudioGraph::SetDeviceDataFormat &a) {
+                if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device data format with id {} exists.", a.id));
 
-            auto *format = static_cast<const DeviceNode::DataFormat *>(Component::ById.at(a.id));
-            format->Set({a.sample_format, a.channels, a.sample_rate});
+                auto *format = static_cast<const DeviceNode::DataFormat *>(Component::ById.at(a.id));
+                format->Set({a.sample_format, a.channels, a.sample_rate});
+            },
         },
+        action
     );
 }
 

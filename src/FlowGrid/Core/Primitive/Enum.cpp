@@ -11,9 +11,11 @@ Enum::Enum(ComponentArgs &&args, std::function<string(int)> get_name, int value)
     : Primitive(std::move(args), value), Names({}), GetName(std::move(get_name)) {}
 
 void Enum::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Primitive::Enum::Set &a) { Set(a.value); },
+    std::visit(
+        Match{
+            [this](const Action::Primitive::Enum::Set &a) { Set(a.value); },
+        },
+        action
     );
 }
 

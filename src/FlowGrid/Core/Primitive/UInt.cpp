@@ -10,9 +10,11 @@ UInt::UInt(ComponentArgs &&args, std::function<const string(u32)> get_name, u32 
 UInt::operator ImColor() const { return Value; }
 
 void UInt::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Primitive::UInt::Set &a) { Set(a.value); },
+    std::visit(
+        Match{
+            [this](const Action::Primitive::UInt::Set &a) { Set(a.value); },
+        },
+        action
     );
 }
 

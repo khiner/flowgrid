@@ -28,15 +28,17 @@ void Vec2::Set(const std::pair<float, float> &value) const {
 }
 
 void Vec2::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Vec2::Set &a) { Set(a.value); },
-        [this](const Action::Vec2::SetX &a) { SetX(a.value); },
-        [this](const Action::Vec2::SetY &a) { SetY(a.value); },
-        [this](const Action::Vec2::SetAll &a) { Set({a.value, a.value}); },
-        [](const Action::Vec2::ToggleLinked &) {
-            throw std::runtime_error("Action::Vec2::ToggleLinked not implemented for non-linked Vec2.");
+    std::visit(
+        Match{
+            [this](const Action::Vec2::Set &a) { Set(a.value); },
+            [this](const Action::Vec2::SetX &a) { SetX(a.value); },
+            [this](const Action::Vec2::SetY &a) { SetY(a.value); },
+            [this](const Action::Vec2::SetAll &a) { Set({a.value, a.value}); },
+            [](const Action::Vec2::ToggleLinked &) {
+                throw std::runtime_error("Action::Vec2::ToggleLinked not implemented for non-linked Vec2.");
+            },
         },
+        action
     );
 }
 
@@ -82,18 +84,20 @@ Vec2Linked::~Vec2Linked() {
 }
 
 void Vec2Linked::Apply(const ActionType &action) const {
-    Visit(
-        action,
-        [this](const Action::Vec2::Set &a) { Vec2::Apply(a); },
-        [this](const Action::Vec2::SetX &a) { Vec2::Apply(a); },
-        [this](const Action::Vec2::SetY &a) { Vec2::Apply(a); },
-        [this](const Action::Vec2::SetAll &a) { Vec2::Apply(a); },
-        [this](const Action::Vec2::ToggleLinked &) {
-            SetLinked(!Linked);
-            // Linking sets the max value to the min value.
-            if (X() < Y()) SetY(X());
-            else if (Y() < X()) SetX(Y());
+    std::visit(
+        Match{
+            [this](const Action::Vec2::Set &a) { Vec2::Apply(a); },
+            [this](const Action::Vec2::SetX &a) { Vec2::Apply(a); },
+            [this](const Action::Vec2::SetY &a) { Vec2::Apply(a); },
+            [this](const Action::Vec2::SetAll &a) { Vec2::Apply(a); },
+            [this](const Action::Vec2::ToggleLinked &) {
+                SetLinked(!Linked);
+                // Linking sets the max value to the min value.
+                if (X() < Y()) SetY(X());
+                else if (Y() < X()) SetX(Y());
+            },
         },
+        action
     );
 }
 

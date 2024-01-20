@@ -244,20 +244,21 @@ private:
         bool IsMultiline() const { return Start.L != End.L; }
         bool IsRightOf(LineChar lc) const { return End.L == lc.L && End.C > lc.C; }
 
-        bool IsEdited() const { return StartModified || EndModified; }
-        bool IsStartEdited() const { return StartModified; }
-        bool IsEndEdited() const { return EndModified; }
-        void ClearEdited() { StartModified = EndModified = false; }
+        bool IsEdited() const { return StartEdited || EndEdited; }
+        bool IsStartEdited() const { return StartEdited; }
+        bool IsEndEdited() const { return EndEdited; }
+        void MarkEdited() { StartEdited = EndEdited = true; }
+        void ClearEdited() { StartEdited = EndEdited = false; }
 
         void SetStart(LineChar start, std::optional<uint> start_column = std::nullopt) {
             Start = std::move(start);
             StartColumn = start_column;
-            EndModified = true; // todo maybe only if changed?
+            EndEdited = true; // todo maybe only if changed?
         }
         void SetEnd(LineChar end, std::optional<uint> end_column = std::nullopt) {
             End = std::move(end);
             EndColumn = end_column;
-            EndModified = true; // todo maybe only if changed?
+            EndEdited = true; // todo maybe only if changed?
         }
         void Set(LineChar end, bool set_both, std::optional<uint> end_column = std::nullopt) {
             if (set_both) SetStart(end, end_column);
@@ -283,7 +284,8 @@ private:
         // and a non-empty column is always up-to-date with its latest `LineChar` value.
         std::optional<uint> StartColumn{}, EndColumn{};
         // Cleared every frame. Used to keep recently edited cursors visible.
-        bool StartModified{false}, EndModified{false};
+        // todo These should not be stored in history, since all cursors are marked as edited during an undo/redo.
+        bool StartEdited{false}, EndEdited{false};
     };
 
     struct Cursors {
@@ -309,6 +311,9 @@ private:
 
         void Add();
         void Reset();
+        void MarkEdited() {
+            for (Cursor &c : Cursors) c.MarkEdited();
+        }
         void ClearEdited() {
             for (Cursor &c : Cursors) c.ClearEdited();
         }

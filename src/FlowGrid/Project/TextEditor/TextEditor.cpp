@@ -239,6 +239,7 @@ void TextEditor::Undo() {
     const auto restore = History[--HistoryIndex];
     Lines = restore.Lines;
     Cursors = before_cursors;
+    Cursors.MarkEdited();
     ts_tree_delete(Tree);
     Tree = restore.Tree;
     Parse();
@@ -249,6 +250,7 @@ void TextEditor::Redo() {
     const auto restore = History[++HistoryIndex];
     Lines = restore.Lines;
     Cursors = restore.Cursors;
+    Cursors.MarkEdited();
     ts_tree_delete(Tree);
     Tree = restore.Tree;
     Parse();

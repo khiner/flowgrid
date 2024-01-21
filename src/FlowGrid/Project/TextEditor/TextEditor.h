@@ -415,20 +415,21 @@ private:
 
     LinesT Lines{LineT{}};
     Cursors Cursors, BeforeCursors;
-
-    uint NumTabSpaces{4};
-    float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
-    uint LeftMargin{10};
-    ImVec2 CharAdvance;
-    float LastClickTime{-1}; // In ImGui time.
-    ImVec2 LastClickPos{-1, -1}, LastPanMousePos{-1, -1};
-    float CurrentSpaceWidth{20}, CurrentSpaceHeight{20.0f};
-    uint VisibleLineCount{0}, VisibleColumnCount{0};
-    float ContentWidth{0}, ContentHeight{0};
-    bool ScrollToTop{false};
-    std::optional<Cursor> MatchingBrackets{};
     PaletteIdT PaletteId;
     LanguageID LanguageId{LanguageID::None};
+
+    float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
+    uint NumTabSpaces{4};
+    uint LeftMargin{10};
+    ImVec2 CharAdvance;
+
+    ImVec2 ContentDims{0, 0}; // Pixel width/height of current content area.
+    Coords ContentCoordDims{0, 0}; // Coords width/height of current content area.
+    ImVec2 CurrentSpaceDims{20, 20}; // Pixel width/height given to `ImGui::Dummy`.
+    ImVec2 LastClickPos{-1, -1}, LastPanMousePos{-1, -1};
+    float LastClickTime{-1}; // ImGui time.
+    std::optional<Cursor> MatchingBrackets{};
+    bool ScrollToTop{false};
 
     std::unique_ptr<CodeParser> Parser;
     TSTree *Tree{nullptr};

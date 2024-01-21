@@ -934,9 +934,9 @@ void TextEditor::HandleKeyboardInputs() {
     else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
         Cursors.MoveChar(*this, true, shift, is_wordmove_key);
     else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
-        Cursors.MoveLines(*this, -(VisibleLineCount - 2), shift);
+        Cursors.MoveLines(*this, -(ContentCoordDims.L - 2), shift);
     else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
-        Cursors.MoveLines(*this, VisibleLineCount - 2, shift);
+        Cursors.MoveLines(*this, ContentCoordDims.L - 2, shift);
     else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
         Cursors.MoveTop(shift);
     else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
@@ -1096,16 +1096,16 @@ bool TextEditor::Render(bool is_parent_focused) {
         snprintf(li_buffer, 16, " %lu ", Lines.size());
         TextStart += ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, li_buffer, nullptr, nullptr).x;
     }
+    const ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
     const ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
-    const float scroll_x = ImGui::GetScrollX(), scroll_y = ImGui::GetScrollY();
-    const bool horizontal_scrollbar_visible = CurrentSpaceWidth > ContentWidth;
-    const bool vertical_scrollbar_visible = CurrentSpaceHeight > ContentHeight;
-    ContentHeight = ImGui::GetWindowHeight() - (horizontal_scrollbar_visible ? ImGuiScrollbarWidth : 0.0f);
-    ContentWidth = ImGui::GetWindowWidth() - (vertical_scrollbar_visible ? ImGuiScrollbarWidth : 0.0f);
-    VisibleLineCount = std::max(uint(ceil(ContentHeight / CharAdvance.y)), 0u);
-    VisibleColumnCount = std::max(uint(ceil((ContentWidth - std::max(TextStart - scroll_x, 0.0f)) / CharAdvance.x)), 0u);
-    const Coords first_visible_coords = {uint(scroll_y / CharAdvance.y), uint(std::max(scroll_x - TextStart, 0.0f) / CharAdvance.x)};
-    const Coords last_visible_coords = {uint((ContentHeight + scroll_y) / CharAdvance.y), uint((ContentWidth + scroll_x - TextStart) / CharAdvance.x)};
+    const std::pair<bool, bool> scrollbars_visible = {CurrentSpaceDims.x > ContentDims.x, CurrentSpaceDims.y > ContentDims.y};
+    const ImVec2 ContentDims{
+        ImGui::GetWindowWidth() - (scrollbars_visible.first ? ImGuiScrollbarWidth : 0.0f),
+        ImGui::GetWindowHeight() - (scrollbars_visible.second ? ImGuiScrollbarWidth : 0.0f)
+    };
+    const Coords first_visible_coords = {uint(scroll.y / CharAdvance.y), uint(std::max(scroll.x - TextStart, 0.0f) / CharAdvance.x)};
+    const Coords last_visible_coords = {uint((ContentDims.y + scroll.y) / CharAdvance.y), uint((ContentDims.x + scroll.x - TextStart) / CharAdvance.x)};
+    ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
 
     uint max_column_limited = 0;
     auto dl = ImGui::GetWindowDrawList();
@@ -1201,27 +1201,32 @@ bool TextEditor::Render(bool is_parent_focused) {
         }
     }
 
-    CurrentSpaceHeight = (Lines.size() + std::min(VisibleLineCount - 1, uint(Lines.size()))) * CharAdvance.y;
-    CurrentSpaceWidth = std::max((max_column_limited + std::min(VisibleColumnCount - 1, max_column_limited)) * CharAdvance.x, CurrentSpaceWidth);
+    CurrentSpaceDims = {
+        std::max((max_column_limited + std::min(ContentCoordDims.C - 1, max_column_limited)) * CharAdvance.x, CurrentSpaceDims.x),
+        (Lines.size() + std::min(ContentCoordDims.L - 1, uint(Lines.size()))) * CharAdvance.y
+    };
 
     ImGui::SetCursorPos({0, 0});
-    ImGui::Dummy({CurrentSpaceWidth, CurrentSpaceHeight});
+    ImGui::Dummy(CurrentSpaceDims);
     if (edited_cursor) {
+        // Move scroll to keep the edited cursor visible.
+        // Goal: Keep the _entirity_ of the edited cursor(s) visible at all times.
+        // So, vars like `end_in_view` mean, "is the end of the edited cursor in _fully_ in view?"
         // We assume at least the end has been edited, since it's the _interactive_ end.
         const auto end = edited_cursor->GetEndCoords(*this);
-        const bool end_in_view = end.L >= first_visible_coords.L && end.L < last_visible_coords.L &&
+        const bool end_in_view = end.L > first_visible_coords.L && end.L < (std::min(last_visible_coords.L, 1u) - 1) &&
             end.C >= first_visible_coords.C && end.C < last_visible_coords.C;
         const bool target_start = edited_cursor->IsStartEdited() && end_in_view;
         const auto target = target_start ? edited_cursor->GetStartCoords(*this) : end;
-        if (target.L < first_visible_coords.L) {
+        if (target.L <= first_visible_coords.L) {
             ImGui::SetScrollY(std::max((target.L - 0.5f) * CharAdvance.y, 0.f));
-        } else if (target.L > last_visible_coords.L) {
-            ImGui::SetScrollY(std::max((target.L + 0.5f) * CharAdvance.y - ContentHeight, 0.f));
+        } else if (target.L >= last_visible_coords.L) {
+            ImGui::SetScrollY(std::max((target.L + 1.5f) * CharAdvance.y - ContentDims.y, 0.f));
         }
-        if (target.C < first_visible_coords.C) {
-            ImGui::SetScrollX(std::max(TextStart + (target.C - 0.5f) * CharAdvance.x, 0.f));
-        } else if (target.C > last_visible_coords.C) {
-            ImGui::SetScrollX(std::max(TextStart + (target.C + 0.5f) * CharAdvance.x - ContentWidth, 0.f));
+        if (target.C <= first_visible_coords.C) {
+            ImGui::SetScrollX(std::clamp(TextStart + (target.C - 0.5f) * CharAdvance.x, 0.f, scroll.x));
+        } else if (target.C >= last_visible_coords.C) {
+            ImGui::SetScrollX(std::max(TextStart + (target.C + 1.5f) * CharAdvance.x - ContentDims.x, 0.f));
         }
     }
     if (ScrollToTop) {

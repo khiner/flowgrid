@@ -125,6 +125,8 @@ struct TextEditor {
 
     using LineT = immer::flex_vector<char>;
     using LinesT = immer::flex_vector<LineT>;
+    using TransientLineT = immer::flex_vector_transient<char>;
+    using TransientLinesT = immer::flex_vector_transient<LineT>;
     using PaletteLineT = immer::flex_vector<PaletteIndex>;
     using PaletteLinesT = immer::flex_vector<PaletteLineT>;
 
@@ -384,8 +386,8 @@ private:
     void RemoveCurrentLines();
     void SwapLines(uint li1, uint li2);
 
-    LineChar InsertText(const std::string &, LineChar); // Returns insertion end.
-    void InsertTextAtCursor(const std::string &, Cursor &);
+    LineChar InsertText(LinesT, LineChar); // Returns insertion end.
+    void InsertTextAtCursor(LinesT, Cursor &);
     void DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &);
 

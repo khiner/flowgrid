@@ -1,6 +1,7 @@
 #include "TextEditor.h"
 
 #include <algorithm>
+#include <print>
 #include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/range/conversion.hpp>
 #include <range/v3/view/filter.hpp>
@@ -14,6 +15,7 @@
 #include <tree_sitter/api.h>
 
 #include "Helper/File.h"
+#include "Helper/Time.h"
 
 using std::string, std::views::filter, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
@@ -205,6 +207,7 @@ void TextEditor::Cut() {
 bool TextEditor::CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
 
 void TextEditor::Paste() {
+    auto start_time = Clock::now();
     BeforeCursors = Cursors;
     // Check if we should do multicursor paste.
     const string clip_text = ImGui::GetClipboardText();
@@ -227,8 +230,16 @@ void TextEditor::Paste() {
     for (int c = Cursors.size() - 1; c > -1; --c) {
         auto &cursor = Cursors[c];
         const string insert_text = can_paste_to_multiple_cursors ? clip_text.substr(clip_text_lines[c].first, clip_text_lines[c].second - clip_text_lines[c].first) : clip_text;
-        InsertTextAtCursor(insert_text, cursor);
+        LinesT insert_text_lines{{}};
+        for (auto ch : insert_text) {
+            if (ch == '\r') continue; // Ignore the carriage return character.
+            if (ch == '\n') insert_text_lines = insert_text_lines.push_back({});
+            // xxx add all chars up to next newline to the last line in one += operation.
+            else insert_text_lines = insert_text_lines.set(insert_text_lines.size() - 1, insert_text_lines[insert_text_lines.size() - 1].push_back(ch));
+        }
+        InsertTextAtCursor(insert_text_lines, cursor);
     }
+    std::println("Paste took: {}", (Clock::now() - start_time).count());
     Record();
 }
 
@@ -265,8 +276,8 @@ void TextEditor::Record() {
 
 void TextEditor::SetText(const string &text) {
     const uint old_end_byte = ToByteIndex(EndLC());
-    immer::flex_vector_transient<LineT> transient_lines{};
-    immer::flex_vector_transient<char> current_line{};
+    TransientLinesT transient_lines{};
+    TransientLineT current_line{};
     for (auto ch : text) {
         if (ch == '\r') continue; // Ignore the carriage return character.
         if (ch == '\n') {
@@ -395,7 +406,7 @@ std::optional<TextEditor::Cursor> TextEditor::Cursors::GetEditedCursor() {
     return edited_range;
 }
 
-void TextEditor::InsertTextAtCursor(const string &text, Cursor &c) {
+void TextEditor::InsertTextAtCursor(LinesT text, Cursor &c) {
     if (!text.empty()) c.Set(InsertText(text, c.Min()));
 }
 
@@ -487,6 +498,7 @@ void TextEditor::Cursors::MoveEnd(const TextEditor &editor, bool select) {
 }
 
 void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
+    auto start_time = Clock::now();
     if (ch == '\t' && Cursors.AnyMultiline()) return ChangeCurrentLinesIndentation(!is_shift);
 
     BeforeCursors = Cursors;
@@ -494,25 +506,29 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
 
     // Order is important here for typing '\n' in the same line with multiple cursors.
     for (auto &c : reverse_view(Cursors)) {
-        string insert_text;
+        TransientLinesT insert_text{};
         if (ch == '\n') {
-            insert_text = "\n";
+            insert_text.push_back({});
             if (AutoIndent && c.CharIndex() != 0) {
+                TransientLineT insert_line{};
                 // Match the indentation of the current or next line, whichever has more indentation.
                 const uint li = c.Line();
                 const uint indent_li = li < Lines.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
                 const auto &indent_line = Lines[indent_li];
-                for (uint i = 0; i < indent_line.size() && isblank(indent_line[i]); ++i) insert_text += indent_line[i];
+                for (uint i = 0; i < indent_line.size() && isblank(indent_line[i]); ++i) insert_line.push_back(indent_line[i]);
             }
         } else {
             char buf[5];
             ImTextCharToUtf8(buf, ch);
-            insert_text = buf;
+            TransientLineT insert_line{};
+            for (uint i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line.push_back(buf[i]);
+            insert_text.push_back(insert_line.persistent());
         }
 
-        InsertTextAtCursor(insert_text, c);
+        InsertTextAtCursor(insert_text.persistent(), c);
     }
 
+    std::println("EnterChar took: {}", (Clock::now() - start_time).count());
     Record();
 }
 
@@ -625,7 +641,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
 
             const auto &line = Lines[li];
             if (increase) {
-                if (!line.empty()) InsertText("\t", {li, 0});
+                if (!line.empty()) InsertText({{'\t'}}, {li, 0});
             } else {
                 int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
                 while (ci > -1 && isblank(line[ci])) --ci;
@@ -704,7 +720,7 @@ void TextEditor::ToggleLineComment() {
     });
     for (uint li : affected_lines) {
         if (should_add_comment) {
-            InsertText(comment + ' ', {li, 0});
+            InsertText({LineT{comment.begin(), comment.end()} + ' '}, {li, 0});
         } else {
             const auto &line = Lines[li];
             const uint ci = FindFirstNonSpace(line);
@@ -813,43 +829,30 @@ uint TextEditor::GetLineMaxColumn(const LineT &line, uint limit) const {
     return column;
 }
 
-TextEditor::LineChar TextEditor::InsertText(const string &text, LineChar start) {
-    if (text.empty()) return start;
+TextEditor::LineChar TextEditor::InsertText(LinesT text, LineChar at) {
+    if (text.empty()) return at;
 
-    const uint start_byte = ToByteIndex(start);
-    LineChar insert_end;
-    if (!text.contains('\n')) {
-        insert_end = {start.L, uint(start.C + text.size())};
-        Lines = Lines.set(start.L, Lines[start.L].insert(start.C, immer::flex_vector<char>(text.begin(), text.end())));
-
-        auto cursors_to_right = Cursors | filter([&start](const auto &c) { return c.IsRightOf(start); });
-        for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() + text.size())});
+    auto start_time = Clock::now();
+    if (at.L < Lines.size()) {
+        auto ln1 = Lines[at.L];
+        Lines = Lines.set(at.L, ln1.take(at.C) + text[0]);
+        Lines = Lines.take(at.L + 1) + text.drop(1) + Lines.drop(at.L + 1);
+        auto ln2 = Lines[at.L + text.size() - 1];
+        Lines = Lines.set(at.L + text.size() - 1, ln2 + ln1.drop(at.C));
     } else {
-        auto text_lines = std::views::split(text, '\n');
-        const auto original_line_ending = Lines[start.L].drop(start.C) | ranges::to<LineT>;
-        Lines = Lines.set(start.L, Lines[start.L].take(start.C) + (text_lines.front() | ranges::to<LineT>));
-
-        uint num_new_lines = 0, last_line_size = 0;
-        auto remaining_lines = text_lines | std::views::drop(1);
-        for (auto it = remaining_lines.begin(); it != remaining_lines.end(); ++it) {
-            auto text_line = *it;
-            Lines = Lines.insert(start.L + num_new_lines + 1, text_line | ranges::to<LineT>);
-            if (std::next(it) == remaining_lines.end()) {
-                last_line_size = text_line.size();
-                const uint last_line_i = start.L + num_new_lines + 1;
-                Lines = Lines.set(last_line_i, Lines[last_line_i] + original_line_ending);
-            }
-            ++num_new_lines;
-        }
-
-        auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() >= start.L; });
-        for (auto &c : cursors_below) c.Set({c.Line() + num_new_lines, c.CharIndex()});
-
-        insert_end = {start.L + num_new_lines, last_line_size};
+        Lines = Lines + text;
     }
+    std::println("InsertText took: {}", (Clock::now() - start_time).count());
 
-    OnTextChanged(start_byte, start_byte, start_byte + text.size());
-    return insert_end;
+    auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() >= at.L; });
+    const uint num_new_lines = text.size() - 1;
+    for (auto &c : cursors_below) c.Set({c.Line() + num_new_lines, c.CharIndex()});
+
+    const uint start_byte = ToByteIndex(at);
+    const uint text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](uint sum, const auto &line) { return sum + line.size(); });
+    OnTextChanged(start_byte, start_byte, start_byte + text_byte_length);
+
+    return LineChar{at.L + num_new_lines, text.size() == 1 ? uint(at.C + text.front().size()) : uint(text.back().size())};
 }
 
 void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor) {

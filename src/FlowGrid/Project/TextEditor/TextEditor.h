@@ -123,15 +123,15 @@ struct TextEditor {
         bool operator!=(const LineChar &) const = default;
     };
 
-    using LineT = immer::flex_vector<char>;
-    using LinesT = immer::flex_vector<LineT>;
-    using TransientLineT = immer::flex_vector_transient<char>;
-    using TransientLinesT = immer::flex_vector_transient<LineT>;
-    using PaletteLineT = immer::flex_vector<PaletteIndex>;
-    using PaletteLinesT = immer::flex_vector<PaletteLineT>;
+    using Line = immer::flex_vector<char>;
+    using Lines = immer::flex_vector<Line>;
+    using TransientLine = immer::flex_vector_transient<char>;
+    using TransientLines = immer::flex_vector_transient<Line>;
+    using PaletteLine = immer::flex_vector<PaletteIndex>;
+    using PaletteLines = immer::flex_vector<PaletteLine>;
 
-    uint LineCount() const { return Lines.size(); }
-    const LineT &GetLine(uint li) const { return Lines[li]; }
+    uint LineCount() const { return Text.size(); }
+    const Line &GetLine(uint li) const { return Text[li]; }
     LineChar GetCursorPosition() const { return Cursors.back().LC(); }
     std::string GetText(LineChar start, LineChar end) const;
     std::string GetText() const { return GetText(BeginLC(), EndLC()); }
@@ -172,8 +172,8 @@ struct TextEditor {
 
 private:
     struct LinesIter {
-        LinesIter(const LinesT &lines, LineChar lc, LineChar begin, LineChar end)
-            : Lines(lines), LC(std::move(lc)), Begin(std::move(begin)), End(std::move(end)) {}
+        LinesIter(const Lines &lines, LineChar lc, LineChar begin, LineChar end)
+            : Text(lines), LC(std::move(lc)), Begin(std::move(begin)), End(std::move(end)) {}
         LinesIter(const LinesIter &) = default; // Needed since we have an assignment operator.
 
         LinesIter &operator=(const LinesIter &o) {
@@ -184,7 +184,7 @@ private:
         }
 
         operator char() const {
-            const auto &line = Lines[LC.L];
+            const auto &line = Text[LC.L];
             return LC.C < line.size() ? line[LC.C] : '\0';
         }
 
@@ -207,7 +207,7 @@ private:
         void Reset() { LC = Begin; }
 
     private:
-        const LinesT &Lines;
+        const Lines &Text;
         LineChar LC, Begin, End;
 
         void MoveRight();
@@ -346,26 +346,26 @@ private:
     ImU32 GetColor(LineChar lc) const;
 
     static LineChar BeginLC() { return {0, 0}; }
-    LineChar EndLC() const { return {uint(Lines.size() - 1), uint(Lines.back().size())}; }
-    LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Lines, std::move(lc), std::move(begin), std::move(end)}; }
+    LineChar EndLC() const { return {uint(Text.size() - 1), uint(Text.back().size())}; }
+    LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Text, std::move(lc), std::move(begin), std::move(end)}; }
     LinesIter Iter(LineChar lc = BeginLC()) const { return Iter(std::move(lc), BeginLC(), EndLC()); }
 
     LineChar LineMaxLC(uint li) const { return {li, GetLineMaxCharIndex(li)}; }
-    Coords ToCoords(LineChar lc) const { return {lc.L, GetColumn(Lines[lc.L], lc.C)}; }
+    Coords ToCoords(LineChar lc) const { return {lc.L, GetColumn(Text[lc.L], lc.C)}; }
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(std::move(coords))}; }
     uint ToByteIndex(LineChar) const;
-    void MoveCharIndexAndColumn(const LineT &, uint &ci, uint &column) const;
+    void MoveCharIndexAndColumn(const Line &, uint &ci, uint &column) const;
 
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const;
     LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
-    uint GetCharIndex(const LineT &, uint column) const;
-    uint GetCharIndex(Coords coords) const { return GetCharIndex(Lines[coords.L], coords.C); }
-    uint GetColumn(const LineT &, uint ci) const;
-    uint GetColumn(LineChar lc) const { return GetColumn(Lines[lc.L], lc.C); }
-    uint GetFirstVisibleCharIndex(const LineT &, uint first_visible_column) const;
-    uint GetLineMaxColumn(const LineT &) const;
-    uint GetLineMaxColumn(const LineT &, uint limit) const;
-    uint GetLineMaxCharIndex(uint li) const { return Lines[li].size(); }
+    uint GetCharIndex(const Line &, uint column) const;
+    uint GetCharIndex(Coords coords) const { return GetCharIndex(Text[coords.L], coords.C); }
+    uint GetColumn(const Line &, uint ci) const;
+    uint GetColumn(LineChar lc) const { return GetColumn(Text[lc.L], lc.C); }
+    uint GetFirstVisibleCharIndex(const Line &, uint first_visible_column) const;
+    uint GetLineMaxColumn(const Line &) const;
+    uint GetLineMaxColumn(const Line &, uint limit) const;
+    uint GetLineMaxCharIndex(uint li) const { return Text[li].size(); }
 
     void EnterChar(ImWchar, bool is_shift);
     void Backspace(bool is_word_mode = false);
@@ -386,8 +386,8 @@ private:
     void RemoveCurrentLines();
     void SwapLines(uint li1, uint li2);
 
-    LineChar InsertText(LinesT, LineChar); // Returns insertion end.
-    void InsertTextAtCursor(LinesT, Cursor &);
+    LineChar InsertText(Lines, LineChar); // Returns insertion end.
+    void InsertTextAtCursor(Lines, Cursor &);
     void DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &);
 
@@ -415,7 +415,7 @@ private:
 
     const PaletteT &GetPalette() const;
 
-    LinesT Lines{LineT{}};
+    Lines Text{Line{}};
     Cursors Cursors, BeforeCursors;
     PaletteIdT PaletteId;
     LanguageID LanguageId{LanguageID::None};
@@ -437,7 +437,7 @@ private:
     TSTree *Tree{nullptr};
 
     struct Snapshot {
-        LinesT Lines;
+        Lines Text;
         struct Cursors Cursors, BeforeCursors;
         TSTree *Tree;
     };

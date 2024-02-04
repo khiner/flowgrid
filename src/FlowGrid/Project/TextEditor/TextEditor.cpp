@@ -489,7 +489,6 @@ void TextEditor::Cursors::MoveEnd(const TextEditor &editor, bool select) {
 }
 
 void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
-    auto start_time = Clock::now();
     if (ch == '\t' && Cursors.AnyMultiline()) return ChangeCurrentLinesIndentation(!is_shift);
 
     BeforeCursors = Cursors;
@@ -497,29 +496,25 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
 
     // Order is important here for typing '\n' in the same line with multiple cursors.
     for (auto &c : reverse_view(Cursors)) {
-        TransientLinesT insert_text{};
+        TransientLineT insert_line_trans{};
         if (ch == '\n') {
-            insert_text.push_back({});
             if (AutoIndent && c.CharIndex() != 0) {
-                TransientLineT insert_line{};
                 // Match the indentation of the current or next line, whichever has more indentation.
+                // todo use tree-sitter fold queries
                 const uint li = c.Line();
                 const uint indent_li = li < Lines.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
                 const auto &indent_line = Lines[indent_li];
-                for (uint i = 0; i < indent_line.size() && isblank(indent_line[i]); ++i) insert_line.push_back(indent_line[i]);
+                for (uint i = 0; i < insert_line_trans.size() && isblank(indent_line[i]); ++i) insert_line_trans.push_back(indent_line[i]);
             }
         } else {
             char buf[5];
             ImTextCharToUtf8(buf, ch);
-            TransientLineT insert_line{};
-            for (uint i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line.push_back(buf[i]);
-            insert_text.push_back(insert_line.persistent());
+            for (uint i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line_trans.push_back(buf[i]);
         }
-
-        InsertTextAtCursor(insert_text.persistent(), c);
+        auto insert_line = insert_line_trans.persistent();
+        InsertTextAtCursor(ch == '\n' ? LinesT{{}, insert_line} : LinesT{insert_line}, c);
     }
 
-    std::println("EnterChar took: {}", (Clock::now() - start_time).count());
     Record();
 }
 
@@ -823,7 +818,6 @@ uint TextEditor::GetLineMaxColumn(const LineT &line, uint limit) const {
 TextEditor::LineChar TextEditor::InsertText(LinesT text, LineChar at) {
     if (text.empty()) return at;
 
-    auto start_time = Clock::now();
     if (at.L < Lines.size()) {
         auto ln1 = Lines[at.L];
         Lines = Lines.set(at.L, ln1.take(at.C) + text[0]);
@@ -833,14 +827,13 @@ TextEditor::LineChar TextEditor::InsertText(LinesT text, LineChar at) {
     } else {
         Lines = Lines + text;
     }
-    std::println("InsertText took: {}", (Clock::now() - start_time).count());
 
-    auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() >= at.L; });
+    auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() > at.L; });
     const uint num_new_lines = text.size() - 1;
     for (auto &c : cursors_below) c.Set({c.Line() + num_new_lines, c.CharIndex()});
 
     const uint start_byte = ToByteIndex(at);
-    const uint text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](uint sum, const auto &line) { return sum + line.size(); });
+    const uint text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](uint sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
     OnTextChanged(start_byte, start_byte, start_byte + text_byte_length);
 
     return LineChar{at.L + num_new_lines, text.size() == 1 ? uint(at.C + text.front().size()) : uint(text.back().size())};

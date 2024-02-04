@@ -207,39 +207,30 @@ void TextEditor::Cut() {
 bool TextEditor::CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
 
 void TextEditor::Paste() {
-    auto start_time = Clock::now();
-    BeforeCursors = Cursors;
-    // Check if we should do multicursor paste.
-    const string clip_text = ImGui::GetClipboardText();
-    bool can_paste_to_multiple_cursors = false;
-    std::vector<std::pair<uint, uint>> clip_text_lines;
-    if (Cursors.size() > 1) {
-        clip_text_lines.push_back({0, 0});
-        for (uint i = 0; i < clip_text.length(); ++i) {
-            if (clip_text[i] == '\n') {
-                clip_text_lines.back().second = i;
-                clip_text_lines.push_back({i + 1, 0});
-            }
-        }
-        clip_text_lines.back().second = clip_text.length();
-        can_paste_to_multiple_cursors = clip_text_lines.size() == Cursors.size() + 1;
-    }
-    if (clip_text.empty()) return;
+    // todo store clipboard text manually in a `LinesT`?
+    const char *clip_text = ImGui::GetClipboardText();
+    if (*clip_text == '\0') return;
 
-    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-    for (int c = Cursors.size() - 1; c > -1; --c) {
-        auto &cursor = Cursors[c];
-        const string insert_text = can_paste_to_multiple_cursors ? clip_text.substr(clip_text_lines[c].first, clip_text_lines[c].second - clip_text_lines[c].first) : clip_text;
-        LinesT insert_text_lines{{}};
-        for (auto ch : insert_text) {
-            if (ch == '\r') continue; // Ignore the carriage return character.
-            if (ch == '\n') insert_text_lines = insert_text_lines.push_back({});
-            // xxx add all chars up to next newline to the last line in one += operation.
-            else insert_text_lines = insert_text_lines.set(insert_text_lines.size() - 1, insert_text_lines[insert_text_lines.size() - 1].push_back(ch));
-        }
-        InsertTextAtCursor(insert_text_lines, cursor);
+    BeforeCursors = Cursors;
+
+    TransientLinesT insert_text_lines_trans{};
+    const char *ptr = clip_text;
+    while (*ptr != '\0') {
+        uint str_length = 0;
+        while (ptr[str_length] != '\n' && ptr[str_length] != '\0') ++str_length;
+        insert_text_lines_trans.push_back({ptr, ptr + str_length});
+        // Special case: Last pasted char is a newline.
+        if (*(ptr + str_length) == '\n' && *(ptr + str_length + 1) == '\0') insert_text_lines_trans.push_back({});
+        ptr += str_length + 1;
     }
-    std::println("Paste took: {}", (Clock::now() - start_time).count());
+    const auto insert_text_lines = insert_text_lines_trans.persistent();
+    for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+    if (Cursors.size() > 1 && insert_text_lines.size() == Cursors.size()) {
+        // Paste each line at the corresponding cursor.
+        for (int c = Cursors.size() - 1; c > -1; --c) InsertTextAtCursor({insert_text_lines[c]}, Cursors[c]);
+    } else {
+        for (auto &c : reverse_view(Cursors)) InsertTextAtCursor(insert_text_lines, c);
+    }
     Record();
 }
 

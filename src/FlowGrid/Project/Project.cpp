@@ -464,7 +464,7 @@ void Project::OnApplicationLaunch() const {
     Save(EmptyProjectPath);
 }
 
-json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(file_path)); }
+static json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(file_path)); }
 
 // Helper function used in `Project::Open`.
 // Modifies the active transient store.

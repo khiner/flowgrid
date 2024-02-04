@@ -12,10 +12,14 @@
 #include <string>
 
 #include "imgui_internal.h"
+#include "nlohmann/json.hpp"
 #include <tree_sitter/api.h>
 
+#include "Application/ApplicationPreferences.h"
 #include "Helper/File.h"
 #include "Helper/Time.h"
+
+using json = nlohmann::json;
 
 using std::string, std::views::filter, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
@@ -84,11 +88,45 @@ private:
     TSLanguage *Language;
 };
 
+// Corresponds to tree-sitter's `config.json`.
+struct TSConfig {
+    struct ThemeStyle {
+        uint Color{0};
+        bool Bold{false}, Italic{false};
+    };
+
+    std::vector<string> ParserDirectories{};
+    std::unordered_map<string, ThemeStyle> Theme{}; // Keys are TS query names.
+};
+void from_json(const json &j, TSConfig::ThemeStyle &style) {
+    if (j.is_number()) {
+        j.get_to(style.Color);
+    } else if (j.is_object()) {
+        if (j.contains("color")) j.at("color").get_to(style.Color);
+        if (j.contains("bold")) j.at("bold").get_to(style.Bold);
+        if (j.contains("italic")) j.at("italic").get_to(style.Italic);
+    } else {
+        throw std::runtime_error("Invalid theme style type in tree-sitter config JSON.");
+    }
+}
+void from_json(const json &j, TSConfig &config) {
+    j.at("parser-directories").get_to(config.ParserDirectories);
+    const auto &theme = j.at("theme");
+    for (const auto &[key, value] : theme.items()) {
+        if (!value.is_null()) config.Theme[key] = value.get<TSConfig::ThemeStyle>();
+    }
+}
+
 TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(std::make_unique<CodeParser>()) {
     SetText(string(text));
     SetLanguage(language_id);
     SetPalette(DefaultPaletteId);
     Record();
+    if (!Preferences.TreeSitterConfigPath.empty()) {
+        const auto config_json = json::parse(FileIO::read(Preferences.TreeSitterConfigPath));
+        const TSConfig config = config_json.get<TSConfig>();
+        // todo use the config
+    }
 }
 TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<CodeParser>()) {
     SetText(FileIO::read(file_path));

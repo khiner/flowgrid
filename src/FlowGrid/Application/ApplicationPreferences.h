@@ -18,6 +18,7 @@ struct ApplicationPreferences {
 
     // Saved fields:
     std::list<fs::path> RecentlyOpenedPaths{};
+    fs::path TreeSitterConfigPath{fs::path{"~"} / "Library" / "Application Support" / "tree-sitter" / "config.json"};
 };
 
 extern ApplicationPreferences Preferences;

@@ -23,6 +23,7 @@ namespace fs = std::filesystem;
 struct TSLanguage;
 struct TSTree;
 struct TSQuery;
+struct TSQueryCursor;
 
 enum class PaletteIndex {
     // Language
@@ -440,6 +441,7 @@ private:
     std::unique_ptr<CodeParser> Parser;
     TSTree *Tree{nullptr};
     TSQuery *Query{nullptr};
+    TSQueryCursor *QueryCursor{nullptr};
 
     struct Snapshot {
         Lines Text;

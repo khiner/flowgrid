@@ -158,6 +158,7 @@ TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<Code
 }
 
 TextEditor::~TextEditor() {
+    ts_query_cursor_delete(QueryCursor);
     ts_tree_delete(Tree);
 }
 
@@ -233,6 +234,7 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     Parser->SetLanguage(GetLanguage().TsLanguage);
     Tree = nullptr;
     Query = GetLanguage().GetQuery(Preferences.TreeSitterGrammarsPath);
+    QueryCursor = ts_query_cursor_new();
     Parse();
 }
 
@@ -943,6 +945,23 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
         edit.old_end_byte = old_end_byte;
         edit.new_end_byte = new_end_byte;
         ts_tree_edit(Tree, &edit);
+
+        if (Query) {
+            // todo only query the edited range
+            ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
+            TSQueryMatch match;
+            uint32_t capture_index;
+            // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
+            while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
+                const TSQueryCapture &capture = match.captures[capture_index];
+                uint32_t length;
+                const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &length);
+                // std::string capture_name_str(capture_name, length);
+                std::println("Pattern index: {}, Capture index: {}, Capture name: {}", match.pattern_index, capture.index, capture_name);
+                // const auto &node = capture.node;
+                // todo associate the node with the `TSConfig::ThemeStyle` corresponding to the capture name.
+            }
+        }
     }
     Parse();
 }

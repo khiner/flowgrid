@@ -59,11 +59,33 @@ LanguageDefinition::PaletteT LanguageDefinition::CreatePalette(LanguageID id) {
     return p;
 }
 
+TSQuery *LanguageDefinition::GetQuery(const fs::path &grammars_dir) const {
+    if (GrammarPathSegment.empty()) return nullptr;
+
+    const fs::path highlights_path = grammars_dir / ("tree-sitter-" + GrammarPathSegment) / "queries" / "highlights.scm";
+    const string highlights = FileIO::read(highlights_path);
+
+    uint32_t error_offset = 0;
+    TSQueryError error_type = TSQueryErrorNone;
+    auto *query = ts_query_new(
+        TsLanguage,
+        highlights.c_str(),
+        highlights.size(),
+        &error_offset,
+        &error_type
+    );
+    // todo better error handling
+    if (error_type != TSQueryErrorNone) {
+        std::println("Error parsing tree-sitter query: {}", int(error_type));
+    }
+    return query;
+}
+
 LanguageDefinitions::LanguageDefinitions()
     : ById{
           {ID::None, {ID::None, "None"}},
-          {ID::Cpp, {ID::Cpp, "C++", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
-          {ID::Json, {ID::Json, "JSON", tree_sitter_json(), {".json"}}},
+          {ID::Cpp, {ID::Cpp, "C++", "cpp", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
+          {ID::Json, {ID::Json, "JSON", "json", tree_sitter_json(), {".json"}}},
       } {
     for (const auto &[id, lang] : ById) {
         for (const auto &ext : lang.FileExtensions) ByFileExtension[ext] = id;
@@ -210,6 +232,7 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     LanguageId = language_id;
     Parser->SetLanguage(GetLanguage().TsLanguage);
     Tree = nullptr;
+    Query = GetLanguage().GetQuery(Preferences.TreeSitterGrammarsPath);
     Parse();
 }
 

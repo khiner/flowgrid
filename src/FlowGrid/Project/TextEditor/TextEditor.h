@@ -22,6 +22,7 @@ namespace fs = std::filesystem;
 
 struct TSLanguage;
 struct TSTree;
+struct TSQuery;
 
 enum class PaletteIndex {
     // Language
@@ -55,8 +56,11 @@ struct LanguageDefinition {
 
     static PaletteT CreatePalette(LanguageID);
 
+    TSQuery *GetQuery(const fs::path &grammars_dir) const;
+
     LanguageID Id;
     std::string Name;
+    std::string GrammarPathSegment{""}; // e.g. "cpp" in "tree-sitter-cpp"
     TSLanguage *TsLanguage{nullptr};
     std::unordered_set<std::string> FileExtensions{};
     std::string SingleLineComment{""};
@@ -435,6 +439,7 @@ private:
 
     std::unique_ptr<CodeParser> Parser;
     TSTree *Tree{nullptr};
+    TSQuery *Query{nullptr};
 
     struct Snapshot {
         Lines Text;

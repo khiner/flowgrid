@@ -8,8 +8,8 @@
 struct ApplicationPreferences {
     inline static const std::string FileExtension = ".flp";
     inline static const fs::path Path = fs::path(".flowgrid") / ("Preferences" + FileExtension);
-    // todo copy the tree-sitter-grammars query files to the build directory
-    inline static const fs::path TreeSitterGrammarsPath = fs::path("..") / "lib" / "tree-sitter-grammars";
+    // todo thinking of using this to automatically find the supported file extensions...
+    // inline static const fs::path TreeSitterGrammarsPath = fs::path("..") / "lib" / "tree-sitter-grammars";
 
     ApplicationPreferences();
 

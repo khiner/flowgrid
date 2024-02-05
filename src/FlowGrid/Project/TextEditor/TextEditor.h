@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <span>
 #include <string>
@@ -25,20 +26,29 @@ struct TSTree;
 struct TSQuery;
 struct TSQueryCursor;
 
+// These classes corresponds to tree-sitter's `config.json`.
+// https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
+struct TextEditorStyle {
+    struct CharStyle {
+        ImU32 Color{IM_COL32_WHITE};
+        bool Bold{false}, Italic{false}, Underline{false};
+
+        bool operator==(const CharStyle &o) const {
+            return Color == o.Color && Bold == o.Bold && Italic == o.Italic && Underline == o.Underline;
+        }
+    };
+};
+struct TSConfig {
+    std::vector<std::string> ParserDirectories{};
+    std::unordered_map<std::string, TextEditorStyle::CharStyle> StyleByHighlightName{};
+
+    inline static const TextEditorStyle::CharStyle DefaultCharStyle{};
+
+    TextEditorStyle::CharStyle FindStyleByCaptureName(const std::string &) const;
+};
+
 enum class PaletteIndex {
-    // Language
-    Default,
-    Keyword,
-    NumberLiteral,
-    StringLiteral,
-    CharLiteral,
-    Punctuation,
-    Preprocessor,
-    Operator,
-    Identifier,
-    Type,
-    Comment,
-    // Application
+    TextDefault,
     Background,
     Cursor,
     Selection,
@@ -53,19 +63,17 @@ enum class PaletteIndex {
 };
 
 struct LanguageDefinition {
-    using PaletteT = std::unordered_map<std::string, PaletteIndex>; // Key is TS node type name.
+    // todo recursively copy `queries` dir to build dir in CMake.
+    inline static fs::path QueriesDir = fs::path("..") / "src" / "FlowGrid" / "Project" / "TextEditor" / "queries";
 
-    static PaletteT CreatePalette(LanguageID);
-
-    TSQuery *GetQuery(const fs::path &grammars_dir) const;
+    TSQuery *GetQuery() const;
 
     LanguageID Id;
     std::string Name;
-    std::string GrammarPathSegment{""}; // e.g. "cpp" in "tree-sitter-cpp"
+    std::string ShortName{""}; // e.g. "cpp" in "tree-sitter-cpp"
     TSLanguage *TsLanguage{nullptr};
     std::unordered_set<std::string> FileExtensions{};
     std::string SingleLineComment{""};
-    PaletteT Palette{CreatePalette(Id)};
 };
 
 struct LanguageDefinitions {
@@ -172,6 +180,7 @@ struct TextEditor {
     bool AutoIndent{true};
     bool ShowWhitespaces{true};
     bool ShowLineNumbers{true};
+    bool ShowStyleTransitionPoints{false};
     bool ShortTabs{true};
     float LineSpacing{1};
 
@@ -348,7 +357,7 @@ private:
     void Record(); // Every `Record` should be paired with a `BeforeCursors = Cursors`.
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
-    ImU32 GetColor(LineChar lc) const;
+    ImU32 GetColor(LineChar) const;
 
     static LineChar BeginLC() { return {0, 0}; }
     LineChar EndLC() const { return {uint(Text.size() - 1), uint(Text.back().size())}; }
@@ -442,6 +451,8 @@ private:
     TSTree *Tree{nullptr};
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
+    TSConfig HighlightConfig;
+    std::map<LineChar, TextEditorStyle::CharStyle> CharStyleByTransitionPoints{};
 
     struct Snapshot {
         Lines Text;

@@ -86,6 +86,7 @@ void TextBuffer::RenderMenu() const {
                 if (MenuItem("Retro blue palette")) editor.SetPalette(TextEditor::PaletteIdT::RetroBlue);
                 EndMenu();
             }
+            MenuItem("Show style transition points", nullptr, &editor.ShowStyleTransitionPoints);
             gWindows.ToggleDebugMenuItem(Debug);
             EndMenu();
         }

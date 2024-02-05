@@ -41,8 +41,8 @@ static bool ProjectHasChanges{false};
 
 std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     const string &ext = path.extension();
-    if (!ProjectFormatByExtension.contains(ext)) return {};
-    return ProjectFormatByExtension.at(ext);
+    if (auto it = ProjectFormatByExtension.find(ext); it != ProjectFormatByExtension.end()) return it->second;
+    return {};
 }
 
 static float GestureTimeRemainingSec(float gesture_duration_sec) {

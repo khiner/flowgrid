@@ -9,5 +9,5 @@ inline static std::string U32ToHex(unsigned int value, bool is_color = false) no
     return std::format("#{:X}", value);
 }
 
-inline static unsigned int HexToU32(string_view hex) noexcept { return std::stoul(std::string(hex.substr(1)), nullptr, 16); }
-inline static bool IsHex(string_view str) noexcept { return !str.empty() && str[0] == '#'; }
+inline static unsigned int HexToU32(std::string_view hex) noexcept { return std::stoul(std::string(hex.substr(1)), nullptr, 16); }
+inline static bool IsHex(std::string_view str) noexcept { return !str.empty() && str[0] == '#'; }

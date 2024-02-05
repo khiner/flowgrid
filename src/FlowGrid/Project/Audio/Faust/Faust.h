@@ -143,7 +143,8 @@ pitchshifter = vgroup("Pitch Shifter", ef.transpose(
     vslider("shift (semitones)", 0, -24, +24, 0.1)
  )
 );
-process = _ : pitchshifter;)#"
+process = _ : pitchshifter;)#",
+        // LanguageID::Faust
     );
 
     Box Box{nullptr};

@@ -77,9 +77,8 @@ bool Component::IsChanged(bool include_descendents) const noexcept {
 Component *Component::FindContainerByPath(const StorePath &search_path) {
     StorePath subpath = search_path;
     while (subpath != "/") {
-        if (IdByPath.contains(subpath)) {
-            const auto id = IdByPath.at(subpath);
-            if (ContainerIds.contains(id)) return ById[id];
+        if (auto it = IdByPath.find(subpath); it != IdByPath.end() && ContainerIds.contains(it->second)) {
+            return ById[it->second];
         }
         subpath = subpath.parent_path();
     }

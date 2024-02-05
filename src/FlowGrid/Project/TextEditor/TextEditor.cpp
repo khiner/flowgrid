@@ -17,6 +17,7 @@
 
 #include "Application/ApplicationPreferences.h"
 #include "Helper/File.h"
+#include "Helper/Hex.h"
 #include "Helper/Time.h"
 
 using json = nlohmann::json;
@@ -27,42 +28,10 @@ using std::string, std::views::filter, std::ranges::reverse_view, std::ranges::a
 extern "C" TSLanguage *tree_sitter_json();
 extern "C" TSLanguage *tree_sitter_cpp();
 
-void AddTypes(LanguageDefinition::PaletteT &palette, PaletteIndex index, std::initializer_list<std::string> types) {
-    for (const auto &type : types) palette[type] = index;
-}
+TSQuery *LanguageDefinition::GetQuery() const {
+    if (ShortName.empty()) return nullptr;
 
-LanguageDefinition::PaletteT LanguageDefinition::CreatePalette(LanguageID id) {
-    PaletteT p;
-    using PI = PaletteIndex;
-    switch (id) {
-        case LanguageID::Cpp:
-            AddTypes(p, PI::Keyword, {"auto", "break", "case", "const", "constexpr", "continue", "default", "do", "else", "extern", "false", "for", "if", "nullptr", "private", "return", "static", "struct", "switch", "this", "true", "using", "while"});
-            AddTypes(p, PI::Operator, {"!", "!=", "&", "&&", "&=", "*", "++", "+=", "-", "--", "-=", "->", "/", "<", "<=", "=", "==", ">", ">=", "[", "]", "^=", "|", "||", "~"});
-            AddTypes(p, PI::NumberLiteral, {"number_literal"});
-            AddTypes(p, PI::CharLiteral, {"character"});
-            AddTypes(p, PI::StringLiteral, {"string_content", "\"", "'", "system_lib_string"});
-            AddTypes(p, PI::Identifier, {"identifier", "field_identifier", "namespace_identifier", "translation_unit", "type_identifier"});
-            AddTypes(p, PI::Type, {"primitive_type"});
-            AddTypes(p, PI::Preprocessor, {"#define", "#include", "preproc_arg"});
-            AddTypes(p, PI::Punctuation, {"(", ")", "+", ",", ".", ":", "::", ";", "?", "{", "}"});
-            AddTypes(p, PI::Comment, {"escape_sequence", "comment"});
-            break;
-        case LanguageID::Json:
-            AddTypes(p, PI::Type, {"true", "false", "null"});
-            AddTypes(p, PI::NumberLiteral, {"number"});
-            AddTypes(p, PI::StringLiteral, {"string_content", "\""});
-            AddTypes(p, PI::Punctuation, {",", ":", "[", "]", "{", "}"});
-            break;
-        default:
-    }
-
-    return p;
-}
-
-TSQuery *LanguageDefinition::GetQuery(const fs::path &grammars_dir) const {
-    if (GrammarPathSegment.empty()) return nullptr;
-
-    const fs::path highlights_path = grammars_dir / ("tree-sitter-" + GrammarPathSegment) / "queries" / "highlights.scm";
+    const fs::path highlights_path = QueriesDir / ShortName / "highlights.scm";
     const string highlights = FileIO::read(highlights_path);
 
     uint32_t error_offset = 0;
@@ -110,23 +79,76 @@ private:
     TSLanguage *Language;
 };
 
-// Corresponds to tree-sitter's `config.json`.
-struct TSConfig {
-    struct ThemeStyle {
-        uint Color{0};
-        bool Bold{false}, Italic{false};
+constexpr ImU32 Col32(uint r, uint g, uint b, uint a = 255) { return IM_COL32(r, g, b, a); }
+
+static ImU32 AnsiToRgb(uint code) {
+    // Standard ANSI colors in hex, mapped directly to ImU32
+    static const ImU32 StandardColors[16] = {
+        Col32(0, 0, 0), // Black
+        Col32(128, 0, 0), // Red
+        Col32(0, 128, 0), // Green
+        Col32(128, 128, 0), // Yellow
+        Col32(0, 0, 128), // Blue
+        Col32(128, 0, 128), // Magenta
+        Col32(0, 128, 128), // Cyan
+        Col32(192, 192, 192), // White
+        Col32(128, 128, 128), // Black (bright)
+        Col32(255, 0, 0), // Red (bright)
+        Col32(0, 255, 0), // Green (bright)
+        Col32(255, 255, 0), // Yellow (bright)
+        Col32(0, 0, 255), // Blue (bright)
+        Col32(255, 0, 255), // Magenta (bright)
+        Col32(0, 255, 255), // Cyan (bright)
+        Col32(255, 255, 255), // White (bright)
     };
 
-    std::vector<string> ParserDirectories{};
-    std::unordered_map<string, ThemeStyle> Theme{}; // Keys are TS query names.
-};
-void from_json(const json &j, TSConfig::ThemeStyle &style) {
-    if (j.is_number()) {
-        j.get_to(style.Color);
-    } else if (j.is_object()) {
-        if (j.contains("color")) j.at("color").get_to(style.Color);
+    if (code < 16) return StandardColors[code];
+    // All codes >= 16 are left up to the terminal implementation.
+    // The following is a programmatic strategy to convert the >= 16 range to RGB.
+    if (code < 232) {
+        // 6x6x6 color cube
+        static const uint step = 255 / 5;
+        const uint red = (code - 16) / 36, green = (code - 16) / 6 % 6, blue = (code - 16) % 6;
+        return IM_COL32(red * step, green * step, blue * step, 255);
+    }
+    if (code <= 255) {
+        // Grayscale ramp, starts at 8 and increases by 10 up to 238.
+        const uint shade = 8 + (code - 232) * 10;
+        return IM_COL32(shade, shade, shade, 255);
+    }
+    return IM_COL32(0, 0, 0, 255); // Default to black if out of range.
+}
+
+ImU32 CharStyleColorValuetoU32(const json &j) {
+    static const std::unordered_map<std::string, ImU32> ColorByName = {
+        {"black", Col32(0, 0, 0)},
+        {"blue", Col32(0, 0, 255)},
+        {"cyan", Col32(0, 255, 255)},
+        {"green", Col32(0, 255, 0)},
+        {"purple", Col32(128, 0, 128)},
+        {"red", Col32(255, 0, 0)},
+        {"white", Col32(255, 255, 255)},
+        {"yellow", Col32(255, 255, 0)},
+    };
+
+    if (j.is_string()) {
+        const auto str_value = j.get<std::string>();
+        if (IsHex(str_value)) return HexToU32(str_value);
+        if (auto it = ColorByName.find(str_value); it != ColorByName.end()) return it->second;
+        throw std::runtime_error("Unsupported color name in tree-sitter config JSON.");
+    }
+    if (j.is_number()) return AnsiToRgb(j.get<uint>());
+
+    throw std::runtime_error("Invalid color type in tree-sitter config JSON.");
+}
+
+void from_json(const json &j, TextEditorStyle::CharStyle &style) {
+    if (j.is_object()) {
+        if (j.contains("color")) style.Color = CharStyleColorValuetoU32(j.at("color"));
         if (j.contains("bold")) j.at("bold").get_to(style.Bold);
         if (j.contains("italic")) j.at("italic").get_to(style.Italic);
+    } else if (j.is_number()) {
+        style.Color = CharStyleColorValuetoU32(j);
     } else {
         throw std::runtime_error("Invalid theme style type in tree-sitter config JSON.");
     }
@@ -135,7 +157,9 @@ void from_json(const json &j, TSConfig &config) {
     j.at("parser-directories").get_to(config.ParserDirectories);
     const auto &theme = j.at("theme");
     for (const auto &[key, value] : theme.items()) {
-        if (!value.is_null()) config.Theme[key] = value.get<TSConfig::ThemeStyle>();
+        if (!value.is_null()) {
+            config.StyleByHighlightName[key] = value.get<TextEditorStyle::CharStyle>();
+        }
     }
 }
 
@@ -144,11 +168,6 @@ TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(s
     SetLanguage(language_id);
     SetPalette(DefaultPaletteId);
     Record();
-    if (!Preferences.TreeSitterConfigPath.empty()) {
-        const auto config_json = json::parse(FileIO::read(Preferences.TreeSitterConfigPath));
-        const TSConfig config = config_json.get<TSConfig>();
-        // todo use the config
-    }
 }
 TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<CodeParser>()) {
     SetText(FileIO::read(file_path));
@@ -158,8 +177,8 @@ TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<Code
 }
 
 TextEditor::~TextEditor() {
-    ts_query_cursor_delete(QueryCursor);
-    ts_tree_delete(Tree);
+    if (QueryCursor) ts_query_cursor_delete(QueryCursor);
+    if (Tree) ts_tree_delete(Tree);
 }
 
 const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uint32_t *bytes_read) {
@@ -188,17 +207,15 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
 }
 
 ImU32 TextEditor::GetColor(LineChar lc) const {
-    if (Tree == nullptr) return GetColor(PaletteIndex::Default);
+    // `lower_bound` returns an iterator pointing to the first element in the container whose key
+    // is _not_ before `coords` (i.e., either it is equivalent or comes after)...
+    auto it = CharStyleByTransitionPoints.lower_bound(lc);
+    if (it == CharStyleByTransitionPoints.end()) return GetColor(PaletteIndex::TextDefault);
 
-    TSPoint point{lc.L, lc.C};
-    TSNode node = ts_node_descendant_for_point_range(ts_tree_root_node(Tree), point, point);
-    const string type_name = ts_node_type(node);
-    const bool is_error = type_name == "ERROR";
-    const auto &palette = GetLanguage().Palette;
-    const auto palette_index = is_error ? PaletteIndex::Error :
-        palette.contains(type_name)     ? palette.at(type_name) :
-                                          PaletteIndex::Default;
-    return GetColor(palette_index);
+    // ... we want the nearest key _less than or equal_ to `coords`.
+    if (it->first != lc && it != CharStyleByTransitionPoints.begin()) --it;
+
+    return it->second.Color;
 }
 
 void TextEditor::Parse() {
@@ -214,14 +231,10 @@ string TextEditor::GetSyntaxTreeSExp() const {
 
 const TextEditor::PaletteT &TextEditor::GetPalette() const {
     switch (PaletteId) {
-        case PaletteIdT::Dark:
-            return DarkPalette;
-        case PaletteIdT::Light:
-            return LightPalette;
-        case PaletteIdT::Mariana:
-            return MarianaPalette;
-        case PaletteIdT::RetroBlue:
-            return RetroBluePalette;
+        case PaletteIdT::Dark: return DarkPalette;
+        case PaletteIdT::Light: return LightPalette;
+        case PaletteIdT::Mariana: return MarianaPalette;
+        case PaletteIdT::RetroBlue: return RetroBluePalette;
     }
 }
 
@@ -231,9 +244,15 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     if (LanguageId == language_id) return;
 
     LanguageId = language_id;
+    if (LanguageId != LanguageID::None && !Preferences.TreeSitterConfigPath.empty()) {
+        const auto config_json = json::parse(FileIO::read(Preferences.TreeSitterConfigPath));
+        HighlightConfig = config_json.get<TSConfig>();
+    } else if (LanguageId == LanguageID::None) {
+        HighlightConfig = {};
+    }
     Parser->SetLanguage(GetLanguage().TsLanguage);
     Tree = nullptr;
-    Query = GetLanguage().GetQuery(Preferences.TreeSitterGrammarsPath);
+    Query = GetLanguage().GetQuery();
     QueryCursor = ts_query_cursor_new();
     Parse();
 }
@@ -937,6 +956,31 @@ uint TextEditor::ToByteIndex(LineChar lc) const {
     return ranges::accumulate(subrange(Text.begin(), Text.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
 }
 
+/**
+From the [tree-sitter docs](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme):
+A theme can contain multiple keys that share a common subsequence.
+Examples:
+- variable and variable.parameter
+- function, function.builtin, and function.method
+
+For a given highlight, styling will be determined based on the longest matching theme key.
+For example, the highlight function.builtin.static would match the key function.builtin rather than function.
+*/
+TextEditorStyle::CharStyle TSConfig::FindStyleByCaptureName(const std::string &capture_name) const {
+    size_t pos = capture_name.size();
+    do {
+        if (auto it = StyleByHighlightName.find(capture_name.substr(0, pos)); it != StyleByHighlightName.end()) {
+            // std::println("Capture name: {}, Highlight name: {}", capture_name, it->first);
+            return it->second;
+        }
+        pos = capture_name.rfind('.', pos - 1); // Move to the last '.' before the current `pos`.
+    } while (pos != std::string::npos); // Continue until no '.' is found.
+
+    return DefaultCharStyle;
+}
+
+constexpr TextEditor::LineChar ToLineChar(TSPoint point) { return {point.row, point.column}; }
+
 void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
     if (Tree) {
         TSInputEdit edit;
@@ -947,19 +991,35 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
         ts_tree_edit(Tree, &edit);
 
         if (Query) {
-            // todo only query the edited range
+            auto &transitions = CharStyleByTransitionPoints; // for brevity
+            // todo only query/update the edited range
+            transitions.clear();
+            transitions[{0, 0}] = HighlightConfig.DefaultCharStyle;
             ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
             TSQueryMatch match;
-            uint32_t capture_index;
+            uint capture_index;
             // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
             while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
                 const TSQueryCapture &capture = match.captures[capture_index];
-                uint32_t length;
-                const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &length);
-                // std::string capture_name_str(capture_name, length);
-                std::println("Pattern index: {}, Capture index: {}, Capture name: {}", match.pattern_index, capture.index, capture_name);
-                // const auto &node = capture.node;
-                // todo associate the node with the `TSConfig::ThemeStyle` corresponding to the capture name.
+                uint capture_name_length;
+                const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &capture_name_length);
+                // std::println("Pattern index: {}, Capture index: {}, Capture name: {}", match.pattern_index, capture.index, capture_name);
+                // todo create a map of all capture IDs to its `CharStyle` by iterating over the query once right after its initialization,
+                // finding its name, and call `FindStyleByCaptureName` with it.
+                // Then we can look up the style by capture ID here.
+                std::string capture_name_str(capture_name, capture_name_length);
+                const auto style = HighlightConfig.FindStyleByCaptureName(capture_name_str);
+                // We only store the points at which there is a _transition_ from one style to another.
+                // This can happen either at the beginning or the end of the capture node.
+                const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));
+                const auto start_it = transitions.lower_bound(start_lc);
+                const auto at_or_before_start_it = start_it == transitions.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
+                // const auto end_it = transitions.lower_bound(end_lc);
+                // const auto at_or_after_end_it = end_it;
+                if (at_or_before_start_it->second != style) {
+                    transitions[start_lc] = style;
+                    transitions[end_lc] = HighlightConfig.DefaultCharStyle;
+                }
             }
         }
     }
@@ -1265,6 +1325,17 @@ bool TextEditor::Render(bool is_parent_focused) {
                 dl->AddText(glyph_pos, GetColor(lc), text.c_str());
             }
             MoveCharIndexAndColumn(line, ci, column);
+            if (ShowStyleTransitionPoints) {
+                if (auto it = CharStyleByTransitionPoints.find(lc); it != CharStyleByTransitionPoints.end()) {
+                    const auto &style = it->second;
+                    const float x = text_screen_pos_x + lc.C * CharAdvance.x;
+                    dl->AddRect(
+                        {x, line_start_screen_pos.y},
+                        {x + CharAdvance.x, line_start_screen_pos.y + CharAdvance.y},
+                        style.Color
+                    );
+                }
+            }
         }
     }
 
@@ -1343,17 +1414,6 @@ void TextEditor::DebugPanel() {
 
 const TextEditor::PaletteT TextEditor::DarkPalette = {{
     0xffe4dfdc, // Default
-    0xff756ce0, // Keyword
-    0xff7bc0e5, // Number
-    0xff79c398, // String
-    0xff70a0e0, // Char
-    0xff84736a, // Punctuation
-    0xff408080, // Preprocessor
-    0xffefaf61, // Operator
-    0xffe4dfdc, // Identifier
-    0xffdd78c6, // Type
-    0xffa29636, // Comment
-
     0xff342c28, // Background
     0xffe0e0e0, // Cursor
     0x80a06020, // Selection
@@ -1368,17 +1428,6 @@ const TextEditor::PaletteT TextEditor::DarkPalette = {{
 
 const TextEditor::PaletteT TextEditor::MarianaPalette = {{
     0xffffffff, // Default
-    0xffc695c6, // Keyword
-    0xff58aef9, // Number
-    0xff94c799, // String
-    0xff70a0e0, // Char
-    0xffb4b45f, // Punctuation
-    0xff408080, // Preprocessor
-    0xff9bc64d, // Operator
-    0xffffffff, // Identifier
-    0xffffa0e0, // Type
-
-    0xffb9aca6, // Comment
     0xff413830, // Background
     0xffe0e0e0, // Cursor
     0x80655a4e, // Selection
@@ -1393,17 +1442,6 @@ const TextEditor::PaletteT TextEditor::MarianaPalette = {{
 
 const TextEditor::PaletteT TextEditor::LightPalette = {{
     0xff404040, // Default
-    0xffff0c06, // Keyword
-    0xff008000, // Number
-    0xff2020a0, // String
-    0xff304070, // Char
-    0xff000000, // Punctuation
-    0xff406060, // Preprocessor
-    0xff606010, // Operator
-    0xff404040, // Identifier
-    0xffc040a0, // Type
-    0xff205020, // Comment
-
     0xffffffff, // Background
     0xff000000, // Cursor
     0x40600000, // Selection
@@ -1418,17 +1456,6 @@ const TextEditor::PaletteT TextEditor::LightPalette = {{
 
 const TextEditor::PaletteT TextEditor::RetroBluePalette = {{
     0xff00ffff, // Default
-    0xffffff00, // Keyword
-    0xff00ff00, // Number
-    0xff808000, // String
-    0xff808000, // Char
-    0xffffffff, // Punctuation
-    0xff008000, // Preprocessor
-    0xffffffff, // Operator
-    0xff00ffff, // Identifier
-    0xffff00ff, // Type
-
-    0xff808080, // Comment
     0xff800000, // Background
     0xff0080ff, // Cursor
     0x80ffff00, // Selection

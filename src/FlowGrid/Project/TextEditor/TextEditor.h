@@ -447,11 +447,12 @@ private:
     std::optional<Cursor> MatchingBrackets{};
     bool ScrollToTop{false};
 
+    TSConfig HighlightConfig;
     std::unique_ptr<CodeParser> Parser;
     TSTree *Tree{nullptr};
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
-    TSConfig HighlightConfig;
+    std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
     std::map<LineChar, TextEditorStyle::CharStyle> CharStyleByTransitionPoints{};
 
     struct Snapshot {

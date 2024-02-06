@@ -254,6 +254,14 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     }
     Parser->SetLanguage(GetLanguage().TsLanguage);
     Query = GetLanguage().GetQuery();
+    StyleByCaptureId.clear();
+    const uint capture_count = ts_query_capture_count(Query);
+    for (uint i = 0; i < capture_count; ++i) {
+        uint length;
+        const char *capture_name = ts_query_capture_name_for_id(Query, i, &length);
+        StyleByCaptureId[i] = HighlightConfig.FindStyleByCaptureName(string(capture_name, length));
+    }
+
     QueryCursor = ts_query_cursor_new();
     Tree = nullptr;
     Parse();
@@ -962,21 +970,20 @@ uint TextEditor::ToByteIndex(LineChar lc) const {
 From the [tree-sitter docs](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme):
 A theme can contain multiple keys that share a common subsequence.
 Examples:
-- variable and variable.parameter
-- function, function.builtin, and function.method
+- 'variable' and 'variable.parameter'
+- 'function', 'function.builtin', and 'function.method'
 
 For a given highlight, styling will be determined based on the longest matching theme key.
-For example, the highlight function.builtin.static would match the key function.builtin rather than function.
+For example, the highlight 'function.builtin.static' would match the key 'function.builtin' rather than 'function'.
 */
 TextEditorStyle::CharStyle TSConfig::FindStyleByCaptureName(const std::string &capture_name) const {
     size_t pos = capture_name.size();
     do {
         if (auto it = StyleByHighlightName.find(capture_name.substr(0, pos)); it != StyleByHighlightName.end()) {
-            // std::println("Capture name: {}, Highlight name: {}", capture_name, it->first);
             return it->second;
         }
         pos = capture_name.rfind('.', pos - 1); // Move to the last '.' before the current `pos`.
-    } while (pos != std::string::npos); // Continue until no '.' is found.
+    } while (pos != std::string::npos);
 
     return DefaultCharStyle;
 }
@@ -1006,14 +1013,7 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
     // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
     while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
         const TSQueryCapture &capture = match.captures[capture_index];
-        uint capture_name_length;
-        const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &capture_name_length);
-        // std::println("Pattern index: {}, Capture index: {}, Capture name: {}", match.pattern_index, capture.index, capture_name);
-        // todo create a map of all capture IDs to its `CharStyle` by iterating over the query once right after its initialization,
-        // finding its name, and call `FindStyleByCaptureName` with it.
-        // Then we can look up the style by capture ID here.
-        std::string capture_name_str(capture_name, capture_name_length);
-        const auto style = HighlightConfig.FindStyleByCaptureName(capture_name_str);
+        const auto style = StyleByCaptureId[capture.index];
         // We only store the points at which there is a _transition_ from one style to another.
         // This can happen either at the beginning or the end of the capture node.
         const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));

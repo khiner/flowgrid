@@ -220,8 +220,33 @@ ImU32 TextEditor::GetColor(LineChar lc) const {
     return it->second.Color;
 }
 
+constexpr TextEditor::LineChar ToLineChar(TSPoint point) { return {point.row, point.column}; }
+
 void TextEditor::Parse() {
     Tree = ts_parser_parse(Parser->get(), Tree, {this, TSReadText, TSInputEncodingUTF8});
+    if (!Query) return;
+
+    auto &transitions = CharStyleByTransitionPoints; // for brevity
+    // todo only query/update the edited range
+    transitions.clear();
+    transitions[{0, 0}] = HighlightConfig.DefaultCharStyle;
+    ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
+    TSQueryMatch match;
+    uint capture_index;
+    // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
+    while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
+        const TSQueryCapture &capture = match.captures[capture_index];
+        const auto style = StyleByCaptureId[capture.index];
+        // We only store the points at which there is a _transition_ from one style to another.
+        // This can happen either at the beginning or the end of the capture node.
+        const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));
+        const auto start_it = transitions.lower_bound(start_lc);
+        const auto at_or_before_start_it = start_it == transitions.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
+        if (at_or_before_start_it->second != style) {
+            transitions[start_lc] = style;
+            transitions[end_lc] = HighlightConfig.DefaultCharStyle;
+        }
+    }
 }
 
 string TextEditor::GetSyntaxTreeSExp() const {
@@ -988,8 +1013,6 @@ TextEditorStyle::CharStyle TSConfig::FindStyleByCaptureName(const std::string &c
     return DefaultCharStyle;
 }
 
-constexpr TextEditor::LineChar ToLineChar(TSPoint point) { return {point.row, point.column}; }
-
 void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
     if (!Tree) return;
 
@@ -999,33 +1022,8 @@ void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_
     edit.old_end_byte = old_end_byte;
     edit.new_end_byte = new_end_byte;
     ts_tree_edit(Tree, &edit);
+
     Parse();
-
-    if (!Query) return;
-
-    auto &transitions = CharStyleByTransitionPoints; // for brevity
-    // todo only query/update the edited range
-    transitions.clear();
-    transitions[{0, 0}] = HighlightConfig.DefaultCharStyle;
-    ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
-    TSQueryMatch match;
-    uint capture_index;
-    // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
-    while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
-        const TSQueryCapture &capture = match.captures[capture_index];
-        const auto style = StyleByCaptureId[capture.index];
-        // We only store the points at which there is a _transition_ from one style to another.
-        // This can happen either at the beginning or the end of the capture node.
-        const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));
-        const auto start_it = transitions.lower_bound(start_lc);
-        const auto at_or_before_start_it = start_it == transitions.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
-        // const auto end_it = transitions.lower_bound(end_lc);
-        // const auto at_or_after_end_it = end_it;
-        if (at_or_before_start_it->second != style) {
-            transitions[start_lc] = style;
-            transitions[end_lc] = HighlightConfig.DefaultCharStyle;
-        }
-    }
 }
 
 static bool IsPressed(ImGuiKey key) {

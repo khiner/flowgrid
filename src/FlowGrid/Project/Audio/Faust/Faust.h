@@ -144,7 +144,7 @@ pitchshifter = vgroup("Pitch Shifter", ef.transpose(
  )
 );
 process = _ : pitchshifter;)#",
-        // LanguageID::Faust
+        LanguageID::Faust
     );
 
     Box Box{nullptr};

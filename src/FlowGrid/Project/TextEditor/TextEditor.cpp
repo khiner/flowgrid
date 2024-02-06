@@ -25,8 +25,9 @@ using json = nlohmann::json;
 using std::string, std::views::filter, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
 
 // Implemented by the grammar libraries in `lib/tree-sitter-grammars/`.
-extern "C" TSLanguage *tree_sitter_json();
 extern "C" TSLanguage *tree_sitter_cpp();
+extern "C" TSLanguage *tree_sitter_faust();
+extern "C" TSLanguage *tree_sitter_json();
 
 TSQuery *LanguageDefinition::GetQuery() const {
     if (ShortName.empty()) return nullptr;
@@ -54,6 +55,7 @@ LanguageDefinitions::LanguageDefinitions()
     : ById{
           {ID::None, {ID::None, "None"}},
           {ID::Cpp, {ID::Cpp, "C++", "cpp", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
+          {ID::Faust, {ID::Faust, "Faust", "faust", tree_sitter_faust(), {".dsp"}, "//"}},
           {ID::Json, {ID::Json, "JSON", "json", tree_sitter_json(), {".json"}}},
       } {
     for (const auto &[id, lang] : ById) {

@@ -4,4 +4,5 @@ enum class LanguageID {
     None,
     Cpp,
     Json,
+    Faust,
 };

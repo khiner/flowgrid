@@ -64,23 +64,6 @@ LanguageDefinitions::LanguageDefinitions()
     for (const auto &ext : ByFileExtension | std::views::keys) AllFileExtensionsFilter += ext + ',';
 }
 
-struct TextEditor::CodeParser {
-    CodeParser() : Parser(ts_parser_new()) {}
-    ~CodeParser() { ts_parser_delete(Parser); }
-
-    void SetLanguage(TSLanguage *language) {
-        Language = language;
-        ts_parser_set_language(Parser, Language);
-    }
-    TSLanguage *GetLanguage() const { return Language; }
-
-    TSParser *get() const { return Parser; }
-
-private:
-    TSParser *Parser;
-    TSLanguage *Language;
-};
-
 constexpr ImU32 Col32(uint r, uint g, uint b, uint a = 255) { return IM_COL32(r, g, b, a); }
 
 static ImU32 AnsiToRgb(uint code) {
@@ -165,14 +148,12 @@ void from_json(const json &j, TSConfig &config) {
     }
 }
 
-TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(std::make_unique<CodeParser>()) {
-    SetPalette(DefaultPaletteId);
+TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(ts_parser_new()) {
     SetLanguage(language_id);
     SetText(string(text));
     Record();
 }
-TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<CodeParser>()) {
-    SetPalette(DefaultPaletteId);
+TextEditor::TextEditor(const fs::path &file_path) : Parser(ts_parser_new()) {
     SetFilePath(file_path);
     SetText(FileIO::read(file_path));
     Record();
@@ -180,6 +161,7 @@ TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<Code
 
 TextEditor::~TextEditor() {
     if (QueryCursor) ts_query_cursor_delete(QueryCursor);
+    if (Parser) ts_parser_delete(Parser);
     if (Tree) ts_tree_delete(Tree);
 }
 
@@ -223,7 +205,7 @@ ImU32 TextEditor::GetColor(LineChar lc) const {
 constexpr TextEditor::LineChar ToLineChar(TSPoint point) { return {point.row, point.column}; }
 
 void TextEditor::Parse() {
-    Tree = ts_parser_parse(Parser->get(), Tree, {this, TSReadText, TSInputEncodingUTF8});
+    Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
     if (!Query) return;
 
     auto &transitions = CharStyleByTransitionPoints; // for brevity
@@ -277,7 +259,7 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     } else if (LanguageId == LanguageID::None) {
         HighlightConfig = {};
     }
-    Parser->SetLanguage(GetLanguage().TsLanguage);
+    ts_parser_set_language(Parser, GetLanguage().TsLanguage);
     Query = GetLanguage().GetQuery();
     StyleByCaptureId.clear();
     const uint capture_count = ts_query_capture_count(Query);

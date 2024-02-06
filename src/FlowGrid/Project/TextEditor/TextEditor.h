@@ -3,7 +3,6 @@
 #include <array>
 #include <filesystem>
 #include <map>
-#include <memory>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -25,6 +24,7 @@ struct TSLanguage;
 struct TSTree;
 struct TSQuery;
 struct TSQueryCursor;
+struct TSParser;
 
 // These classes corresponds to tree-sitter's `config.json`.
 // https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
@@ -89,9 +89,6 @@ struct LanguageDefinitions {
 };
 
 struct TextEditor {
-    // Forward-declare wrapper structs for Tree-Sitter types.
-    struct CodeParser;
-
     TextEditor(std::string_view text = "", LanguageID language_id = LanguageID::None);
     TextEditor(const fs::path &);
     ~TextEditor();
@@ -431,7 +428,7 @@ private:
 
     Lines Text{Line{}};
     Cursors Cursors, BeforeCursors;
-    PaletteIdT PaletteId;
+    PaletteIdT PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
 
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextEditor.
@@ -448,8 +445,8 @@ private:
     bool ScrollToTop{false};
 
     TSConfig HighlightConfig;
-    std::unique_ptr<CodeParser> Parser;
     TSTree *Tree{nullptr};
+    TSParser *Parser;
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
     std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};

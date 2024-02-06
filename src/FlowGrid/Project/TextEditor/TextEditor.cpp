@@ -193,13 +193,14 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
 ImU32 TextEditor::GetColor(LineChar lc) const {
     // `lower_bound` returns an iterator pointing to the first element in the container whose key
     // is _not_ before `coords` (i.e., either it is equivalent or comes after)...
-    auto it = CharStyleByTransitionPoints.lower_bound(lc);
-    if (it == CharStyleByTransitionPoints.end()) return GetColor(PaletteIndex::TextDefault);
+    auto it = CaptureIdByTransitionLc.lower_bound(lc);
+    if (it == CaptureIdByTransitionLc.end()) return GetColor(PaletteIndex::TextDefault);
 
     // ... we want the nearest key _less than or equal_ to `coords`.
-    if (it->first != lc && it != CharStyleByTransitionPoints.begin()) --it;
+    if (it->first != lc && it != CaptureIdByTransitionLc.begin()) --it;
 
-    return it->second.Color;
+    const auto &style = StyleByCaptureId.at(it->second);
+    return style.Color;
 }
 
 constexpr TextEditor::LineChar ToLineChar(TSPoint point) { return {point.row, point.column}; }
@@ -208,25 +209,23 @@ void TextEditor::Parse() {
     Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
     if (!Query) return;
 
-    auto &transitions = CharStyleByTransitionPoints; // for brevity
     // todo only query/update the edited range
-    transitions.clear();
-    transitions[{0, 0}] = HighlightConfig.DefaultCharStyle;
+    CaptureIdByTransitionLc.clear();
+    CaptureIdByTransitionLc[{0, 0}] = NoneCaptureId;
     ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
     TSQueryMatch match;
     uint capture_index;
     // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
     while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
         const TSQueryCapture &capture = match.captures[capture_index];
-        const auto style = StyleByCaptureId[capture.index];
         // We only store the points at which there is a _transition_ from one style to another.
         // This can happen either at the beginning or the end of the capture node.
         const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));
-        const auto start_it = transitions.lower_bound(start_lc);
-        const auto at_or_before_start_it = start_it == transitions.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
-        if (at_or_before_start_it->second != style) {
-            transitions[start_lc] = style;
-            transitions[end_lc] = HighlightConfig.DefaultCharStyle;
+        const auto start_it = CaptureIdByTransitionLc.lower_bound(start_lc);
+        const auto at_or_before_start_it = start_it == CaptureIdByTransitionLc.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
+        if (at_or_before_start_it->second != capture.index) {
+            CaptureIdByTransitionLc[start_lc] = capture.index;
+            CaptureIdByTransitionLc[end_lc] = NoneCaptureId;
         }
     }
 }
@@ -261,8 +260,10 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     }
     ts_parser_set_language(Parser, GetLanguage().TsLanguage);
     Query = GetLanguage().GetQuery();
-    StyleByCaptureId.clear();
     const uint capture_count = ts_query_capture_count(Query);
+    StyleByCaptureId.clear();
+    StyleByCaptureId.reserve(capture_count + 1);
+    StyleByCaptureId[NoneCaptureId] = HighlightConfig.DefaultCharStyle;
     for (uint i = 0; i < capture_count; ++i) {
         uint length;
         const char *capture_name = ts_query_capture_name_for_id(Query, i, &length);
@@ -1308,8 +1309,8 @@ bool TextEditor::Render(bool is_parent_focused) {
             }
             MoveCharIndexAndColumn(line, ci, column);
             if (ShowStyleTransitionPoints) {
-                if (auto it = CharStyleByTransitionPoints.find(lc); it != CharStyleByTransitionPoints.end()) {
-                    const auto &style = it->second;
+                if (auto it = CaptureIdByTransitionLc.find(lc); it != CaptureIdByTransitionLc.end()) {
+                    const auto &style = StyleByCaptureId.at(it->second);
                     const float x = text_screen_pos_x + lc.C * CharAdvance.x;
                     dl->AddRect(
                         {x, line_start_screen_pos.y},

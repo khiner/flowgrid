@@ -32,10 +32,6 @@ struct TextEditorStyle {
     struct CharStyle {
         ImU32 Color{IM_COL32_WHITE};
         bool Bold{false}, Italic{false}, Underline{false};
-
-        bool operator==(const CharStyle &o) const {
-            return Color == o.Color && Bold == o.Bold && Italic == o.Italic && Underline == o.Underline;
-        }
     };
 };
 struct TSConfig {
@@ -101,7 +97,6 @@ struct TextEditor {
     };
 
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
-
     inline static const LanguageDefinitions Languages{};
 
     // Represents a character coordinate from the user's point of view,
@@ -421,6 +416,8 @@ private:
 
     void Parse();
 
+    inline static uint NoneCaptureId{uint(-1)}; // Maps to the default style.
+
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
@@ -450,7 +447,7 @@ private:
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
     std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
-    std::map<LineChar, TextEditorStyle::CharStyle> CharStyleByTransitionPoints{};
+    std::map<LineChar, uint> CaptureIdByTransitionLc{};
 
     struct Snapshot {
         Lines Text;

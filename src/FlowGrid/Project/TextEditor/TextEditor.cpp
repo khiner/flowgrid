@@ -190,28 +190,13 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     return &line.front() + position.column;
 }
 
-ImU32 TextEditor::GetColor(LineChar lc) const {
-    // `lower_bound` returns an iterator pointing to the first element in the container whose key
-    // is _not_ before `coords` (i.e., either it is equivalent or comes after)...
-    auto it = CaptureIdByTransitionLc.lower_bound(lc);
-    if (it == CaptureIdByTransitionLc.end()) return GetColor(PaletteIndex::TextDefault);
-
-    // ... we want the nearest key _less than or equal_ to `coords`.
-    if (it->first != lc && it != CaptureIdByTransitionLc.begin()) --it;
-
-    const auto &style = StyleByCaptureId.at(it->second);
-    return style.Color;
-}
-
-constexpr TextEditor::LineChar ToLineChar(TSPoint point) { return {point.row, point.column}; }
-
 void TextEditor::Parse() {
     Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
     if (!Query) return;
 
     // todo only query/update the edited range
-    CaptureIdByTransitionLc.clear();
-    CaptureIdByTransitionLc[{0, 0}] = NoneCaptureId;
+    CaptureIdByTransitionByte.clear();
+    CaptureIdByTransitionByte[0] = NoneCaptureId;
     ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
     TSQueryMatch match;
     uint capture_index;
@@ -220,12 +205,12 @@ void TextEditor::Parse() {
         const TSQueryCapture &capture = match.captures[capture_index];
         // We only store the points at which there is a _transition_ from one style to another.
         // This can happen either at the beginning or the end of the capture node.
-        const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));
-        const auto start_it = CaptureIdByTransitionLc.lower_bound(start_lc);
-        const auto at_or_before_start_it = start_it == CaptureIdByTransitionLc.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
+        const auto start_byte = ts_node_start_byte(capture.node), end_byte = ts_node_end_byte(capture.node);
+        const auto start_it = CaptureIdByTransitionByte.lower_bound(start_byte);
+        const auto at_or_before_start_it = start_it == CaptureIdByTransitionByte.begin() || start_it->first == start_byte ? start_it : std::prev(start_it);
         if (at_or_before_start_it->second != capture.index) {
-            CaptureIdByTransitionLc[start_lc] = capture.index;
-            CaptureIdByTransitionLc[end_lc] = NoneCaptureId;
+            CaptureIdByTransitionByte[start_byte] = capture.index;
+            CaptureIdByTransitionByte[end_byte] = NoneCaptureId;
         }
     }
 }
@@ -1220,6 +1205,7 @@ bool TextEditor::Render(bool is_parent_focused) {
     uint max_column_limited = 0;
     auto dl = ImGui::GetWindowDrawList();
     const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
+    uint byte_index = 0;
     for (uint li = first_visible_coords.L; li <= last_visible_coords.L && li < Text.size(); ++li) {
         const auto &line = Text[li];
         const uint line_max_column_limited = GetLineMaxColumn(line, last_visible_coords.C);
@@ -1277,6 +1263,7 @@ bool TextEditor::Render(bool is_parent_focused) {
             const auto lc = LineChar{li, ci};
             const char ch = line[lc.C];
             const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + column * CharAdvance.x, 0};
+            const uint char_byte_length = UTF8CharLength(ch);
             if (ch == '\t') {
                 if (ShowWhitespaces) {
                     const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
@@ -1299,17 +1286,23 @@ bool TextEditor::Render(bool is_parent_focused) {
                     );
                 }
             } else {
-                const uint seq_length = UTF8CharLength(ch);
-                if (seq_length == 1 && MatchingBrackets && (MatchingBrackets->GetStart() == lc || MatchingBrackets->GetEnd() == lc)) {
+                if (char_byte_length == 1 && MatchingBrackets && (MatchingBrackets->GetStart() == lc || MatchingBrackets->GetEnd() == lc)) {
                     const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
-                const string text = subrange(line.begin() + ci, line.begin() + ci + seq_length) | ranges::to<string>();
-                dl->AddText(glyph_pos, GetColor(lc), text.c_str());
+                // Find color for the current character.
+                // `lower_bound` returns an iterator pointing to the first element in the container whose key
+                // is _not_ before `coords` (i.e., either it is equivalent or comes after).
+                // We want the nearest key _less than or equal_ to `coords`.
+                const auto it = CaptureIdByTransitionByte.lower_bound(byte_index);
+                const auto capture_id = it == CaptureIdByTransitionByte.end()          ? NoneCaptureId :
+                    it->first == byte_index || it == CaptureIdByTransitionByte.begin() ? it->second :
+                                                                                         std::prev(it)->second;
+                const string text = subrange(line.begin() + ci, line.begin() + ci + char_byte_length) | ranges::to<string>();
+                dl->AddText(glyph_pos, StyleByCaptureId.at(capture_id).Color, text.c_str());
             }
-            MoveCharIndexAndColumn(line, ci, column);
             if (ShowStyleTransitionPoints) {
-                if (auto it = CaptureIdByTransitionLc.find(lc); it != CaptureIdByTransitionLc.end()) {
+                if (auto it = CaptureIdByTransitionByte.find(byte_index); it != CaptureIdByTransitionByte.end()) {
                     const auto &style = StyleByCaptureId.at(it->second);
                     const float x = text_screen_pos_x + lc.C * CharAdvance.x;
                     dl->AddRect(
@@ -1319,7 +1312,10 @@ bool TextEditor::Render(bool is_parent_focused) {
                     );
                 }
             }
+            MoveCharIndexAndColumn(line, ci, column); // todo do this manually since we already have `byte_length`
+            byte_index += char_byte_length;
         }
+        byte_index += 1; // For the newline character.
     }
 
     CurrentSpaceDims = {

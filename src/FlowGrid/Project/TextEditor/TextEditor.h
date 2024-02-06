@@ -349,7 +349,6 @@ private:
     void Record(); // Every `Record` should be paired with a `BeforeCursors = Cursors`.
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
-    ImU32 GetColor(LineChar) const;
 
     static LineChar BeginLC() { return {0, 0}; }
     LineChar EndLC() const { return {uint(Text.size() - 1), uint(Text.back().size())}; }
@@ -447,7 +446,7 @@ private:
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
     std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
-    std::map<LineChar, uint> CaptureIdByTransitionLc{};
+    std::map<uint, uint> CaptureIdByTransitionByte{};
 
     struct Snapshot {
         Lines Text;

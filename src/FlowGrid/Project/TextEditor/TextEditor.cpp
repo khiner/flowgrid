@@ -166,15 +166,15 @@ void from_json(const json &j, TSConfig &config) {
 }
 
 TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(std::make_unique<CodeParser>()) {
-    SetText(string(text));
-    SetLanguage(language_id);
     SetPalette(DefaultPaletteId);
+    SetLanguage(language_id);
+    SetText(string(text));
     Record();
 }
 TextEditor::TextEditor(const fs::path &file_path) : Parser(std::make_unique<CodeParser>()) {
-    SetText(FileIO::read(file_path));
-    SetFilePath(file_path);
     SetPalette(DefaultPaletteId);
+    SetFilePath(file_path);
+    SetText(FileIO::read(file_path));
     Record();
 }
 
@@ -253,9 +253,9 @@ void TextEditor::SetLanguage(LanguageID language_id) {
         HighlightConfig = {};
     }
     Parser->SetLanguage(GetLanguage().TsLanguage);
-    Tree = nullptr;
     Query = GetLanguage().GetQuery();
     QueryCursor = ts_query_cursor_new();
+    Tree = nullptr;
     Parse();
 }
 
@@ -984,48 +984,48 @@ TextEditorStyle::CharStyle TSConfig::FindStyleByCaptureName(const std::string &c
 constexpr TextEditor::LineChar ToLineChar(TSPoint point) { return {point.row, point.column}; }
 
 void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
-    if (Tree) {
-        TSInputEdit edit;
-        // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
-        edit.start_byte = start_byte;
-        edit.old_end_byte = old_end_byte;
-        edit.new_end_byte = new_end_byte;
-        ts_tree_edit(Tree, &edit);
+    if (!Tree) return;
 
-        if (Query) {
-            auto &transitions = CharStyleByTransitionPoints; // for brevity
-            // todo only query/update the edited range
-            transitions.clear();
-            transitions[{0, 0}] = HighlightConfig.DefaultCharStyle;
-            ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
-            TSQueryMatch match;
-            uint capture_index;
-            // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
-            while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
-                const TSQueryCapture &capture = match.captures[capture_index];
-                uint capture_name_length;
-                const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &capture_name_length);
-                // std::println("Pattern index: {}, Capture index: {}, Capture name: {}", match.pattern_index, capture.index, capture_name);
-                // todo create a map of all capture IDs to its `CharStyle` by iterating over the query once right after its initialization,
-                // finding its name, and call `FindStyleByCaptureName` with it.
-                // Then we can look up the style by capture ID here.
-                std::string capture_name_str(capture_name, capture_name_length);
-                const auto style = HighlightConfig.FindStyleByCaptureName(capture_name_str);
-                // We only store the points at which there is a _transition_ from one style to another.
-                // This can happen either at the beginning or the end of the capture node.
-                const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));
-                const auto start_it = transitions.lower_bound(start_lc);
-                const auto at_or_before_start_it = start_it == transitions.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
-                // const auto end_it = transitions.lower_bound(end_lc);
-                // const auto at_or_after_end_it = end_it;
-                if (at_or_before_start_it->second != style) {
-                    transitions[start_lc] = style;
-                    transitions[end_lc] = HighlightConfig.DefaultCharStyle;
-                }
-            }
+    TSInputEdit edit;
+    // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
+    edit.start_byte = start_byte;
+    edit.old_end_byte = old_end_byte;
+    edit.new_end_byte = new_end_byte;
+    ts_tree_edit(Tree, &edit);
+    Parse();
+
+    if (!Query) return;
+
+    auto &transitions = CharStyleByTransitionPoints; // for brevity
+    // todo only query/update the edited range
+    transitions.clear();
+    transitions[{0, 0}] = HighlightConfig.DefaultCharStyle;
+    ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
+    TSQueryMatch match;
+    uint capture_index;
+    // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
+    while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
+        const TSQueryCapture &capture = match.captures[capture_index];
+        uint capture_name_length;
+        const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &capture_name_length);
+        // std::println("Pattern index: {}, Capture index: {}, Capture name: {}", match.pattern_index, capture.index, capture_name);
+        // todo create a map of all capture IDs to its `CharStyle` by iterating over the query once right after its initialization,
+        // finding its name, and call `FindStyleByCaptureName` with it.
+        // Then we can look up the style by capture ID here.
+        std::string capture_name_str(capture_name, capture_name_length);
+        const auto style = HighlightConfig.FindStyleByCaptureName(capture_name_str);
+        // We only store the points at which there is a _transition_ from one style to another.
+        // This can happen either at the beginning or the end of the capture node.
+        const auto start_lc = ::ToLineChar(ts_node_start_point(capture.node)), end_lc = ::ToLineChar(ts_node_end_point(capture.node));
+        const auto start_it = transitions.lower_bound(start_lc);
+        const auto at_or_before_start_it = start_it == transitions.begin() || start_it->first == start_lc ? start_it : std::prev(start_it);
+        // const auto end_it = transitions.lower_bound(end_lc);
+        // const auto at_or_after_end_it = end_it;
+        if (at_or_before_start_it->second != style) {
+            transitions[start_lc] = style;
+            transitions[end_lc] = HighlightConfig.DefaultCharStyle;
         }
     }
-    Parse();
 }
 
 static bool IsPressed(ImGuiKey key) {

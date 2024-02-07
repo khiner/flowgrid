@@ -156,7 +156,7 @@ static TextEditor::ByteRange ToByteRange(TextEditor::InputEdit edit) {
 }
 
 using NodeCallback = std::function<void(TSNode)>;
-static void TraverseNodes(TSTree *tree, TextEditor::ByteRange br, NodeCallback callback) {
+static void WalkTree(TSTree *tree, TextEditor::ByteRange br, NodeCallback callback) {
     if (tree == nullptr) return;
 
     TSNode root_node = ts_tree_root_node(tree);
@@ -227,13 +227,14 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     return &line.front() + position.column;
 }
 
-void TextEditor::Parse() {
+void TextEditor::SetTree(TSTree *tree) {
+    Tree = tree;
     TSTree *old_tree = Tree;
     Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
     if (!Query) return;
 
     const ByteRange edit_range = ToByteRange(LastEdit);
-    TraverseNodes(old_tree, edit_range, [](TSNode node) {
+    WalkTree(old_tree, edit_range, [](TSNode node) {
         if (ts_node_has_changes(node)) {
             const ByteRange br = ToByteRange(node);
             std::println("Node {} at ({}:{}) changed", ts_node_type(node), br.Start, br.End);
@@ -302,8 +303,7 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     }
 
     QueryCursor = ts_query_cursor_new();
-    Tree = nullptr;
-    Parse();
+    SetTree(nullptr);
 }
 
 void TextEditor::SetNumTabSpaces(uint tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
@@ -375,8 +375,7 @@ void TextEditor::Undo() {
     Cursors.MarkEdited();
     LastEdit = restore.LastEdit;
     ts_tree_delete(Tree);
-    Tree = restore.Tree;
-    Parse();
+    SetTree(restore.Tree);
 }
 void TextEditor::Redo() {
     if (!CanRedo()) return;
@@ -387,8 +386,7 @@ void TextEditor::Redo() {
     Cursors.MarkEdited();
     LastEdit = restore.LastEdit;
     ts_tree_delete(Tree);
-    Tree = restore.Tree;
-    Parse();
+    SetTree(restore.Tree);
 }
 
 void TextEditor::Record() {
@@ -1024,15 +1022,11 @@ TextEditorStyle::CharStyle TSConfig::FindStyleByCaptureName(const std::string &c
 void TextEditor::OnTextChanged(InputEdit edit) {
     if (!Tree) return;
 
-    // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
     LastEdit = edit;
-    TSInputEdit ts_edit;
-    ts_edit.start_byte = edit.StartByte;
-    ts_edit.old_end_byte = edit.OldEndByte;
-    ts_edit.new_end_byte = edit.NewEndByte;
+    const TSInputEdit ts_edit{.start_byte = edit.StartByte, .old_end_byte = edit.OldEndByte, .new_end_byte = edit.NewEndByte};
     ts_tree_edit(Tree, &ts_edit);
 
-    Parse();
+    SetTree(Tree);
 }
 
 static bool IsPressed(ImGuiKey key) {
@@ -1211,7 +1205,6 @@ bool TextEditor::Render(bool is_parent_focused) {
     if (is_focused) HandleKeyboardInputs();
     if (ImGui::IsWindowHovered()) HandleMouseInputs();
 
-    /* Compute CharAdvance regarding to scaled font size (Ctrl + mouse wheel)*/
     const float font_size = ImGui::GetFontSize();
     const float font_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
     const float font_height = ImGui::GetTextLineHeightWithSpacing();
@@ -1238,8 +1231,8 @@ bool TextEditor::Render(bool is_parent_focused) {
     uint max_column = 0;
     auto dl = ImGui::GetWindowDrawList();
     const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
-    uint byte_index = ToByteIndex({first_visible_coords.L, 0});
-    for (uint li = first_visible_coords.L; li <= last_visible_coords.L && li < Text.size(); ++li) {
+    for (uint li = first_visible_coords.L, byte_index = ToByteIndex({first_visible_coords.L, 0});
+         li <= last_visible_coords.L && li < Text.size(); ++li) {
         const auto &line = Text[li];
         const uint line_max_column = GetLineMaxColumn(line, last_visible_coords.C);
         max_column = std::max(line_max_column, max_column);
@@ -1250,20 +1243,18 @@ bool TextEditor::Render(bool is_parent_focused) {
         // Draw current line selection
         for (const auto &c : Cursors) {
             const auto selection_start = ToCoords(c.Min()), selection_end = ToCoords(c.Max());
-            float rect_start = -1.0f, rect_end = -1.0f;
-            if (selection_start <= line_end_coord)
-                rect_start = selection_start > line_start_coord ? selection_start.C * CharAdvance.x : 0.0f;
-            if (selection_end > line_start_coord)
-                rect_end = (selection_end < line_end_coord ? selection_end.C : line_end_coord.C) * CharAdvance.x;
-            if (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord))
-                rect_end += CharAdvance.x;
-
-            if (rect_start != -1 && rect_end != -1 && rect_start < rect_end) {
-                dl->AddRectFilled(
-                    {text_screen_pos_x + rect_start, line_start_screen_pos.y},
-                    {text_screen_pos_x + rect_end, line_start_screen_pos.y + CharAdvance.y},
-                    GetColor(PaletteIndex::Selection)
-                );
+            if (selection_start <= line_end_coord && selection_end > line_start_coord) {
+                const uint rect_start = selection_start > line_start_coord ? selection_start.C : 0;
+                const uint rect_end = selection_end < line_end_coord ?
+                    selection_end.C :
+                    line_end_coord.C + (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord) ? 1 : 0);
+                if (rect_start < rect_end) {
+                    dl->AddRectFilled(
+                        {text_screen_pos_x + rect_start * CharAdvance.x, line_start_screen_pos.y},
+                        {text_screen_pos_x + rect_end * CharAdvance.x, line_start_screen_pos.y + CharAdvance.y},
+                        GetColor(PaletteIndex::Selection)
+                    );
+                }
             }
         }
 
@@ -1401,6 +1392,7 @@ void TextEditor::DebugPanel() {
             ImGui::Text("End: {%d, %d}", end.L, end.C);
             Spacing();
         }
+        ImGui::Text("Last edit: {%d, %d, %d}", LastEdit.StartByte, LastEdit.OldEndByte, LastEdit.NewEndByte);
     }
     if (CollapsingHeader("Text")) {
         for (uint i = 0; i < Text.size(); i++) ImGui::Text("%lu", Text[i].size());

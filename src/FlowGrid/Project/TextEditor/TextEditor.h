@@ -139,8 +139,19 @@ struct TextEditor {
         bool operator!=(const ByteRange &) const = default;
     };
 
-    // Holds the byte parts of `TSInputEdit` (not the points).
-    // TS API functions generally handle only having bytes populated.
+    /**
+    Holds the byte parts of `TSInputEdit` (not the points).
+    TS API functions generally handle only having bytes populated.
+    (E.g. see https://github.com/tree-sitter/tree-sitter/issues/445)
+    `StartByte`: Start position of the text change.
+    `OldEndByte`: End position of the original text before the change.
+      - For insertion, same as `start`.
+      - For replacement, where the replaced text ended.
+      - For deletion, where the deleted text ended.
+    `NewEndByte`: End position of the new text after the change.
+      - For insertion or replacement, where the new text ends.
+      - For deletion, same as `start`.
+    **/
     struct InputEdit {
         uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
     };
@@ -155,7 +166,7 @@ struct TextEditor {
     uint LineCount() const { return Text.size(); }
     const Line &GetLine(uint li) const { return Text[li]; }
     LineChar GetCursorPosition() const { return Cursors.back().LC(); }
-    LineChar CheckedNextLineBegin(uint li) const { return li < Text.size()  - 1 ? LineChar{li + 1, 0} : EndLC(); }
+    LineChar CheckedNextLineBegin(uint li) const { return li < Text.size() - 1 ? LineChar{li + 1, 0} : EndLC(); }
     std::string GetText(LineChar start, LineChar end) const;
     std::string GetText() const { return GetText(BeginLC(), EndLC()); }
     std::string GetSyntaxTreeSExp() const;
@@ -419,21 +430,10 @@ private:
     void HandleKeyboardInputs();
     void HandleMouseInputs();
 
-    /**
-    `start_byte`: Start position of the text change.
-    `old_end_byte`: End position of the original text before the change.
-      - For insertion, same as `start`.
-      - For replacement, where the replaced text ended.
-      - For deletion, where the deleted text ended.
-    `new_end_byte`: End position of the new text after the change.
-      - For insertion or replacement, where the new text ends.
-      - For deletion, same as `start`.
-    **/
     void OnTextChanged(InputEdit);
+    void SetTree(TSTree *);
 
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
-
-    void Parse();
 
     inline static uint NoneCaptureId{uint(-1)}; // Maps to the default style.
 

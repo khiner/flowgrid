@@ -148,6 +148,43 @@ void from_json(const json &j, TSConfig &config) {
     }
 }
 
+static TextEditor::ByteRange ToByteRange(const TSNode &node) {
+    return {ts_node_start_byte(node), ts_node_end_byte(node)};
+}
+static TextEditor::ByteRange ToByteRange(TextEditor::InputEdit edit) {
+    return {edit.StartByte, edit.NewEndByte > edit.OldEndByte ? edit.NewEndByte : edit.OldEndByte};
+}
+
+using NodeCallback = std::function<void(TSNode)>;
+static void TraverseNodes(TSTree *tree, TextEditor::ByteRange br, NodeCallback callback) {
+    if (tree == nullptr) return;
+
+    TSNode root_node = ts_tree_root_node(tree);
+    // Find the smallest node that spans the edited range.
+    TSNode affected_node = ts_node_descendant_for_byte_range(root_node, br.Start, br.End);
+    TSTreeCursor cursor = ts_tree_cursor_new(affected_node);
+
+    do {
+        // Call the callback with the current node.
+        TSNode node = ts_tree_cursor_current_node(&cursor);
+        callback(node);
+
+        // Try to go deeper into the subtree first.
+        if (ts_tree_cursor_goto_first_child(&cursor)) continue;
+
+        // If there are no children, try to go to the next sibling.
+        while (!ts_tree_cursor_goto_next_sibling(&cursor)) {
+            // If there are no more siblings, ascend to the parent.
+            if (!ts_tree_cursor_goto_parent(&cursor)) {
+                // If we can't ascend further (because we're at the root of the subtree we're iterating over), we're done.
+                break;
+            }
+        }
+    } while (ts_tree_cursor_current_node(&cursor).id != affected_node.id); // Loop until we return to the start.
+
+    ts_tree_cursor_delete(&cursor);
+}
+
 TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(ts_parser_new()) {
     SetLanguage(language_id);
     SetText(string(text));
@@ -191,8 +228,17 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
 }
 
 void TextEditor::Parse() {
+    TSTree *old_tree = Tree;
     Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
     if (!Query) return;
+
+    const ByteRange edit_range = ToByteRange(LastEdit);
+    TraverseNodes(old_tree, edit_range, [](TSNode node) {
+        if (ts_node_has_changes(node)) {
+            const ByteRange br = ToByteRange(node);
+            std::println("Node {} at ({}:{}) changed", ts_node_type(node), br.Start, br.End);
+        }
+    });
 
     // todo only query/update the edited range
     CaptureIdByTransitionByte.clear();
@@ -327,6 +373,7 @@ void TextEditor::Undo() {
     Text = restore.Text;
     Cursors = before_cursors;
     Cursors.MarkEdited();
+    LastEdit = restore.LastEdit;
     ts_tree_delete(Tree);
     Tree = restore.Tree;
     Parse();
@@ -338,6 +385,7 @@ void TextEditor::Redo() {
     Text = restore.Text;
     Cursors = restore.Cursors;
     Cursors.MarkEdited();
+    LastEdit = restore.LastEdit;
     ts_tree_delete(Tree);
     Tree = restore.Tree;
     Parse();
@@ -347,11 +395,11 @@ void TextEditor::Record() {
     if (!History.empty() && History.back().Text == Text) return;
 
     History = History.take(++HistoryIndex);
-    History = History.push_back({Text, Cursors, BeforeCursors, Tree == nullptr ? nullptr : ts_tree_copy(Tree)});
+    History = History.push_back({Tree == nullptr ? nullptr : ts_tree_copy(Tree), Text, Cursors, BeforeCursors, LastEdit});
 }
 
 void TextEditor::SetText(const string &text) {
-    const uint old_end_byte = ToByteIndex(EndLC());
+    const uint old_end_byte = EndByteIndex();
     TransientLines transient_lines{};
     TransientLine current_line{};
     for (auto ch : text) {
@@ -371,7 +419,7 @@ void TextEditor::SetText(const string &text) {
     History = {};
     HistoryIndex = -1;
 
-    OnTextChanged(0, old_end_byte, ToByteIndex(EndLC()));
+    OnTextChanged({0, old_end_byte, EndByteIndex()});
 }
 
 void TextEditor::SetFilePath(const fs::path &file_path) {
@@ -919,7 +967,7 @@ TextEditor::LineChar TextEditor::InsertText(Lines text, LineChar at) {
 
     const uint start_byte = ToByteIndex(at);
     const uint text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](uint sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
-    OnTextChanged(start_byte, start_byte, start_byte + text_byte_length);
+    OnTextChanged({start_byte, start_byte, start_byte + text_byte_length});
 
     return LineChar{at.L + num_new_lines, text.size() == 1 ? uint(at.C + text.front().size()) : uint(text.back().size())};
 }
@@ -944,7 +992,7 @@ void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude
         for (auto &c : cursors_below) c.Set({c.Line() - (end.L - start.L), c.CharIndex()});
     }
 
-    OnTextChanged(start_byte, old_end_byte, start_byte);
+    OnTextChanged({start_byte, old_end_byte, start_byte});
 }
 
 void TextEditor::DeleteSelection(Cursor &c) {
@@ -981,15 +1029,16 @@ TextEditorStyle::CharStyle TSConfig::FindStyleByCaptureName(const std::string &c
     return DefaultCharStyle;
 }
 
-void TextEditor::OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte) {
+void TextEditor::OnTextChanged(InputEdit edit) {
     if (!Tree) return;
 
-    TSInputEdit edit;
     // Seems we only need to provide the bytes (without points), despite the documentation: https://github.com/tree-sitter/tree-sitter/issues/445
-    edit.start_byte = start_byte;
-    edit.old_end_byte = old_end_byte;
-    edit.new_end_byte = new_end_byte;
-    ts_tree_edit(Tree, &edit);
+    LastEdit = edit;
+    TSInputEdit ts_edit;
+    ts_edit.start_byte = edit.StartByte;
+    ts_edit.old_end_byte = edit.OldEndByte;
+    ts_edit.new_end_byte = edit.NewEndByte;
+    ts_tree_edit(Tree, &ts_edit);
 
     Parse();
 }
@@ -1263,7 +1312,7 @@ bool TextEditor::Render(bool is_parent_focused) {
             const auto lc = LineChar{li, ci};
             const char ch = line[lc.C];
             const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + column * CharAdvance.x, 0};
-            const uint char_byte_length = UTF8CharLength(ch);
+            const uint seq_length = UTF8CharLength(ch);
             if (ch == '\t') {
                 if (ShowWhitespaces) {
                     const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
@@ -1286,7 +1335,7 @@ bool TextEditor::Render(bool is_parent_focused) {
                     );
                 }
             } else {
-                if (char_byte_length == 1 && MatchingBrackets && (MatchingBrackets->GetStart() == lc || MatchingBrackets->GetEnd() == lc)) {
+                if (seq_length == 1 && MatchingBrackets && (MatchingBrackets->GetStart() == lc || MatchingBrackets->GetEnd() == lc)) {
                     const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
@@ -1298,7 +1347,7 @@ bool TextEditor::Render(bool is_parent_focused) {
                 const auto capture_id = it == CaptureIdByTransitionByte.end()          ? NoneCaptureId :
                     it->first == byte_index || it == CaptureIdByTransitionByte.begin() ? it->second :
                                                                                          std::prev(it)->second;
-                const string text = subrange(line.begin() + ci, line.begin() + ci + char_byte_length) | ranges::to<string>();
+                const string text = subrange(line.begin() + ci, line.begin() + ci + seq_length) | ranges::to<string>();
                 dl->AddText(glyph_pos, StyleByCaptureId.at(capture_id).Color, text.c_str());
             }
             if (ShowStyleTransitionPoints) {
@@ -1312,8 +1361,8 @@ bool TextEditor::Render(bool is_parent_focused) {
                     );
                 }
             }
-            MoveCharIndexAndColumn(line, ci, column); // todo do this manually since we already have `byte_length`
-            byte_index += char_byte_length;
+            MoveCharIndexAndColumn(line, ci, column);
+            byte_index += seq_length;
         }
         byte_index += 1; // For the newline character.
     }

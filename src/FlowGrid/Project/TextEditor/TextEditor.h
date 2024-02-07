@@ -128,6 +128,23 @@ struct TextEditor {
         bool operator!=(const LineChar &) const = default;
     };
 
+    struct ByteRange {
+        uint Start{0}, End{0};
+
+        auto operator<=>(const ByteRange &o) const {
+            if (auto cmp = Start <=> o.Start; cmp != 0) return cmp;
+            return End <=> o.End;
+        }
+        bool operator==(const ByteRange &) const = default;
+        bool operator!=(const ByteRange &) const = default;
+    };
+
+    // Holds the byte parts of `TSInputEdit` (not the points).
+    // TS API functions generally handle only having bytes populated.
+    struct InputEdit {
+        uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
+    };
+
     using Line = immer::flex_vector<char>;
     using Lines = immer::flex_vector<Line>;
     using TransientLine = immer::flex_vector_transient<char>;
@@ -352,6 +369,8 @@ private:
 
     static LineChar BeginLC() { return {0, 0}; }
     LineChar EndLC() const { return {uint(Text.size() - 1), uint(Text.back().size())}; }
+    uint EndByteIndex() const { return ToByteIndex(EndLC()); }
+
     LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Text, std::move(lc), std::move(begin), std::move(end)}; }
     LinesIter Iter(LineChar lc = BeginLC()) const { return Iter(std::move(lc), BeginLC(), EndLC()); }
 
@@ -409,7 +428,7 @@ private:
       - For insertion or replacement, where the new text ends.
       - For deletion, same as `start`.
     **/
-    void OnTextChanged(uint start_byte, uint old_end_byte, uint new_end_byte);
+    void OnTextChanged(InputEdit);
 
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
@@ -424,6 +443,8 @@ private:
 
     Lines Text{Line{}};
     Cursors Cursors, BeforeCursors;
+    InputEdit LastEdit{};
+
     PaletteIdT PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
 
@@ -442,16 +463,17 @@ private:
 
     TSConfig HighlightConfig;
     TSTree *Tree{nullptr};
-    TSParser *Parser;
+    TSParser *Parser{nullptr};
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
     std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
     std::map<uint, uint> CaptureIdByTransitionByte{};
 
     struct Snapshot {
+        TSTree *Tree;
         Lines Text;
         struct Cursors Cursors, BeforeCursors;
-        TSTree *Tree;
+        InputEdit LastEdit;
     };
     // The first history record is the initial state (after construction), and it's never removed from the history.
     immer::vector<Snapshot> History;

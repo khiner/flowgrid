@@ -822,8 +822,6 @@ void TextEditor::ToggleLineComment() {
         return std::distance(line.begin(), std::ranges::find_if_not(line, isblank));
     };
 
-    BeforeCursors = Cursors;
-
     std::unordered_set<uint> affected_lines;
     for (const auto &c : Cursors) {
         for (uint li = c.Min().L; li <= c.Max().L; ++li) {
@@ -834,9 +832,11 @@ void TextEditor::ToggleLineComment() {
     const bool should_add_comment = any_of(affected_lines, [&](uint li) {
         return !Equals(comment, Text[li], FindFirstNonSpace(Text[li]));
     });
+
+    BeforeCursors = Cursors;
     for (uint li : affected_lines) {
         if (should_add_comment) {
-            InsertText({Line{comment.begin(), comment.end()} + ' '}, {li, 0});
+            InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0});
         } else {
             const auto &line = Text[li];
             const uint ci = FindFirstNonSpace(line);

@@ -154,6 +154,7 @@ struct TextEditor {
     **/
     struct InputEdit {
         uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
+        InputEdit Invert() const { return InputEdit{StartByte, NewEndByte, OldEndByte}; }
     };
 
     using Line = immer::flex_vector<char>;
@@ -375,7 +376,11 @@ private:
         uint LastAddedIndex{0};
     };
 
-    void Record(); // Every `Record` should be paired with a `BeforeCursors = Cursors`.
+    // Commit a snapshot to the undo history, and edit the tree (see `EditTree`).
+    // **Every `Commit` should be paired with a `BeforeCursors = Cursors`.**
+    void Commit();
+    // Apply edits to the TS tree and clear them, re-parse, update highlight state.
+    void EditTree();
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
 
@@ -430,9 +435,6 @@ private:
     void HandleKeyboardInputs();
     void HandleMouseInputs();
 
-    void OnTextChanged(InputEdit);
-    void SetTree(TSTree *);
-
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
     inline static uint NoneCaptureId{uint(-1)}; // Maps to the default style.
@@ -444,7 +446,7 @@ private:
 
     Lines Text{Line{}};
     Cursors Cursors, BeforeCursors;
-    InputEdit LastEdit{};
+    std::vector<InputEdit> Edits{};
 
     PaletteIdT PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
@@ -471,10 +473,11 @@ private:
     std::map<uint, uint> CaptureIdByTransitionByte{};
 
     struct Snapshot {
-        TSTree *Tree;
         Lines Text;
         struct Cursors Cursors, BeforeCursors;
-        InputEdit LastEdit;
+        // If immer flex vectors provided a diff mechanism like its map does,
+        // we wouldn't need this, and we could compute diffs across any two arbitrary snapshots.
+        std::vector<InputEdit> Edits;
     };
     // The first history record is the initial state (after construction), and it's never removed from the history.
     immer::vector<Snapshot> History;

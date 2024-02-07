@@ -188,12 +188,12 @@ static void WalkTree(TSTree *tree, TextEditor::ByteRange br, NodeCallback callba
 TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(ts_parser_new()) {
     SetLanguage(language_id);
     SetText(string(text));
-    Record();
+    Commit();
 }
 TextEditor::TextEditor(const fs::path &file_path) : Parser(ts_parser_new()) {
     SetFilePath(file_path);
     SetText(FileIO::read(file_path));
-    Record();
+    Commit();
 }
 
 TextEditor::~TextEditor() {
@@ -227,23 +227,28 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     return &line.front() + position.column;
 }
 
-void TextEditor::SetTree(TSTree *tree) {
-    Tree = tree;
-    TSTree *old_tree = Tree;
-    Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
-    if (!Query) return;
+void TextEditor::EditTree() {
+    if (Tree != nullptr) {
+        for (const auto &edit : Edits) {
+            const TSInputEdit ts_edit{.start_byte = edit.StartByte, .old_end_byte = edit.OldEndByte, .new_end_byte = edit.NewEndByte};
+            ts_tree_edit(Tree, &ts_edit);
 
-    const ByteRange edit_range = ToByteRange(LastEdit);
-    WalkTree(old_tree, edit_range, [](TSNode node) {
-        if (ts_node_has_changes(node)) {
-            const ByteRange br = ToByteRange(node);
-            std::println("Node {} at ({}:{}) changed", ts_node_type(node), br.Start, br.End);
+            // WalkTree(Tree, ToByteRange(edit), [](TSNode node) {
+            //     if (ts_node_has_changes(node)) {
+            //         const ByteRange br = ToByteRange(node);
+            //         std::println("Node {} at ({}:{}) changed", ts_node_type(node), br.Start, br.End);
+            //     }
+            // });
         }
-    });
+    }
+    Edits.clear();
 
+    Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
     // todo only query/update the edited range
     CaptureIdByTransitionByte.clear();
     CaptureIdByTransitionByte[0] = NoneCaptureId;
+    if (!Query) return;
+
     ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
     TSQueryMatch match;
     uint capture_index;
@@ -303,7 +308,8 @@ void TextEditor::SetLanguage(LanguageID language_id) {
     }
 
     QueryCursor = ts_query_cursor_new();
-    SetTree(nullptr);
+    Tree = nullptr;
+    EditTree();
 }
 
 void TextEditor::SetNumTabSpaces(uint tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
@@ -332,7 +338,7 @@ void TextEditor::Cut() {
     BeforeCursors = Cursors;
     Copy();
     for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-    Record();
+    Commit();
 }
 
 bool TextEditor::CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
@@ -362,20 +368,20 @@ void TextEditor::Paste() {
     } else {
         for (auto &c : reverse_view(Cursors)) InsertTextAtCursor(insert_text_lines, c);
     }
-    Record();
+    Commit();
 }
 
 void TextEditor::Undo() {
     if (!CanUndo()) return;
 
-    const auto before_cursors = History[HistoryIndex].BeforeCursors;
+    const auto &current = History[HistoryIndex];
     const auto restore = History[--HistoryIndex];
     Text = restore.Text;
-    Cursors = before_cursors;
+    Cursors = current.BeforeCursors;
     Cursors.MarkEdited();
-    LastEdit = restore.LastEdit;
-    ts_tree_delete(Tree);
-    SetTree(restore.Tree);
+    assert(Edits.empty());
+    for (const auto &edit : reverse_view(current.Edits)) Edits.push_back(edit.Invert());
+    EditTree();
 }
 void TextEditor::Redo() {
     if (!CanRedo()) return;
@@ -384,16 +390,17 @@ void TextEditor::Redo() {
     Text = restore.Text;
     Cursors = restore.Cursors;
     Cursors.MarkEdited();
-    LastEdit = restore.LastEdit;
-    ts_tree_delete(Tree);
-    SetTree(restore.Tree);
+    assert(Edits.empty());
+    Edits = restore.Edits;
+    EditTree();
 }
 
-void TextEditor::Record() {
-    if (!History.empty() && History.back().Text == Text) return;
+void TextEditor::Commit() {
+    if (Edits.empty()) return;
 
     History = History.take(++HistoryIndex);
-    History = History.push_back({Tree == nullptr ? nullptr : ts_tree_copy(Tree), Text, Cursors, BeforeCursors, LastEdit});
+    History = History.push_back({Text, Cursors, BeforeCursors, Edits});
+    EditTree();
 }
 
 void TextEditor::SetText(const string &text) {
@@ -417,7 +424,7 @@ void TextEditor::SetText(const string &text) {
     History = {};
     HistoryIndex = -1;
 
-    OnTextChanged({0, old_end_byte, EndByteIndex()});
+    Edits.emplace_back(0, old_end_byte, EndByteIndex());
 }
 
 void TextEditor::SetFilePath(const fs::path &file_path) {
@@ -646,7 +653,7 @@ void TextEditor::EnterChar(ImWchar ch, bool is_shift) {
         InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, c);
     }
 
-    Record();
+    Commit();
 }
 
 void TextEditor::Backspace(bool is_word_mode) {
@@ -661,7 +668,7 @@ void TextEditor::Backspace(bool is_word_mode) {
         Cursors.SortAndMerge();
     }
     for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-    Record();
+    Commit();
 }
 
 void TextEditor::Delete(bool is_word_mode) {
@@ -676,7 +683,7 @@ void TextEditor::Delete(bool is_word_mode) {
         Cursors.SortAndMerge();
     }
     for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-    Record();
+    Commit();
 }
 
 void TextEditor::SetSelection(LineChar start, LineChar end, Cursor &c) {
@@ -767,7 +774,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
             }
         }
     }
-    Record();
+    Commit();
 }
 
 void TextEditor::SwapLines(uint li1, uint li2) {
@@ -802,7 +809,7 @@ void TextEditor::MoveCurrentLines(bool up) {
     }
     Cursors.MoveLines(*this, up ? -1 : 1, true, true, true);
 
-    Record();
+    Commit();
 }
 
 static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
@@ -844,7 +851,7 @@ void TextEditor::ToggleLineComment() {
             DeleteRange({li, ci}, {li, comment_ci});
         }
     }
-    Record();
+    Commit();
 }
 
 void TextEditor::RemoveCurrentLines() {
@@ -860,7 +867,7 @@ void TextEditor::RemoveCurrentLines() {
             CheckedNextLineBegin(li)
         );
     }
-    Record();
+    Commit();
 }
 
 TextEditor::Coords TextEditor::ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li) const {
@@ -953,7 +960,7 @@ TextEditor::LineChar TextEditor::InsertText(Lines text, LineChar at, bool update
 
     const uint start_byte = ToByteIndex(at);
     const uint text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](uint sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
-    OnTextChanged({start_byte, start_byte, start_byte + text_byte_length});
+    Edits.emplace_back(start_byte, start_byte, start_byte + text_byte_length);
 
     return LineChar{at.L + num_new_lines, text.size() == 1 ? uint(at.C + text.front().size()) : uint(text.back().size())};
 }
@@ -982,7 +989,7 @@ void TextEditor::DeleteRange(LineChar start, LineChar end, bool update_cursors, 
         }
     }
 
-    OnTextChanged({start_byte, old_end_byte, start_byte});
+    Edits.emplace_back(start_byte, old_end_byte, start_byte);
 }
 
 void TextEditor::DeleteSelection(Cursor &c) {
@@ -994,6 +1001,7 @@ void TextEditor::DeleteSelection(Cursor &c) {
 }
 
 uint TextEditor::ToByteIndex(LineChar lc) const {
+    if (lc.L >= Text.size()) return EndByteIndex();
     return ranges::accumulate(subrange(Text.begin(), Text.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
 }
 
@@ -1017,16 +1025,6 @@ TextEditorStyle::CharStyle TSConfig::FindStyleByCaptureName(const std::string &c
     } while (pos != std::string::npos);
 
     return DefaultCharStyle;
-}
-
-void TextEditor::OnTextChanged(InputEdit edit) {
-    if (!Tree) return;
-
-    LastEdit = edit;
-    const TSInputEdit ts_edit{.start_byte = edit.StartByte, .old_end_byte = edit.OldEndByte, .new_end_byte = edit.NewEndByte};
-    ts_tree_edit(Tree, &ts_edit);
-
-    SetTree(Tree);
 }
 
 static bool IsPressed(ImGuiKey key) {
@@ -1383,35 +1381,28 @@ bool TextEditor::Render(bool is_parent_focused) {
 
 using namespace ImGui;
 
+static void DrawEdits(const std::vector<TextEditor::InputEdit> &edits) {
+    Text("Edits: %lu", edits.size());
+    for (const auto &edit : edits) {
+        BulletText("Start: %d, Old end: %d, New end: %d", edit.StartByte, edit.OldEndByte, edit.NewEndByte);
+    }
+}
+
 void TextEditor::DebugPanel() {
-    if (CollapsingHeader("Editor state info")) {
+    if (CollapsingHeader("Editor state")) {
         ImGui::Text("Cursor count: %lu", Cursors.size());
-        for (auto &c : Cursors) {
+        for (const auto &c : Cursors) {
             const auto &start = c.GetStart(), &end = c.GetEnd();
-            ImGui::Text("Start: {%d, %d}", start.L, start.C);
-            ImGui::Text("End: {%d, %d}", end.L, end.C);
-            Spacing();
+            ImGui::Text("Start: {%d, %d}, End: {%d, %d}", start.L, start.C, end.L, end.C);
         }
-        ImGui::Text("Last edit: {%d, %d, %d}", LastEdit.StartByte, LastEdit.OldEndByte, LastEdit.NewEndByte);
+        if (CollapsingHeader("Line lengths")) {
+            for (uint i = 0; i < Text.size(); i++) ImGui::Text("%u: %lu", i, Text[i].size());
+        }
     }
-    if (CollapsingHeader("Text")) {
-        for (uint i = 0; i < Text.size(); i++) ImGui::Text("%lu", Text[i].size());
-    }
-    if (CollapsingHeader("Undo")) {
-        ImGui::Text("Number of records: %lu", History.size());
-        ImGui::Text("Undo index: %d", HistoryIndex);
+    if (CollapsingHeader("History")) {
+        ImGui::Text("Index: %u of %lu", HistoryIndex, History.size());
         for (size_t i = 0; i < History.size(); i++) {
-            // const auto &record = History[i];
-            if (CollapsingHeader(std::to_string(i).c_str())) {
-                TextUnformatted("Operations");
-                // for (const auto &operation : record.Operations) {
-                //     TextUnformatted(operation.Text.c_str());
-                //     TextUnformatted(operation.Type == TextEditor::UndoOperationType::Add ? "Add" : "Delete");
-                //     Text("Start: %d", operation.Start.L);
-                //     Text("End: %d", operation.End.L);
-                //     Separator();
-                // }
-            }
+            if (CollapsingHeader(std::to_string(i).c_str())) DrawEdits(History[i].Edits);
         }
     }
     if (CollapsingHeader("Tree-Sitter")) {

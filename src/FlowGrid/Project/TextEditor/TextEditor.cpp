@@ -1235,18 +1235,18 @@ bool TextEditor::Render(bool is_parent_focused) {
     const Coords last_visible_coords = {uint((ContentDims.y + scroll.y) / CharAdvance.y), uint((ContentDims.x + scroll.x - TextStart) / CharAdvance.x)};
     ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
 
-    uint max_column_limited = 0;
+    uint max_column = 0;
     auto dl = ImGui::GetWindowDrawList();
     const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
-    uint byte_index = 0;
+    uint byte_index = ToByteIndex({first_visible_coords.L, 0});
     for (uint li = first_visible_coords.L; li <= last_visible_coords.L && li < Text.size(); ++li) {
         const auto &line = Text[li];
-        const uint line_max_column_limited = GetLineMaxColumn(line, last_visible_coords.C);
-        max_column_limited = std::max(line_max_column_limited, max_column_limited);
+        const uint line_max_column = GetLineMaxColumn(line, last_visible_coords.C);
+        max_column = std::max(line_max_column, max_column);
 
         const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * CharAdvance.y};
         const float text_screen_pos_x = line_start_screen_pos.x + TextStart;
-        const Coords line_start_coord{li, 0}, line_end_coord{li, line_max_column_limited};
+        const Coords line_start_coord{li, 0}, line_end_coord{li, line_max_column};
         // Draw current line selection
         for (const auto &c : Cursors) {
             const auto selection_start = ToCoords(c.Min()), selection_end = ToCoords(c.Max());
@@ -1292,10 +1292,13 @@ bool TextEditor::Render(bool is_parent_focused) {
         }
 
         // Render colorized text
-        for (uint ci = GetFirstVisibleCharIndex(line, first_visible_coords.C), column = first_visible_coords.C; ci < line.size() && column <= last_visible_coords.C;) {
+        const uint line_start_byte_index = byte_index;
+        const uint start_ci = GetFirstVisibleCharIndex(line, first_visible_coords.C);
+        byte_index += start_ci;
+        for (uint ci = start_ci, column = first_visible_coords.C; ci < line.size() && column <= last_visible_coords.C;) {
             const auto lc = LineChar{li, ci};
-            const char ch = line[lc.C];
             const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + column * CharAdvance.x, 0};
+            const char ch = line[lc.C];
             const uint seq_length = UTF8CharLength(ch);
             if (ch == '\t') {
                 if (ShowWhitespaces) {
@@ -1348,11 +1351,11 @@ bool TextEditor::Render(bool is_parent_focused) {
             MoveCharIndexAndColumn(line, ci, column);
             byte_index += seq_length;
         }
-        byte_index += 1; // For the newline character.
+        byte_index = line_start_byte_index + line.size() + 1; // + 1 for the newline character.
     }
 
     CurrentSpaceDims = {
-        std::max((max_column_limited + std::min(ContentCoordDims.C - 1, max_column_limited)) * CharAdvance.x, CurrentSpaceDims.x),
+        std::max((max_column + std::min(ContentCoordDims.C - 1, max_column)) * CharAdvance.x, CurrentSpaceDims.x),
         (Text.size() + std::min(ContentCoordDims.L - 1, uint(Text.size()))) * CharAdvance.y
     };
 

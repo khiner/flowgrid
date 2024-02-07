@@ -765,10 +765,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
                 int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
                 while (ci > -1 && isblank(line[ci])) --ci;
                 const bool only_space_chars_found = ci == -1;
-                if (only_space_chars_found) {
-                    const LineChar start{li, 0}, end = {li, GetCharIndex(line, NumTabSpaces)};
-                    DeleteRange(start, end);
-                }
+                if (only_space_chars_found) DeleteRange({li, 0}, {li, GetCharIndex(line, NumTabSpaces)});
             }
         }
     }
@@ -821,10 +818,11 @@ void TextEditor::ToggleLineComment() {
     const string &comment = GetLanguage().SingleLineComment;
     if (comment.empty()) return;
 
-    BeforeCursors = Cursors;
     static const auto FindFirstNonSpace = [](const Line &line) {
         return std::distance(line.begin(), std::ranges::find_if_not(line, isblank));
     };
+
+    BeforeCursors = Cursors;
 
     std::unordered_set<uint> affected_lines;
     for (const auto &c : Cursors) {
@@ -857,23 +855,12 @@ void TextEditor::RemoveCurrentLines() {
     Cursors.MoveStart();
     Cursors.SortAndMerge();
 
-    for (auto &c : reverse_view(Cursors)) {
+    for (const auto &c : reverse_view(Cursors)) {
         const uint li = c.Line();
-        LineChar to_delete_start, to_delete_end;
-        if (Text.size() > li + 1) { // Next line exists.
-            to_delete_start = {li, 0};
-            to_delete_end = {li + 1, 0};
-            c.Set({li, 0});
-        } else if (li > 0) { // Previous line exists.
-            to_delete_start = LineMaxLC(li - 1);
-            to_delete_end = LineMaxLC(li);
-            c.Set({li - 1, 0});
-        } else {
-            to_delete_start = {li, 0};
-            to_delete_end = LineMaxLC(li);
-            c.Set({li, 0});
-        }
-        DeleteRange(to_delete_start, to_delete_end);
+        DeleteRange(
+            li == Text.size() - 1 && li > 0 ? LineMaxLC(li - 1) : LineChar{li, 0},
+            CheckedNextLineBegin(li)
+        );
     }
     Record();
 }

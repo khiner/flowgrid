@@ -155,6 +155,7 @@ struct TextEditor {
     uint LineCount() const { return Text.size(); }
     const Line &GetLine(uint li) const { return Text[li]; }
     LineChar GetCursorPosition() const { return Cursors.back().LC(); }
+    LineChar CheckedNextLineBegin(uint li) const { return li < Text.size()  - 1 ? LineChar{li + 1, 0} : EndLC(); }
     std::string GetText(LineChar start, LineChar end) const;
     std::string GetText() const { return GetText(BeginLC(), EndLC()); }
     std::string GetSyntaxTreeSExp() const;
@@ -410,9 +411,9 @@ private:
     void RemoveCurrentLines();
     void SwapLines(uint li1, uint li2);
 
-    LineChar InsertText(Lines, LineChar); // Returns insertion end.
+    LineChar InsertText(Lines, LineChar, bool update_cursors = true); // Returns insertion end.
     void InsertTextAtCursor(Lines, Cursor &);
-    void DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor = nullptr);
+    void DeleteRange(LineChar start, LineChar end, bool update_cursors = true, const Cursor *exclude_cursor = nullptr);
     void DeleteSelection(Cursor &);
 
     void HandleKeyboardInputs();

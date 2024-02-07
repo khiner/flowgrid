@@ -776,13 +776,12 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
 }
 
 void TextEditor::SwapLines(uint li1, uint li2) {
-    if (li1 == li2) return;
+    if (li1 == li2 || li1 >= Text.size() || li2 >= Text.size()) return;
 
-    auto transient_lines = Text.transient();
-    auto tmp_line = transient_lines[li1];
-    transient_lines.set(li1, transient_lines[li2]);
-    transient_lines.set(li2, tmp_line);
-    Text = transient_lines.persistent();
+    InsertText({Text[li2], {}}, {li1, 0}, false);
+    if (li2 + 1 < Text.size() - 1) DeleteRange({li2 + 1, 0}, {li2 + 2, 0}, false);
+    // If the second line is the last line, we also need to delete the newline we just inserted.
+    else DeleteRange({li2, uint(Text[li2].size())}, EndLC(), false);
 }
 
 void TextEditor::MoveCurrentLines(bool up) {
@@ -948,7 +947,7 @@ uint TextEditor::GetLineMaxColumn(const Line &line, uint limit) const {
     return column;
 }
 
-TextEditor::LineChar TextEditor::InsertText(Lines text, LineChar at) {
+TextEditor::LineChar TextEditor::InsertText(Lines text, LineChar at, bool update_cursors) {
     if (text.empty()) return at;
 
     if (at.L < Text.size()) {
@@ -961,9 +960,11 @@ TextEditor::LineChar TextEditor::InsertText(Lines text, LineChar at) {
         Text = Text + text;
     }
 
-    auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() > at.L; });
     const uint num_new_lines = text.size() - 1;
-    for (auto &c : cursors_below) c.Set({c.Line() + num_new_lines, c.CharIndex()});
+    if (update_cursors) {
+        auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() > at.L; });
+        for (auto &c : cursors_below) c.Set({c.Line() + num_new_lines, c.CharIndex()});
+    }
 
     const uint start_byte = ToByteIndex(at);
     const uint text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](uint sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
@@ -972,7 +973,7 @@ TextEditor::LineChar TextEditor::InsertText(Lines text, LineChar at) {
     return LineChar{at.L + num_new_lines, text.size() == 1 ? uint(at.C + text.front().size()) : uint(text.back().size())};
 }
 
-void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude_cursor) {
+void TextEditor::DeleteRange(LineChar start, LineChar end, bool update_cursors, const Cursor *exclude_cursor) {
     if (end <= start) return;
 
     auto start_line = Text[start.L], end_line = Text[end.L];
@@ -980,16 +981,20 @@ void TextEditor::DeleteRange(LineChar start, LineChar end, const Cursor *exclude
     if (start.L == end.L) {
         Text = Text.set(start.L, start_line.erase(start.C, end.C));
 
-        auto cursors_to_right = Cursors | filter([&start](const auto &c) { return !c.IsRange() && c.IsRightOf(start); });
-        for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() - (end.C - start.C))});
+        if (update_cursors) {
+            auto cursors_to_right = Cursors | filter([&start](const auto &c) { return !c.IsRange() && c.IsRightOf(start); });
+            for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() - (end.C - start.C))});
+        }
     } else {
         end_line = end_line.drop(end.C);
         Text = Text.set(end.L, end_line);
         Text = Text.set(start.L, start_line.take(start.C) + end_line);
         Text = Text.erase(start.L + 1, end.L + 1);
 
-        auto cursors_below = Cursors | filter([&](const auto &c) { return (!exclude_cursor || c != *exclude_cursor) && c.Line() >= end.L; });
-        for (auto &c : cursors_below) c.Set({c.Line() - (end.L - start.L), c.CharIndex()});
+        if (update_cursors) {
+            auto cursors_below = Cursors | filter([&](const auto &c) { return (!exclude_cursor || c != *exclude_cursor) && c.Line() >= end.L; });
+            for (auto &c : cursors_below) c.Set({c.Line() - (end.L - start.L), c.CharIndex()});
+        }
     }
 
     OnTextChanged({start_byte, old_end_byte, start_byte});
@@ -999,7 +1004,7 @@ void TextEditor::DeleteSelection(Cursor &c) {
     if (!c.IsRange()) return;
 
     // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
-    DeleteRange(c.Min(), c.Max(), &c);
+    DeleteRange(c.Min(), c.Max(), true, &c);
     c.Set(c.Min());
 }
 
@@ -1175,11 +1180,7 @@ void TextEditor::HandleMouseInputs() {
         else Cursors.Reset();
 
         const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
-        SetSelection(
-            {cursor_lc.L, 0},
-            cursor_lc.L < Text.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
-            Cursors.back()
-        );
+        SetSelection({cursor_lc.L, 0}, CheckedNextLineBegin(cursor_lc.L), Cursors.back());
 
         LastClickTime = -1.0f;
     } else if (is_double_click) {
@@ -1198,11 +1199,7 @@ void TextEditor::HandleMouseInputs() {
         bool is_over_li;
         const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos(), &is_over_li);
         if (is_over_li) {
-            SetSelection(
-                {cursor_lc.L, 0},
-                cursor_lc.L < Text.size() - 1 ? LineChar{cursor_lc.L + 1, 0} : LineMaxLC(cursor_lc.L),
-                Cursors.back()
-            );
+            SetSelection({cursor_lc.L, 0}, CheckedNextLineBegin(cursor_lc.L), Cursors.back());
         } else {
             Cursors.GetLastAdded().Set(cursor_lc);
         }

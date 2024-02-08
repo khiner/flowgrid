@@ -87,6 +87,7 @@ void TextBuffer::RenderMenu() const {
                 EndMenu();
             }
             MenuItem("Show style transition points", nullptr, &editor.ShowStyleTransitionPoints);
+            MenuItem("Show changed capture ranges", nullptr, &editor.ShowChangedCaptureRanges);
             gWindows.ToggleDebugMenuItem(Debug);
             EndMenu();
         }

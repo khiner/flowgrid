@@ -9,7 +9,6 @@
 #include <range/v3/view/transform.hpp>
 #include <ranges>
 #include <set>
-#include <string>
 
 #include "imgui_internal.h"
 #include "nlohmann/json.hpp"
@@ -132,7 +131,7 @@ void from_json(const json &j, TextEditorStyle::CharStyle &style) {
         if (j.contains("color")) style.Color = CharStyleColorValuetoU32(j.at("color"));
         if (j.contains("bold")) j.at("bold").get_to(style.Bold);
         if (j.contains("italic")) j.at("italic").get_to(style.Italic);
-    } else if (j.is_number()) {
+    } else if (j.is_number() || j.is_string()) {
         style.Color = CharStyleColorValuetoU32(j);
     } else {
         throw std::runtime_error("Invalid theme style type in tree-sitter config JSON.");
@@ -146,39 +145,6 @@ void from_json(const json &j, TSConfig &config) {
             config.StyleByHighlightName[key] = value.get<TextEditorStyle::CharStyle>();
         }
     }
-}
-
-static TextEditor::ByteRange ToByteRange(const TSNode &node) { return {ts_node_start_byte(node), ts_node_end_byte(node)}; }
-static TextEditor::ByteRange ToByteRange(TextEditor::InputEdit edit) { return {edit.StartByte, std::max(edit.NewEndByte, edit.OldEndByte)}; }
-
-using NodeCallback = std::function<void(TSNode)>;
-static void WalkTree(TSTree *tree, TextEditor::ByteRange br, NodeCallback callback) {
-    if (tree == nullptr) return;
-
-    TSNode root_node = ts_tree_root_node(tree);
-    // Find the smallest node that spans the edited range.
-    TSNode affected_node = ts_node_descendant_for_byte_range(root_node, br.Start, br.End);
-    TSTreeCursor cursor = ts_tree_cursor_new(affected_node);
-
-    do {
-        // Call the callback with the current node.
-        TSNode node = ts_tree_cursor_current_node(&cursor);
-        callback(node);
-
-        // Try to go deeper into the subtree first.
-        if (ts_tree_cursor_goto_first_child(&cursor)) continue;
-
-        // If there are no children, try to go to the next sibling.
-        while (!ts_tree_cursor_goto_next_sibling(&cursor)) {
-            // If there are no more siblings, ascend to the parent.
-            if (!ts_tree_cursor_goto_parent(&cursor)) {
-                // If we can't ascend further (because we're at the root of the subtree we're iterating over), we're done.
-                break;
-            }
-        }
-    } while (ts_tree_cursor_current_node(&cursor).id != affected_node.id); // Loop until we return to the start.
-
-    ts_tree_cursor_delete(&cursor);
 }
 
 TextEditor::TextEditor(std::string_view text, LanguageID language_id) : Parser(ts_parser_new()) {
@@ -223,44 +189,102 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     return &line.front() + position.column;
 }
 
-void TextEditor::EditTree() {
+static TextEditor::ByteRange ToByteRange(const TSNode &node) { return {ts_node_start_byte(node), ts_node_end_byte(node)}; }
+
+void TextEditor::ApplyEdits() {
+    // xxx Apply edits one at a time for now.
+    // E.g. moving lines (which is an insert and a delete) currently breaks highlighting when applied together.
+    // But moving lines is still broken for undo after minimal query updates.
+    for (const auto &edit : Edits) ApplyEdits({edit});
+    Edits.clear();
+}
+void TextEditor::ApplyEdits(const std::set<InputEdit> &edits) {
+    ChangedCaptureRanges.clear(); // For debugging
+    if (edits.empty()) return;
+
     if (Tree != nullptr) {
-        for (const auto &edit : Edits) {
+        for (const auto &edit : edits) {
             const TSInputEdit ts_edit{.start_byte = edit.StartByte, .old_end_byte = edit.OldEndByte, .new_end_byte = edit.NewEndByte};
             ts_tree_edit(Tree, &ts_edit);
-
-            // WalkTree(Tree, ToByteRange(edit), [](TSNode node) {
-            //     if (ts_node_has_changes(node)) {
-            //         const ByteRange br = ToByteRange(node);
-            //         std::println("Node {} at ({}:{}) changed", ts_node_type(node), br.Start, br.End);
-            //     }
-            // });
         }
     }
-    Edits.clear();
 
+    auto *old_tree = Tree;
     Tree = ts_parser_parse(Parser, Tree, {this, TSReadText, TSInputEncodingUTF8});
-    // todo only query/update the edited range
-    CaptureIdByTransitionByte.clear();
-    CaptureIdByTransitionByte[0] = NoneCaptureId;
     if (!Query) return;
 
+    /* Update capture ID transition points (used for highlighting) based on the query and the edits. */
+
+    // Find the minimum range needed to span all nodes whose syntactic structure has changed.
+    ByteRange changed_range = {UINT32_MAX, 0u};
+    if (old_tree != nullptr) {
+        uint num_changed_ranges;
+        const TSRange *changed_ranges = ts_tree_get_changed_ranges(old_tree, Tree, &num_changed_ranges);
+        for (uint i = 0; i < num_changed_ranges; ++i) {
+            changed_range.Start = std::min(changed_range.Start, changed_ranges[i].start_byte);
+            changed_range.End = std::max(changed_range.End, changed_ranges[i].end_byte);
+        }
+        free((void *)changed_ranges);
+    }
+
+    const bool any_changed_captures = changed_range.Start < changed_range.End;
+    if (any_changed_captures) {
+        // std::println("Changed capture range: [{},{}]", changed_range.Start, changed_range.End);
+        ts_query_cursor_set_byte_range(QueryCursor, changed_range.Start, changed_range.End);
+
+        // Note: We don't delete all transitions in this range, since it might include ancestor nodes
+        // with transitions that are still valid. We delete within replaced terminal node ranges below.
+    }
+
+    // Delete all transitions within deleted ranges.
+    for (const auto &edit : reverse_view(edits)) {
+        if (edit.IsDelete()) DeleteTransitionCaptures({edit.NewEndByte, edit.OldEndByte});
+    }
+
+    // Adjust remaining transitions based on the edits.
+    // Apply the edits from the end of the document to the beginning, moving transitions following
+    // (or including) the edit to the right for insertions and to the left for deletions.
+    for (const auto &edit : reverse_view(edits)) {
+        const uint edit_start = edit.StartByte, edit_range = edit.NewEndByte - edit.OldEndByte;
+        std::vector<std::pair<uint, uint>> updates;
+        for (auto it = TransitionCaptureAtOrAfter(edit_start); it != CaptureIdByTransitionByte.end();) {
+            const auto current = it++; // Increment here to avoid invalidation on erase.
+            updates.emplace_back(current->first + edit_range, current->second);
+            CaptureIdByTransitionByte.erase(current);
+        }
+        for (const auto &[byte_index, capture] : updates) CaptureIdByTransitionByte[byte_index] = capture;
+    }
+
+    if (old_tree != nullptr && !any_changed_captures) return;
+
+    // Either this is the first parse, or the edit(s) affect existing node captures.
+    // Execute the query and add all capture transitions.
     ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
+
     TSQueryMatch match;
     uint capture_index;
-    // while (ts_query_cursor_next_match(QueryCursor, &match)) {}
     while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
         const TSQueryCapture &capture = match.captures[capture_index];
         // We only store the points at which there is a _transition_ from one style to another.
         // This can happen either at the beginning or the end of the capture node.
-        const auto start_byte = ts_node_start_byte(capture.node), end_byte = ts_node_end_byte(capture.node);
-        const auto start_it = CaptureIdByTransitionByte.lower_bound(start_byte);
-        const auto at_or_before_start_it = start_it == CaptureIdByTransitionByte.begin() || start_it->first == start_byte ? start_it : std::prev(start_it);
+        TSNode node = capture.node;
+        const auto node_byte_range = ToByteRange(node);
+        ChangedCaptureRanges.insert(node_byte_range); // For debugging.
+        if (ts_node_child_count(node) > 0) continue; // Only highlight terminal nodes.
+
+        DeleteTransitionCaptures(node_byte_range); // Delete invalidated transitions.
+        const auto at_or_before_start_it = TransitionCaptureAtOrBefore(node_byte_range.Start);
         if (at_or_before_start_it->second != capture.index) {
-            CaptureIdByTransitionByte[start_byte] = capture.index;
-            CaptureIdByTransitionByte[end_byte] = NoneCaptureId;
+            // uint length;
+            // const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &length);
+            // std::println("\t'{}'[{}:{}]: {}", ts_node_type(node), node_byte_range.Start, node_byte_range.End, string(capture_name, length));
+            CaptureIdByTransitionByte[node_byte_range.Start] = capture.index;
+            if (node_byte_range.End != changed_range.End) CaptureIdByTransitionByte[node_byte_range.End] = NoneCaptureId;
         }
     }
+
+    // All documents start by "transitioning" to the default capture (showing the default style).
+    if (!CaptureIdByTransitionByte.contains(0)) CaptureIdByTransitionByte[0] = NoneCaptureId;
 }
 
 string TextEditor::GetSyntaxTreeSExp() const {
@@ -303,9 +327,10 @@ void TextEditor::SetLanguage(LanguageID language_id) {
         StyleByCaptureId[i] = HighlightConfig.FindStyleByCaptureName(string(capture_name, length));
     }
 
-    QueryCursor = ts_query_cursor_new();
     Tree = nullptr;
-    EditTree();
+    QueryCursor = ts_query_cursor_new();
+    CaptureIdByTransitionByte.clear();
+    ApplyEdits();
 }
 
 void TextEditor::SetNumTabSpaces(uint tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
@@ -377,7 +402,7 @@ void TextEditor::Undo() {
     Cursors.MarkEdited();
     assert(Edits.empty());
     for (const auto &edit : reverse_view(current.Edits)) Edits.push_back(edit.Invert());
-    EditTree();
+    ApplyEdits();
 }
 void TextEditor::Redo() {
     if (!CanRedo()) return;
@@ -388,7 +413,7 @@ void TextEditor::Redo() {
     Cursors.MarkEdited();
     assert(Edits.empty());
     Edits = restore.Edits;
-    EditTree();
+    ApplyEdits();
 }
 
 void TextEditor::Commit() {
@@ -396,7 +421,7 @@ void TextEditor::Commit() {
 
     History = History.take(++HistoryIndex);
     History = History.push_back({Text, Cursors, BeforeCursors, Edits});
-    EditTree();
+    ApplyEdits();
 }
 
 void TextEditor::SetText(const string &text) {
@@ -1312,13 +1337,8 @@ bool TextEditor::Render(bool is_parent_focused) {
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
                 // Find color for the current character.
-                // `lower_bound` returns an iterator pointing to the first element in the container whose key
-                // is _not_ before `coords` (i.e., either it is equivalent or comes after).
-                // We want the nearest key _less than or equal_ to `coords`.
-                const auto it = CaptureIdByTransitionByte.lower_bound(byte_index);
-                const auto capture_id = it == CaptureIdByTransitionByte.end()          ? NoneCaptureId :
-                    it->first == byte_index || it == CaptureIdByTransitionByte.begin() ? it->second :
-                                                                                         std::prev(it)->second;
+                const auto it = TransitionCaptureAtOrBefore(byte_index);
+                const auto capture_id = it == CaptureIdByTransitionByte.end() ? NoneCaptureId : it->second;
                 const string text = subrange(line.begin() + ci, line.begin() + ci + seq_length) | ranges::to<string>();
                 dl->AddText(glyph_pos, StyleByCaptureId.at(capture_id).Color, text.c_str());
             }
@@ -1326,11 +1346,17 @@ bool TextEditor::Render(bool is_parent_focused) {
                 if (auto it = CaptureIdByTransitionByte.find(byte_index); it != CaptureIdByTransitionByte.end()) {
                     const auto &style = StyleByCaptureId.at(it->second);
                     const float x = text_screen_pos_x + lc.C * CharAdvance.x;
-                    dl->AddRect(
-                        {x, line_start_screen_pos.y},
-                        {x + CharAdvance.x, line_start_screen_pos.y + CharAdvance.y},
-                        style.Color
-                    );
+                    auto c = ImColor(style.Color);
+                    c.Value.w = 0.2f;
+                    dl->AddRectFilled({x, line_start_screen_pos.y}, ImVec2{x, line_start_screen_pos.y} + CharAdvance, c);
+                }
+            }
+            if (ShowChangedCaptureRanges) {
+                for (const auto &range : ChangedCaptureRanges) {
+                    if (byte_index >= range.Start && byte_index < range.End) {
+                        const float x = text_screen_pos_x + lc.C * CharAdvance.x;
+                        dl->AddRectFilled({x, line_start_screen_pos.y}, ImVec2{x, line_start_screen_pos.y} + CharAdvance, IM_COL32(255, 255, 255, 20));
+                    }
                 }
             }
             MoveCharIndexAndColumn(line, ci, column);
@@ -1389,7 +1415,7 @@ void TextEditor::DebugPanel() {
         ImGui::Text("Cursor count: %lu", Cursors.size());
         for (const auto &c : Cursors) {
             const auto &start = c.GetStart(), &end = c.GetEnd();
-            ImGui::Text("Start: {%d, %d}, End: {%d, %d}", start.L, start.C, end.L, end.C);
+            ImGui::Text("Start: {%d, %d}(%u), End: {%d, %d}(%u)", start.L, start.C, ToByteIndex(start), end.L, end.C, ToByteIndex(end));
         }
         if (CollapsingHeader("Line lengths")) {
             for (uint i = 0; i < Text.size(); i++) ImGui::Text("%u: %lu", i, Text[i].size());

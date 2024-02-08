@@ -3,6 +3,7 @@
 #include <array>
 #include <filesystem>
 #include <map>
+#include <set>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -155,6 +156,14 @@ struct TextEditor {
     struct InputEdit {
         uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
         InputEdit Invert() const { return InputEdit{StartByte, NewEndByte, OldEndByte}; }
+        bool IsInsert() const { return StartByte == OldEndByte; }
+        bool IsDelete() const { return StartByte == NewEndByte; }
+
+        auto operator<=>(const InputEdit &o) const {
+            if (auto cmp = StartByte <=> o.StartByte; cmp != 0) return cmp;
+            if (auto cmp = OldEndByte <=> o.OldEndByte; cmp != 0) return cmp;
+            return NewEndByte <=> o.NewEndByte;
+        }
     };
 
     using Line = immer::flex_vector<char>;
@@ -202,7 +211,7 @@ struct TextEditor {
     bool AutoIndent{true};
     bool ShowWhitespaces{true};
     bool ShowLineNumbers{true};
-    bool ShowStyleTransitionPoints{false};
+    bool ShowStyleTransitionPoints{false}, ShowChangedCaptureRanges{false};
     bool ShortTabs{true};
     float LineSpacing{1};
 
@@ -379,8 +388,9 @@ private:
     // Commit a snapshot to the undo history, and edit the tree (see `EditTree`).
     // **Every `Commit` should be paired with a `BeforeCursors = Cursors`.**
     void Commit();
-    // Apply edits to the TS tree and clear them, re-parse, update highlight state.
-    void EditTree();
+
+    void ApplyEdits();
+    void ApplyEdits(const std::set<InputEdit> &); // Apply edits to the TS tree, re-parse, update highlight state.
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
 
@@ -437,7 +447,18 @@ private:
 
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
-    inline static uint NoneCaptureId{uint(-1)}; // Maps to the default style.
+    auto TransitionCaptureAtOrAfter(uint byte_index) const { return CaptureIdByTransitionByte.lower_bound(byte_index); }
+    auto TransitionCaptureAtOrBefore(uint byte_index) const {
+        auto it = TransitionCaptureAtOrAfter(byte_index);
+        return it->first == byte_index || it == CaptureIdByTransitionByte.begin() ? it : std::prev(it);
+    }
+    void DeleteTransitionCaptures(ByteRange range) {
+        for (auto it = TransitionCaptureAtOrAfter(range.Start); it != CaptureIdByTransitionByte.end() && it->first < range.End;) {
+            it = CaptureIdByTransitionByte.erase(it);
+        }
+    }
+
+    inline static uint NoneCaptureId{uint(-1)}; // Corresponds to the default style.
 
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
@@ -471,6 +492,7 @@ private:
     TSQueryCursor *QueryCursor{nullptr};
     std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
     std::map<uint, uint> CaptureIdByTransitionByte{};
+    std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
 
     struct Snapshot {
         Lines Text;
@@ -479,6 +501,7 @@ private:
         // we wouldn't need this, and we could compute diffs across any two arbitrary snapshots.
         std::vector<InputEdit> Edits;
     };
+
     // The first history record is the initial state (after construction), and it's never removed from the history.
     immer::vector<Snapshot> History;
     uint HistoryIndex{0};

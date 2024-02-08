@@ -148,12 +148,8 @@ void from_json(const json &j, TSConfig &config) {
     }
 }
 
-static TextEditor::ByteRange ToByteRange(const TSNode &node) {
-    return {ts_node_start_byte(node), ts_node_end_byte(node)};
-}
-static TextEditor::ByteRange ToByteRange(TextEditor::InputEdit edit) {
-    return {edit.StartByte, edit.NewEndByte > edit.OldEndByte ? edit.NewEndByte : edit.OldEndByte};
-}
+static TextEditor::ByteRange ToByteRange(const TSNode &node) { return {ts_node_start_byte(node), ts_node_end_byte(node)}; }
+static TextEditor::ByteRange ToByteRange(TextEditor::InputEdit edit) { return {edit.StartByte, std::max(edit.NewEndByte, edit.OldEndByte)}; }
 
 using NodeCallback = std::function<void(TSNode)>;
 static void WalkTree(TSTree *tree, TextEditor::ByteRange br, NodeCallback callback) {

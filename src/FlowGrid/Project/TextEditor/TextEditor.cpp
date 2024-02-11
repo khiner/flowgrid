@@ -198,6 +198,7 @@ void TextEditor::ApplyEdits() {
     for (const auto &edit : Edits) ApplyEdits({edit});
     Edits.clear();
 }
+
 void TextEditor::ApplyEdits(const std::set<InputEdit> &edits) {
     ChangedCaptureRanges.clear(); // For debugging
     if (edits.empty()) return;
@@ -236,23 +237,18 @@ void TextEditor::ApplyEdits(const std::set<InputEdit> &edits) {
         // with transitions that are still valid. We delete within replaced terminal node ranges below.
     }
 
-    // Delete all transitions within deleted ranges.
-    for (const auto &edit : reverse_view(edits)) {
-        if (edit.IsDelete()) DeleteTransitionCaptures({edit.NewEndByte, edit.OldEndByte});
-    }
+    auto transition_it = CaptureIdTransitions.begin();
 
-    // Adjust remaining transitions based on the edits.
-    // Apply the edits from the end of the document to the beginning, moving transitions following
-    // (or including) the edit to the right for insertions and to the left for deletions.
+    // Delete all transitions within deleted ranges.
+    for (const auto &edit : reverse_view(edits) | filter([](const auto &edit) { return edit.IsDelete(); })) {
+        CaptureIdTransitions.Delete(transition_it, edit.NewEndByte, edit.OldEndByte);
+    }
+    // Adjust transitions based on the edited ranges.
     for (const auto &edit : reverse_view(edits)) {
-        const uint edit_start = edit.StartByte, edit_range = edit.NewEndByte - edit.OldEndByte;
-        std::vector<std::pair<uint, uint>> updates;
-        for (auto it = TransitionCaptureAtOrAfter(edit_start); it != CaptureIdByTransitionByte.end();) {
-            const auto current = it++; // Increment here to avoid invalidation on erase.
-            updates.emplace_back(current->first + edit_range, current->second);
-            CaptureIdByTransitionByte.erase(current);
+        transition_it.MoveTo(edit.StartByte + 1);
+        if (transition_it.HasNext()) {
+            CaptureIdTransitions.Increment(++transition_it, edit.NewEndByte - edit.OldEndByte);
         }
-        for (const auto &[byte_index, capture] : updates) CaptureIdByTransitionByte[byte_index] = capture;
     }
 
     if (old_tree != nullptr && !any_changed_captures) return;
@@ -272,19 +268,19 @@ void TextEditor::ApplyEdits(const std::set<InputEdit> &edits) {
         ChangedCaptureRanges.insert(node_byte_range); // For debugging.
         if (ts_node_child_count(node) > 0) continue; // Only highlight terminal nodes.
 
-        DeleteTransitionCaptures(node_byte_range); // Delete invalidated transitions.
-        const auto at_or_before_start_it = TransitionCaptureAtOrBefore(node_byte_range.Start);
-        if (at_or_before_start_it->second != capture.index) {
+        // Delete invalidated transitions.
+        CaptureIdTransitions.Delete(transition_it, node_byte_range.Start, node_byte_range.End);
+
+        if (*transition_it != capture.index) {
             // uint length;
             // const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &length);
             // std::println("\t'{}'[{}:{}]: {}", ts_node_type(node), node_byte_range.Start, node_byte_range.End, string(capture_name, length));
-            CaptureIdByTransitionByte[node_byte_range.Start] = capture.index;
-            if (node_byte_range.End != changed_range.End) CaptureIdByTransitionByte[node_byte_range.End] = NoneCaptureId;
+            CaptureIdTransitions.Insert(transition_it, node_byte_range.Start, capture.index);
+            if (node_byte_range.End != changed_range.End) {
+                CaptureIdTransitions.Insert(transition_it, node_byte_range.End, NoneCaptureId);
+            }
         }
     }
-
-    // All documents start by "transitioning" to the default capture (showing the default style).
-    if (!CaptureIdByTransitionByte.contains(0)) CaptureIdByTransitionByte[0] = NoneCaptureId;
 }
 
 string TextEditor::GetSyntaxTreeSExp() const {
@@ -329,7 +325,7 @@ void TextEditor::SetLanguage(LanguageID language_id) {
 
     Tree = nullptr;
     QueryCursor = ts_query_cursor_new();
-    CaptureIdByTransitionByte.clear();
+    CaptureIdTransitions.clear();
     ApplyEdits();
 }
 
@@ -1250,6 +1246,7 @@ bool TextEditor::Render(bool is_parent_focused) {
     uint max_column = 0;
     auto dl = ImGui::GetWindowDrawList();
     const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
+    auto transition_it = CaptureIdTransitions.begin();
     for (uint li = first_visible_coords.L, byte_index = ToByteIndex({first_visible_coords.L, 0});
          li <= last_visible_coords.L && li < Text.size(); ++li) {
         const auto &line = Text[li];
@@ -1305,6 +1302,7 @@ bool TextEditor::Render(bool is_parent_focused) {
         const uint line_start_byte_index = byte_index;
         const uint start_ci = GetFirstVisibleCharIndex(line, first_visible_coords.C);
         byte_index += start_ci;
+        transition_it.MoveForwardTo(byte_index);
         for (uint ci = start_ci, column = first_visible_coords.C; ci < line.size() && column <= last_visible_coords.C;) {
             const auto lc = LineChar{li, ci};
             const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + column * CharAdvance.x, 0};
@@ -1337,19 +1335,15 @@ bool TextEditor::Render(bool is_parent_focused) {
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
                 // Find color for the current character.
-                const auto it = TransitionCaptureAtOrBefore(byte_index);
-                const auto capture_id = it == CaptureIdByTransitionByte.end() ? NoneCaptureId : it->second;
                 const string text = subrange(line.begin() + ci, line.begin() + ci + seq_length) | ranges::to<string>();
-                dl->AddText(glyph_pos, StyleByCaptureId.at(capture_id).Color, text.c_str());
+                dl->AddText(glyph_pos, StyleByCaptureId.at(*transition_it).Color, text.c_str());
             }
-            if (ShowStyleTransitionPoints) {
-                if (auto it = CaptureIdByTransitionByte.find(byte_index); it != CaptureIdByTransitionByte.end()) {
-                    const auto &style = StyleByCaptureId.at(it->second);
-                    const float x = text_screen_pos_x + lc.C * CharAdvance.x;
-                    auto c = ImColor(style.Color);
-                    c.Value.w = 0.2f;
-                    dl->AddRectFilled({x, line_start_screen_pos.y}, ImVec2{x, line_start_screen_pos.y} + CharAdvance, c);
-                }
+            if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
+                const auto &style = StyleByCaptureId.at(*transition_it);
+                const float x = text_screen_pos_x + lc.C * CharAdvance.x;
+                auto c = ImColor(style.Color);
+                c.Value.w = 0.2f;
+                dl->AddRectFilled({x, line_start_screen_pos.y}, ImVec2{x, line_start_screen_pos.y} + CharAdvance, c);
             }
             if (ShowChangedCaptureRanges) {
                 for (const auto &range : ChangedCaptureRanges) {
@@ -1361,6 +1355,7 @@ bool TextEditor::Render(bool is_parent_focused) {
             }
             MoveCharIndexAndColumn(line, ci, column);
             byte_index += seq_length;
+            transition_it.MoveForwardTo(byte_index);
         }
         byte_index = line_start_byte_index + line.size() + 1; // + 1 for the newline character.
     }

@@ -385,6 +385,135 @@ private:
         uint LastAddedIndex{0};
     };
 
+    template<typename ValueType> struct ByteTransitions {
+        struct DeltaValue {
+            uint Delta;
+            ValueType Value;
+        };
+
+        struct Iterator {
+            Iterator(const std::vector<DeltaValue> &deltas, uint start_byte = 0, ValueType default_value = {})
+                : DeltaValues(deltas), DefaultValue(default_value) {
+                while (HasNext() && ByteIndex < start_byte) ++(*this);
+            }
+
+            bool HasNext() const { return DeltaIndex < DeltaValues.size() - 1; }
+            bool HasPrev() const { return DeltaIndex > 0; }
+            bool IsEnd() const { return DeltaIndex == DeltaValues.size(); }
+
+            Iterator &operator++() {
+                MoveRight();
+                return *this;
+            }
+            Iterator &operator--() {
+                MoveLeft();
+                return *this;
+            }
+
+            uint NextByteIndex() const { return HasNext() ? ByteIndex + DeltaValues[DeltaIndex + 1].Delta : ByteIndex; }
+
+            /* Move ops all move until `ByteIndex` is _at or before_ the target byte. */
+            void MoveTo(uint target_byte) {
+                if (ByteIndex < target_byte) MoveForwardTo(target_byte);
+                else MoveBackTo(target_byte);
+            }
+            void MoveForwardTo(uint target_byte) {
+                while (ByteIndex < target_byte && !IsEnd() && NextByteIndex() <= target_byte) ++(*this);
+            }
+            void MoveBackTo(uint target_byte) {
+                while ((ByteIndex > target_byte || (IsEnd() && ByteIndex == target_byte)) && HasPrev()) --(*this);
+            }
+
+            ValueType operator*() const { return !IsEnd() ? DeltaValues[DeltaIndex].Value : DefaultValue; }
+
+            const std::vector<DeltaValue> &DeltaValues;
+            uint DeltaIndex{0}, ByteIndex{0};
+            ValueType DefaultValue{};
+
+        private:
+            void MoveRight() {
+                if (IsEnd()) throw std::out_of_range("Iterator out of bounds");
+                ++DeltaIndex;
+                if (!IsEnd()) ByteIndex += DeltaValues[DeltaIndex].Delta;
+            }
+            void MoveLeft() {
+                if (!HasPrev()) throw std::out_of_range("Iterator out of bounds");
+                if (!IsEnd()) ByteIndex -= DeltaValues[DeltaIndex].Delta;
+                --DeltaIndex;
+            }
+        };
+
+        ByteTransitions(ValueType default_value = {}) : DefaultValue(default_value) {
+            EnsureStartTransition();
+        }
+
+        void Insert(Iterator &it, uint byte_index, ValueType value) {
+            it.MoveTo(byte_index);
+            if (it.DeltaIndex > DeltaValues.size()) throw std::out_of_range("Insert iterator out of bounds");
+            if (byte_index < it.ByteIndex) throw std::invalid_argument("Insert byte index is before iterator");
+            if (byte_index == it.ByteIndex && !DeltaValues.empty()) {
+                DeltaValues[it.DeltaIndex].Value = value;
+                if (!it.IsEnd()) ++it;
+                return;
+            }
+
+            const uint delta = byte_index - it.ByteIndex;
+            if (it.IsEnd()) --it;
+            DeltaValues.insert(DeltaValues.begin() + it.DeltaIndex + 1, {delta, value});
+            ++it;
+            if (it.HasNext()) DeltaValues[it.DeltaIndex + 1].Delta -= delta;
+            // it.ByteIndex = byte_index;
+        }
+
+        // Start and end are inclusive.
+        void Delete(Iterator &it, uint start_byte, uint end_byte) {
+            it.MoveTo(start_byte);
+            const uint start_index = start_byte <= it.ByteIndex ? it.DeltaIndex : it.DeltaIndex + 1;
+            it.MoveTo(end_byte);
+            if (it.ByteIndex < start_byte) return;
+
+            if (!it.IsEnd()) ++it;
+            const uint end_index = it.DeltaIndex;
+
+            // We're now one element after the last element to be deleted.
+            // Merge the deltas of all elements to delete into this element (if we're not past the end).
+            const uint deleted_delta = std::accumulate(DeltaValues.begin() + start_index, DeltaValues.begin() + end_index, 0u, [](uint sum, const DeltaValue &dv) { return sum + dv.Delta; });
+            if (!it.IsEnd()) DeltaValues[it.DeltaIndex].Delta += deleted_delta;
+            else it.ByteIndex -= deleted_delta;
+            it.DeltaIndex -= end_index - start_index;
+            DeltaValues.erase(DeltaValues.begin() + start_index, DeltaValues.begin() + end_index);
+            if (EnsureStartTransition()) ++it.DeltaIndex;
+        }
+
+        void Increment(Iterator &it, int amount) {
+            DeltaValues[it.DeltaIndex].Delta += amount;
+            it.ByteIndex += amount;
+        }
+
+        auto Iter(uint start_byte = 0) const { return Iterator(DeltaValues, start_byte, DefaultValue); }
+
+        auto begin() const { return Iter(); }
+        uint size() const { return DeltaValues.size(); }
+        bool empty() const { return DeltaValues.empty(); }
+        void clear() {
+            DeltaValues.clear();
+            EnsureStartTransition();
+        }
+
+        std::vector<DeltaValue> DeltaValues;
+        ValueType DefaultValue;
+
+    private:
+        bool EnsureStartTransition() {
+            // All documents start by "transitioning" to the default capture (showing the default style).
+            if (DeltaValues.empty() || DeltaValues.front().Delta != 0) {
+                DeltaValues.insert(DeltaValues.begin(), {0, DefaultValue});
+                return true;
+            }
+            return false;
+        }
+    };
+
     // Commit a snapshot to the undo history, and edit the tree (see `EditTree`).
     // **Every `Commit` should be paired with a `BeforeCursors = Cursors`.**
     void Commit();
@@ -447,17 +576,6 @@ private:
 
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
-    auto TransitionCaptureAtOrAfter(uint byte_index) const { return CaptureIdByTransitionByte.lower_bound(byte_index); }
-    auto TransitionCaptureAtOrBefore(uint byte_index) const {
-        auto it = TransitionCaptureAtOrAfter(byte_index);
-        return it->first == byte_index || it == CaptureIdByTransitionByte.begin() ? it : std::prev(it);
-    }
-    void DeleteTransitionCaptures(ByteRange range) {
-        for (auto it = TransitionCaptureAtOrAfter(range.Start); it != CaptureIdByTransitionByte.end() && it->first < range.End;) {
-            it = CaptureIdByTransitionByte.erase(it);
-        }
-    }
-
     inline static uint NoneCaptureId{uint(-1)}; // Corresponds to the default style.
 
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
@@ -491,7 +609,7 @@ private:
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
     std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
-    std::map<uint, uint> CaptureIdByTransitionByte{};
+    ByteTransitions<uint> CaptureIdTransitions{NoneCaptureId};
     std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
 
     struct Snapshot {

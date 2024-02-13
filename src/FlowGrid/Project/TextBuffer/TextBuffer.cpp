@@ -13,12 +13,12 @@ static TextBuffer::FileConfig CreateDefaultFileConfig(const fs::path &path) {
         {
             .owner_path = path,
             .title = "Open file",
-            .filters = TextEditor::Languages.AllFileExtensionsFilter,
+            .filters = TextEditor::GetLanguageFileExtensionsFilter(),
         },
         {
             .owner_path = path,
             .title = "Save file",
-            .filters = TextEditor::Languages.AllFileExtensionsFilter,
+            .filters = TextEditor::GetLanguageFileExtensionsFilter(),
             .default_file_name = "my_json",
             .save_mode = true,
         },
@@ -114,7 +114,7 @@ void TextBuffer::Render() const {
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, editor.LineCount(),
         editor.Overwrite ? "Ovr" : "Ins",
         editor.CanUndo() ? "*" : " ",
-        editor.GetLanguage().Name.c_str(),
+        editor.GetLanguageName().c_str(),
         editing_file.c_str()
     );
 

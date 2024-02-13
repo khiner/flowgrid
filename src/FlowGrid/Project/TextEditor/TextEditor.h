@@ -18,9 +18,33 @@
 
 namespace fs = std::filesystem;
 
-struct TSLanguage;
-struct TSQuery;
 struct SyntaxTree;
+
+/**
+Holds the byte parts of `TSInputEdit` (not the points).
+TS API functions generally handle only having bytes populated.
+(E.g. see https://github.com/tree-sitter/tree-sitter/issues/445)
+`StartByte`: Start position of the text change.
+`OldEndByte`: End position of the original text before the change.
+  - For insertion, same as `start`.
+  - For replacement, where the replaced text ended.
+  - For deletion, where the deleted text ended.
+`NewEndByte`: End position of the new text after the change.
+  - For insertion or replacement, where the new text ends.
+  - For deletion, same as `start`.
+**/
+struct TextInputEdit {
+    uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
+    TextInputEdit Invert() const { return TextInputEdit{StartByte, NewEndByte, OldEndByte}; }
+    bool IsInsert() const { return StartByte == OldEndByte; }
+    bool IsDelete() const { return StartByte == NewEndByte; }
+
+    auto operator<=>(const TextInputEdit &o) const {
+        if (auto cmp = StartByte <=> o.StartByte; cmp != 0) return cmp;
+        if (auto cmp = OldEndByte <=> o.OldEndByte; cmp != 0) return cmp;
+        return NewEndByte <=> o.NewEndByte;
+    }
+};
 
 // These classes corresponds to tree-sitter's `config.json`.
 // https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
@@ -46,32 +70,6 @@ enum class PaletteIndex {
     Max
 };
 
-struct LanguageDefinition {
-    // todo recursively copy `queries` dir to build dir in CMake.
-    inline static fs::path QueriesDir = fs::path("..") / "src" / "FlowGrid" / "Project" / "TextEditor" / "queries";
-
-    TSQuery *GetQuery() const;
-
-    LanguageID Id;
-    std::string Name;
-    std::string ShortName{""}; // e.g. "cpp" in "tree-sitter-cpp"
-    TSLanguage *TsLanguage{nullptr};
-    std::unordered_set<std::string> FileExtensions{};
-    std::string SingleLineComment{""};
-};
-
-struct LanguageDefinitions {
-    using ID = LanguageID;
-
-    LanguageDefinitions();
-
-    const LanguageDefinition &Get(ID id) const { return ById.at(id); }
-
-    std::unordered_map<ID, LanguageDefinition> ById;
-    std::unordered_map<std::string, LanguageID> ByFileExtension;
-    std::string AllFileExtensionsFilter;
-};
-
 struct TextEditor {
     TextEditor(std::string_view text = "", LanguageID language_id = LanguageID::None);
     TextEditor(const fs::path &);
@@ -85,7 +83,6 @@ struct TextEditor {
     };
 
     inline static const PaletteIdT DefaultPaletteId{PaletteIdT::Dark};
-    inline static const LanguageDefinitions Languages{};
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -116,43 +113,6 @@ struct TextEditor {
         bool operator!=(const LineChar &) const = default;
     };
 
-    struct ByteRange {
-        uint Start{0}, End{0};
-
-        auto operator<=>(const ByteRange &o) const {
-            if (auto cmp = Start <=> o.Start; cmp != 0) return cmp;
-            return End <=> o.End;
-        }
-        bool operator==(const ByteRange &) const = default;
-        bool operator!=(const ByteRange &) const = default;
-    };
-
-    /**
-    Holds the byte parts of `TSInputEdit` (not the points).
-    TS API functions generally handle only having bytes populated.
-    (E.g. see https://github.com/tree-sitter/tree-sitter/issues/445)
-    `StartByte`: Start position of the text change.
-    `OldEndByte`: End position of the original text before the change.
-      - For insertion, same as `start`.
-      - For replacement, where the replaced text ended.
-      - For deletion, where the deleted text ended.
-    `NewEndByte`: End position of the new text after the change.
-      - For insertion or replacement, where the new text ends.
-      - For deletion, same as `start`.
-    **/
-    struct InputEdit {
-        uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
-        InputEdit Invert() const { return InputEdit{StartByte, NewEndByte, OldEndByte}; }
-        bool IsInsert() const { return StartByte == OldEndByte; }
-        bool IsDelete() const { return StartByte == NewEndByte; }
-
-        auto operator<=>(const InputEdit &o) const {
-            if (auto cmp = StartByte <=> o.StartByte; cmp != 0) return cmp;
-            if (auto cmp = OldEndByte <=> o.OldEndByte; cmp != 0) return cmp;
-            return NewEndByte <=> o.NewEndByte;
-        }
-    };
-
     using Line = immer::flex_vector<char>;
     using Lines = immer::flex_vector<Line>;
     using TransientLine = immer::flex_vector_transient<char>;
@@ -167,7 +127,10 @@ struct TextEditor {
     std::string GetText(LineChar start, LineChar end) const;
     std::string GetText() const { return GetText(BeginLC(), EndLC()); }
     std::string GetSyntaxTreeSExp() const;
-    const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
+
+    const std::string &GetLanguageName() const;
+    static const std::string &GetLanguageFileExtensionsFilter();
+
     ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
 
     void SetText(const std::string &);
@@ -439,7 +402,7 @@ private:
 
     Lines Text{Line{}};
     Cursors Cursors, BeforeCursors;
-    std::vector<InputEdit> Edits{};
+    std::vector<TextInputEdit> Edits{};
 
     PaletteIdT PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
@@ -464,7 +427,7 @@ private:
         struct Cursors Cursors, BeforeCursors;
         // If immer flex vectors provided a diff mechanism like its map does,
         // we wouldn't need this, and we could compute diffs across any two arbitrary snapshots.
-        std::vector<InputEdit> Edits;
+        std::vector<TextInputEdit> Edits;
     };
 
     // The first history record is the initial state (after construction), and it's never removed from the history.

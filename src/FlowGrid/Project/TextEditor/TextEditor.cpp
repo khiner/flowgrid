@@ -28,6 +28,34 @@ extern "C" TSLanguage *tree_sitter_cpp();
 extern "C" TSLanguage *tree_sitter_faust();
 extern "C" TSLanguage *tree_sitter_json();
 
+struct LanguageDefinition {
+    // todo recursively copy `queries` dir to build dir in CMake.
+    inline static fs::path QueriesDir = fs::path("..") / "src" / "FlowGrid" / "Project" / "TextEditor" / "queries";
+
+    TSQuery *GetQuery() const;
+
+    LanguageID Id;
+    std::string Name;
+    std::string ShortName{""}; // e.g. "cpp" in "tree-sitter-cpp"
+    TSLanguage *TsLanguage{nullptr};
+    std::unordered_set<std::string> FileExtensions{};
+    std::string SingleLineComment{""};
+};
+
+struct LanguageDefinitions {
+    using ID = LanguageID;
+
+    LanguageDefinitions();
+
+    const LanguageDefinition &Get(ID id) const { return ById.at(id); }
+
+    std::unordered_map<ID, LanguageDefinition> ById;
+    std::unordered_map<std::string, LanguageID> ByFileExtension;
+    std::string AllFileExtensionsFilter;
+};
+
+static const LanguageDefinitions Languages{};
+
 TSQuery *LanguageDefinition::GetQuery() const {
     if (ShortName.empty()) return nullptr;
 
@@ -163,9 +191,8 @@ template<typename ValueType> struct ByteTransitions {
     };
 
     struct Iterator {
-        Iterator(const std::vector<DeltaValue> &deltas, uint start_byte = 0, ValueType default_value = {})
+        Iterator(const std::vector<DeltaValue> &deltas, ValueType default_value = {})
             : DeltaValues(deltas), DefaultValue(default_value) {
-            while (HasNext() && ByteIndex < start_byte) ++(*this);
         }
 
         bool HasNext() const { return DeltaIndex < DeltaValues.size() - 1; }
@@ -263,11 +290,8 @@ template<typename ValueType> struct ByteTransitions {
         it.ByteIndex += amount;
     }
 
-    auto Iter(uint start_byte = 0) const { return Iterator(DeltaValues, start_byte, DefaultValue); }
-
-    auto begin() const { return Iter(); }
+    auto begin() const { return Iterator(DeltaValues, DefaultValue); }
     uint size() const { return DeltaValues.size(); }
-    bool empty() const { return DeltaValues.empty(); }
     void clear() {
         DeltaValues.clear();
         EnsureStartTransition();
@@ -287,7 +311,18 @@ private:
     }
 };
 
-static TextEditor::ByteRange ToByteRange(const TSNode &node) { return {ts_node_start_byte(node), ts_node_end_byte(node)}; }
+struct ByteRange {
+    uint Start{0}, End{0};
+
+    auto operator<=>(const ByteRange &o) const {
+        if (auto cmp = Start <=> o.Start; cmp != 0) return cmp;
+        return End <=> o.End;
+    }
+    bool operator==(const ByteRange &) const = default;
+    bool operator!=(const ByteRange &) const = default;
+};
+
+static ByteRange ToByteRange(const TSNode &node) { return {ts_node_start_byte(node), ts_node_end_byte(node)}; }
 
 struct SyntaxTree {
     // todo take language
@@ -299,7 +334,7 @@ struct SyntaxTree {
     }
 
     // Apply edits to the TS tree, re-parse, update highlight state.
-    void ApplyEdits(const std::set<TextEditor::InputEdit> &edits) {
+    void ApplyEdits(const std::set<TextInputEdit> &edits) {
         ChangedCaptureRanges.clear(); // For debugging
         if (edits.empty()) return;
 
@@ -317,7 +352,7 @@ struct SyntaxTree {
         /* Update capture ID transition points (used for highlighting) based on the query and the edits. */
 
         // Find the minimum range needed to span all nodes whose syntactic structure has changed.
-        TextEditor::ByteRange changed_range = {UINT32_MAX, 0u};
+        ByteRange changed_range = {UINT32_MAX, 0u};
         if (old_tree != nullptr) {
             uint num_changed_ranges;
             const TSRange *changed_ranges = ts_tree_get_changed_ranges(old_tree, Tree, &num_changed_ranges);
@@ -390,7 +425,7 @@ struct SyntaxTree {
         } else if (language_id == LanguageID::None) {
             Config = {};
         }
-        const auto &language = TextEditor::Languages.Get(language_id);
+        const auto &language = Languages.Get(language_id);
         ts_parser_set_language(Parser, language.TsLanguage);
         Query = language.GetQuery();
         const uint capture_count = ts_query_capture_count(Query);
@@ -425,7 +460,7 @@ struct SyntaxTree {
     TSQueryCursor *QueryCursor{nullptr};
     std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
     ByteTransitions<uint> CaptureIdTransitions{NoneCaptureId};
-    std::set<TextEditor::ByteRange> ChangedCaptureRanges{}; // For debugging.
+    std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
 };
 
 const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uint32_t *bytes_read) {
@@ -477,6 +512,8 @@ void TextEditor::ApplyEdits() {
 }
 
 string TextEditor::GetSyntaxTreeSExp() const { return Syntax->GetSExp(); }
+const string &TextEditor::GetLanguageName() const { return Languages.Get(LanguageId).Name; }
+const string &TextEditor::GetLanguageFileExtensionsFilter() { return Languages.AllFileExtensionsFilter; }
 
 const TextEditor::PaletteT &TextEditor::GetPalette() const {
     switch (PaletteId) {
@@ -1005,7 +1042,7 @@ static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
 }
 
 void TextEditor::ToggleLineComment() {
-    const string &comment = GetLanguage().SingleLineComment;
+    const string &comment = Languages.Get(LanguageId).SingleLineComment;
     if (comment.empty()) return;
 
     static const auto FindFirstNonSpace = [](const Line &line) {
@@ -1566,7 +1603,7 @@ bool TextEditor::Render(bool is_parent_focused) {
 
 using namespace ImGui;
 
-static void DrawEdits(const std::vector<TextEditor::InputEdit> &edits) {
+static void DrawEdits(const std::vector<TextInputEdit> &edits) {
     Text("Edits: %lu", edits.size());
     for (const auto &edit : edits) {
         BulletText("Start: %d, Old end: %d, New end: %d", edit.StartByte, edit.OldEndByte, edit.NewEndByte);

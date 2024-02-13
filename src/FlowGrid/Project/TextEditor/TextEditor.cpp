@@ -244,10 +244,10 @@ void TextEditor::ApplyEdits(const std::set<InputEdit> &edits) {
         CaptureIdTransitions.Delete(transition_it, edit.NewEndByte, edit.OldEndByte);
     }
     // Adjust transitions based on the edited ranges.
-    for (const auto &edit : reverse_view(edits)) {
-        transition_it.MoveTo(edit.StartByte + 1);
-        if (transition_it.HasNext()) {
-            CaptureIdTransitions.Increment(++transition_it, edit.NewEndByte - edit.OldEndByte);
+    if (CaptureIdTransitions.size() > 1) {
+        for (const auto &edit : reverse_view(edits)) {
+            transition_it.MoveTo(edit.StartByte);
+            CaptureIdTransitions.Increment(transition_it, edit.NewEndByte - edit.OldEndByte);
         }
     }
 

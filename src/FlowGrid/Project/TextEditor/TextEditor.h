@@ -462,14 +462,13 @@ private:
             DeltaValues.insert(DeltaValues.begin() + it.DeltaIndex + 1, {delta, value});
             ++it;
             if (it.HasNext()) DeltaValues[it.DeltaIndex + 1].Delta -= delta;
-            // it.ByteIndex = byte_index;
         }
 
-        // Start and end are inclusive.
+        // Start is inclusive, end is exclusive.
         void Delete(Iterator &it, uint start_byte, uint end_byte) {
             it.MoveTo(start_byte);
             const uint start_index = start_byte <= it.ByteIndex ? it.DeltaIndex : it.DeltaIndex + 1;
-            it.MoveTo(end_byte);
+            it.MoveTo(end_byte - 1);
             if (it.ByteIndex < start_byte) return;
 
             if (!it.IsEnd()) ++it;
@@ -486,6 +485,9 @@ private:
         }
 
         void Increment(Iterator &it, int amount) {
+            if (it.IsEnd() || amount == 0) return;
+
+            if (it.DeltaIndex == 0 && it.HasNext()) ++it;
             DeltaValues[it.DeltaIndex].Delta += amount;
             it.ByteIndex += amount;
         }

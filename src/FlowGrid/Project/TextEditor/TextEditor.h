@@ -3,14 +3,11 @@
 #include <array>
 #include <filesystem>
 #include <map>
-#include <set>
-#include <span>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-#include <immer/algorithm.hpp>
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
 #include <immer/vector.hpp>
@@ -22,10 +19,8 @@
 namespace fs = std::filesystem;
 
 struct TSLanguage;
-struct TSTree;
 struct TSQuery;
-struct TSQueryCursor;
-struct TSParser;
+struct SyntaxTree;
 
 // These classes corresponds to tree-sitter's `config.json`.
 // https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
@@ -34,14 +29,6 @@ struct TextEditorStyle {
         ImU32 Color{IM_COL32_WHITE};
         bool Bold{false}, Italic{false}, Underline{false};
     };
-};
-struct TSConfig {
-    std::vector<std::string> ParserDirectories{};
-    std::unordered_map<std::string, TextEditorStyle::CharStyle> StyleByHighlightName{};
-
-    inline static const TextEditorStyle::CharStyle DefaultCharStyle{};
-
-    TextEditorStyle::CharStyle FindStyleByCaptureName(const std::string &) const;
 };
 
 enum class PaletteIndex {
@@ -385,143 +372,10 @@ private:
         uint LastAddedIndex{0};
     };
 
-    template<typename ValueType> struct ByteTransitions {
-        struct DeltaValue {
-            uint Delta;
-            ValueType Value;
-        };
-
-        struct Iterator {
-            Iterator(const std::vector<DeltaValue> &deltas, uint start_byte = 0, ValueType default_value = {})
-                : DeltaValues(deltas), DefaultValue(default_value) {
-                while (HasNext() && ByteIndex < start_byte) ++(*this);
-            }
-
-            bool HasNext() const { return DeltaIndex < DeltaValues.size() - 1; }
-            bool HasPrev() const { return DeltaIndex > 0; }
-            bool IsEnd() const { return DeltaIndex == DeltaValues.size(); }
-
-            Iterator &operator++() {
-                MoveRight();
-                return *this;
-            }
-            Iterator &operator--() {
-                MoveLeft();
-                return *this;
-            }
-
-            uint NextByteIndex() const { return HasNext() ? ByteIndex + DeltaValues[DeltaIndex + 1].Delta : ByteIndex; }
-
-            /* Move ops all move until `ByteIndex` is _at or before_ the target byte. */
-            void MoveTo(uint target_byte) {
-                if (ByteIndex < target_byte) MoveForwardTo(target_byte);
-                else MoveBackTo(target_byte);
-            }
-            void MoveForwardTo(uint target_byte) {
-                while (ByteIndex < target_byte && !IsEnd() && NextByteIndex() <= target_byte) ++(*this);
-            }
-            void MoveBackTo(uint target_byte) {
-                while ((ByteIndex > target_byte || (IsEnd() && ByteIndex == target_byte)) && HasPrev()) --(*this);
-            }
-
-            ValueType operator*() const { return !IsEnd() ? DeltaValues[DeltaIndex].Value : DefaultValue; }
-
-            const std::vector<DeltaValue> &DeltaValues;
-            uint DeltaIndex{0}, ByteIndex{0};
-            ValueType DefaultValue{};
-
-        private:
-            void MoveRight() {
-                if (IsEnd()) throw std::out_of_range("Iterator out of bounds");
-                ++DeltaIndex;
-                if (!IsEnd()) ByteIndex += DeltaValues[DeltaIndex].Delta;
-            }
-            void MoveLeft() {
-                if (!HasPrev()) throw std::out_of_range("Iterator out of bounds");
-                if (!IsEnd()) ByteIndex -= DeltaValues[DeltaIndex].Delta;
-                --DeltaIndex;
-            }
-        };
-
-        ByteTransitions(ValueType default_value = {}) : DefaultValue(default_value) {
-            EnsureStartTransition();
-        }
-
-        void Insert(Iterator &it, uint byte_index, ValueType value) {
-            it.MoveTo(byte_index);
-            if (it.DeltaIndex > DeltaValues.size()) throw std::out_of_range("Insert iterator out of bounds");
-            if (byte_index < it.ByteIndex) throw std::invalid_argument("Insert byte index is before iterator");
-            if (byte_index == it.ByteIndex && !DeltaValues.empty()) {
-                DeltaValues[it.DeltaIndex].Value = value;
-                if (!it.IsEnd()) ++it;
-                return;
-            }
-
-            const uint delta = byte_index - it.ByteIndex;
-            if (it.IsEnd()) --it;
-            DeltaValues.insert(DeltaValues.begin() + it.DeltaIndex + 1, {delta, value});
-            ++it;
-            if (it.HasNext()) DeltaValues[it.DeltaIndex + 1].Delta -= delta;
-        }
-
-        // Start is inclusive, end is exclusive.
-        void Delete(Iterator &it, uint start_byte, uint end_byte) {
-            it.MoveTo(start_byte);
-            const uint start_index = start_byte <= it.ByteIndex ? it.DeltaIndex : it.DeltaIndex + 1;
-            it.MoveTo(end_byte - 1);
-            if (it.ByteIndex < start_byte) return;
-
-            if (!it.IsEnd()) ++it;
-            const uint end_index = it.DeltaIndex;
-
-            // We're now one element after the last element to be deleted.
-            // Merge the deltas of all elements to delete into this element (if we're not past the end).
-            const uint deleted_delta = std::accumulate(DeltaValues.begin() + start_index, DeltaValues.begin() + end_index, 0u, [](uint sum, const DeltaValue &dv) { return sum + dv.Delta; });
-            if (!it.IsEnd()) DeltaValues[it.DeltaIndex].Delta += deleted_delta;
-            else it.ByteIndex -= deleted_delta;
-            it.DeltaIndex -= end_index - start_index;
-            DeltaValues.erase(DeltaValues.begin() + start_index, DeltaValues.begin() + end_index);
-            if (EnsureStartTransition()) ++it.DeltaIndex;
-        }
-
-        void Increment(Iterator &it, int amount) {
-            if (it.IsEnd() || amount == 0) return;
-
-            if (it.DeltaIndex == 0 && it.HasNext()) ++it;
-            DeltaValues[it.DeltaIndex].Delta += amount;
-            it.ByteIndex += amount;
-        }
-
-        auto Iter(uint start_byte = 0) const { return Iterator(DeltaValues, start_byte, DefaultValue); }
-
-        auto begin() const { return Iter(); }
-        uint size() const { return DeltaValues.size(); }
-        bool empty() const { return DeltaValues.empty(); }
-        void clear() {
-            DeltaValues.clear();
-            EnsureStartTransition();
-        }
-
-        std::vector<DeltaValue> DeltaValues;
-        ValueType DefaultValue;
-
-    private:
-        bool EnsureStartTransition() {
-            // All documents start by "transitioning" to the default capture (showing the default style).
-            if (DeltaValues.empty() || DeltaValues.front().Delta != 0) {
-                DeltaValues.insert(DeltaValues.begin(), {0, DefaultValue});
-                return true;
-            }
-            return false;
-        }
-    };
-
     // Commit a snapshot to the undo history, and edit the tree (see `EditTree`).
     // **Every `Commit` should be paired with a `BeforeCursors = Cursors`.**
     void Commit();
-
     void ApplyEdits();
-    void ApplyEdits(const std::set<InputEdit> &); // Apply edits to the TS tree, re-parse, update highlight state.
 
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
 
@@ -578,8 +432,6 @@ private:
 
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
-    inline static uint NoneCaptureId{uint(-1)}; // Corresponds to the default style.
-
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
@@ -605,14 +457,7 @@ private:
     std::optional<Cursor> MatchingBrackets{};
     bool ScrollToTop{false};
 
-    TSConfig HighlightConfig;
-    TSTree *Tree{nullptr};
-    TSParser *Parser{nullptr};
-    TSQuery *Query{nullptr};
-    TSQueryCursor *QueryCursor{nullptr};
-    std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
-    ByteTransitions<uint> CaptureIdTransitions{NoneCaptureId};
-    std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
+    std::unique_ptr<SyntaxTree> Syntax;
 
     struct Snapshot {
         Lines Text;

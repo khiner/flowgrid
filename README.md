@@ -49,10 +49,8 @@ Each type of FlowGrid project file is saved as plain JSON.
 ## Clean/Build/Run
 
 This project uses LLVM IR to JIT-compile Faust code.
-To simplify, make things more predictable, and reduce bloat, we use the LLVM ecosystem as much as possible.
-
-FlowGrid uses `clang++/clang` to compile, and LLVM's `lld` for linking.
-Even if it's not strictly required, I will generally aim to use the latest LLVM release at RC2 or later.
+To simplify, make things more predictable, and reduce bloat, we use the LLVM ecosystem as much as possible - `clang++/clang` to compile, and LLVM's `lld` for linking.
+Even if it's not strictly required, I generally aim to use the latest LLVM release when it's available on HomeBrew.
 If the project does not build correctly for you, please make sure your `clang`, `lld`, and `clang-config` point to the newest available point-release of LLVM.
 If that doesn't work, try the latest release in the previous LLVM major version.
 
@@ -93,7 +91,7 @@ To run the freshly built application:
 ```sh
 # The application assumes it's being run from the build directory when locating its resource files (e.g. font files).
 $ cd build # or build-release
-$ ./FlowGrid # application must be run from a directory above root. todo run from anywhere
+$ ./FlowGrid # Must be run from a directory above root. todo run from anywhere
 ```
 
 If the build/run doesn't work for you, please [file an issue](https://github.com/khiner/flowgrid/issues/new), providing your environment and any other relevant details, and I will try and repro/fix!

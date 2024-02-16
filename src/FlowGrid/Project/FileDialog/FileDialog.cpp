@@ -104,7 +104,13 @@ void FileDialog::Render() const {
     ImGuiFileDialogFlags flags = Flags;
     if (SaveMode) flags |= ImGuiFileDialogFlags_ConfirmOverwrite;
     else flags &= ~ImGuiFileDialogFlags_ConfirmOverwrite;
-    Dialog->OpenDialog(DialogKey, Title, Filters.c_str(), FilePath, DefaultFileName, MaxNumSelections, nullptr, flags);
+
+    IGFD::FileDialogConfig config;
+    config.path = FilePath;
+    config.countSelectionMax = MaxNumSelections;
+    config.flags = flags;
+    config.filePathName = DefaultFileName;
+    Dialog->OpenDialog(DialogKey, Title, Filters.c_str(), config);
     if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
         Visible = false;
         if (Dialog->IsOk()) Q(Action::FileDialog::Select{Dialog->GetFilePathName()});

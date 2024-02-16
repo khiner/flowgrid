@@ -13,4 +13,3 @@ using TimePoint = Clock::time_point;
 inline static std::string FormatMillis(auto duration) {
     return std::format("{:.3f}ms", std::chrono::duration<float, std::milli>(duration).count());
 }
-inline static std::string FormatElapsedMillis(TimePoint start) { FormatMillis(Clock::now() - start); }

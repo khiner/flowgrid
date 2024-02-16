@@ -25,10 +25,6 @@
 	path = lib/implot
 	url = git@github.com:khiner/implot.git
 	branch = master
-[submodule "lib/imgui_club"]
-	path = lib/imgui_club
-	url = git@github.com:khiner/imgui_club.git
-	branch = main
 [submodule "lib/range-v3"]
 	path = lib/range-v3
 	url = git@github.com:ericniebler/range-v3.git

@@ -59,7 +59,6 @@ include_directories(
     ${ImGuiFileDialogDir}
     ${MaDir}/extras/miniaudio_split
     lib/faust/architecture
-    lib/imgui_club/imgui_memory_editor
     lib/range-v3/include
     lib/immer
     lib/concurrentqueue

@@ -24,7 +24,7 @@ This architecture is largely inspired by [Lager](https://github.com/arximboldi/l
 
 ### Project files
 
-FlowGrid supports three project formats.
+FlowGrid supports two project formats.
 When saving a project, you can select any of these formats using the filter dropdown in the lower-right of the file dialog.
 Each type of FlowGrid project file is saved as plain JSON.
 
@@ -111,8 +111,6 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 - [ImGui](https://github.com/ocornut/imgui) + [SDL3](https://github.com/libsdl-org/SDL) + [Vulkan](https://www.vulkan.org/) + [FreeType](https://freetype.org): UI & interactions
 - [ImPlot](https://github.com/epezent/implot): plotting
 - [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog): file selection
-- [ImGuiColorTextEdit](https://github.com/santaclose/ImGuiColorTextEdit): code/text editing
-- [ImGui memory_editor](https://github.com/ocornut/imgui_club): viewing/editing memory directly
 
 ### Backend
 
@@ -179,7 +177,7 @@ The following modules are forked by me, along with the upstream branch the fork 
 
 - [`imgui:docking`](https://github.com/khiner/imgui/tree/docking)
 - [`implot:master`](https://github.com/khiner/implot)
-- [`imgui_club:main`](https://github.com/khiner/imgui_club)
+- [`miniaudio:dev`](https://github.com/khiner/miniaudio)
 
 I keep my changes rebased on top of the original repo branches.
 Here's my process:

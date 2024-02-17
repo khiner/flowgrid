@@ -28,14 +28,14 @@ static std::optional<fs::path> GetHomeDir() {
 static fs::path ExpandPath(const fs::path &path) {
     if (*path.begin() != "~") return path;
 
-    const auto home_dir = GetHomeDir();
-    if (!home_dir.has_value()) throw std::runtime_error("Unable to find the home directory.");
+    if (const auto home_dir = GetHomeDir()) {
+        // Create a relative path, skipping the first element ("~").
+        fs::path relative_path;
+        for (auto it = ++path.begin(); it != path.end(); ++it) relative_path /= *it;
+        return *home_dir / relative_path;
+    }
 
-    // Create a relative path, skipping the first element ("~").
-    fs::path relative_path;
-    for (auto it = ++path.begin(); it != path.end(); ++it) relative_path /= *it;
-
-    return *home_dir / relative_path;
+    throw std::runtime_error("Unable to find the home directory.");
 }
 
 std::string FileIO::read(const fs::path &path) {

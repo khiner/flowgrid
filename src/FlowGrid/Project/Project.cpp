@@ -399,7 +399,7 @@ void Project::Render() const {
     const auto &io = GetIO();
     for (const auto &[action_id, shortcut] : Shortcuts) {
         const auto &[mod, key] = shortcut.Parsed;
-        if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)), ImGuiKeyOwner_None)) {
+        if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)), ImGuiKeyOwner_None, ImGuiInputFlags_Repeat)) {
             auto action = ActionType::Create(action_id);
             if (CanApply(action)) {
                 std::visit(Match{[this](auto &&a) { Q(std::move(a)); }}, action);

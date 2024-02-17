@@ -810,7 +810,7 @@ static bool IsPressed(ImGuiKey key) {
     const auto key_index = ImGui::GetKeyIndex(key);
     const auto window_id = ImGui::GetCurrentWindowRead()->ID;
     ImGui::SetKeyOwner(key_index, window_id); // Prevent app from handling this key press.
-    return ImGui::IsKeyPressed(key_index, window_id);
+    return ImGui::IsKeyPressed(key_index, window_id, ImGuiInputFlags_Repeat);
 }
 
 void TextEditor::HandleKeyboardInputs() {

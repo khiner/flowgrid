@@ -38,8 +38,8 @@ void Audio::Render() const {
 }
 
 void Audio::Style::Render() const {
-    const auto &audio = static_cast<const Audio &>(*Parent);
     if (BeginTabBar("")) {
+        const auto &audio = static_cast<const Audio &>(*Parent);
         if (BeginTabItem("Matrix mixer", nullptr, ImGuiTabItemFlags_NoPushId)) {
             audio.Graph.Style.Matrix.Draw();
             EndTabItem();

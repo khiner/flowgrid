@@ -41,15 +41,15 @@ ma_result ma_panner_node_init(ma_node_graph *graph, const ma_panner_node_config 
 
     MA_ZERO_OBJECT(panner_node);
     panner_node->config = *config;
-
-    ma_result result = ma_panner_init(&config->panner_config, &panner_node->panner);
-    if (result != MA_SUCCESS) return result;
+    if (ma_result result = ma_panner_init(&config->panner_config, &panner_node->panner); result != MA_SUCCESS) return result;
 
     if (config->in_channels != 2) {
         panner_node->converter = std::make_unique<ma_channel_converter>();
         auto converter_config = ma_channel_converter_config_init(ma_format_f32, config->in_channels, nullptr, 2, nullptr, ma_channel_mix_mode_default);
-        result = ma_channel_converter_init(&converter_config, allocation_callbacks, panner_node->converter.get());
-        if (result != MA_SUCCESS) return result; // There is no `ma_panner_uninit`.
+        // There is no `ma_panner_uninit`.
+        if (ma_result result = ma_channel_converter_init(&converter_config, allocation_callbacks, panner_node->converter.get()); result != MA_SUCCESS) {
+            return result;
+        }
     }
 
     static const ma_node_vtable vtable = {ma_panner_node_process_pcm_frames, nullptr, 1, 1, 0};
@@ -62,8 +62,7 @@ ma_result ma_panner_node_init(ma_node_graph *graph, const ma_panner_node_config 
     base_config.pInputChannels = input_channels;
     base_config.pOutputChannels = output_channels;
 
-    result = ma_node_init(graph, &base_config, allocation_callbacks, panner_node);
-    if (result != MA_SUCCESS) {
+    if (ma_result result = ma_node_init(graph, &base_config, allocation_callbacks, panner_node); result != MA_SUCCESS) {
         if (panner_node->converter) ma_channel_converter_uninit(panner_node->converter.get(), allocation_callbacks);
         return result;
     }

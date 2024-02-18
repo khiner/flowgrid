@@ -98,8 +98,8 @@ struct DeviceNode : AudioGraphNode {
 
     void OnSampleRateChanged() override {
         AudioGraphNode::OnSampleRateChanged();
-        auto new_client_format = Graph->GetDeviceClientFormat(Device->Type);
-        if (Device->GetClientFormat() != new_client_format) {
+        if (auto new_client_format = Graph->GetDeviceClientFormat(Device->Type);
+            Device->GetClientFormat() != new_client_format) {
             UpdateDeviceConfig();
         }
     }
@@ -189,8 +189,7 @@ private:
         if (Button("Rescan")) Device->ScanDevices();
 
         SetNextItemWidth(GetFontSize() * 14);
-        const auto *device_info = Device->GetInfo();
-        if (BeginCombo(Name.ImGuiLabel.c_str(), GetDisplayName(device_info).c_str())) {
+        if (const auto *device_info = Device->GetInfo(); BeginCombo(Name.ImGuiLabel.c_str(), GetDisplayName(device_info).c_str())) {
             for (const auto *other_device_info : Device->GetAllInfos()) {
                 const bool is_selected = device_info == other_device_info;
                 if (Selectable(GetDisplayName(other_device_info).c_str(), is_selected)) {
@@ -203,8 +202,7 @@ private:
         Name.HelpMarker();
 
         SetNextItemWidth(GetFontSize() * 14);
-        bool follow_graph_format = !Format;
-        if (Checkbox("Follow graph format", &follow_graph_format)) Format.IssueToggle();
+        if (bool follow_graph_format = !Format; Checkbox("Follow graph format", &follow_graph_format)) Format.IssueToggle();
         SameLine();
         fg::HelpMarker(std::format(
             "When checked, this {0} device automatically follows the owning graph's sample rate and format. "
@@ -214,11 +212,8 @@ private:
             to_string(Device->Type), Device->IsInput() ? "device" : "graph", Device->IsInput() ? "graph" : "device"
         ));
 
-        if (Format) {
-            Format->Draw();
-        } else {
-            TextUnformatted(Device->GetNativeFormat().ToString().c_str());
-        }
+        if (Format) Format->Draw();
+        else TextUnformatted(Device->GetNativeFormat().ToString().c_str());
 
         if (ImGui::TreeNode("Device info")) {
             Device->RenderInfo();
@@ -323,8 +318,9 @@ struct OutputDeviceMaNode : DeviceMaNode {
         const u32 device_channels = Device.GetClientFormat().Channels;
         if (!is_primary) Buffer = std::make_unique<BufferRef>(ma_format_f32, device_channels);
         auto node_config = ma_data_passthrough_node_config_init(device_channels, Buffer ? Buffer->Get() : nullptr);
-        ma_result result = ma_data_passthrough_node_init(graph, &node_config, nullptr, &PassthroughNode);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
+        if (ma_result result = ma_data_passthrough_node_init(graph, &node_config, nullptr, &PassthroughNode); result != MA_SUCCESS) {
+            throw std::runtime_error(std::format("Failed to initialize the data passthrough node: ", int(result)));
+        }
 
         Node = &PassthroughNode;
     }
@@ -407,8 +403,9 @@ struct GraphMaNode : MaNode {
     GraphMaNode() {
         static const u32 channels = 2; // The graph is always stereo.
         auto config = ma_node_graph_config_init(channels);
-        ma_result result = ma_node_graph_init(&config, nullptr, &_Graph);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
+        if (ma_result result = ma_node_graph_init(&config, nullptr, &_Graph); result != MA_SUCCESS) {
+            throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
+        }
         Node = ma_node_graph_get_endpoint(&_Graph);
     }
     ~GraphMaNode() {
@@ -424,8 +421,9 @@ AudioGraph::ChannelConverterNode::ChannelConverterNode(AudioGraph *graph, u32 fr
 
     // todo log if no-op.
     auto config = ma_channel_converter_node_config_init(from_channels, to_channels);
-    ma_result result = ma_channel_converter_node_init(Graph->Get(), &config, nullptr, Get());
-    if (result != MA_SUCCESS) { throw std::runtime_error(std::format("Failed to initialize channel converter node: {}", int(result))); }
+    if (ma_result result = ma_channel_converter_node_init(Graph->Get(), &config, nullptr, Get()); result != MA_SUCCESS) {
+        throw std::runtime_error(std::format("Failed to initialize channel converter node: {}", int(result)));
+    }
 }
 
 AudioGraph::ChannelConverterNode::~ChannelConverterNode() {
@@ -572,8 +570,9 @@ u32 AudioGraph::GetBufferFrames() const {
 
 void AudioGraph::OnFaustDspChanged(ID id, dsp *) {
     for (auto &node : FindAllByPathSegment(FaustNodeTypeId)) {
-        auto *faust_node = reinterpret_cast<FaustNode *>(node.get());
-        if (faust_node->GetDspId() == id) faust_node->SetDsp(id);
+        if (auto *faust_node = reinterpret_cast<FaustNode *>(node.get()); faust_node->GetDspId() == id) {
+            faust_node->SetDsp(id);
+        }
     }
 }
 void AudioGraph::OnFaustDspAdded(ID id, dsp *dsp) {
@@ -731,7 +730,6 @@ static void RenderConnectionsLabel(IO io, const AudioGraphNode *node, const stri
     if (!is_active) EndDisabled();
 
     const bool text_clipped = ellipsified_label.ends_with("...");
-
     if (text_clipped && (interaction_flags & InteractionFlags_Hovered)) SetTooltip("%s", node->Name.c_str());
     if (interaction_flags & InteractionFlags_Clicked) {
         if (graph->Focus()) graph->SelectedNodeId = node->Id;

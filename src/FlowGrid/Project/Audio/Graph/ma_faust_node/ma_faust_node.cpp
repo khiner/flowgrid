@@ -48,7 +48,6 @@ ma_result ma_faust_node_set_dsp(ma_faust_node *faust_node, dsp *faust_dsp) {
 
 static void ma_faust_node_process_pcm_frames(ma_node *node, const float **const_frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
     auto *faust_node = (ma_faust_node *)node;
-
     if (!faust_node->config.faust_dsp) return;
 
     auto *dsp = faust_node->config.faust_dsp;
@@ -90,10 +89,8 @@ ma_result ma_faust_node_init(ma_node_graph *node_graph, const ma_faust_node_conf
 
     ma_uint32 in_channels = ma_faust_node_get_in_channels(faust_node);
     ma_uint32 out_channels = ma_faust_node_get_out_channels(faust_node);
-
     if (in_channels > 1 || out_channels > 1) {
-        ma_uint32 N = faust_node->config.buffer_frames;
-
+        const ma_uint32 N = faust_node->config.buffer_frames;
         if (in_channels > 1) {
             faust_node->in_buffer = (float **)ma_malloc(N * sizeof(float *), allocation_callbacks);
             for (ma_uint32 channel = 0; channel < in_channels; ++channel) {
@@ -124,15 +121,13 @@ ma_result ma_faust_node_init(ma_node_graph *node_graph, const ma_faust_node_conf
 }
 
 void ma_faust_node_uninit(ma_faust_node *faust_node, const ma_allocation_callbacks *allocation_callbacks) {
-    ma_uint32 in_channels = ma_faust_node_get_in_channels(faust_node);
-    ma_uint32 out_channels = ma_faust_node_get_out_channels(faust_node);
-    if (in_channels > 1) {
+    if (ma_uint32 in_channels = ma_faust_node_get_in_channels(faust_node); in_channels > 1) {
         for (ma_uint32 channel = 0; channel < ma_faust_node_get_in_channels(faust_node); ++channel) {
             ma_free(faust_node->in_buffer[channel], allocation_callbacks);
         }
         ma_free(faust_node->in_buffer, allocation_callbacks);
     }
-    if (out_channels > 1) {
+    if (ma_uint32 out_channels = ma_faust_node_get_out_channels(faust_node); out_channels > 1) {
         for (ma_uint32 channel = 0; channel < ma_faust_node_get_out_channels(faust_node); ++channel) {
             ma_free(faust_node->out_buffer[channel], allocation_callbacks);
         }

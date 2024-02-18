@@ -25,8 +25,8 @@ void Flags::Apply(const ActionType &action) const {
 using namespace ImGui;
 
 void Flags::Render() const {
-    const int value = Value;
     if (TreeNodeEx(ImGuiLabel.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+        const int value = Value;
         for (u32 i = 0; i < Items.size(); i++) {
             const auto &item = Items[i];
             const int option_mask = 1 << i;
@@ -42,9 +42,9 @@ void Flags::Render() const {
     HelpMarker();
 }
 void Flags::MenuItem() const {
-    const int value = Value;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
+        const int value = Value;
         for (u32 i = 0; i < Items.size(); i++) {
             const auto &item = Items[i];
             const int option_mask = 1 << i;

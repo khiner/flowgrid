@@ -197,8 +197,7 @@ void Style::ImGuiStyle::Render() const {
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) Q(Action::Style::SetImGuiColorPreset{style_idx});
 
     const auto &io = GetIO();
-    const auto *font_current = GetFont();
-    if (BeginCombo("Fonts", font_current->GetDebugName())) {
+    if (const auto *font_current = GetFont(); BeginCombo("Fonts", font_current->GetDebugName())) {
         for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
@@ -209,20 +208,11 @@ void Style::ImGuiStyle::Render() const {
     }
 
     // Simplified Settings (expose floating-pointer border sizes as boolean representing 0 or 1)
-    {
-        bool border = WindowBorderSize > 0;
-        if (Checkbox("WindowBorder", &border)) WindowBorderSize.IssueSet(border ? 1.f : 0.f);
-    }
+    if (bool border = WindowBorderSize > 0; Checkbox("WindowBorder", &border)) WindowBorderSize.IssueSet(border ? 1.f : 0.f);
     SameLine();
-    {
-        bool border = FrameBorderSize > 0;
-        if (Checkbox("FrameBorder", &border)) FrameBorderSize.IssueSet(border ? 1.f : 0.f);
-    }
+    if (bool border = FrameBorderSize > 0; Checkbox("FrameBorder", &border)) FrameBorderSize.IssueSet(border ? 1.f : 0.f);
     SameLine();
-    {
-        bool border = PopupBorderSize > 0;
-        if (Checkbox("PopupBorder", &border)) PopupBorderSize.IssueSet(border ? 1.f : 0.f);
-    }
+    if (bool border = PopupBorderSize > 0; Checkbox("PopupBorder", &border)) PopupBorderSize.IssueSet(border ? 1.f : 0.f);
 
     Separator();
 

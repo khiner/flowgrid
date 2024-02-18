@@ -97,7 +97,6 @@ json Component::ToJson() const {
     while (!to_visit.empty()) {
         const auto *current = to_visit.top();
         to_visit.pop();
-
         if (current->ChildCount() == 0) {
             auto leaf_json = current->ToJson();
             if (!leaf_json.is_null()) j[current->JsonPointer()] = std::move(leaf_json);
@@ -249,10 +248,7 @@ void Component::TreePop() { ImGui::TreePop(); }
 void Component::TextUnformatted(string_view text) { ImGui::TextUnformatted(string(text).c_str()); }
 
 void Component::RenderValueTree(bool annotate, bool auto_select) const {
-    if (Children.empty()) {
-        TextUnformatted(Name.c_str());
-        return;
-    }
+    if (Children.empty()) return TextUnformatted(Name.c_str());
 
     if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel, false, nullptr, false, auto_select)) {
         for (const auto *child : Children) {

@@ -146,7 +146,6 @@ constexpr void encode(Iter1 start, Iter1 end, Iter2 out) {
     size_t start_bit = 0;
     bool has_backlog = false;
     char backlog = 0;
-
     while (has_backlog || iter != end) {
         if (!has_backlog) {
             if (start_bit + ConversionTraits::group_length() < 8) {

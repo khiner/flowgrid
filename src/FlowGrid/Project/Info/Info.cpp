@@ -20,8 +20,7 @@ using namespace ImGui;
 // }
 
 void Info::Render() const {
-    const auto hovered_id = GetHoveredID();
-    if (!hovered_id) return;
+    if (const auto hovered_id = GetHoveredID(); !hovered_id) return;
 
     auto &g = *GetCurrentContext();
     auto *tool = &g.DebugIDStackTool;

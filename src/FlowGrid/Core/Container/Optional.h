@@ -24,7 +24,6 @@ template<typename ComponentType> struct Optional : Container {
 
     void Refresh() override {
         HasValue.Refresh();
-
         if (HasValue && !Value) {
             Value = std::make_unique<ComponentType>(ComponentArgs{this, "Value"});
             Value->Refresh();

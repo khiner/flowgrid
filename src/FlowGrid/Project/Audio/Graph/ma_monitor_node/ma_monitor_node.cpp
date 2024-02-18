@@ -22,7 +22,7 @@ ma_result ma_monitor_apply_window_function(ma_monitor_node *monitor, void (*wind
 }
 
 static void ma_monitor_node_process_pcm_frames(ma_node *node, const float **frames_in, ma_uint32 *frame_count_in, float **frames_out, ma_uint32 *frame_count_out) {
-    ma_monitor_node *monitor = (ma_monitor_node *)node;
+    auto *monitor = (ma_monitor_node *)node;
 
     const ma_uint32 N = monitor->config.buffer_frames;
     float *working_buffer = monitor->working_buffer_index == 0 ? monitor->working_buffer_0 : monitor->working_buffer_1;
@@ -51,7 +51,7 @@ static void ma_monitor_node_process_pcm_frames(ma_node *node, const float **fram
 }
 
 ma_result create_fft(ma_monitor_node *monitor, const ma_allocation_callbacks *allocation_callbacks) {
-    fft_data *fft = (fft_data *)ma_malloc(sizeof(fft_data), allocation_callbacks);
+    auto *fft = (fft_data *)ma_malloc(sizeof(fft_data), allocation_callbacks);
     if (fft == nullptr) return MA_OUT_OF_MEMORY;
 
     ma_uint32 N = monitor->config.buffer_frames;
@@ -108,8 +108,7 @@ ma_result ma_monitor_node_init(ma_node_graph *node_graph, const ma_monitor_node_
     if (monitor->windowed_buffer == nullptr) return MA_OUT_OF_MEMORY;
     ma_silence_pcm_frames(monitor->windowed_buffer, N, ma_format_f32, config->channels);
 
-    ma_result result = create_fft(monitor, allocation_callbacks);
-    if (result != MA_SUCCESS) {
+    if (ma_result result = create_fft(monitor, allocation_callbacks); result != MA_SUCCESS) {
         ma_free(monitor->working_buffer_0, allocation_callbacks);
         ma_free(monitor->working_buffer_1, allocation_callbacks);
         ma_free(monitor->window, allocation_callbacks);

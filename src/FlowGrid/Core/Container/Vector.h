@@ -114,8 +114,10 @@ template<typename ChildType> struct Vector : Container {
         ChildType *operator*() { return Base::operator*().get(); }
     };
 
-    Iterator begin() const { return Value.cbegin(); }
-    Iterator end() const { return Value.cend(); }
+    Iterator begin() const { return Value.begin(); }
+    Iterator end() const { return Value.end(); }
+    Iterator cbegin() const { return Value.cbegin(); }
+    Iterator cend() const { return Value.cend(); }
     auto View() const { return std::views::all(Value); }
 
     ChildType *back() const { return Value.back().get(); }
@@ -123,21 +125,18 @@ template<typename ChildType> struct Vector : Container {
     ChildType *operator[](u32 i) const { return Value[i].get(); }
 
     ChildType *Find(ID id) const {
-        const auto it = std::find_if(Value.begin(), Value.end(), [id](const auto &child) { return child->Id == id; });
+        const auto it = std::ranges::find_if(Value, [id](const auto &child) { return child->Id == id; });
         return it == Value.end() ? nullptr : it->get();
     }
     auto FindIt(const StorePath &child_prefix) const {
-        return std::find_if(Value.begin(), Value.end(), [this, &child_prefix](const auto &child) {
-            return GetChildPrefix(child.get()) == child_prefix;
-        });
+        return std::ranges::find_if(Value, [this, &child_prefix](const auto &child) { return GetChildPrefix(child.get()) == child_prefix; });
     }
 
     void Refresh() override {
         ChildPrefixes.Refresh();
 
         for (const StorePath prefix : ChildPrefixes) {
-            const auto child_it = FindIt(prefix);
-            if (child_it == Value.end()) {
+            if (const auto child_it = FindIt(prefix); child_it == Value.end()) {
                 const auto &[path_prefix, path_segment] = Split(prefix);
                 auto new_child = Creator({this, path_segment, "", path_prefix});
                 u32 index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));

@@ -1,5 +1,6 @@
 #include "AdjacencyList.h"
 
+#include <ranges>
 #include <stack>
 
 #include "imgui.h"
@@ -61,7 +62,6 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 
         if (!visited.contains(current)) {
             visited.insert(current);
-
             for (const auto &[source_id, destination_id] : id_pairs) {
                 if (source_id == current) to_visit.push(destination_id);
             }
@@ -72,19 +72,11 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 }
 
 u32 AdjacencyList::SourceCount(ID destination) const {
-    u32 count = 0;
-    for (const auto &[source_id, destination_id] : Get()) {
-        if (destination_id == destination) count++;
-    }
-    return count;
+    return std::ranges::count_if(Get(), [destination](const auto &pair) { return pair.second == destination; });
 }
 
 u32 AdjacencyList::DestinationCount(ID source) const {
-    u32 count = 0;
-    for (const auto &[source_id, destination_id] : Get()) {
-        if (source_id == source) count++;
-    }
-    return count;
+    return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
 using namespace ImGui;

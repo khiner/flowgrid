@@ -34,9 +34,9 @@ const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
 
 struct Context {
     Context() {
-        ma_result result = ma_context_init(nullptr, 0, nullptr, &MaContext);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error initializing audio context: {}", int(result)));
-
+        if (ma_result result = ma_context_init(nullptr, 0, nullptr, &MaContext); result != MA_SUCCESS) {
+            throw std::runtime_error(std::format("Error initializing audio context: {}", int(result)));
+        }
         ScanDevices();
     }
     ~Context() {
@@ -52,15 +52,14 @@ struct Context {
 
     std::optional<DeviceDataFormat> FindFormatWithNativeSampleRate(IO type, u32 sample_rate) const {
         const auto &native_data_formats = NativeDataFormats[type];
-        auto it = std::find_if(native_data_formats.begin(), native_data_formats.end(), [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
+        auto it = std::ranges::find_if(native_data_formats, [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
         if (it != native_data_formats.end()) return *it;
 
         return {};
     }
 
     bool IsNativeSampleRate(IO type, u32 sample_rate) const {
-        const auto &native_data_formats = NativeDataFormats[type];
-        return std::ranges::any_of(native_data_formats, [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
+        return std::ranges::any_of(NativeDataFormats[type], [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
     }
 
     DeviceDataFormat FindNativeFormatWithNearestSampleRate(IO type, u32 target) {
@@ -110,8 +109,10 @@ struct Context {
             NativeDataFormats[io].clear();
 
             ma_device_info device_info;
-            result = ma_context_get_device_info(&MaContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &device_info);
-            if (result != MA_SUCCESS) throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), int(result)));
+            if (result = ma_context_get_device_info(&MaContext, io == IO_In ? ma_device_type_capture : ma_device_type_playback, nullptr, &device_info);
+                result != MA_SUCCESS) {
+                throw std::runtime_error(std::format("Error getting audio {} device info: {}", to_string(io), int(result)));
+            }
 
             for (u32 i = 0; i < device_info.nativeDataFormatCount; i++) {
                 const auto &df = device_info.nativeDataFormats[i];
@@ -157,13 +158,12 @@ AudioDevice::AudioDevice(IO type, AudioDevice::AudioCallback callback, TargetCon
 AudioDevice::~AudioDevice() {
     Uninit();
 
-    DeviceInstanceCount--;
-    if (DeviceInstanceCount == 0) AudioContext.reset();
+    if (--DeviceInstanceCount == 0) AudioContext.reset();
 }
 
 void AudioDevice::SetConfig(TargetConfig &&target_config) {
     // Only reinitialize if the computed config is different than current one.
-    Config new_config{Type, std::move(target_config)};
+    const Config new_config{Type, std::move(target_config)};
     if (new_config == _Config) return;
 
     _Config = std::move(new_config);

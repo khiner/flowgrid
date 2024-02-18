@@ -46,8 +46,7 @@ void Colors::Render() const {
     PushItemWidth(-160);
 
     for (u32 i = 0; i < Size(); i++) {
-        const std::string &color_name = GetName(i);
-        if (filter.PassFilter(color_name.c_str())) {
+        if (const std::string &color_name = GetName(i); filter.PassFilter(color_name.c_str())) {
             u32 color = Value[i];
             const bool is_auto = AllowAuto && color == AutoColor;
             const u32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : color;

@@ -29,9 +29,7 @@ ma_result ma_waveform_node_init(ma_node_graph *node_graph, const ma_waveform_nod
 
     MA_ZERO_OBJECT(waveform_node);
     waveform_node->config = *config;
-
-    ma_result result = ma_waveform_init(&config->waveform_config, &waveform_node->waveform);
-    if (result != MA_SUCCESS) return result;
+    if (ma_result result = ma_waveform_init(&config->waveform_config, &waveform_node->waveform); result != MA_SUCCESS) return result;
 
     static ma_node_vtable vtable = {ma_waveform_node_process_pcm_frames, nullptr, 0, 1, 0};
     ma_node_config base_config = config->node_config;

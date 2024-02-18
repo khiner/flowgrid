@@ -34,7 +34,6 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
         *bytes_read = 0;
         return nullptr;
     }
-
     if (position.column == line.size()) {
         *bytes_read = 1;
         return &newline;
@@ -218,8 +217,7 @@ string TextEditor::GetText(LineChar start, LineChar end) const {
     const uint start_ci = start.C, end_ci = end.C;
     string result;
     for (uint ci = start_ci, li = start_li; li < end_li || ci < end_ci;) {
-        const auto &line = Text[li];
-        if (ci < line.size()) {
+        if (const auto &line = Text[li]; ci < line.size()) {
             result += line[ci++];
         } else {
             ++li;
@@ -378,8 +376,7 @@ void TextEditor::Cursor::MoveLines(const TextEditor &editor, int amount, bool se
 }
 
 void TextEditor::Cursor::MoveChar(const TextEditor &editor, bool right, bool select, bool is_word_mode) {
-    auto lci = editor.Iter(LC());
-    if ((!right && !lci.IsBegin()) || (right && !lci.IsEnd())) {
+    if (auto lci = editor.Iter(LC()); (!right && !lci.IsBegin()) || (right && !lci.IsEnd())) {
         if (right) ++lci;
         else --lci;
         Set(is_word_mode ? editor.FindWordBoundary(*lci, !right) : *lci, !select);
@@ -548,8 +545,9 @@ void TextEditor::ChangeCurrentLinesIndentation(bool increase) {
             } else {
                 int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
                 while (ci > -1 && isblank(line[ci])) --ci;
-                const bool only_space_chars_found = ci == -1;
-                if (only_space_chars_found) DeleteRange({li, 0}, {li, GetCharIndex(line, NumTabSpaces)});
+                if (const bool only_space_chars_found = ci == -1; only_space_chars_found) {
+                    DeleteRange({li, 0}, {li, GetCharIndex(line, NumTabSpaces)});
+                }
             }
         }
     }
@@ -602,9 +600,7 @@ void TextEditor::ToggleLineComment() {
     const string &comment = Languages.Get(LanguageId).SingleLineComment;
     if (comment.empty()) return;
 
-    static const auto FindFirstNonSpace = [](const Line &line) {
-        return std::distance(line.begin(), std::ranges::find_if_not(line, isblank));
-    };
+    static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), std::ranges::find_if_not(line, isblank)); };
 
     std::unordered_set<uint> affected_lines;
     for (const auto &c : Cursors) {
@@ -910,8 +906,7 @@ void TextEditor::HandleMouseInputs() {
                ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
                alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
-    const bool panning = ImGui::IsMouseDown(MouseMiddle);
-    if (panning && ImGui::IsMouseDragging(MouseMiddle)) {
+    if (const bool panning = ImGui::IsMouseDown(MouseMiddle); panning && ImGui::IsMouseDragging(MouseMiddle)) {
         const ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
         const ImVec2 mouse_pos = ImGui::GetMouseDragDelta(MouseMiddle);
         const ImVec2 mouse_delta = mouse_pos - LastPanMousePos;

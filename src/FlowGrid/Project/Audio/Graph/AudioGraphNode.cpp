@@ -403,8 +403,7 @@ void AudioGraphNode::Render() const {
             }
         }
         SeparatorText("Connections");
-        auto source_nodes = Graph->GetSourceNodes(this);
-        auto destination_nodes = Graph->GetDestinationNodes(this);
+        const auto source_nodes = Graph->GetSourceNodes(this), destination_nodes = Graph->GetDestinationNodes(this);
         if (!source_nodes.empty() || !destination_nodes.empty()) {
             Text("%s%s%s", NodesToString(source_nodes, true).c_str(), Name.c_str(), NodesToString(destination_nodes, false).c_str());
         } else {

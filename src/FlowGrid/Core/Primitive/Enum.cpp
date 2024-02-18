@@ -29,8 +29,7 @@ void Enum::Render() const {
 void Enum::Render(const std::vector<int> &options) const {
     if (options.empty()) return;
 
-    const int value = Value;
-    if (BeginCombo(ImGuiLabel.c_str(), OptionName(value).c_str())) {
+    if (const int value = Value; BeginCombo(ImGuiLabel.c_str(), OptionName(value).c_str())) {
         for (int option : options) {
             const bool is_selected = option == value;
             const auto &name = OptionName(option);
@@ -42,9 +41,9 @@ void Enum::Render(const std::vector<int> &options) const {
     HelpMarker();
 }
 void Enum::MenuItem() const {
-    const int value = Value;
     HelpMarker(false);
     if (BeginMenu(ImGuiLabel.c_str())) {
+        const int value = Value;
         for (u32 i = 0; i < Names.size(); i++) {
             const bool is_selected = value == int(i);
             if (ImGui::MenuItem(Names[i].c_str(), nullptr, is_selected)) IssueSet(int(i));

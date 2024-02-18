@@ -26,8 +26,7 @@ void Int::Render() const {
 void Int::Render(const std::vector<int> &options) const {
     if (options.empty()) return;
 
-    const int value = Value;
-    if (BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
+    if (const int value = Value; BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
             if (Selectable(to_string(option).c_str(), is_selected)) IssueSet(option);

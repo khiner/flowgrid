@@ -61,8 +61,8 @@ void TextBuffer::Apply(const ActionType &action) const {
 using namespace ImGui;
 
 void TextBuffer::RenderMenu() const {
-    auto &editor = *Editor;
     if (BeginMenuBar()) {
+        auto &editor = *Editor;
         FileMenu.Draw();
         if (BeginMenu("Edit")) {
             MenuItem("Read-only mode", nullptr, &editor.ReadOnly);
@@ -133,8 +133,7 @@ void TextBuffer::Render() const {
     // TODO this is not the usual immediate-mode case. Only set text if the text changed.
     //   This strategy of computing two full copies of the text is only temporary.
     //   Soon I'm incorporating the TextEditor state/undo/redo system into the FlowGrid system.
-    const string new_text = editor.GetText();
-    if (new_text != prev_text) {
+    if (const string new_text = editor.GetText(); new_text != prev_text) {
         Text.IssueSet(new_text);
     } else if (Text != new_text) {
         editor.SetText(Text);

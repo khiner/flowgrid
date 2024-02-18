@@ -23,8 +23,7 @@ void String::Render() const {
 void String::Render(const std::vector<string> &options) const {
     if (options.empty()) return;
 
-    const string value = *this;
-    if (BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
+    if (const string value = *this; BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
         for (const auto &option : options) {
             const bool is_selected = option == value;
             if (Selectable(option.c_str(), is_selected)) IssueSet(option);

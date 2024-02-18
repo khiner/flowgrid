@@ -47,8 +47,7 @@ std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 
 static float GestureTimeRemainingSec(float gesture_duration_sec) {
     if (ActiveGestureActions.empty()) return 0;
-    const auto ret = std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
-    return ret;
+    return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
 Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::Enqueue q)
@@ -86,8 +85,7 @@ void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     for (const auto id : ChangedIds) {
         if (!FieldIds.contains(id)) continue; // The component was deleted.
 
-        auto *changed = ById.at(id);
-        changed->Refresh();
+        ById.at(id)->Refresh();
 
         const auto &listeners = ChangeListenersById[id];
         affected_listeners.insert(listeners.begin(), listeners.end());
@@ -145,10 +143,8 @@ void Project::MarkAllChanged(const Patch &patch) {
 
             // Mark the changed field and all its ancestors.
             ChangedIds.insert(id);
-            const Component *ancestor = changed->Parent;
-            while (ancestor != nullptr) {
+            for (const auto *ancestor = changed->Parent; ancestor != nullptr; ancestor = ancestor->Parent) {
                 ChangedAncestorComponentIds.insert(ancestor->Id);
-                ancestor = ancestor->Parent;
             }
         }
     }
@@ -400,8 +396,7 @@ void Project::Render() const {
     for (const auto &[action_id, shortcut] : Shortcuts) {
         const auto &[mod, key] = shortcut.Parsed;
         if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)), ImGuiKeyOwner_None, ImGuiInputFlags_Repeat)) {
-            auto action = ActionType::Create(action_id);
-            if (CanApply(action)) {
+            if (auto action = ActionType::Create(action_id); CanApply(action)) {
                 std::visit(Match{[this](auto &&a) { Q(std::move(a)); }}, action);
             }
         }
@@ -472,8 +467,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
     // First, refresh all component containers to ensure the dynamically managed component instances match the JSON.
     for (const ID auxiliary_id : ContainerAuxiliaryIds) {
-        auto *auxiliary_field = ById.at(auxiliary_id);
-        if (j.contains(auxiliary_field->JsonPointer())) {
+        if (auto *auxiliary_field = ById.at(auxiliary_id); j.contains(auxiliary_field->JsonPointer())) {
             auxiliary_field->SetJson(std::move(j.at(auxiliary_field->JsonPointer())));
             auxiliary_field->Refresh();
             auxiliary_field->Parent->Refresh();
@@ -701,8 +695,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     const auto &project = GetProject();
     {
         // Active (uncompressed) gesture
-        const bool is_gesturing = Component::IsGesturing;
-        const bool any_gesture_actions = !ActiveGestureActions.empty();
+        const bool is_gesturing = Component::IsGesturing, any_gesture_actions = !ActiveGestureActions.empty();
         if (any_gesture_actions || is_gesturing) {
             // Gesture completion progress bar (full-width to empty).
             const float gesture_duration_sec = project.Settings.GestureDurationSec;
@@ -734,8 +727,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         if (no_history) BeginDisabled();
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", history.Size() - 1, history.Index)) {
             if (!no_history) {
-                uint edited_history_index = history.Index;
-                if (SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
+                if (uint edited_history_index = history.Index; SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
                     project.Q(Action::Project::SetHistoryIndex{edited_history_index});
                 }
             }

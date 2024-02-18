@@ -32,8 +32,7 @@ void UInt::Render() const {
 void UInt::Render(const std::vector<u32> &options) const {
     if (options.empty()) return;
 
-    const u32 value = Value;
-    if (BeginCombo(ImGuiLabel.c_str(), ValueName(value).c_str())) {
+    if (const u32 value = Value; BeginCombo(ImGuiLabel.c_str(), ValueName(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
             if (Selectable(ValueName(option).c_str(), is_selected)) IssueSet(option);

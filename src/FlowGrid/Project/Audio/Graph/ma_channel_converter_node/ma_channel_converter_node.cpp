@@ -22,8 +22,9 @@ ma_result ma_channel_converter_node_init(ma_node_graph *graph, const ma_channel_
     MA_ZERO_OBJECT(converter_node);
     converter_node->config = *config;
 
-    ma_result result = ma_channel_converter_init(&config->converter_config, allocation_callbacks, &converter_node->converter);
-    if (result != MA_SUCCESS) return result;
+    if (ma_result result = ma_channel_converter_init(&config->converter_config, allocation_callbacks, &converter_node->converter); result != MA_SUCCESS) {
+        return result;
+    }
 
     static const ma_node_vtable vtable = {ma_channel_converter_node_process_pcm_frames, nullptr, 1, 1, 0};
     ma_node_config base_config;
@@ -35,8 +36,7 @@ ma_result ma_channel_converter_node_init(ma_node_graph *graph, const ma_channel_
     base_config.pInputChannels = input_channels;
     base_config.pOutputChannels = output_channels;
 
-    result = ma_node_init(graph, &base_config, allocation_callbacks, converter_node);
-    if (result != MA_SUCCESS) {
+    if (ma_result result = ma_node_init(graph, &base_config, allocation_callbacks, converter_node); result != MA_SUCCESS) {
         ma_channel_converter_uninit(&converter_node->converter, allocation_callbacks);
         return result;
     }

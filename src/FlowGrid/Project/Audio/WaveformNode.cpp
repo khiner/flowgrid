@@ -9,8 +9,9 @@
 struct WaveformMaNode : MaNode {
     WaveformMaNode(ma_node_graph *graph, u32 sample_rate, ma_waveform_type type, float frequency) {
         auto config = ma_waveform_node_config_init(sample_rate, type, frequency);
-        ma_result result = ma_waveform_node_init(graph, &config, nullptr, &_Node);
-        if (result != MA_SUCCESS) throw std::runtime_error(std::format("Failed to initialize the waveform node: {}", int(result)));
+        if (ma_result result = ma_waveform_node_init(graph, &config, nullptr, &_Node); result != MA_SUCCESS) {
+            throw std::runtime_error(std::format("Failed to initialize the waveform node: {}", int(result)));
+        }
         Node = &_Node;
     }
     ~WaveformMaNode() {

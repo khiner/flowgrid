@@ -91,7 +91,7 @@ static inline string GetFontPath() {
 }
 static inline string GetFontBase64() {
     static std::unordered_map<string, string> base64_for_font_name; // avoid recomputing
-    string font_name = GetFontName();
+    const string font_name = GetFontName();
     if (!base64_for_font_name.contains(font_name)) {
         const string ttf_contents = FileIO::read(GetFontPath());
         string ttf_base64;
@@ -1108,15 +1108,11 @@ Node *FaustGraph::Tree2NodeInner(Tree t) const {
     }
 
     int i;
-    double r;
-    if (isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(*this, t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridGraphCol_Number);
+    if (double r; isBoxInt(t, &i) || isBoxReal(t, &r)) return new BlockNode(*this, t, 0, 1, isBoxInt(t) ? std::to_string(i) : std::to_string(r), FlowGridGraphCol_Number);
     if (isBoxSlot(t, &i)) return new BlockNode(*this, t, 0, 1, "", FlowGridGraphCol_Slot);
 
-    Tree ff;
-    if (isBoxFFun(t, ff)) return new BlockNode(*this, t, ffarity(ff), 1, ffname(ff));
-
-    Tree type, name, file;
-    if (isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(*this, t, 0, 1, tree2str(name));
+    if (Tree ff; isBoxFFun(t, ff)) return new BlockNode(*this, t, ffarity(ff), 1, ffname(ff));
+    if (Tree type, name, file; isBoxFConst(t, type, name, file) || isBoxFVar(t, type, name, file)) return new BlockNode(*this, t, 0, 1, tree2str(name));
 
     Tree label, chan;
     if (isBoxSoundfile(t, label, chan)) return new BlockNode(*this, t, 2, 2 + tree2int(chan), GetUiDescription(t), FlowGridGraphCol_Ui);
@@ -1127,8 +1123,7 @@ Node *FaustGraph::Tree2NodeInner(Tree t) const {
         return new GroupNode(*this, NodeType_Group, t, Tree2Node(a), std::format("{}group({})", prefix, extractName(label)));
     }
 
-    Tree route;
-    if (isBoxRoute(t, a, b, route)) {
+    if (Tree route; isBoxRoute(t, a, b, route)) {
         int ins, outs;
         std::vector<int> routes;
         // Build `ins`x`outs` cable routing.
@@ -1182,23 +1177,14 @@ string GetBoxType(Box t) {
     if (isBoxMerge(t, a, b)) return "Merge";
     if (isBoxRec(t, a, b)) return "Recursive";
 
-    Tree ff;
-    if (isBoxFFun(t, ff)) return std::format("FFun:{}({})", ffname(ff), ffarity(ff));
+    if (Tree ff; isBoxFFun(t, ff)) return std::format("FFun:{}({})", ffname(ff), ffarity(ff));
+    if (Tree type, name, file; isBoxFConst(t, type, name, file)) return std::format("FConst:{}", tree2str(name));
+    if (Tree type, name, file; isBoxFVar(t, type, name, file)) return std::format("FVar:{}", tree2str(name));
+    if (Tree label, chan; isBoxSoundfile(t, label, chan)) return std::format("Soundfile({},{})", 2, 2 + tree2int(chan));
+    if (int i; isBoxSlot(t, &i)) return std::format("Slot({})", i);
 
-    Tree type, name, file;
-    if (isBoxFConst(t, type, name, file)) return std::format("FConst:{}", tree2str(name));
-    if (isBoxFVar(t, type, name, file)) return std::format("FVar:{}", tree2str(name));
-
-    Tree label, chan;
-    if (isBoxSoundfile(t, label, chan)) return std::format("Soundfile({},{})", 2, 2 + tree2int(chan));
-
-    int i;
-    if (isBoxSlot(t, &i)) return std::format("Slot({})", i);
-
-    Tree route;
-    if (isBoxRoute(t, a, b, route)) {
-        int ins, outs;
-        if (isBoxInt(a, &ins) && isBoxInt(b, &outs)) return std::format("Route({}x{})", ins, outs);
+    if (Tree route; isBoxRoute(t, a, b, route)) {
+        if (int ins, outs; isBoxInt(a, &ins) && isBoxInt(b, &outs)) return std::format("Route({}x{})", ins, outs);
         throw std::runtime_error("Invalid route expression : " + PrintTree(t));
     }
 
@@ -1206,9 +1192,8 @@ string GetBoxType(Box t) {
 }
 
 std::optional<string> FaustGraph::GetBoxInfo(u32 id) const {
-    const auto *node = NodeByImGuiId[id];
-    if (!node) return {};
-    return GetBoxType(node->FaustTree); // Just type for now.
+    if (const auto *node = NodeByImGuiId[id]) return GetBoxType(node->FaustTree); // Just type for now.
+    return {};
 }
 
 FaustGraph::FaustGraph(ArgsT &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)

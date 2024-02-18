@@ -55,17 +55,14 @@ bool FileIO::write(const fs::path &path, std::string_view contents) {
         out_file.close();
         return true;
     }
-
     return false;
 }
 
 bool FileIO::write(const fs::path &path, const std::vector<std::uint8_t> &contents) {
-    std::fstream out_file(path, std::ios::out | std::ios::binary);
-    if (out_file) {
+    if (std::fstream out_file(path, std::ios::out | std::ios::binary); out_file) {
         out_file.write(reinterpret_cast<const char *>(contents.data()), std::streamsize(contents.size()));
         out_file.close();
         return true;
     }
-
     return false;
 }

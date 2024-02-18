@@ -19,8 +19,7 @@ void Bool::IssueToggle() const { PrimitiveQ.QueueToggle(Path); }
 using namespace ImGui;
 
 void Bool::Render(string_view label) const {
-    bool value = Value;
-    if (Checkbox(string(label).c_str(), &value)) IssueToggle();
+    if (bool value = Value; Checkbox(string(label).c_str(), &value)) IssueToggle();
     HelpMarker();
 }
 
@@ -37,7 +36,6 @@ bool Bool::CheckedDraw() const {
 }
 
 void Bool::MenuItem() const {
-    const bool value = Value;
     HelpMarker(false);
-    if (ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) IssueToggle();
+    if (const bool value = Value; ImGui::MenuItem(ImGuiLabel.c_str(), nullptr, value)) IssueToggle();
 }

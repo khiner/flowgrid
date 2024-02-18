@@ -24,8 +24,7 @@ template<class J, class T> constexpr void optional_to_json(J &j, const char *nam
     if (value) j[name] = *value;
 }
 template<class J, class T> constexpr void optional_from_json(const J &j, const char *name, std::optional<T> &value) {
-    const auto it = j.find(name);
-    if (it != j.end()) value = it->template get<T>();
+    if (const auto it = j.find(name); it != j.end()) value = it->template get<T>();
     else value = std::nullopt;
 }
 

@@ -224,7 +224,6 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
     const ID id = faust_dsp.Id;
     dsp *dsp = faust_dsp.Dsp;
     Box box = faust_dsp.Box;
-
     if (type == Changed) {
         if (auto *ui = Paramss.FindUi(id)) ui->SetDsp(dsp);
         if (auto *graph = Graphs.FindGraph(id)) graph->SetBox(box);
@@ -234,8 +233,8 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         // Params
         static const string ParamsPrefixSegment = "Params";
         Paramss.Refresh(); // todo Seems to be needed, but shouldn't be.
-        auto params_it = std::find_if(Paramss.begin(), Paramss.end(), [id](auto *ui) { return ui->DspId == id; });
-        if (params_it != Paramss.end()) {
+        if (auto params_it = std::find_if(Paramss.begin(), Paramss.end(), [id](auto *ui) { return ui->DspId == id; });
+            params_it != Paramss.end()) {
             (*params_it)->SetDsp(dsp);
         } else {
             Paramss.EmplaceBack_(ParamsPrefixSegment, [id, dsp](auto *child) {
@@ -247,8 +246,8 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         // Boxes
         static const string GraphPrefixSegment = "Graph";
         Graphs.Refresh(); // todo Seems to be needed, but shouldn't be.
-        auto graph_it = std::find_if(Graphs.begin(), Graphs.end(), [id](auto *graph) { return graph->DspId == id; });
-        if (graph_it != Graphs.end()) {
+        if (auto graph_it = std::find_if(Graphs.begin(), Graphs.end(), [id](auto *graph) { return graph->DspId == id; });
+            graph_it != Graphs.end()) {
             (*graph_it)->SetBox(box);
         } else {
             Graphs.EmplaceBack_(GraphPrefixSegment, [id, box](auto *child) {

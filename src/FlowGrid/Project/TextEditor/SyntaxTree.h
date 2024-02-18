@@ -275,7 +275,7 @@ template<typename ValueType> struct ByteTransitions {
     }
 
     void Increment(Iterator &it, int amount) {
-        if (it.IsEnd() || amount == 0) return;
+        if (amount == 0 || it.IsEnd()) return;
 
         if (it.DeltaIndex == 0 && it.HasNext()) ++it;
         DeltaValues[it.DeltaIndex].Delta += amount;
@@ -326,7 +326,7 @@ struct SyntaxTree {
     }
 
     // Apply edits to the TS tree, re-parse, update highlight state.
-    void ApplyEdits(const std::set<TextInputEdit> &edits) {
+    void ApplyEdits(const std::vector<TextInputEdit> &edits) {
         ChangedCaptureRanges.clear(); // For debugging
         if (edits.empty()) return;
 
@@ -366,48 +366,56 @@ struct SyntaxTree {
 
         auto transition_it = CaptureIdTransitions.begin();
 
-        // Delete all transitions within deleted ranges.
-        for (const auto &edit : reverse_view(edits) | filter([](const auto &edit) { return edit.IsDelete(); })) {
-            CaptureIdTransitions.Delete(transition_it, edit.NewEndByte, edit.OldEndByte);
-        }
-        // Adjust transitions based on the edited ranges.
+        // Adjust transitions based on the edited ranges, from the end to the start.
+        const auto ordered_edits = std::set<TextInputEdit>(edits.begin(), edits.end());
         if (CaptureIdTransitions.size() > 1) {
-            for (const auto &edit : reverse_view(edits)) {
-                transition_it.MoveTo(edit.StartByte);
-                CaptureIdTransitions.Increment(transition_it, edit.NewEndByte - edit.OldEndByte);
-            }
-        }
-
-        if (old_tree != nullptr && !any_changed_captures) return;
-
-        // Either this is the first parse, or the edit(s) affect existing node captures.
-        // Execute the query and add all capture transitions.
-        ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
-
-        TSQueryMatch match;
-        uint capture_index;
-        while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
-            const TSQueryCapture &capture = match.captures[capture_index];
-            // We only store the points at which there is a _transition_ from one style to another.
-            // This can happen either at the beginning or the end of the capture node.
-            TSNode node = capture.node;
-            const auto node_byte_range = ToByteRange(node);
-            ChangedCaptureRanges.insert(node_byte_range); // For debugging.
-            if (ts_node_child_count(node) > 0) continue; // Only highlight terminal nodes.
-
-            // Delete invalidated transitions.
-            CaptureIdTransitions.Delete(transition_it, node_byte_range.Start, node_byte_range.End);
-
-            if (*transition_it != capture.index) {
-                // uint length;
-                // const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &length);
-                // std::println("\t'{}'[{}:{}]: {}", ts_node_type(node), node_byte_range.Start, node_byte_range.End, string(capture_name, length));
-                CaptureIdTransitions.Insert(transition_it, node_byte_range.Start, capture.index);
-                if (node_byte_range.End != changed_range.End) {
-                    CaptureIdTransitions.Insert(transition_it, node_byte_range.End, NoneCaptureId);
+            for (const auto &edit : reverse_view(ordered_edits)) {
+                const uint inc_after_byte = edit.OldEndByte;
+                transition_it.MoveTo(inc_after_byte);
+                if (!transition_it.IsEnd()) {
+                    if (transition_it.ByteIndex != inc_after_byte) ++transition_it;
+                    CaptureIdTransitions.Increment(transition_it, edit.NewEndByte - edit.OldEndByte);
                 }
             }
         }
+
+        // Delete all transitions in deleted ranges? Not right in all cases.
+        // for (const auto &edit : reverse_view(ordered_edits) | filter([](const auto &edit) { return edit.IsDelete(); })) {
+        //     CaptureIdTransitions.Delete(transition_it, edit.NewEndByte, edit.OldEndByte);
+        // }
+
+        if (old_tree == nullptr || any_changed_captures) {
+            // Either this is the first parse, or the edit(s) affect existing node captures.
+            // Execute the query and add all capture transitions.
+            ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
+
+            TSQueryMatch match;
+            uint capture_index;
+            while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
+                const TSQueryCapture &capture = match.captures[capture_index];
+                // We only store the points at which there is a _transition_ from one style to another.
+                // This can happen either at the capture node's beginning or end.
+                const TSNode node = capture.node;
+                if (ts_node_child_count(node) > 0) continue; // Only highlight terminal nodes.
+
+                // Delete invalidated transitions and insert new ones.
+                const auto node_byte_range = ToByteRange(node);
+                ChangedCaptureRanges.insert(node_byte_range); // For debugging.
+                CaptureIdTransitions.Delete(transition_it, node_byte_range.Start, node_byte_range.End);
+                if (*transition_it != capture.index) {
+                    // uint length;
+                    // const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &length);
+                    // std::println("\t'{}'[{}:{}]: {}", ts_node_type(node), node_byte_range.Start, node_byte_range.End, string(capture_name, length));
+                    CaptureIdTransitions.Insert(transition_it, node_byte_range.Start, capture.index);
+                    if (node_byte_range.End != changed_range.End) {
+                        CaptureIdTransitions.Insert(transition_it, node_byte_range.End, NoneCaptureId);
+                    }
+                }
+            }
+        }
+
+        // Cleanup: Delete all transitions beyond the new text range.
+        CaptureIdTransitions.Delete(transition_it, ts_node_end_byte(ts_tree_root_node(Tree)) - 1, UINT32_MAX);
     }
 
     void SetLanguage(LanguageID language_id) {

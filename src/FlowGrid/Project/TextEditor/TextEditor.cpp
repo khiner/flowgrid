@@ -60,10 +60,7 @@ TextEditor::TextEditor(const fs::path &file_path)
 TextEditor::~TextEditor() {}
 
 void TextEditor::ApplyEdits() {
-    // xxx Apply edits one at a time for now.
-    // E.g. moving lines (which is an insert and a delete) currently breaks highlighting when applied together.
-    // But moving lines is still broken for undo after minimal query updates.
-    for (const auto &edit : Edits) Syntax->ApplyEdits({edit});
+    Syntax->ApplyEdits(Edits);
     Edits.clear();
 }
 

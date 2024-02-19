@@ -58,14 +58,6 @@ struct FaustGraphs
     bool CanApply(const ActionType &) const override;
 
     FaustGraph *FindGraph(ID dsp_id) const;
-    std::optional<std::string> GetBoxInfo(u32 imgui_id) const {
-        for (const auto &graph : *this) {
-            if (auto box_info = graph->GetBoxInfo(imgui_id)) return box_info;
-        }
-        return {};
-    }
-
-    static std::optional<std::string> FindBoxInfo(u32 imgui_id);
 
     void OnComponentChanged() override;
 

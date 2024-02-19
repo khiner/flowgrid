@@ -2,8 +2,6 @@
 
 #include "imgui_internal.h"
 
-#include "Project/Audio/Faust/Faust.h"
-
 using namespace ImGui;
 
 // Copied from `imgui.cpp`.
@@ -27,30 +25,27 @@ void Info::Render() const {
     tool->LastActiveFrame = GetFrameCount();
 
     PushTextWrapPos(0);
-    if (!tool->Results.empty() && BeginTable("##table", 2, ImGuiTableFlags_Borders)) {
-        // const float id_width = CalcTextSize("0xDDDDDDDD").x;
-        // TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, id_width);
+    static constexpr bool ShowId = false;
+    static constexpr uint NumColumns = ShowId ? 3 : 2;
+
+    if (!tool->Results.empty() && BeginTable("##table", NumColumns, ImGuiTableFlags_Borders)) {
+        const float id_width = CalcTextSize("0xDDDDDDDD").x;
+        if (ShowId) TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed, id_width);
         TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
         TableSetupColumn("Help", ImGuiTableColumnFlags_WidthStretch);
         TableHeadersRow();
         for (int n = 0; n < tool->Results.Size; n++) {
             const auto *info = &tool->Results[n];
-            if (Component::ById.contains(info->ID)) {
-                const auto *component = Component::ById.at(info->ID);
-                const char *help = component->Help.empty() ? "-" : component->Help.c_str();
-                // TableNextColumn();
-                // Text("0x%08X", info->ID);
+            if (Component::MetadataById.contains(info->ID)) {
+                const auto &metadata = Component::MetadataById.at(info->ID);
+                if (ShowId) {
+                    TableNextColumn();
+                    Text("0x%08X", info->ID);
+                }
                 TableNextColumn();
-                TextUnformatted(component->Name.c_str());
+                TextUnformatted(metadata.Name.c_str());
                 TableNextColumn();
-                TextUnformatted(help);
-            } else if (auto box_info = FaustGraphs::FindBoxInfo(info->ID)) {
-                // TableNextColumn();
-                // Text("0x%08X", info->ID);
-                TableNextColumn();
-                TextUnformatted(box_info->c_str());
-                TableNextColumn();
-                TextUnformatted("-");
+                TextUnformatted(metadata.Help.empty() ? "-" : metadata.Help.c_str());
             }
         }
         EndTable();

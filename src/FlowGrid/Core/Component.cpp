@@ -30,7 +30,8 @@ Component::Metadata Component::Metadata::Parse(string_view str) {
 Component::Component(Store &store, PrimitiveActionQueuer &primitive_q, const Windows &windows, const fg::Style &style)
     : RootStore(store), PrimitiveQ(primitive_q), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
-    ById[Id] = this;
+    ById.emplace(Id, this);
+    IdByPath.emplace(Path, Id);
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
@@ -51,6 +52,7 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
     ById.emplace(Id, this);
     IdByPath.emplace(Path, Id);
     parent->Children.emplace_back(this);
+    MetadataById.emplace(Id, Metadata{Name, Help});
 }
 
 Component::Component(ComponentArgs &&args)

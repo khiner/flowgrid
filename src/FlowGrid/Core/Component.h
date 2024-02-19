@@ -70,11 +70,12 @@ struct Component {
     static Fonts gFonts;
 
     struct Metadata {
+        const string Name, Help;
+
         // Split the string on '?'.
         // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
         // todo don't split on escaped '\?'
         static Metadata Parse(string_view meta_str);
-        const string Name, Help;
     };
 
     struct ChangeListener {
@@ -91,6 +92,9 @@ struct Component {
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
     inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (Primitives/Containers).
+
+    // Additional metadata for display in the Info stack.
+    inline static std::unordered_map<ID, Metadata> MetadataById;
 
     // Use when you expect a component with exactly this path to exist.
     inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IdByPath.at(path)); }

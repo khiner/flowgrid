@@ -339,6 +339,94 @@ static string UniqueId(const void *instance) { return std::format("{:x}", reinte
 
 using StringHelper::Capitalize;
 
+static bool isBoxBinary(Box box, Box &x, Box &y) {
+    return isBoxPar(box, x, y) || isBoxSeq(box, x, y) || isBoxSplit(box, x, y) || isBoxMerge(box, x, y) || isBoxRec(box, x, y);
+}
+
+static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
+    prim0 p0;
+    if (isBoxPrim0(box, &p0)) return pair(0, prim0name(p0));
+
+    prim1 p1;
+    if (isBoxPrim1(box, &p1)) return pair(1, prim1name(p1));
+
+    prim2 p2;
+    if (isBoxPrim2(box, &p2)) return pair(2, prim2name(p2));
+
+    prim3 p3;
+    if (isBoxPrim3(box, &p3)) return pair(3, prim3name(p3));
+
+    prim4 p4;
+    if (isBoxPrim4(box, &p4)) return pair(4, prim4name(p4));
+
+    prim5 p5;
+    if (isBoxPrim5(box, &p5)) return pair(5, prim5name(p5));
+
+    return {};
+}
+
+// Returns `true` if `t == '*(-1)'`.
+// This test is used to simplify graph by using a special symbol for inverters.
+static bool isBoxInverter(Box box) {
+    static const Tree inverters[]{
+        boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxWire(), boxReal(-1.0)), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxReal(-1.0), boxWire()), boxPrim2(sigMul)),
+        boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub)),
+        boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub)),
+    };
+    return ::ranges::contains(inverters, box);
+}
+
+static inline string PrintTree(Tree tree) {
+    static const int max_num_characters = 20;
+    const auto &str = printBox(tree, false, max_num_characters);
+    return str.substr(0, str.size() - 1); // Last character is a newline.
+}
+
+string GetBoxType(Box t) {
+    if (getUserData(t) != nullptr) return std::format("{}({},{})", xtendedName(t), xtendedArity(t), 1);
+    if (isBoxInverter(t)) return "Inverter";
+    if (isBoxInt(t)) return "Int";
+    if (isBoxReal(t)) return "Real";
+    if (isBoxWaveform(t)) return "Waveform";
+    if (isBoxWire(t)) return "Cable";
+    if (isBoxCut(t)) return "Cut";
+    if (isBoxButton(t)) return "Button";
+    if (isBoxCheckbox(t)) return "Checkbox";
+    if (isBoxVSlider(t)) return "VSlider";
+    if (isBoxHSlider(t)) return "HSlider";
+    if (isBoxNumEntry(t)) return "NumEntry";
+    if (isBoxVBargraph(t)) return "VBarGraph";
+    if (isBoxHBargraph(t)) return "HBarGraph";
+    if (isBoxVGroup(t)) return "VGroup";
+    if (isBoxHGroup(t)) return "HGroup";
+    if (isBoxTGroup(t)) return "TGroup";
+    if (isBoxEnvironment(t)) return "Environment";
+    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return (*count_and_name).second;
+
+    Tree a, b;
+    if (isBoxSeq(t, a, b)) return "Sequential";
+    if (isBoxPar(t, a, b)) return "Parallel";
+    if (isBoxSplit(t, a, b)) return "Split";
+    if (isBoxMerge(t, a, b)) return "Merge";
+    if (isBoxRec(t, a, b)) return "Recursive";
+
+    if (Tree ff; isBoxFFun(t, ff)) return std::format("FFun:{}({})", ffname(ff), ffarity(ff));
+    if (Tree type, name, file; isBoxFConst(t, type, name, file)) return std::format("FConst:{}", tree2str(name));
+    if (Tree type, name, file; isBoxFVar(t, type, name, file)) return std::format("FVar:{}", tree2str(name));
+    if (Tree label, chan; isBoxSoundfile(t, label, chan)) return std::format("Soundfile({},{})", 2, 2 + tree2int(chan));
+    if (int i; isBoxSlot(t, &i)) return std::format("Slot({})", i);
+
+    if (Tree route; isBoxRoute(t, a, b, route)) {
+        if (int ins, outs; isBoxInt(a, &ins) && isBoxInt(b, &outs)) return std::format("Route({}x{})", ins, outs);
+        throw std::runtime_error("Invalid route expression : " + PrintTree(t));
+    }
+
+    return "Unknown type";
+}
+
 namespace FlowGrid {
 // An abstract block graph node.
 struct Node {
@@ -374,11 +462,14 @@ struct Node {
         // cout << tree2str(tree) << '\n';
     }
 
-    virtual ~Node() = default;
+    virtual ~Node() {
+        Component::MetadataById.erase(ImGuiId);
+    }
 
     virtual void GenerateIds(ID parent_id) {
         ImGuiId = ImHashData(&Index, sizeof(Index), parent_id);
         Context.NodeByImGuiId[ImGuiId] = this;
+        Component::MetadataById.emplace(ImGuiId, Component::Metadata{.Name = GetBoxType(FaustTree), .Help = ""});
         if (A) A->GenerateIds(ImGuiId);
         if (B) B->GenerateIds(ImGuiId);
     }
@@ -973,30 +1064,6 @@ private:
     const std::vector<int> Routes; // Route description: a,d2,c2,d2,...
 };
 
-static bool isBoxBinary(Box box, Box &x, Box &y) {
-    return isBoxPar(box, x, y) || isBoxSeq(box, x, y) || isBoxSplit(box, x, y) || isBoxMerge(box, x, y) || isBoxRec(box, x, y);
-}
-
-// Returns `true` if `t == '*(-1)'`.
-// This test is used to simplify graph by using a special symbol for inverters.
-static bool isBoxInverter(Box box) {
-    static const Tree inverters[]{
-        boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul)),
-        boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul)),
-        boxSeq(boxPar(boxWire(), boxReal(-1.0)), boxPrim2(sigMul)),
-        boxSeq(boxPar(boxReal(-1.0), boxWire()), boxPrim2(sigMul)),
-        boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub)),
-        boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub)),
-    };
-    return ::ranges::contains(inverters, box);
-}
-
-static inline string PrintTree(Tree tree) {
-    static const int max_num_characters = 20;
-    const auto &str = printBox(tree, false, max_num_characters);
-    return str.substr(0, str.size() - 1); // Last character is a newline.
-}
-
 // Convert user interface box into a textual representation
 static string GetUiDescription(Box box) {
     Tree t1, label, cur, min, max, step, chan;
@@ -1052,28 +1119,6 @@ static bool IsPureRouting(Tree t) {
 
     IsTreePureRouting.emplace(t, false);
     return false;
-}
-
-static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
-    prim0 p0;
-    if (isBoxPrim0(box, &p0)) return pair(0, prim0name(p0));
-
-    prim1 p1;
-    if (isBoxPrim1(box, &p1)) return pair(1, prim1name(p1));
-
-    prim2 p2;
-    if (isBoxPrim2(box, &p2)) return pair(2, prim2name(p2));
-
-    prim3 p3;
-    if (isBoxPrim3(box, &p3)) return pair(3, prim3name(p3));
-
-    prim4 p4;
-    if (isBoxPrim4(box, &p4)) return pair(4, prim4name(p4));
-
-    prim5 p5;
-    if (isBoxPrim5(box, &p5)) return pair(5, prim5name(p5));
-
-    return {};
 }
 
 // Generate the inside node of a block graph according to its type.
@@ -1147,53 +1192,6 @@ Node *FaustGraph::Tree2Node(Tree t) const {
         return new BlockNode(*this, t, ins, outs, "", FlowGridGraphCol_Link, new GroupNode(*this, NodeType_Decorate, t, node));
     }
     return IsPureRouting(t) ? node : new GroupNode(*this, NodeType_Group, t, node);
-}
-
-string GetBoxType(Box t) {
-    if (getUserData(t) != nullptr) return std::format("{}({},{})", xtendedName(t), xtendedArity(t), 1);
-    if (isBoxInverter(t)) return "Inverter";
-    if (isBoxInt(t)) return "Int";
-    if (isBoxReal(t)) return "Real";
-    if (isBoxWaveform(t)) return "Waveform";
-    if (isBoxWire(t)) return "Cable";
-    if (isBoxCut(t)) return "Cut";
-    if (isBoxButton(t)) return "Button";
-    if (isBoxCheckbox(t)) return "Checkbox";
-    if (isBoxVSlider(t)) return "VSlider";
-    if (isBoxHSlider(t)) return "HSlider";
-    if (isBoxNumEntry(t)) return "NumEntry";
-    if (isBoxVBargraph(t)) return "VBarGraph";
-    if (isBoxHBargraph(t)) return "HBarGraph";
-    if (isBoxVGroup(t)) return "VGroup";
-    if (isBoxHGroup(t)) return "HGroup";
-    if (isBoxTGroup(t)) return "TGroup";
-    if (isBoxEnvironment(t)) return "Environment";
-    if (const auto count_and_name = GetBoxPrimCountAndName(t)) return (*count_and_name).second;
-
-    Tree a, b;
-    if (isBoxSeq(t, a, b)) return "Sequential";
-    if (isBoxPar(t, a, b)) return "Parallel";
-    if (isBoxSplit(t, a, b)) return "Split";
-    if (isBoxMerge(t, a, b)) return "Merge";
-    if (isBoxRec(t, a, b)) return "Recursive";
-
-    if (Tree ff; isBoxFFun(t, ff)) return std::format("FFun:{}({})", ffname(ff), ffarity(ff));
-    if (Tree type, name, file; isBoxFConst(t, type, name, file)) return std::format("FConst:{}", tree2str(name));
-    if (Tree type, name, file; isBoxFVar(t, type, name, file)) return std::format("FVar:{}", tree2str(name));
-    if (Tree label, chan; isBoxSoundfile(t, label, chan)) return std::format("Soundfile({},{})", 2, 2 + tree2int(chan));
-    if (int i; isBoxSlot(t, &i)) return std::format("Slot({})", i);
-
-    if (Tree route; isBoxRoute(t, a, b, route)) {
-        if (int ins, outs; isBoxInt(a, &ins) && isBoxInt(b, &outs)) return std::format("Route({}x{})", ins, outs);
-        throw std::runtime_error("Invalid route expression : " + PrintTree(t));
-    }
-
-    return "Unknown type";
-}
-
-std::optional<string> FaustGraph::GetBoxInfo(u32 id) const {
-    if (const auto *node = NodeByImGuiId[id]) return GetBoxType(node->FaustTree); // Just type for now.
-    return {};
 }
 
 FaustGraph::FaustGraph(ArgsT &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)

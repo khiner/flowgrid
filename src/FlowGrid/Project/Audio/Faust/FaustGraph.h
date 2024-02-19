@@ -19,7 +19,6 @@ struct FaustGraph : ActionProducerComponent<Action::Combine<Action::Faust::Graph
     ~FaustGraph();
 
     float GetScale() const;
-    std::optional<std::string> GetBoxInfo(u32 id) const;
 
     void SaveBoxSvg(const fs::path &dir_path) const;
     void SetBox(Box);

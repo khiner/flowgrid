@@ -121,13 +121,6 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
     );
 }
 
-std::optional<std::string> FaustGraphs::FindBoxInfo(u32 imgui_id) {
-    for (const auto *instance : AllInstances) {
-        if (auto box_info = instance->GetBoxInfo(imgui_id)) return box_info;
-    }
-    return {};
-}
-
 #include "Project/Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 

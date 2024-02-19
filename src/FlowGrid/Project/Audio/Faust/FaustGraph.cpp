@@ -9,6 +9,7 @@
 
 #include "imgui_internal.h"
 
+#include "Core/HelpInfo.h"
 #include "FaustGraphStyle.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
@@ -463,13 +464,13 @@ struct Node {
     }
 
     virtual ~Node() {
-        Component::MetadataById.erase(ImGuiId);
+        HelpInfo::ById.erase(ImGuiId);
     }
 
     virtual void GenerateIds(ID parent_id) {
-        ImGuiId = ImHashData(&Index, sizeof(Index), parent_id);
+        ImGuiId = GenerateId(parent_id, Index);
         Context.NodeByImGuiId[ImGuiId] = this;
-        Component::MetadataById.emplace(ImGuiId, Component::Metadata{.Name = GetBoxType(FaustTree), .Help = ""});
+        HelpInfo::ById.emplace(ImGuiId, HelpInfo{.Name = GetBoxType(FaustTree), .Help = ""});
         if (A) A->GenerateIds(ImGuiId);
         if (B) B->GenerateIds(ImGuiId);
     }

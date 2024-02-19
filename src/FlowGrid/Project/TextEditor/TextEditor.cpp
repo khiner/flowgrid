@@ -64,6 +64,7 @@ void TextEditor::ApplyEdits() {
 }
 
 string TextEditor::GetSyntaxTreeSExp() const { return Syntax->GetSExp(); }
+
 const string &TextEditor::GetLanguageName() const { return Languages.Get(LanguageId).Name; }
 const string &TextEditor::GetLanguageFileExtensionsFilter() { return Languages.AllFileExtensionsFilter; }
 
@@ -894,7 +895,28 @@ static float Distance(const ImVec2 &a, const ImVec2 &b) {
     return sqrt(x * x + y * y);
 }
 
+void TextEditor::CreateHoveredNode(uint byte_index) {
+    DestroyHoveredNode();
+    HoveredNode = std::make_unique<SyntaxNodeInfo>(Syntax->GetNodeAtByte(byte_index));
+    for (const auto &node : HoveredNode->Hierarchy) {
+        HelpInfo::ById.emplace(node.Id, HelpInfo{.Name = node.Type, .Help = ""});
+    }
+}
+
+void TextEditor::DestroyHoveredNode() {
+    if (HoveredNode) {
+        for (const auto &node : HoveredNode->Hierarchy) HelpInfo::ById.erase(node.Id);
+        HoveredNode.reset();
+    }
+}
+
 void TextEditor::HandleMouseInputs() {
+    if (!ImGui::IsWindowHovered()) {
+        DestroyHoveredNode();
+        IsOverLineNumber = false;
+        return;
+    }
+
     constexpr static ImGuiMouseButton MouseLeft = ImGuiMouseButton_Left, MouseMiddle = ImGuiMouseButton_Middle;
 
     const auto &io = ImGui::GetIO();
@@ -904,57 +926,53 @@ void TextEditor::HandleMouseInputs() {
 
     if (const bool panning = ImGui::IsMouseDown(MouseMiddle); panning && ImGui::IsMouseDragging(MouseMiddle)) {
         const ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
-        const ImVec2 mouse_pos = ImGui::GetMouseDragDelta(MouseMiddle);
-        const ImVec2 mouse_delta = mouse_pos - LastPanMousePos;
-        ImGui::SetScrollY(scroll.y - mouse_delta.y);
+        const ImVec2 mouse_delta = ImGui::GetMouseDragDelta(MouseMiddle);
         ImGui::SetScrollX(scroll.x - mouse_delta.x);
-        LastPanMousePos = mouse_pos;
+        ImGui::SetScrollY(scroll.y - mouse_delta.y);
     }
 
-    if (ImGui::IsMouseDown(MouseLeft) && ImGui::IsMouseDragging(MouseLeft)) {
-        Cursors.GetLastAdded().SetEnd(ScreenPosToLC(ImGui::GetMousePos()));
-    }
+    const auto mouse_pos = ImGui::GetMousePos();
+    const auto mouse_lc = ScreenPosToLC(mouse_pos, &IsOverLineNumber);
+    if (ImGui::IsMouseDragging(MouseLeft)) Cursors.GetLastAdded().SetEnd(mouse_lc);
 
     const auto is_click = ImGui::IsMouseClicked(MouseLeft);
-    if (shift && is_click) return Cursors.GetLastAdded().SetEnd(ScreenPosToLC(ImGui::GetMousePos()));
+    if (shift && is_click) return Cursors.GetLastAdded().SetEnd(mouse_lc);
     if (shift || alt) return;
 
-    if (ImGui::IsMouseClicked(MouseMiddle)) LastPanMousePos = ImGui::GetMouseDragDelta(MouseMiddle);
+    if (IsOverLineNumber) DestroyHoveredNode();
+    else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc) - 1);
 
+    const float time = ImGui::GetTime();
     const bool is_double_click = ImGui::IsMouseDoubleClicked(MouseLeft);
     const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
-        ImGui::GetTime() - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
+        time - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
     if (is_triple_click) {
         if (ctrl) Cursors.Add();
         else Cursors.Reset();
 
-        const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
-        SetSelection({cursor_lc.L, 0}, CheckedNextLineBegin(cursor_lc.L), Cursors.back());
+        SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
 
         LastClickTime = -1.0f;
     } else if (is_double_click) {
         if (ctrl) Cursors.Add();
         else Cursors.Reset();
 
-        const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos());
-        SetSelection(FindWordBoundary(cursor_lc, true), FindWordBoundary(cursor_lc, false), Cursors.back());
+        SetSelection(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false), Cursors.back());
 
-        LastClickTime = float(ImGui::GetTime());
-        LastClickPos = io.MousePos;
+        LastClickTime = time;
+        LastClickPos = mouse_pos;
     } else if (is_click) {
         if (ctrl) Cursors.Add();
         else Cursors.Reset();
 
-        bool is_over_li;
-        const auto cursor_lc = ScreenPosToLC(ImGui::GetMousePos(), &is_over_li);
-        if (is_over_li) {
-            SetSelection({cursor_lc.L, 0}, CheckedNextLineBegin(cursor_lc.L), Cursors.back());
+        if (IsOverLineNumber) {
+            SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
         } else {
-            Cursors.GetLastAdded().Set(cursor_lc);
+            Cursors.GetLastAdded().Set(mouse_lc);
         }
 
-        LastClickTime = float(ImGui::GetTime());
-        LastClickPos = io.MousePos;
+        LastClickTime = time;
+        LastClickPos = mouse_pos;
     } else if (ImGui::IsMouseReleased(MouseLeft)) {
         Cursors.SortAndMerge();
     }
@@ -971,7 +989,7 @@ bool TextEditor::Render(bool is_parent_focused) {
     }
     const bool is_focused = ImGui::IsWindowFocused() || is_parent_focused;
     if (is_focused) HandleKeyboardInputs();
-    if (ImGui::IsWindowHovered()) HandleMouseInputs();
+    HandleMouseInputs();
 
     const float font_size = ImGui::GetFontSize();
     const float font_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
@@ -1093,16 +1111,14 @@ bool TextEditor::Render(bool is_parent_focused) {
             }
             if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
                 const auto color = Syntax->StyleByCaptureId.at(*transition_it).Color;
-                const float x = text_screen_pos_x + lc.C * CharAdvance.x;
                 auto c = ImColor(color);
                 c.Value.w = 0.2f;
-                dl->AddRectFilled({x, line_start_screen_pos.y}, ImVec2{x, line_start_screen_pos.y} + CharAdvance, c);
+                dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, c);
             }
             if (ShowChangedCaptureRanges) {
                 for (const auto &range : Syntax->ChangedCaptureRanges) {
                     if (byte_index >= range.Start && byte_index < range.End) {
-                        const float x = text_screen_pos_x + lc.C * CharAdvance.x;
-                        dl->AddRectFilled({x, line_start_screen_pos.y}, ImVec2{x, line_start_screen_pos.y} + CharAdvance, IM_COL32(255, 255, 255, 20));
+                        dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, IM_COL32(255, 255, 255, 20));
                     }
                 }
             }
@@ -1119,6 +1135,18 @@ bool TextEditor::Render(bool is_parent_focused) {
     };
 
     ImGui::SetCursorPos({0, 0});
+
+    // Stack invisible items to push node hierarchy to ImGui stack.
+    if (Syntax && HoveredNode) {
+        const auto before_cursor = ImGui::GetCursorScreenPos();
+        for (const auto &node : reverse_view(HoveredNode->Hierarchy)) {
+            ImGui::PushOverrideID(node.Id);
+            ImGui::InvisibleButton("", CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
+            ImGui::SetCursorScreenPos(before_cursor);
+        }
+        for (uint i = 0; i < HoveredNode->Hierarchy.size(); ++i) ImGui::PopID();
+    }
+
     ImGui::Dummy(CurrentSpaceDims);
     if (edited_cursor) {
         // Move scroll to keep the edited cursor visible.

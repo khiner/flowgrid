@@ -36,16 +36,21 @@ void Info::Render() const {
         TableHeadersRow();
         for (int n = 0; n < tool->Results.Size; n++) {
             const auto *info = &tool->Results[n];
-            if (Component::MetadataById.contains(info->ID)) {
-                const auto &metadata = Component::MetadataById.at(info->ID);
-                if (ShowId) {
-                    TableNextColumn();
-                    Text("0x%08X", info->ID);
-                }
+            if (ShowId) {
                 TableNextColumn();
-                TextUnformatted(metadata.Name.c_str());
+                Text("0x%08X", info->ID);
+            }
+            if (const auto it = HelpInfo::ById.find(info->ID); it != HelpInfo::ById.end()) {
+                const auto &data = it->second;
                 TableNextColumn();
-                TextUnformatted(metadata.Help.empty() ? "-" : metadata.Help.c_str());
+                TextUnformatted(data.Name.c_str());
+                TableNextColumn();
+                TextUnformatted(data.Help.empty() ? "-" : data.Help.c_str());
+            } else {
+                TableNextColumn();
+                Text("-");
+                TableNextColumn();
+                Text("-");
             }
         }
         EndTable();

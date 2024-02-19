@@ -17,6 +17,7 @@
 namespace fs = std::filesystem;
 
 struct SyntaxTree;
+struct SyntaxNodeInfo;
 
 /**
 Holds the byte parts of `TSInputEdit` (not the points).
@@ -393,6 +394,9 @@ private:
 
     uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
+    void CreateHoveredNode(uint byte_index);
+    void DestroyHoveredNode();
+
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
     static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
 
@@ -413,9 +417,11 @@ private:
     ImVec2 ContentDims{0, 0}; // Pixel width/height of current content area.
     Coords ContentCoordDims{0, 0}; // Coords width/height of current content area.
     ImVec2 CurrentSpaceDims{20, 20}; // Pixel width/height given to `ImGui::Dummy`.
-    ImVec2 LastClickPos{-1, -1}, LastPanMousePos{-1, -1};
+    ImVec2 LastClickPos{-1, -1};
     float LastClickTime{-1}; // ImGui time.
     std::optional<Cursor> MatchingBrackets{};
+    std::unique_ptr<SyntaxNodeInfo> HoveredNode{};
+    bool IsOverLineNumber{false};
     bool ScrollToTop{false};
 
     std::unique_ptr<SyntaxTree> Syntax;

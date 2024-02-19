@@ -8,6 +8,7 @@
 #include "nlohmann/json.hpp"
 
 #include "ComponentArgs.h"
+#include "Core/HelpInfo.h"
 #include "Core/Primitive/PrimitiveVariant.h"
 #include "Core/Store/Patch/PatchOp.h"
 #include "Helper/Paths.h"
@@ -69,15 +70,6 @@ struct Component {
 
     static Fonts gFonts;
 
-    struct Metadata {
-        const string Name, Help;
-
-        // Split the string on '?'.
-        // If there is no '?' in the provided string, the first element will have the full input string and the second element will be an empty string.
-        // todo don't split on escaped '\?'
-        static Metadata Parse(string_view meta_str);
-    };
-
     struct ChangeListener {
         // Called when at least one of the listened components has changed.
         // Changed component(s) are not passed to the callback, but it's called while the components are still marked as changed,
@@ -92,9 +84,6 @@ struct Component {
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
     inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (Primitives/Containers).
-
-    // Additional metadata for display in the Info stack.
-    inline static std::unordered_map<ID, Metadata> MetadataById;
 
     // Use when you expect a component with exactly this path to exist.
     inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IdByPath.at(path)); }
@@ -257,7 +246,7 @@ protected:
     void FlashUpdateRecencyBackground(std::optional<StorePath> relative_path = {}) const;
 
 private:
-    Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu);
+    Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo meta, ImGuiWindowFlags flags, Menu &&menu);
 };
 
 // Minimal/base debug component.

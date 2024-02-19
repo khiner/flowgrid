@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include <tree_sitter/api.h>
 
+#include "Core/HelpInfo.h"
 #include "Helper/Hex.h"
 #include "LanguageID.h"
 
@@ -333,6 +334,15 @@ struct ByteRange {
 
 static ByteRange ToByteRange(const TSNode &node) { return {ts_node_start_byte(node), ts_node_end_byte(node)}; }
 
+struct SyntaxNodeInfo {
+    struct Node {
+        ID Id; // For pushing to the ImGui ID stack and `HelpInfo`.
+        std::string Type;
+    };
+    std::vector<Node> Hierarchy; // Types of the leaf node and its ancestors, starting with the leaf node.
+    ByteRange Range; // Byte range of the leaf node.
+};
+
 struct SyntaxTree {
     // todo take language
     SyntaxTree(TSInput input) : Input(input), Parser(ts_parser_new()) {}
@@ -465,6 +475,22 @@ struct SyntaxTree {
         std::string s_expression(c_string);
         free(c_string);
         return s_expression;
+    }
+
+    SyntaxNodeInfo GetNodeAtByte(uint byte_index) const {
+        TSNode node = ts_node_descendant_for_byte_range(ts_tree_root_node(Tree), byte_index, byte_index);
+        const ByteRange range{ts_node_start_byte(node), ts_node_end_byte(node)};
+
+        std::vector<SyntaxNodeInfo::Node> hierarchy;
+        ID id = 0;
+        do {
+            const char *type = ts_node_type(node);
+            id = GenerateId(id, type);
+            hierarchy.emplace_back(id, std::move(type));
+            node = ts_node_parent(node);
+        } while (node.id != 0);
+
+        return {std::move(hierarchy), range};
     }
 
     inline static uint NoneCaptureId{uint(-1)}; // Corresponds to the default style.

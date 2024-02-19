@@ -21,12 +21,6 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Metadata Component::Metadata::Parse(string_view str) {
-    const auto help_split = str.find_first_of('?');
-    const bool found = help_split != string::npos;
-    return {found ? string(str.substr(0, help_split)) : string(str), found ? string(str.substr(help_split + 1)) : ""};
-}
-
 Component::Component(Store &store, PrimitiveActionQueuer &primitive_q, const Windows &windows, const fg::Style &style)
     : RootStore(store), PrimitiveQ(primitive_q), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
@@ -34,7 +28,7 @@ Component::Component(Store &store, PrimitiveActionQueuer &primitive_q, const Win
     IdByPath.emplace(Path, Id);
 }
 
-Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, Metadata meta, ImGuiWindowFlags flags, Menu &&menu)
+Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo info, ImGuiWindowFlags flags, Menu &&menu)
     : RootStore(parent->RootStore),
       PrimitiveQ(parent->PrimitiveQ),
       gWindows(parent->gWindows),
@@ -43,32 +37,33 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
       Parent(parent),
       PathSegment(path_segment),
       Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),
-      Name(meta.Name.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : meta.Name),
-      Help(meta.Help),
+      Name(info.Name.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : info.Name),
+      Help(info.Help),
       ImGuiLabel(Name.empty() ? "" : (path_prefix_segment.empty() ? std::format("{}##{}", Name, PathSegment) : std::format("{}##{}/{}", Name, path_prefix_segment, PathSegment))),
-      Id(ImHashStr(ImGuiLabel.c_str(), 0, Parent->Id)),
+      Id(GenerateId(Parent->Id, ImGuiLabel.c_str())),
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {
     ById.emplace(Id, this);
     IdByPath.emplace(Path, Id);
+    HelpInfo::ById.emplace(Id, HelpInfo{Name, Help});
     parent->Children.emplace_back(this);
-    MetadataById.emplace(Id, Metadata{Name, Help});
 }
 
 Component::Component(ComponentArgs &&args)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, Menu{{}}) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), HelpInfo::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, Menu{{}}) {}
 
 Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), flags, Menu{{}}) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), HelpInfo::Parse(std::move(args.MetaStr)), flags, Menu{{}}) {}
 Component::Component(ComponentArgs &&args, Menu &&menu)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), HelpInfo::Parse(std::move(args.MetaStr)), ImGuiWindowFlags_None, std::move(menu)) {}
 Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu)
-    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), Metadata::Parse(std::move(args.MetaStr)), flags, std::move(menu)) {}
+    : Component(std::move(args.Parent), std::move(args.PathSegment), std::move(args.PathSegmentPrefix), HelpInfo::Parse(std::move(args.MetaStr)), flags, std::move(menu)) {}
 
 Component::~Component() {
     if (Parent) std::erase_if(Parent->Children, [this](const auto *child) { return child == this; });
     ById.erase(Id);
     IdByPath.erase(Path);
+    HelpInfo::ById.erase(Id);
     ChangeListenersById.erase(Id);
 }
 

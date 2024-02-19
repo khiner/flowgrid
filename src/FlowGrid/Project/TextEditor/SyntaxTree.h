@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include <tree_sitter/api.h>
 
+#include "Helper/Hex.h"
 #include "LanguageID.h"
 
 using json = nlohmann::json;
@@ -19,6 +20,21 @@ using std::views::filter, std::ranges::reverse_view;
 extern "C" TSLanguage *tree_sitter_cpp();
 extern "C" TSLanguage *tree_sitter_faust();
 extern "C" TSLanguage *tree_sitter_json();
+
+/*
+WIP Syntax highlighting strategy:
+Manually convert lua vim themes to `tree-sitter/config.json` themes.
+
+Starting with:
+https://github.com/TomLebeda/chroma_code/blob/main/examples/config-example.json
+since this is based on nvim-treesitter highlight groups.
+
+Next, convert e.g. https://github.com/folke/tokyonight.nvim/blob/main/lua/tokyonight/theme.lua#L211-L323,
+tracing the nvim tree-sitter highlights through the theme highlight names to the colors/styles.
+
+Other themes: Lots of folks recommend https://github.com/sainnhe/sonokai
+There's also this huge list: https://github.com/rockerBOO/awesome-neovim?tab=readme-ov-file#tree-sitter-supported-colorscheme
+*/
 
 struct LanguageDefinition {
     // todo recursively copy `queries` dir to build dir in CMake.
@@ -160,6 +176,7 @@ void from_json(const json &j, TextEditorStyle::CharStyle &style) {
         if (j.contains("color")) style.Color = CharStyleColorValuetoU32(j.at("color"));
         if (j.contains("bold")) j.at("bold").get_to(style.Bold);
         if (j.contains("italic")) j.at("italic").get_to(style.Italic);
+        if (j.contains("underline")) j.at("italic").get_to(style.Underline);
     } else if (j.is_number() || j.is_string()) {
         style.Color = CharStyleColorValuetoU32(j);
     } else {

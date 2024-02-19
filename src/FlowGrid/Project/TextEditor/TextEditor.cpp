@@ -14,7 +14,6 @@
 
 #include "Application/ApplicationPreferences.h"
 #include "Helper/File.h"
-#include "Helper/Hex.h"
 #include "Helper/Time.h"
 #include "SyntaxTree.h"
 

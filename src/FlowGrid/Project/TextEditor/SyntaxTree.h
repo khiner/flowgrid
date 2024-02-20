@@ -163,16 +163,44 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
     throw std::runtime_error("Invalid color type in tree-sitter config JSON.");
 }
 
+// These classes corresponds to tree-sitter's `config.json`.
+// https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
+struct TextEditorCharStyle {
+    ImU32 Color{IM_COL32_WHITE};
+    bool Bold{false}, Italic{false}, Underline{false};
+};
 struct TSConfig {
     std::vector<std::string> ParserDirectories{};
-    std::unordered_map<std::string, TextBufferImplStyle::CharStyle> StyleByHighlightName{};
+    std::unordered_map<std::string, TextEditorCharStyle> StyleByHighlightName{};
 
-    inline static const TextBufferImplStyle::CharStyle DefaultCharStyle{};
+    inline static const TextEditorCharStyle DefaultCharStyle{};
 
-    TextBufferImplStyle::CharStyle FindStyleByCaptureName(const std::string &) const;
+    TextEditorCharStyle FindStyleByCaptureName(const std::string &) const;
 };
 
-void from_json(const json &j, TextBufferImplStyle::CharStyle &style) {
+/**
+From the [tree-sitter docs](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme):
+A theme can contain multiple keys that share a common subsequence.
+Examples:
+- 'variable' and 'variable.parameter'
+- 'function', 'function.builtin', and 'function.method'
+
+For a given highlight, styling will be determined based on the longest matching theme key.
+For example, the highlight 'function.builtin.static' would match the key 'function.builtin' rather than 'function'.
+*/
+TextEditorCharStyle TSConfig::FindStyleByCaptureName(const std::string &capture_name) const {
+    size_t pos = capture_name.size();
+    do {
+        if (auto it = StyleByHighlightName.find(capture_name.substr(0, pos)); it != StyleByHighlightName.end()) {
+            return it->second;
+        }
+        pos = capture_name.rfind('.', pos - 1); // Move to the last '.' before the current `pos`.
+    } while (pos != std::string::npos);
+
+    return DefaultCharStyle;
+}
+
+void from_json(const json &j, TextEditorCharStyle &style) {
     if (j.is_object()) {
         if (j.contains("color")) style.Color = CharStyleColorValuetoU32(j.at("color"));
         if (j.contains("bold")) j.at("bold").get_to(style.Bold);
@@ -189,7 +217,7 @@ void from_json(const json &j, TSConfig &config) {
     const auto &theme = j.at("theme");
     for (const auto &[key, value] : theme.items()) {
         if (!value.is_null()) {
-            config.StyleByHighlightName[key] = value.get<TextBufferImplStyle::CharStyle>();
+            config.StyleByHighlightName[key] = value.get<TextEditorCharStyle>();
         }
     }
 }
@@ -341,6 +369,32 @@ struct SyntaxNodeInfo {
     };
     std::vector<Node> Hierarchy; // Types of the leaf node and its ancestors, starting with the leaf node.
     ByteRange Range; // Byte range of the leaf node.
+};
+
+/**
+Holds the byte parts of `TSInputEdit` (not the points).
+TS API functions generally handle only having bytes populated.
+(E.g. see https://github.com/tree-sitter/tree-sitter/issues/445)
+`StartByte`: Start position of the text change.
+`OldEndByte`: End position of the original text before the change.
+  - For insertion, same as `start`.
+  - For replacement, where the replaced text ended.
+  - For deletion, where the deleted text ended.
+`NewEndByte`: End position of the new text after the change.
+  - For insertion or replacement, where the new text ends.
+  - For deletion, same as `start`.
+**/
+struct TextInputEdit {
+    uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
+    TextInputEdit Invert() const { return TextInputEdit{StartByte, NewEndByte, OldEndByte}; }
+    bool IsInsert() const { return StartByte == OldEndByte; }
+    bool IsDelete() const { return StartByte == NewEndByte; }
+
+    auto operator<=>(const TextInputEdit &o) const {
+        if (auto cmp = StartByte <=> o.StartByte; cmp != 0) return cmp;
+        if (auto cmp = OldEndByte <=> o.OldEndByte; cmp != 0) return cmp;
+        return NewEndByte <=> o.NewEndByte;
+    }
 };
 
 struct SyntaxTree {
@@ -501,7 +555,7 @@ struct SyntaxTree {
     TSParser *Parser{nullptr};
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
-    std::unordered_map<uint, TextBufferImplStyle::CharStyle> StyleByCaptureId{};
+    std::unordered_map<uint, TextEditorCharStyle> StyleByCaptureId{};
     ByteTransitions<uint> CaptureIdTransitions{NoneCaptureId};
     std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
 };

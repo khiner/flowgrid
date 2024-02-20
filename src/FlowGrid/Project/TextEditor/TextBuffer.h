@@ -14,10 +14,6 @@ struct TextBuffer : Component {
     TextBuffer(ComponentArgs &&, const fs::path &);
     ~TextBuffer();
 
-    // operator bool() const { return bool(Text); }
-    // operator string_view() const { return Text; }
-    // operator string() const { return Text; }
-
     const std::string &GetLanguageFileExtensionsFilter() const;
     std::string GetText() const;
     bool Empty() const;

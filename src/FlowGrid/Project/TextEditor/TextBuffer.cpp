@@ -29,7 +29,7 @@
 
 #include "LanguageID.h"
 #include "SyntaxTree.h"
-#include "TextBufferPaletteIdT.h"
+#include "TextBufferPaletteId.h"
 
 using std::string, std::string_view,
     std::views::filter, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
@@ -112,8 +112,62 @@ struct TextBufferImpl {
     ~TextBufferImpl() = default;
 
     using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
-    inline static const TextBufferPaletteIdT DefaultPaletteId{TextBufferPaletteIdT::Dark};
-    static const PaletteT DarkPalette, MarianaPalette, LightPalette, RetroBluePalette;
+    inline static const TextBufferPaletteId DefaultPaletteId{TextBufferPaletteId::Dark};
+
+    inline static const PaletteT DarkPalette = {{
+        0xffe4dfdc, // Default
+        0xff342c28, // Background
+        0xffe0e0e0, // Cursor
+        0x80a06020, // Selection
+        0x800020ff, // Error
+        0x15ffffff, // ControlCharacter
+        0x40f08000, // Breakpoint
+        0xff94837a, // Line number
+        0x40000000, // Current line fill
+        0x40808080, // Current line fill (inactive)
+        0x40a0a0a0, // Current line edge
+    }};
+
+    inline static const PaletteT MarianaPalette = {{
+        0xffffffff, // Default
+        0xff413830, // Background
+        0xffe0e0e0, // Cursor
+        0x80655a4e, // Selection
+        0x80665fec, // Error
+        0x30ffffff, // ControlCharacter
+        0x40f08000, // Breakpoint
+        0xb0ffffff, // Line number
+        0x80655a4e, // Current line fill
+        0x30655a4e, // Current line fill (inactive)
+        0xb0655a4e, // Current line edge
+    }};
+
+    inline static const PaletteT LightPalette = {{
+        0xff404040, // Default
+        0xffffffff, // Background
+        0xff000000, // Cursor
+        0x40600000, // Selection
+        0xa00010ff, // Error
+        0x90909090, // ControlCharacter
+        0x80f08000, // Breakpoint
+        0xff505000, // Line number
+        0x40000000, // Current line fill
+        0x40808080, // Current line fill (inactive)
+        0x40000000, // Current line edge
+    }};
+
+    inline static const PaletteT RetroBluePalette = {{
+        0xff00ffff, // Default
+        0xff800000, // Background
+        0xff0080ff, // Cursor
+        0x80ffff00, // Selection
+        0xa00000ff, // Error
+        0x80ff8000, // Breakpoint
+        0xff808000, // Line number
+        0x40000000, // Current line fill
+        0x40808080, // Current line fill (inactive)
+        0x40000000, // Current line edge
+    }};
 
     // Represents a character coordinate from the user's point of view,
     // i. e. consider a uniform grid (assuming fixed-width font) on the screen as it is rendered, and each cell has its own coordinate, starting from 0.
@@ -148,8 +202,6 @@ struct TextBufferImpl {
     using Lines = immer::flex_vector<Line>;
     using TransientLine = immer::flex_vector_transient<char>;
     using TransientLines = immer::flex_vector_transient<Line>;
-    using PaletteLine = immer::flex_vector<PaletteIndex>;
-    using PaletteLines = immer::flex_vector<PaletteLine>;
 
     struct LinesIter {
         LinesIter(const Lines &lines, LineChar lc, LineChar begin, LineChar end)
@@ -234,6 +286,7 @@ struct TextBufferImpl {
         }
         Coords GetStartCoords(const TextBufferImpl &editor) { return {Start.L, GetStartColumn(editor)}; }
         Coords GetEndCoords(const TextBufferImpl &editor) { return {End.L, GetEndColumn(editor)}; }
+
         uint Line() const { return End.L; }
         uint CharIndex() const { return End.C; }
         LineChar LC() const { return End; } // Be careful if this is a multiline cursor!
@@ -270,9 +323,6 @@ struct TextBufferImpl {
             SetStart(start, start_column);
             SetEnd(end, end_column);
         }
-
-        void MoveChar(const TextBufferImpl &, bool right = true, bool select = false, bool is_word_mode = false);
-        void MoveLines(const TextBufferImpl &, int amount = 1, bool select = false, bool move_start = false, bool move_end = true);
 
     private:
         // `Start` and `End` are the the first and second coordinate _set in an interaction_.
@@ -368,13 +418,6 @@ struct TextBufferImpl {
             LastAddedIndex = it != end() ? std::distance(begin(), it) : 0;
         }
 
-        void MoveLines(const TextBufferImpl &, int amount = 1, bool select = false, bool move_start = false, bool move_end = true);
-        void MoveChar(const TextBufferImpl &, bool right = true, bool select = false, bool is_word_mode = false);
-        void MoveTop(bool select = false);
-        void MoveBottom(const TextBufferImpl &, bool select = false);
-        void MoveStart(bool select = false);
-        void MoveEnd(const TextBufferImpl &, bool select = false);
-
         // Returns the range of all edited cursor starts/ends since the last call to `ClearEdited()`.
         // Used for updating the scroll range.
         // todo need to update the approach here after switching to persistent undo.
@@ -432,10 +475,10 @@ struct TextBufferImpl {
 
     const PaletteT &GetPalette() const {
         switch (PaletteId) {
-            case TextBufferPaletteIdT::Dark: return DarkPalette;
-            case TextBufferPaletteIdT::Light: return LightPalette;
-            case TextBufferPaletteIdT::Mariana: return MarianaPalette;
-            case TextBufferPaletteIdT::RetroBlue: return RetroBluePalette;
+            case TextBufferPaletteId::Dark: return DarkPalette;
+            case TextBufferPaletteId::Light: return LightPalette;
+            case TextBufferPaletteId::Mariana: return MarianaPalette;
+            case TextBufferPaletteId::RetroBlue: return RetroBluePalette;
         }
     }
 
@@ -473,7 +516,7 @@ struct TextBufferImpl {
         SetLanguage(!extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None);
     }
 
-    void SetPalette(TextBufferPaletteIdT palette_id) { PaletteId = palette_id; }
+    void SetPalette(TextBufferPaletteId palette_id) { PaletteId = palette_id; }
 
     void SetLanguage(LanguageID language_id) {
         if (LanguageId == language_id) return;
@@ -486,10 +529,63 @@ struct TextBufferImpl {
     void SetNumTabSpaces(uint tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
     void SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(line_spacing, 1.f, 2.f); }
 
+    void MoveCursorsBottom(bool select = false) {
+        for (auto &c : Cursors) c.Set(LineMaxLC(LineCount() - 1), !select);
+    }
+    void MoveCursorsTop(bool select = false) {
+        for (auto &c : Cursors) c.Set({0, 0}, !select);
+    }
+    void MoveCursorsStart(bool select = false) {
+        for (auto &c : Cursors) c.Set({c.Line(), 0}, !select);
+    }
+    void MoveCursorsEnd(bool select = false) {
+        for (auto &c : Cursors) c.Set(LineMaxLC(c.Line()), !select);
+    }
+    void MoveCursorsLines(int amount = 1, bool select = false, bool move_start = false, bool move_end = true) {
+        for (auto &c : Cursors) MoveCursorLines(c, amount, select, move_start, move_end);
+    }
+    void MoveCursorsChar(bool right = true, bool select = false, bool is_word_mode = false) {
+        const bool any_selections = Cursors.AnyRanged();
+        for (auto &c : Cursors) {
+            if (any_selections && !select && !is_word_mode) c.Set(right ? c.Max() : c.Min(), true);
+            else MoveCursorChar(c, right, select, is_word_mode);
+        }
+    }
+
+    void MoveCursorLines(Cursor &c, int amount = 1, bool select = false, bool move_start = false, bool move_end = true) {
+        if (!move_start && !move_end) return;
+
+        // Track the cursor's column to return back to it after moving to a line long enough.
+        // (This is the only place we worry about this.)
+        const uint new_end_column = c.GetEndColumn(*this);
+        const uint new_end_li = std::clamp(int(c.GetEnd().L) + amount, 0, int(LineCount() - 1));
+        const LineChar new_end{
+            new_end_li,
+            std::min(GetCharIndex({new_end_li, new_end_column}), GetLineMaxCharIndex(new_end_li)),
+        };
+        if (!select) return c.Set(new_end, true, new_end_column);
+        if (!move_start) return c.Set(new_end, false, new_end_column);
+        const uint new_start_column = c.GetStartColumn(*this);
+        const uint new_start_li = std::clamp(int(c.GetStart().L) + amount, 0, int(LineCount() - 1));
+        const LineChar new_start{
+            new_start_li,
+            std::min(GetCharIndex({new_start_li, new_start_column}), GetLineMaxCharIndex(new_start_li)),
+        };
+        c.Set(new_start, new_end, new_start_column, new_end_column);
+    }
+
+    void MoveCursorChar(Cursor &c, bool right = true, bool select = false, bool is_word_mode = false) {
+        if (auto lci = Iter(c.LC()); (!right && !lci.IsBegin()) || (right && !lci.IsEnd())) {
+            if (right) ++lci;
+            else --lci;
+            c.Set(is_word_mode ? FindWordBoundary(*lci, !right) : *lci, !select);
+        }
+    }
+
     void SelectAll() {
         Cursors.Reset();
-        Cursors.MoveTop();
-        Cursors.MoveBottom(*this, true);
+        MoveCursorsTop();
+        MoveCursorsBottom(true);
     }
 
     bool CanUndo() const { return !ReadOnly && HistoryIndex > 0; }
@@ -707,10 +803,10 @@ private:
     void Backspace(bool is_word_mode = false) {
         BeforeCursors = Cursors;
         if (!Cursors.AnyRanged()) {
-            Cursors.MoveChar(*this, false, true, is_word_mode);
+            MoveCursorsChar(false, true, is_word_mode);
             // Can't do backspace if any cursor is at {0,0}.
             if (!Cursors.AllRanged()) {
-                if (Cursors.AnyRanged()) Cursors.MoveChar(*this, true); // Restore cursors.
+                if (Cursors.AnyRanged()) MoveCursorsChar(true); // Restore cursors.
                 return;
             }
             Cursors.SortAndMerge();
@@ -722,10 +818,10 @@ private:
     void Delete(bool is_word_mode = false) {
         BeforeCursors = Cursors;
         if (!Cursors.AnyRanged()) {
-            Cursors.MoveChar(*this, true, true, is_word_mode);
+            MoveCursorsChar(true, true, is_word_mode);
             // Can't do delete if any cursor is at the end of the last line.
             if (!Cursors.AllRanged()) {
-                if (Cursors.AnyRanged()) Cursors.MoveChar(*this, false); // Restore cursors.
+                if (Cursors.AnyRanged()) MoveCursorsChar(false); // Restore cursors.
                 return;
             }
             Cursors.SortAndMerge();
@@ -770,7 +866,7 @@ private:
     }
 
     // Returns a cursor containing the start/end positions of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
-    std::optional<TextBufferImpl::Cursor> FindNextOccurrence(const string &text, LineChar start, bool case_sensitive) {
+    std::optional<Cursor> FindNextOccurrence(const string &text, LineChar start, bool case_sensitive) {
         if (text.empty()) return {};
 
         auto find_lci = Iter(start);
@@ -795,7 +891,7 @@ private:
         return {};
     }
 
-    std::optional<TextBufferImpl::Cursor> FindMatchingBrackets(const Cursor &c) {
+    std::optional<Cursor> FindMatchingBrackets(const Cursor &c) {
         static const std::unordered_map<char, char>
             OpenToCloseChar{{'{', '}'}, {'(', ')'}, {'[', ']'}},
             CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
@@ -883,7 +979,7 @@ private:
         } else {
             for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) SwapLines(*it, *it + 1);
         }
-        Cursors.MoveLines(*this, up ? -1 : 1, true, true, true);
+        MoveCursorsLines(up ? -1 : 1, true, true, true);
 
         Commit();
     }
@@ -924,7 +1020,7 @@ private:
     void RemoveCurrentLines() {
         BeforeCursors = Cursors;
         for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-        Cursors.MoveStart();
+        MoveCursorsStart();
         Cursors.SortAndMerge();
 
         for (const auto &c : reverse_view(Cursors)) {
@@ -1023,25 +1119,25 @@ private:
         else if (is_shift_shortcut && IsPressed(ImGuiKey_Z) && CanRedo())
             Redo();
         else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
-            Cursors.MoveLines(*this, -1, shift);
+            MoveCursorsLines(-1, shift);
         else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_DownArrow))
-            Cursors.MoveLines(*this, 1, shift);
+            MoveCursorsLines(1, shift);
         else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_LeftArrow))
-            Cursors.MoveChar(*this, false, shift, is_wordmove_key);
+            MoveCursorsChar(false, shift, is_wordmove_key);
         else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
-            Cursors.MoveChar(*this, true, shift, is_wordmove_key);
+            MoveCursorsChar(true, shift, is_wordmove_key);
         else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
-            Cursors.MoveLines(*this, -(ContentCoordDims.L - 2), shift);
+            MoveCursorsLines(-(ContentCoordDims.L - 2), shift);
         else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
-            Cursors.MoveLines(*this, ContentCoordDims.L - 2, shift);
+            MoveCursorsLines(ContentCoordDims.L - 2, shift);
         else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
-            Cursors.MoveTop(shift);
+            MoveCursorsTop(shift);
         else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
-            Cursors.MoveBottom(*this, shift);
+            MoveCursorsBottom(shift);
         else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_Home))
-            Cursors.MoveStart(shift);
+            MoveCursorsStart(shift);
         else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_End))
-            Cursors.MoveEnd(*this, shift);
+            MoveCursorsEnd(shift);
         else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Delete))
             Delete(ctrl);
         else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Backspace))
@@ -1176,7 +1272,7 @@ private:
     Cursors Cursors, BeforeCursors;
     std::vector<TextInputEdit> Edits{};
 
-    TextBufferPaletteIdT PaletteId{DefaultPaletteId};
+    TextBufferPaletteId PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
 
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextBufferImpl.
@@ -1231,55 +1327,6 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     // Read until the end of the line.
     *bytes_read = line.size() - position.column;
     return &line.front() + position.column;
-}
-
-void TextBufferImpl::Cursor::MoveLines(const TextBufferImpl &editor, int amount, bool select, bool move_start, bool move_end) {
-    if (!move_start && !move_end) return;
-
-    // Track the cursor's column to return back to it after moving to a line long enough.
-    // (This is the only place we worry about this.)
-    const uint new_end_column = EndColumn.value_or(editor.ToCoords(End).C);
-    const uint new_end_li = std::clamp(int(End.L) + amount, 0, int(editor.LineCount() - 1));
-    const LineChar new_end{
-        new_end_li,
-        std::min(editor.GetCharIndex({new_end_li, new_end_column}), editor.GetLineMaxCharIndex(new_end_li)),
-    };
-    if (!select) return Set(new_end, true, new_end_column);
-    if (!move_start) return Set(new_end, false, new_end_column);
-    const uint new_start_column = StartColumn.value_or(editor.ToCoords(Start).C);
-    const uint new_start_li = std::clamp(int(Start.L) + amount, 0, int(editor.LineCount() - 1));
-    const LineChar new_start{
-        new_start_li,
-        std::min(editor.GetCharIndex({new_start_li, new_start_column}), editor.GetLineMaxCharIndex(new_start_li)),
-    };
-    Set(new_start, new_end, new_start_column, new_end_column);
-}
-
-void TextBufferImpl::Cursor::MoveChar(const TextBufferImpl &editor, bool right, bool select, bool is_word_mode) {
-    if (auto lci = editor.Iter(LC()); (!right && !lci.IsBegin()) || (right && !lci.IsEnd())) {
-        if (right) ++lci;
-        else --lci;
-        Set(is_word_mode ? editor.FindWordBoundary(*lci, !right) : *lci, !select);
-    }
-}
-
-void TextBufferImpl::Cursors::MoveLines(const TextBufferImpl &editor, int amount, bool select, bool move_start, bool move_end) {
-    for (auto &c : Cursors) c.MoveLines(editor, amount, select, move_start, move_end);
-}
-void TextBufferImpl::Cursors::MoveChar(const TextBufferImpl &editor, bool right, bool select, bool is_word_mode) {
-    const bool any_selections = AnyRanged();
-    for (auto &c : Cursors) {
-        if (any_selections && !select && !is_word_mode) c.Set(right ? c.Max() : c.Min(), true);
-        else c.MoveChar(editor, right, select, is_word_mode);
-    }
-}
-void TextBufferImpl::Cursors::MoveTop(bool select) { Cursors.back().Set({0, 0}, !select); }
-void TextBufferImpl::Cursors::MoveBottom(const TextBufferImpl &editor, bool select) { Cursors.back().Set(editor.LineMaxLC(editor.LineCount() - 1), !select); }
-void TextBufferImpl::Cursors::MoveStart(bool select) {
-    for (auto &c : Cursors) c.Set({c.Line(), 0}, !select);
-}
-void TextBufferImpl::Cursors::MoveEnd(const TextBufferImpl &editor, bool select) {
-    for (auto &c : Cursors) c.Set(editor.LineMaxLC(c.Line()), !select);
 }
 
 bool TextBufferImpl::Render(bool is_parent_focused) {
@@ -1512,61 +1559,6 @@ void TextBufferImpl::DebugPanel() {
     }
 }
 
-const TextBufferImpl::PaletteT TextBufferImpl::DarkPalette = {{
-    0xffe4dfdc, // Default
-    0xff342c28, // Background
-    0xffe0e0e0, // Cursor
-    0x80a06020, // Selection
-    0x800020ff, // Error
-    0x15ffffff, // ControlCharacter
-    0x40f08000, // Breakpoint
-    0xff94837a, // Line number
-    0x40000000, // Current line fill
-    0x40808080, // Current line fill (inactive)
-    0x40a0a0a0, // Current line edge
-}};
-
-const TextBufferImpl::PaletteT TextBufferImpl::MarianaPalette = {{
-    0xffffffff, // Default
-    0xff413830, // Background
-    0xffe0e0e0, // Cursor
-    0x80655a4e, // Selection
-    0x80665fec, // Error
-    0x30ffffff, // ControlCharacter
-    0x40f08000, // Breakpoint
-    0xb0ffffff, // Line number
-    0x80655a4e, // Current line fill
-    0x30655a4e, // Current line fill (inactive)
-    0xb0655a4e, // Current line edge
-}};
-
-const TextBufferImpl::PaletteT TextBufferImpl::LightPalette = {{
-    0xff404040, // Default
-    0xffffffff, // Background
-    0xff000000, // Cursor
-    0x40600000, // Selection
-    0xa00010ff, // Error
-    0x90909090, // ControlCharacter
-    0x80f08000, // Breakpoint
-    0xff505000, // Line number
-    0x40000000, // Current line fill
-    0x40808080, // Current line fill (inactive)
-    0x40000000, // Current line edge
-}};
-
-const TextBufferImpl::PaletteT TextBufferImpl::RetroBluePalette = {{
-    0xff00ffff, // Default
-    0xff800000, // Background
-    0xff0080ff, // Cursor
-    0x80ffff00, // Selection
-    0xa00000ff, // Error
-    0x80ff8000, // Breakpoint
-    0xff808000, // Line number
-    0x40000000, // Current line fill
-    0x40808080, // Current line fill (inactive)
-    0x40000000, // Current line edge
-}};
-
 TextBuffer::TextBuffer(ComponentArgs &&args, const fs::path &file_path)
     : Component(std::move(args)), _LastOpenedFilePath(file_path), Impl(std::make_unique<TextBufferImpl>(file_path)) {
 }
@@ -1624,10 +1616,10 @@ void TextBuffer::RenderMenu() const {
 
     if (BeginMenu("View")) {
         if (BeginMenu("Palette")) {
-            if (MenuItem("Mariana palette")) Impl->SetPalette(TextBufferPaletteIdT::Mariana);
-            if (MenuItem("Dark palette")) Impl->SetPalette(TextBufferPaletteIdT::Dark);
-            if (MenuItem("Light palette")) Impl->SetPalette(TextBufferPaletteIdT::Light);
-            if (MenuItem("Retro blue palette")) Impl->SetPalette(TextBufferPaletteIdT::RetroBlue);
+            if (MenuItem("Mariana palette")) Impl->SetPalette(TextBufferPaletteId::Mariana);
+            if (MenuItem("Dark palette")) Impl->SetPalette(TextBufferPaletteId::Dark);
+            if (MenuItem("Light palette")) Impl->SetPalette(TextBufferPaletteId::Light);
+            if (MenuItem("Retro blue palette")) Impl->SetPalette(TextBufferPaletteId::RetroBlue);
             EndMenu();
         }
         MenuItem("Show style transition points", nullptr, &Impl->ShowStyleTransitionPoints);

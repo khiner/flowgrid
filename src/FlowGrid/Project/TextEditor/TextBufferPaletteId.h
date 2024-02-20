@@ -1,6 +1,6 @@
 #pragma once
 
-enum class TextBufferPaletteIdT {
+enum class TextBufferPaletteId {
     Dark,
     Light,
     Mariana,

@@ -86,9 +86,9 @@ static inline string GetFontName() {
     const string name = GetFont()->GetDebugName();
     return name.substr(0, name.find_first_of('.'));
 }
-static inline string GetFontPath() {
+static inline fs::path GetFontPath() {
     const string name = GetFont()->GetDebugName();
-    return std::format("../res/fonts/{}", name.substr(0, name.find_first_of(','))); // Path is relative to build dir.
+    return fs::path("../res") / "fonts" / name.substr(0, name.find_first_of(',')); // Path is relative to build dir.
 }
 static inline string GetFontBase64() {
     static std::unordered_map<string, string> base64_for_font_name; // avoid recomputing

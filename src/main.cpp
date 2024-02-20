@@ -2,9 +2,12 @@
 
 #include "FlowGrid/Core/Primitive/PrimitiveActionQueuer.h"
 #include "FlowGrid/Core/Store/Store.h"
+#include "FlowGrid/Project/FileDialog/FileDialogImpl.h"
 #include "FlowGrid/Project/Project.h"
 #include "UI/Fonts.h"
 #include "UI/UIContext.h"
+
+FileDialogImpl FileDialogImp;
 
 bool Tick(const Project &project, const UIContext &ui) {
     static auto &io = ImGui::GetIO();
@@ -45,7 +48,7 @@ int main() {
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
     Component::RefreshAll();
 
-    IGFD::Init();
+    FileDialogImp.Init();
 
     {
         // Relying on these rendering side effects up front is not great.
@@ -62,7 +65,7 @@ int main() {
         project.ApplyQueuedActions(queue, false, project.FileDialog.Visible);
     }
 
-    IGFD::Uninit();
+    FileDialogImp.Uninit();
 
     return 0;
 }

@@ -1,12 +1,13 @@
 #include "FileDialog.h"
 
-#include <imgui_internal.h>
 #include <range/v3/range/conversion.hpp>
+
+#include "ImGuiFileDialog.h"
+#include "imgui.h"
 
 #include "FileDialogDataJson.h"
 #include "Helper/File.h"
-#include "ImGuiFileDialog.h"
-#include "UI/Fonts.h"
+#include "FileDialogImpl.h"
 #include "UI/HelpMarker.h"
 #include "UI/Styling.h"
 
@@ -50,8 +51,6 @@ void FileDialog::Demo::OpenDialog(const FileDialogData &data) const {
 
 using namespace ImGui;
 
-static IGFD::FileDialog *Dialog;
-
 // Same as `ImGui::CheckboxFlags`, but with `help` arg.
 bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *help) {
     const bool result = ImGui::CheckboxFlags(label, flags, flags_value);
@@ -60,43 +59,8 @@ bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *h
     return result;
 }
 
-void IGFD::AddFonts() {
-    static const ImWchar IconRanges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
-    ImFontConfig icons_config;
-    icons_config.DstFont = GetDefaultFont();
-    icons_config.MergeMode = true;
-    icons_config.PixelSnapH = true;
-    GetIO().Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15 * Fonts::AtlasScale, &icons_config, IconRanges);
-}
-
-void IGFD::Init() {
-    Dialog = ImGuiFileDialog::Instance();
-
-    // Singleton access
-    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex
-    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", {1, 1, 0, 0.9f});
-    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", {0, 0, 1, 0.9f});
-    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", {1, 0, 1, 0.9f});
-    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", {0, 1, 1, 0.9f}, ICON_IGFD_FILE_PIC); // add an icon for the filter type
-    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", {0, 1, 0.5f, 0.9f}, "[GIF]"); // add an text for a filter type
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, {0.5f, 1, 0.9f, 0.9f}, ICON_IGFD_FOLDER); // for all dirs
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", {0.1f, 0.5f, 0.5f, 0.9f}, ICON_IGFD_ADD);
-    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_FILE_PIC);
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, {0.2f, 0.9f, 0.2f, 0.9f}, ICON_IGFD_FILE); // for all link files
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FOLDER); // for all link dirs
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FILE); // for all link files
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_BOOKMARK);
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", {0.5f, 0.8f, 0.5f, 0.9f}, ICON_IGFD_SAVE);
-
-#ifdef USE_BOOKMARK
-    // Load bookmarks
-    if (fs::exists("bookmarks.conf")) Dialog->DeserializeBookmarks(FileIO::read("bookmarks.conf"));
-    Dialog->AddBookmark("Current dir", ".");
-#endif
-}
-
 void FileDialog::Render() const {
-    if (!Visible) return Dialog->Close();
+    if (!Visible) return FileDialogImp.Dialog->Close();
 
     static const string DialogKey = "FileDialog";
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
@@ -110,10 +74,10 @@ void FileDialog::Render() const {
     config.countSelectionMax = MaxNumSelections;
     config.flags = flags;
     config.filePathName = DefaultFileName;
-    Dialog->OpenDialog(DialogKey, Title, Filters.c_str(), config);
-    if (Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
+    FileDialogImp.Dialog->OpenDialog(DialogKey, Title, Filters.c_str(), config);
+    if (FileDialogImp.Dialog->Display(DialogKey, ImGuiWindowFlags_NoCollapse, GetMainViewport()->Size / 2)) {
         Visible = false;
-        if (Dialog->IsOk()) Q(Action::FileDialog::Select{Dialog->GetFilePathName()});
+        if (FileDialogImp.Dialog->IsOk()) Q(Action::FileDialog::Select{FileDialogImp.Dialog->GetFilePathName()});
     }
 }
 
@@ -202,9 +166,9 @@ void FileDialog::Demo::Render() const {
     //         save_file_user_data, flags);
     // }
 
-    FilePathName = Dialog->GetFilePathName();
-    static string file_path = Dialog->GetCurrentPath();
-    static string user_data = Dialog->GetUserDatas() ? string((const char *)Dialog->GetUserDatas()) : "";
+    FilePathName = FileDialogImp.Dialog->GetFilePathName();
+    static string file_path = FileDialogImp.Dialog->GetCurrentPath();
+    static string user_data = FileDialogImp.Dialog->GetUserDatas() ? string((const char *)FileDialogImp.Dialog->GetUserDatas()) : "";
 
     Separator();
 
@@ -213,7 +177,7 @@ void FileDialog::Demo::Render() const {
     {
         TextUnformatted(std::format("FilePathName: {}", FilePathName).c_str());
         TextUnformatted(std::format("FilePath: {}", file_path).c_str());
-        TextUnformatted(std::format("Filters: {}", Dialog->GetCurrentFilter()).c_str());
+        TextUnformatted(std::format("Filters: {}", FileDialogImp.Dialog->GetCurrentFilter()).c_str());
         TextUnformatted(std::format("UserDatas: {}", user_data).c_str());
         TextUnformatted("Selection: ");
         Indent();
@@ -225,7 +189,7 @@ void FileDialog::Demo::Render() const {
                 TableHeadersRow();
 
                 static int selected = 0;
-                const auto &selection = Dialog->GetSelection();
+                const auto &selection = FileDialogImp.Dialog->GetSelection();
                 const auto selection_keys = selection | std::views::keys | ranges::to<std::vector>();
                 ImGuiListClipper clipper;
                 clipper.Begin(int(selection.size()), GetTextLineHeightWithSpacing());
@@ -251,15 +215,4 @@ void FileDialog::Demo::Render() const {
         Unindent();
     }
     Unindent();
-}
-
-void IGFD::Uninit() {
-#ifdef USE_THUMBNAILS
-    Dialog->ManageGPUThumbnails();
-#endif
-
-#ifdef USE_BOOKMARK
-    Dialog->RemoveBookmark("Current dir");
-    FileIO::write("bookmarks_1.conf", Dialog->SerializeBookmarks());
-#endif
 }

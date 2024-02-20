@@ -89,13 +89,6 @@ static float Distance(const ImVec2 &a, const ImVec2 &b) {
     return sqrt(x * x + y * y);
 }
 
-static bool IsPressed(ImGuiKey key) {
-    const auto key_index = ImGui::GetKeyIndex(key);
-    const auto window_id = ImGui::GetCurrentWindowRead()->ID;
-    ImGui::SetKeyOwner(key_index, window_id); // Prevent app from handling this key press.
-    return ImGui::IsKeyPressed(key_index, window_id, ImGuiInputFlags_Repeat);
-}
-
 struct TextBufferImpl {
     TextBufferImpl(std::string_view text, LanguageID language_id)
         : Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
@@ -544,6 +537,10 @@ struct TextBufferImpl {
     void MoveCursorsLines(int amount = 1, bool select = false, bool move_start = false, bool move_end = true) {
         for (auto &c : Cursors) MoveCursorLines(c, amount, select, move_start, move_end);
     }
+    void PageCursorsLines(bool up, bool select = false) {
+        MoveCursorsLines((ContentCoordDims.L - 2) * (up ? -1 : 1), select);
+    }
+
     void MoveCursorsChar(bool right = true, bool select = false, bool is_word_mode = false) {
         const bool any_selections = Cursors.AnyRanged();
         for (auto &c : Cursors) {
@@ -666,7 +663,173 @@ struct TextBufferImpl {
         Commit();
     }
 
-    bool Render(bool is_parent_focused = false);
+    void EnterChar(ImWchar ch, bool is_shift) {
+        if (ch == '\t' && Cursors.AnyMultiline()) return ChangeCurrentLinesIndentation(!is_shift);
+
+        BeforeCursors = Cursors;
+        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+
+        // Order is important here for typing '\n' in the same line with multiple cursors.
+        for (auto &c : reverse_view(Cursors)) {
+            TransientLine insert_line_trans{};
+            if (ch == '\n') {
+                if (AutoIndent && c.CharIndex() != 0) {
+                    // Match the indentation of the current or next line, whichever has more indentation.
+                    // todo use tree-sitter fold queries
+                    const uint li = c.Line();
+                    const uint indent_li = li < Text.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
+                    const auto &indent_line = Text[indent_li];
+                    for (uint i = 0; i < insert_line_trans.size() && isblank(indent_line[i]); ++i) insert_line_trans.push_back(indent_line[i]);
+                }
+            } else {
+                char buf[5];
+                ImTextCharToUtf8(buf, ch);
+                for (uint i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line_trans.push_back(buf[i]);
+            }
+            auto insert_line = insert_line_trans.persistent();
+            InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, c);
+        }
+
+        Commit();
+    }
+
+    void Backspace(bool is_word_mode = false) {
+        BeforeCursors = Cursors;
+        if (!Cursors.AnyRanged()) {
+            MoveCursorsChar(false, true, is_word_mode);
+            // Can't do backspace if any cursor is at {0,0}.
+            if (!Cursors.AllRanged()) {
+                if (Cursors.AnyRanged()) MoveCursorsChar(true); // Restore cursors.
+                return;
+            }
+            Cursors.SortAndMerge();
+        }
+        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+        Commit();
+    }
+
+    void Delete(bool is_word_mode = false) {
+        BeforeCursors = Cursors;
+        if (!Cursors.AnyRanged()) {
+            MoveCursorsChar(true, true, is_word_mode);
+            // Can't do delete if any cursor is at the end of the last line.
+            if (!Cursors.AllRanged()) {
+                if (Cursors.AnyRanged()) MoveCursorsChar(false); // Restore cursors.
+                return;
+            }
+            Cursors.SortAndMerge();
+        }
+        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+        Commit();
+    }
+
+    void MoveCurrentLines(bool up) {
+        BeforeCursors = Cursors;
+        std::set<uint> affected_lines;
+        uint min_li = std::numeric_limits<uint>::max(), max_li = std::numeric_limits<uint>::min();
+        for (const auto &c : Cursors) {
+            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
+                // Check if selection ends at line start.
+                if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
+
+                affected_lines.insert(li);
+                min_li = std::min(li, min_li);
+                max_li = std::max(li, max_li);
+            }
+        }
+        if ((up && min_li == 0) || (!up && max_li == Text.size() - 1)) return; // Can't move up/down anymore.
+
+        if (up) {
+            for (const uint li : affected_lines) SwapLines(li - 1, li);
+        } else {
+            for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) SwapLines(*it, *it + 1);
+        }
+        MoveCursorsLines(up ? -1 : 1, true, true, true);
+
+        Commit();
+    }
+
+    void ToggleLineComment() {
+        const string &comment = Languages.Get(LanguageId).SingleLineComment;
+        if (comment.empty()) return;
+
+        static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), std::ranges::find_if_not(line, isblank)); };
+
+        std::unordered_set<uint> affected_lines;
+        for (const auto &c : Cursors) {
+            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
+                if (!(c.IsRange() && c.Max() == LineChar{li, 0}) && !Text[li].empty()) affected_lines.insert(li);
+            }
+        }
+
+        const bool should_add_comment = any_of(affected_lines, [&](uint li) {
+            return !Equals(comment, Text[li], FindFirstNonSpace(Text[li]));
+        });
+
+        BeforeCursors = Cursors;
+        for (uint li : affected_lines) {
+            if (should_add_comment) {
+                InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0});
+            } else {
+                const auto &line = Text[li];
+                const uint ci = FindFirstNonSpace(line);
+                uint comment_ci = ci + comment.length();
+                if (comment_ci < line.size() && line[comment_ci] == ' ') ++comment_ci;
+
+                DeleteRange({li, ci}, {li, comment_ci});
+            }
+        }
+        Commit();
+    }
+
+    void RemoveCurrentLines() {
+        BeforeCursors = Cursors;
+        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
+        MoveCursorsStart();
+        Cursors.SortAndMerge();
+
+        for (const auto &c : reverse_view(Cursors)) {
+            const uint li = c.Line();
+            DeleteRange(
+                li == Text.size() - 1 && li > 0 ? LineMaxLC(li - 1) : LineChar{li, 0},
+                CheckedNextLineBegin(li)
+            );
+        }
+        Commit();
+    }
+
+    void ChangeCurrentLinesIndentation(bool increase) {
+        BeforeCursors = Cursors;
+        for (const auto &c : reverse_view(Cursors)) {
+            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
+                // Check if selection ends at line start.
+                if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
+
+                const auto &line = Text[li];
+                if (increase) {
+                    if (!line.empty()) InsertText({{'\t'}}, {li, 0});
+                } else {
+                    int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
+                    while (ci > -1 && isblank(line[ci])) --ci;
+                    if (const bool only_space_chars_found = ci == -1; only_space_chars_found) {
+                        DeleteRange({li, 0}, {li, GetCharIndex(line, NumTabSpaces)});
+                    }
+                }
+            }
+        }
+        Commit();
+    }
+
+    void AddCursorForNextOccurrence(bool case_sensitive = true) {
+        const auto &c = Cursors.GetLastAdded();
+        if (const auto match_range = FindNextOccurrence(GetSelectedText(c), c.Max(), case_sensitive)) {
+            Cursors.Add();
+            SetSelection(match_range->GetStart(), match_range->GetEnd(), Cursors.back());
+            Cursors.SortAndMerge();
+        }
+    }
+
+    void Render(bool is_focused);
     void DebugPanel();
 
     bool ReadOnly{false};
@@ -770,78 +933,9 @@ private:
         return column;
     }
 
-    void EnterChar(ImWchar ch, bool is_shift) {
-        if (ch == '\t' && Cursors.AnyMultiline()) return ChangeCurrentLinesIndentation(!is_shift);
-
-        BeforeCursors = Cursors;
-        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-
-        // Order is important here for typing '\n' in the same line with multiple cursors.
-        for (auto &c : reverse_view(Cursors)) {
-            TransientLine insert_line_trans{};
-            if (ch == '\n') {
-                if (AutoIndent && c.CharIndex() != 0) {
-                    // Match the indentation of the current or next line, whichever has more indentation.
-                    // todo use tree-sitter fold queries
-                    const uint li = c.Line();
-                    const uint indent_li = li < Text.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
-                    const auto &indent_line = Text[indent_li];
-                    for (uint i = 0; i < insert_line_trans.size() && isblank(indent_line[i]); ++i) insert_line_trans.push_back(indent_line[i]);
-                }
-            } else {
-                char buf[5];
-                ImTextCharToUtf8(buf, ch);
-                for (uint i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line_trans.push_back(buf[i]);
-            }
-            auto insert_line = insert_line_trans.persistent();
-            InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, c);
-        }
-
-        Commit();
-    }
-
-    void Backspace(bool is_word_mode = false) {
-        BeforeCursors = Cursors;
-        if (!Cursors.AnyRanged()) {
-            MoveCursorsChar(false, true, is_word_mode);
-            // Can't do backspace if any cursor is at {0,0}.
-            if (!Cursors.AllRanged()) {
-                if (Cursors.AnyRanged()) MoveCursorsChar(true); // Restore cursors.
-                return;
-            }
-            Cursors.SortAndMerge();
-        }
-        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-        Commit();
-    }
-
-    void Delete(bool is_word_mode = false) {
-        BeforeCursors = Cursors;
-        if (!Cursors.AnyRanged()) {
-            MoveCursorsChar(true, true, is_word_mode);
-            // Can't do delete if any cursor is at the end of the last line.
-            if (!Cursors.AllRanged()) {
-                if (Cursors.AnyRanged()) MoveCursorsChar(false); // Restore cursors.
-                return;
-            }
-            Cursors.SortAndMerge();
-        }
-        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-        Commit();
-    }
-
     void SetSelection(LineChar start, LineChar end, Cursor &c) {
         const LineChar min_lc{0, 0}, max_lc{LineMaxLC(Text.size() - 1)};
         c.Set(std::clamp(start, min_lc, max_lc), std::clamp(end, min_lc, max_lc));
-    }
-
-    void AddCursorForNextOccurrence(bool case_sensitive = true) {
-        const auto &c = Cursors.GetLastAdded();
-        if (const auto match_range = FindNextOccurrence(GetSelectedText(c), c.Max(), case_sensitive)) {
-            Cursors.Add();
-            SetSelection(match_range->GetStart(), match_range->GetEnd(), Cursors.back());
-            Cursors.SortAndMerge();
-        }
     }
 
     LineChar FindWordBoundary(LineChar from, bool is_start = false) const {
@@ -927,28 +1021,6 @@ private:
         return column;
     }
 
-    void ChangeCurrentLinesIndentation(bool increase) {
-        BeforeCursors = Cursors;
-        for (const auto &c : reverse_view(Cursors)) {
-            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
-                // Check if selection ends at line start.
-                if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
-
-                const auto &line = Text[li];
-                if (increase) {
-                    if (!line.empty()) InsertText({{'\t'}}, {li, 0});
-                } else {
-                    int ci = int(GetCharIndex(line, NumTabSpaces)) - 1;
-                    while (ci > -1 && isblank(line[ci])) --ci;
-                    if (const bool only_space_chars_found = ci == -1; only_space_chars_found) {
-                        DeleteRange({li, 0}, {li, GetCharIndex(line, NumTabSpaces)});
-                    }
-                }
-            }
-        }
-        Commit();
-    }
-
     void SwapLines(uint li1, uint li2) {
         if (li1 == li2 || li1 >= Text.size() || li2 >= Text.size()) return;
 
@@ -956,81 +1028,6 @@ private:
         if (li2 + 1 < Text.size() - 1) DeleteRange({li2 + 1, 0}, {li2 + 2, 0}, false);
         // If the second line is the last line, we also need to delete the newline we just inserted.
         else DeleteRange({li2, uint(Text[li2].size())}, EndLC(), false);
-    }
-
-    void MoveCurrentLines(bool up) {
-        BeforeCursors = Cursors;
-        std::set<uint> affected_lines;
-        uint min_li = std::numeric_limits<uint>::max(), max_li = std::numeric_limits<uint>::min();
-        for (const auto &c : Cursors) {
-            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
-                // Check if selection ends at line start.
-                if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
-
-                affected_lines.insert(li);
-                min_li = std::min(li, min_li);
-                max_li = std::max(li, max_li);
-            }
-        }
-        if ((up && min_li == 0) || (!up && max_li == Text.size() - 1)) return; // Can't move up/down anymore.
-
-        if (up) {
-            for (const uint li : affected_lines) SwapLines(li - 1, li);
-        } else {
-            for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) SwapLines(*it, *it + 1);
-        }
-        MoveCursorsLines(up ? -1 : 1, true, true, true);
-
-        Commit();
-    }
-
-    void ToggleLineComment() {
-        const string &comment = Languages.Get(LanguageId).SingleLineComment;
-        if (comment.empty()) return;
-
-        static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), std::ranges::find_if_not(line, isblank)); };
-
-        std::unordered_set<uint> affected_lines;
-        for (const auto &c : Cursors) {
-            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
-                if (!(c.IsRange() && c.Max() == LineChar{li, 0}) && !Text[li].empty()) affected_lines.insert(li);
-            }
-        }
-
-        const bool should_add_comment = any_of(affected_lines, [&](uint li) {
-            return !Equals(comment, Text[li], FindFirstNonSpace(Text[li]));
-        });
-
-        BeforeCursors = Cursors;
-        for (uint li : affected_lines) {
-            if (should_add_comment) {
-                InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0});
-            } else {
-                const auto &line = Text[li];
-                const uint ci = FindFirstNonSpace(line);
-                uint comment_ci = ci + comment.length();
-                if (comment_ci < line.size() && line[comment_ci] == ' ') ++comment_ci;
-
-                DeleteRange({li, ci}, {li, comment_ci});
-            }
-        }
-        Commit();
-    }
-
-    void RemoveCurrentLines() {
-        BeforeCursors = Cursors;
-        for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-        MoveCursorsStart();
-        Cursors.SortAndMerge();
-
-        for (const auto &c : reverse_view(Cursors)) {
-            const uint li = c.Line();
-            DeleteRange(
-                li == Text.size() - 1 && li > 0 ? LineMaxLC(li - 1) : LineChar{li, 0},
-                CheckedNextLineBegin(li)
-            );
-        }
-        Commit();
     }
 
     // Returns insertion end.
@@ -1099,92 +1096,10 @@ private:
         c.Set(c.Min());
     }
 
-    void HandleKeyboardInputs() {
-        if (ImGui::IsWindowHovered()) ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
-
-        auto &io = ImGui::GetIO();
-        io.WantCaptureKeyboard = io.WantTextInput = true;
-
-        const bool
-            is_osx = io.ConfigMacOSXBehaviors,
-            alt = io.KeyAlt, ctrl = io.KeyCtrl, shift = io.KeyShift, super = io.KeySuper,
-            is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift,
-            is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt,
-            is_wordmove_key = is_osx ? alt : ctrl,
-            is_ctrl_only = ctrl && !alt && !shift && !super,
-            is_shift_only = shift && !alt && !ctrl && !super;
-
-        if (is_shortcut && IsPressed(ImGuiKey_Z) && CanUndo())
-            Undo();
-        else if (is_shift_shortcut && IsPressed(ImGuiKey_Z) && CanRedo())
-            Redo();
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
-            MoveCursorsLines(-1, shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_DownArrow))
-            MoveCursorsLines(1, shift);
-        else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_LeftArrow))
-            MoveCursorsChar(false, shift, is_wordmove_key);
-        else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
-            MoveCursorsChar(true, shift, is_wordmove_key);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
-            MoveCursorsLines(-(ContentCoordDims.L - 2), shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
-            MoveCursorsLines(ContentCoordDims.L - 2, shift);
-        else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
-            MoveCursorsTop(shift);
-        else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
-            MoveCursorsBottom(shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_Home))
-            MoveCursorsStart(shift);
-        else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_End))
-            MoveCursorsEnd(shift);
-        else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Delete))
-            Delete(ctrl);
-        else if (!ReadOnly && !alt && !shift && !super && IsPressed(ImGuiKey_Backspace))
-            Backspace(ctrl);
-        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_K))
-            RemoveCurrentLines();
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_LeftBracket))
-            ChangeCurrentLinesIndentation(false);
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
-            ChangeCurrentLinesIndentation(true);
-        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
-            MoveCurrentLines(true);
-        else if (!ReadOnly && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
-            MoveCurrentLines(false);
-        else if (!ReadOnly && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
-            ToggleLineComment();
-        else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
-            Overwrite ^= true;
-        else if (((is_ctrl_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_C))) && CanCopy())
-            Copy();
-        else if (((is_shift_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_V))) && CanPaste())
-            Paste();
-        else if ((is_shortcut && IsPressed(ImGuiKey_X)) || (is_shift_only && IsPressed(ImGuiKey_Delete)))
-            if (ReadOnly) {
-                if (CanCopy()) Copy();
-            } else {
-                if (CanCut()) Cut();
-            }
-        else if (is_shortcut && IsPressed(ImGuiKey_A))
-            SelectAll();
-        else if (is_shortcut && IsPressed(ImGuiKey_D))
-            AddCursorForNextOccurrence();
-        else if (!ReadOnly && !alt && !ctrl && !shift && !super && (IsPressed(ImGuiKey_Enter) || IsPressed(ImGuiKey_KeypadEnter)))
-            EnterChar('\n', false);
-        else if (!ReadOnly && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
-            EnterChar('\t', shift);
-
-        if (!ReadOnly && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
-            for (const auto ch : io.InputQueueCharacters) {
-                if (ch != 0 && (ch == '\n' || ch >= 32)) EnterChar(ch, shift);
-            }
-            io.InputQueueCharacters.resize(0);
-        }
-    }
-
     void HandleMouseInputs() {
-        if (!ImGui::IsWindowHovered()) {
+        if (ImGui::IsWindowHovered()) {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
+        } else {
             DestroyHoveredNode();
             IsOverLineNumber = false;
             return;
@@ -1329,17 +1244,99 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     return &line.front() + position.column;
 }
 
-bool TextBufferImpl::Render(bool is_parent_focused) {
+static bool IsPressed(ImGuiKey key) {
+    const auto key_index = ImGui::GetKeyIndex(key);
+    const auto window_id = ImGui::GetCurrentWindowRead()->ID;
+    ImGui::SetKeyOwner(key_index, window_id); // Prevent app from handling this key press.
+    return ImGui::IsKeyPressed(key_index, window_id, ImGuiInputFlags_Repeat);
+}
+
+void TextBuffer::HandleKeyboardInputs() const {
+    auto &io = ImGui::GetIO();
+    io.WantCaptureKeyboard = io.WantTextInput = true;
+
+    const bool
+        read_only = Impl->ReadOnly,
+        is_osx = io.ConfigMacOSXBehaviors,
+        alt = io.KeyAlt, ctrl = io.KeyCtrl, shift = io.KeyShift, super = io.KeySuper,
+        is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift,
+        is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt,
+        is_wordmove_key = is_osx ? alt : ctrl,
+        is_ctrl_only = ctrl && !alt && !shift && !super,
+        is_shift_only = shift && !alt && !ctrl && !super;
+
+    if (is_shortcut && IsPressed(ImGuiKey_Z) && Impl->CanUndo())
+        Impl->Undo();
+    else if (is_shift_shortcut && IsPressed(ImGuiKey_Z) && Impl->CanRedo())
+        Impl->Redo();
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
+        Impl->MoveCursorsLines(-1, shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_DownArrow))
+        Impl->MoveCursorsLines(1, shift);
+    else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_LeftArrow))
+        Impl->MoveCursorsChar(false, shift, is_wordmove_key);
+    else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
+        Impl->MoveCursorsChar(true, shift, is_wordmove_key);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
+        Impl->PageCursorsLines(false, shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
+        Impl->PageCursorsLines(true, shift);
+    else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
+        Impl->MoveCursorsTop(shift);
+    else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
+        Impl->MoveCursorsBottom(shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_Home))
+        Impl->MoveCursorsStart(shift);
+    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_End))
+        Impl->MoveCursorsEnd(shift);
+    else if (!read_only && !alt && !shift && !super && IsPressed(ImGuiKey_Delete))
+        Impl->Delete(ctrl);
+    else if (!read_only && !alt && !shift && !super && IsPressed(ImGuiKey_Backspace))
+        Impl->Backspace(ctrl);
+    else if (!read_only && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_K))
+        Impl->RemoveCurrentLines();
+    else if (!read_only && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_LeftBracket))
+        Impl->ChangeCurrentLinesIndentation(false);
+    else if (!read_only && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
+        Impl->ChangeCurrentLinesIndentation(true);
+    else if (!read_only && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
+        Impl->MoveCurrentLines(true);
+    else if (!read_only && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
+        Impl->MoveCurrentLines(false);
+    else if (!read_only && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
+        Impl->ToggleLineComment();
+    else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
+        Impl->Overwrite ^= true;
+    else if (((is_ctrl_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_C))) && Impl->CanCopy())
+        Impl->Copy();
+    else if (((is_shift_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_V))) && Impl->CanPaste())
+        Impl->Paste();
+    else if ((is_shortcut && IsPressed(ImGuiKey_X)) || (is_shift_only && IsPressed(ImGuiKey_Delete)))
+        if (read_only) {
+            if (Impl->CanCopy()) Impl->Copy();
+        } else {
+            if (Impl->CanCut()) Impl->Cut();
+        }
+    else if (is_shortcut && IsPressed(ImGuiKey_A))
+        Impl->SelectAll();
+    else if (is_shortcut && IsPressed(ImGuiKey_D))
+        Impl->AddCursorForNextOccurrence();
+    else if (!read_only && !alt && !ctrl && !shift && !super && (IsPressed(ImGuiKey_Enter) || IsPressed(ImGuiKey_KeypadEnter)))
+        Impl->EnterChar('\n', false);
+    else if (!read_only && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
+        Impl->EnterChar('\t', shift);
+
+    if (!read_only && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
+        for (const auto ch : io.InputQueueCharacters) {
+            if (ch != 0 && (ch == '\n' || ch >= 32)) Impl->EnterChar(ch, shift);
+        }
+        io.InputQueueCharacters.resize(0);
+    }
+}
+
+void TextBufferImpl::Render(bool is_focused) {
     static constexpr float ImGuiScrollbarWidth = 14;
 
-    auto edited_cursor = Cursors.GetEditedCursor();
-    if (edited_cursor) {
-        Cursors.ClearEdited();
-        Cursors.SortAndMerge();
-        MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(Cursors.front()) : std::nullopt;
-    }
-    const bool is_focused = ImGui::IsWindowFocused() || is_parent_focused;
-    if (is_focused) HandleKeyboardInputs();
     HandleMouseInputs();
 
     const float font_size = ImGui::GetFontSize();
@@ -1499,7 +1496,10 @@ bool TextBufferImpl::Render(bool is_parent_focused) {
     }
 
     ImGui::Dummy(CurrentSpaceDims);
-    if (edited_cursor) {
+    if (auto edited_cursor = Cursors.GetEditedCursor(); edited_cursor) {
+        Cursors.ClearEdited();
+        Cursors.SortAndMerge();
+        MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(Cursors.front()) : std::nullopt;
         // Move scroll to keep the edited cursor visible.
         // Goal: Keep the _entirity_ of the edited cursor(s) visible at all times.
         // So, vars like `end_in_view` mean, "is the end of the edited cursor in _fully_ in view?"
@@ -1524,8 +1524,6 @@ bool TextBufferImpl::Render(bool is_parent_focused) {
         ScrollToTop = false;
         ImGui::SetScrollY(0);
     }
-
-    return is_focused;
 }
 
 using namespace ImGui;
@@ -1579,7 +1577,7 @@ void TextBuffer::OpenFile(const fs::path &path) const {
 void TextBuffer::Render() const {
     const auto cursor_coords = Impl->GetCursorPosition();
     const string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
-    ImGui::Text(
+    Text(
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, Impl->LineCount(),
         Impl->Overwrite ? "Ovr" : "Ins",
         Impl->CanUndo() ? "*" : " ",
@@ -1592,7 +1590,11 @@ void TextBuffer::Render() const {
     PushStyleColor(ImGuiCol_ChildBg, Impl->GetColor(PaletteIndex::Background));
     PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
     BeginChild("TextBuffer", {}, false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
-    Impl->Render(is_parent_focused);
+
+    const bool is_focused = IsWindowFocused() || is_parent_focused;
+    if (is_focused) HandleKeyboardInputs();
+    Impl->Render(is_focused);
+
     EndChild();
     PopStyleVar();
     PopStyleColor();

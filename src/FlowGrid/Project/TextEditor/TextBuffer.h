@@ -24,6 +24,8 @@ struct TextBuffer : Component {
     void RenderMenu() const;
     void RenderDebug() const override;
 
+    void HandleKeyboardInputs() const;
+
     fs::path _LastOpenedFilePath;
     Prop(String, LastOpenedFilePath, _LastOpenedFilePath);
     Prop_(DebugComponent, Debug, "Editor debug");

@@ -126,8 +126,7 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
                 .save_mode = true,
             },
         },
-        // todo include a `pitch_shifter.dsp` in `res/` dir.
-        fs::path("../lib") / "faust" / "examples" / "pitchShifting" / "pitchShifter.dsp",
+        fs::path("./res") / "pitch_shifter.dsp",
     );
 
     Box Box{nullptr};

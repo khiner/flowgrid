@@ -71,6 +71,17 @@ include_directories(
     PkgConfig::FFTW3F
 )
 
+set(RESOURCE_DIR "${CMAKE_SOURCE_DIR}/res")
+set(RESOURCE_DEST "${CMAKE_BINARY_DIR}/res")
+
+# Copy resources after building the project target.
+add_custom_command(
+    TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${RESOURCE_DIR} ${RESOURCE_DEST}
+    COMMENT "Copying resources to build directory"
+)
+
 option(TRACING_ENABLED "Enable Tracy profiling" off)
 if(TRACING_ENABLED)
     set(TracyDir lib/tracy)

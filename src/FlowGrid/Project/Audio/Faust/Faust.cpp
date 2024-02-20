@@ -126,7 +126,7 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
 
 FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container, const ::FileDialog &file_dialog)
     : ActionProducerComponent(std::move(args)), Container(container), FileDialog(file_dialog) {
-    Code.RegisterChangeListener(this);
+    Editor.RegisterChangeListener(this);
     Init();
 }
 
@@ -136,7 +136,7 @@ FaustDSP::~FaustDSP() {
 }
 
 void FaustDSP::OnComponentChanged() {
-    if (Code.IsChanged()) Update();
+    if (Editor.IsChanged()) Update();
 }
 
 void FaustDSP::DestroyDsp() {
@@ -151,14 +151,14 @@ void FaustDSP::DestroyDsp() {
 }
 
 void FaustDSP::Init() {
-    if (!Code) return;
+    if (Editor.Empty()) return;
 
     static const std::string libraries_path = fs::relative("../lib/faust/libraries");
     std::vector<const char *> argv = {"-I", libraries_path.c_str()};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
     const int argc = argv.size();
 
-    const string code = Code;
+    const string code = Editor.GetText();
     static int num_inputs, num_outputs;
     Box = DSPToBoxes("FlowGrid", code, argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
 
@@ -377,7 +377,7 @@ void FaustDSP::Render() const {
         }
         EndMenuBar();
     }
-    Code.Draw();
+    Editor.Draw();
 }
 
 void FaustDSPs::Render() const {

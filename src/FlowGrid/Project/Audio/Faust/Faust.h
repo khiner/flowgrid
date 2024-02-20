@@ -111,7 +111,7 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
     FaustDSPContainer &Container;
     const FileDialog &FileDialog;
     ProducerProp_(
-        TextEditor, Code, "Faust code", FileDialog,
+        TextEditor, Editor, "Faust code", FileDialog,
         TextEditor::FileConfig{
             {
                 .owner_path = Path,
@@ -126,15 +126,8 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
                 .save_mode = true,
             },
         },
-        R"#(import("stdfaust.lib");
-pitchshifter = vgroup("Pitch Shifter", ef.transpose(
-    vslider("window (samples)", 1000, 50, 10000, 1),
-    vslider("xfade (samples)", 10, 1, 10000, 1),
-    vslider("shift (semitones)", 0, -24, +24, 0.1)
- )
-);
-process = _ : pitchshifter;)#",
-        LanguageID::Faust
+        // todo include a `pitch_shifter.dsp` in `res/` dir.
+        fs::path("../lib") / "faust" / "examples" / "pitchShifting" / "pitchShifter.dsp",
     );
 
     Box Box{nullptr};

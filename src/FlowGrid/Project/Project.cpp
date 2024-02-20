@@ -68,7 +68,7 @@ Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProduce
         Debug.DebugLog,
         Debug.StackTool,
         Debug.Metrics,
-        TextEditor,
+        TextBuffer,
         Style,
         Demo,
         Info,
@@ -241,10 +241,10 @@ void Project::Apply(const ActionType &action) const {
         Match{
             [this](const Action::Primitive::Any &a) { ApplyPrimitiveAction(a); },
             [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
-            [](const Action::TextBuffer::Any &a) {
+            [](const Action::TextEditor::Any &a) {
                 const auto *buffer = Find(a.GetComponentPath());
-                if (buffer == nullptr) throw std::runtime_error(std::format("TextBuffer not found: {}", a.GetComponentPath().string()));
-                static_cast<const TextBuffer *>(buffer)->Apply(a);
+                if (buffer == nullptr) throw std::runtime_error(std::format("TextEditor not found: {}", a.GetComponentPath().string()));
+                static_cast<const TextEditor *>(buffer)->Apply(a);
             },
 
             [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
@@ -298,7 +298,7 @@ bool Project::CanApply(const ActionType &action) const {
         Match{
             [](const Action::Primitive::Any &) { return true; },
             [](const Action::Container::Any &) { return true; },
-            [](const Action::TextBuffer::Any &) { return true; },
+            [](const Action::TextEditor::Any &) { return true; },
 
             [this](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
             [this](const Action::Project::Redo &) { return History.CanRedo(); },
@@ -350,7 +350,7 @@ void Project::Render() const {
         Audio.Faust.Graphs.Dock(faust_graph_node_id);
         Audio.Faust.Paramss.Dock(faust_tools_node_id);
         Audio.Faust.Logs.Dock(faust_tools_node_id);
-        TextEditor.Dock(text_editor_node_id);
+        TextBuffer.Dock(text_editor_node_id);
 
         Debug.Dock(debug_node_id);
         Debug.ProjectPreview.Dock(debug_node_id);

@@ -165,14 +165,14 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
 
 struct TSConfig {
     std::vector<std::string> ParserDirectories{};
-    std::unordered_map<std::string, TextEditorStyle::CharStyle> StyleByHighlightName{};
+    std::unordered_map<std::string, TextBufferStyle::CharStyle> StyleByHighlightName{};
 
-    inline static const TextEditorStyle::CharStyle DefaultCharStyle{};
+    inline static const TextBufferStyle::CharStyle DefaultCharStyle{};
 
-    TextEditorStyle::CharStyle FindStyleByCaptureName(const std::string &) const;
+    TextBufferStyle::CharStyle FindStyleByCaptureName(const std::string &) const;
 };
 
-void from_json(const json &j, TextEditorStyle::CharStyle &style) {
+void from_json(const json &j, TextBufferStyle::CharStyle &style) {
     if (j.is_object()) {
         if (j.contains("color")) style.Color = CharStyleColorValuetoU32(j.at("color"));
         if (j.contains("bold")) j.at("bold").get_to(style.Bold);
@@ -189,7 +189,7 @@ void from_json(const json &j, TSConfig &config) {
     const auto &theme = j.at("theme");
     for (const auto &[key, value] : theme.items()) {
         if (!value.is_null()) {
-            config.StyleByHighlightName[key] = value.get<TextEditorStyle::CharStyle>();
+            config.StyleByHighlightName[key] = value.get<TextBufferStyle::CharStyle>();
         }
     }
 }
@@ -501,7 +501,7 @@ struct SyntaxTree {
     TSParser *Parser{nullptr};
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
-    std::unordered_map<uint, TextEditorStyle::CharStyle> StyleByCaptureId{};
+    std::unordered_map<uint, TextBufferStyle::CharStyle> StyleByCaptureId{};
     ByteTransitions<uint> CaptureIdTransitions{NoneCaptureId};
     std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
 };

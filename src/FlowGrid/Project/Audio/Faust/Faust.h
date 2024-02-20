@@ -11,7 +11,7 @@
 #include "Core/ActionProducerComponent.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Container/Vector.h"
-#include "Project/TextBuffer/TextBuffer.h"
+#include "Project/TextEditor/TextEditor.h"
 
 struct FileDialog;
 
@@ -96,7 +96,7 @@ struct FaustDSPContainer {
     virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
 };
 
-using FaustDspProducedActionType = Action::Append<Action::Combine<Action::Faust::DSP::Any, Action::TextBuffer::Any>, typename Action::AudioGraph::CreateFaustNode>;
+using FaustDspProducedActionType = Action::Append<Action::Combine<Action::Faust::DSP::Any, Action::TextEditor::Any>, typename Action::AudioGraph::CreateFaustNode>;
 
 // `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
@@ -111,8 +111,8 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
     FaustDSPContainer &Container;
     const FileDialog &FileDialog;
     ProducerProp_(
-        TextBuffer, Code, "Faust code", FileDialog,
-        TextBuffer::FileConfig{
+        TextEditor, Code, "Faust code", FileDialog,
+        TextEditor::FileConfig{
             {
                 .owner_path = Path,
                 .title = "Open Faust DSP file",
@@ -169,7 +169,7 @@ private:
 };
 
 struct Faust
-    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, TextBuffer::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
+    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, TextEditor::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
       FaustDSPContainer {
     Faust(ArgsT &&, const FileDialog &);
 

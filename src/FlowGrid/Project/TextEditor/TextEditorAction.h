@@ -3,7 +3,7 @@
 #include "Core/Action/DefineAction.h"
 
 DefineActionType(
-    TextBuffer,
+    TextEditor,
     DefineComponentAction(Set, "", std::string value;);
     DefineUnsavedComponentAction(ShowOpenDialog, Merge, "~Open");
     DefineUnsavedComponentAction(ShowSaveDialog, Merge, "~Save as...");

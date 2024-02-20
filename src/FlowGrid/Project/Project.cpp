@@ -68,7 +68,6 @@ Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProduce
         Debug.DebugLog,
         Debug.StackTool,
         Debug.Metrics,
-        TextBuffer,
         Style,
         Demo,
         Info,
@@ -350,7 +349,6 @@ void Project::Render() const {
         Audio.Faust.Graphs.Dock(faust_graph_node_id);
         Audio.Faust.Paramss.Dock(faust_tools_node_id);
         Audio.Faust.Logs.Dock(faust_tools_node_id);
-        TextBuffer.Dock(text_editor_node_id);
 
         Debug.Dock(debug_node_id);
         Debug.ProjectPreview.Dock(debug_node_id);

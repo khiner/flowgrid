@@ -11,7 +11,7 @@
 // Handles any number of mods, followed by a single non-mod character.
 // Example: 'shift+cmd+s'
 // **Case-sensitive. `shortcut` must be lowercase.**
-static Shortcut::ImGuiFlagsAndKey Parse(string_view shortcut) {
+static ImGuiKeyChord Parse(string_view shortcut) {
     static const std::unordered_map<string, ImGuiModFlags> ModKeys{
         {"shift", ImGuiModFlags_Shift},
         {"ctrl", ImGuiModFlags_Ctrl},
@@ -19,10 +19,10 @@ static Shortcut::ImGuiFlagsAndKey Parse(string_view shortcut) {
         {"cmd", ImGuiModFlags_Super},
     };
 
-    const std::vector<std::string> tokens = StringHelper::Split(std::string(shortcut), "+");
+    const std::vector<string> tokens = StringHelper::Split(string(shortcut), "+");
     if (tokens.empty()) throw std::runtime_error("Shortcut cannot be empty.");
 
-    const std::string command = tokens.back();
+    const string command = tokens.back();
     if (command.length() != 1) throw std::runtime_error("Shortcut command must be a single character.");
 
     const auto key = ImGuiKey(command[0] - 'a' + ImGuiKey_A);
@@ -31,7 +31,7 @@ static Shortcut::ImGuiFlagsAndKey Parse(string_view shortcut) {
         mod_flags |= ModKeys.at(token);
     }
 
-    return {mod_flags, key};
+    return mod_flags | key;
 }
 
-Shortcut::Shortcut(std::string_view raw) : Raw(raw), Parsed(Parse(Raw)) {}
+Shortcut::Shortcut(string_view raw) : Raw(raw), KeyChord(Parse(Raw)) {}

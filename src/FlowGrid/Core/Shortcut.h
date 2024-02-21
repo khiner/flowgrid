@@ -3,13 +3,11 @@
 #include <string>
 #include <string_view>
 
-struct Shortcut {
-    using ImGuiModFlags = int;
-    using ImGuiKey = int;
-    using ImGuiFlagsAndKey = std::pair<ImGuiModFlags, ImGuiKey>;
+using ImGuiKeyChord = int;
 
+struct Shortcut {
     Shortcut(std::string_view raw);
 
     const std::string Raw;
-    const ImGuiFlagsAndKey Parsed;
+    const ImGuiKeyChord KeyChord;
 };

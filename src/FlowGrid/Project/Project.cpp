@@ -390,12 +390,11 @@ void Project::Render() const {
     }
 
     static const auto Shortcuts = ActionType::CreateShortcuts();
-    const auto &io = GetIO();
     for (const auto &[action_id, shortcut] : Shortcuts) {
-        const auto &[mod, key] = shortcut.Parsed;
-        if (mod == io.KeyMods && IsKeyPressed(GetKeyIndex(ImGuiKey(key)), ImGuiKeyOwner_None, ImGuiInputFlags_Repeat)) {
+        const auto key_chord = shortcut.KeyChord;
+        if (IsKeyChordPressed(key_chord, ImGuiKeyOwner_None, ImGuiInputFlags_Repeat)) {
             if (auto action = ActionType::Create(action_id); CanApply(action)) {
-                std::visit(Match{[this](auto &&a) { Q(std::move(a)); }}, action);
+                std::visit(Match{[this](auto &&a) { Q(std::move(a)); }}, std::move(action));
             }
         }
     }

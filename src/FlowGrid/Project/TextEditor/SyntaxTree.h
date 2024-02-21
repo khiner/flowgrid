@@ -10,7 +10,6 @@
 #include <tree_sitter/api.h>
 
 #include "Core/HelpInfo.h"
-#include "Helper/Hex.h"
 #include "LanguageID.h"
 
 using json = nlohmann::json;
@@ -21,6 +20,16 @@ using std::views::filter, std::ranges::reverse_view;
 extern "C" TSLanguage *tree_sitter_cpp();
 extern "C" TSLanguage *tree_sitter_faust();
 extern "C" TSLanguage *tree_sitter_json();
+
+constexpr ImU32 Col32(uint r, uint g, uint b, uint a = 255) { return IM_COL32(r, g, b, a); }
+
+inline static ImU32 HexToImU32(const std::string_view hex) {
+    if (hex.empty() || hex.front() != '#' || (hex.size() != 7 && hex.size() != 9)) return IM_COL32_WHITE;
+
+    const uint c = std::stoul(std::string{hex.substr(1)}, nullptr, 16);
+    // Assume full opacity if alpha is not specified
+    return Col32((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF, hex.length() == 7 ? 0xFF : ((c >> 24) & 0xFF));
+}
 
 /*
 WIP Syntax highlighting strategy:
@@ -71,15 +80,9 @@ TSQuery *LanguageDefinition::GetQuery() const {
     const fs::path highlights_path = QueriesDir / ShortName / "highlights.scm";
     const std::string highlights = FileIO::read(highlights_path);
 
-    uint32_t error_offset = 0;
+    u32 error_offset = 0;
     TSQueryError error_type = TSQueryErrorNone;
-    auto *query = ts_query_new(
-        TsLanguage,
-        highlights.c_str(),
-        highlights.size(),
-        &error_offset,
-        &error_type
-    );
+    auto *query = ts_query_new(TsLanguage, highlights.c_str(), highlights.size(), &error_offset, &error_type);
     // todo better error handling
     if (error_type != TSQueryErrorNone) {
         std::println("Error parsing tree-sitter query: {}", int(error_type));
@@ -99,8 +102,6 @@ LanguageDefinitions::LanguageDefinitions()
     }
     for (const auto &ext : ByFileExtension | std::views::keys) AllFileExtensionsFilter += ext + ',';
 }
-
-constexpr ImU32 Col32(uint r, uint g, uint b, uint a = 255) { return IM_COL32(r, g, b, a); }
 
 static ImU32 AnsiToRgb(uint code) {
     // Standard ANSI colors in hex, mapped directly to ImU32
@@ -154,7 +155,7 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
 
     if (j.is_string()) {
         const auto str_value = j.get<std::string>();
-        if (IsHex(str_value)) return HexToU32(str_value);
+        if (str_value.front() == '#') return HexToImU32(str_value);
         if (auto it = ColorByName.find(str_value); it != ColorByName.end()) return it->second;
         throw std::runtime_error("Unsupported color name in tree-sitter config JSON.");
     }

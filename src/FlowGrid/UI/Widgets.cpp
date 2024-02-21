@@ -7,6 +7,7 @@
 
 #include "NamesAndValues.h"
 
+using std::string;
 using namespace ImGui;
 
 namespace FlowGrid {

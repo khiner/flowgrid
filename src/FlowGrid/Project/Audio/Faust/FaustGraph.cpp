@@ -11,6 +11,7 @@
 
 #include "Core/HelpInfo.h"
 #include "FaustGraphStyle.h"
+#include "Helper/Color.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
@@ -56,12 +57,12 @@ struct Device {
     // Rect with a break in the top-left (to the right of rounding) for a label.
     virtual void LabeledRect(const ImRect &, string_view label, const RectStyle &, const TextStyle &) = 0;
 
-    virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) = 0;
-    virtual void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) = 0;
+    virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 color) = 0;
+    virtual void Circle(const ImVec2 &pos, float radius, u32 fill_color, u32 stroke_color) = 0;
     virtual void Arrow(const ImVec2 &pos, GraphOrientation) = 0;
     virtual void Line(const ImVec2 &start, const ImVec2 &end) = 0;
     virtual void Text(const ImVec2 &pos, string_view text, const TextStyle &) = 0;
-    virtual void Dot(const ImVec2 &pos, const ImColor &fill_color) = 0;
+    virtual void Dot(const ImVec2 &pos, u32 fill_color) = 0;
 
     virtual void SetCursorPos(const ImVec2 &scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
     void AdvanceCursor(const ImVec2 &unscaled_pos) { SetCursorPos(CursorPosition + Scale(unscaled_pos)); }
@@ -136,16 +137,15 @@ struct SVGDevice : Device {
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    string ArrowPointingAt(const ImVec2 &pos, ImVec2 half_sz, GraphOrientation orientation, const ImColor &color) const {
+    string ArrowPointingAt(const ImVec2 &pos, ImVec2 half_sz, GraphOrientation orientation, u32 color) const {
         const float d = IsLr(Style, orientation) ? -1 : 1;
         return CreateTriangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
     }
-    static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &fill_color, const ImColor &stroke_color) {
-        return std::format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    static string RgbColor(u32 c) {
+        return std::format("rgb({}, {}, {}, {})", GetRed(c), GetGreen(c), GetBlue(c), GetAlpha(c));
     }
-    static string RgbColor(const ImColor &color) {
-        const auto &[r, g, b, a] = color.Value * 255;
-        return std::format("rgb({}, {}, {}, {})", r, g, b, a);
+    static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 fill_color, u32 stroke_color) {
+        return std::format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
     // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
     // Determined empirically to make the two renderings look the same.
@@ -174,20 +174,22 @@ struct SVGDevice : Device {
         const ImVec2 &text_right = {min(text_x + CalcTextSize(string(label)).x, tr.x), tr.y};
         const float r = Scale(rect_style.CornerRadius);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
-        Stream << std::format(R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)", text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - label_offset) + r, r, r, -r, r, // before text to top-left
-                              rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
-                              rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
-                              -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
-                              -(tr.x - r - text_right.x), // top-right to after text
-                              Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor));
+        Stream << std::format(
+            R"(<path d="m{},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{} a{},{} 0 00 {},{} v{} a{},{} 0 00 {},{} h{}" stroke-width="{}" stroke="{}" fill="none"/>)", text_x - Scale(text_style.Padding.Left), tl.y, Scale(text_style.Padding.Right - label_offset) + r, r, r, -r, r, // before text to top-left
+            rect.GetHeight() - 2 * r, r, r, r, r, // top-left to bottom-left
+            rect.GetWidth() - 2 * r, r, r, r, -r, // bottom-left to bottom-right
+            -(rect.GetHeight() - 2 * r), r, r, -r, -r, // bottom-right to top-right
+            -(tr.x - r - text_right.x), // top-right to after text
+            Scale(rect_style.StrokeWidth), RgbColor(rect_style.StrokeColor)
+        );
         Stream << std::format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)", text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), XmlSanitize(string(label)));
     }
 
-    void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
-        Stream << CreateTriangle(At(p1), At(p2), At(p3), {0.f, 0.f, 0.f, 0.f}, color);
+    void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 color) override {
+        Stream << CreateTriangle(At(p1), At(p2), At(p3), Col32(0, 0, 0, 0), color);
     }
 
-    void Circle(const ImVec2 &pos, float radius, const ImColor &fill_color, const ImColor &stroke_color) override {
+    void Circle(const ImVec2 &pos, float radius, u32 fill_color, u32 stroke_color) override {
         const auto [x, y] = At(pos);
         Stream << std::format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), x, y, radius);
     }
@@ -198,20 +200,19 @@ struct SVGDevice : Device {
 
     void Line(const ImVec2 &start, const ImVec2 &end) override {
         const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
-        const auto &start_scaled = At(start);
-        const auto &end_scaled = At(end);
-        const ImColor &color = Style.Colors[FlowGridGraphCol_Line];
+        const auto start_scaled = At(start), end_scaled = At(end);
+        const auto color = RgbColor(Style.Colors[FlowGridGraphCol_Line]);
         const auto width = Scale(Style.WireThickness);
-        Stream << std::format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, RgbColor(color), line_cap, width);
+        Stream << std::format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, color, line_cap, width);
     }
 
     void Text(const ImVec2 &pos, string_view text, const TextStyle &style) override {
-        const auto &[color, justify, padding, font_style] = style;
+        const auto &[color, justify, padding, font] = style;
         const string anchor = justify.h == HJustify_Left ? "start" : (justify.h == HJustify_Middle ? "middle" : "end");
-        const string font_style_formatted = font_style == TextStyle::FontStyle::Italic ? "italic" : "normal";
-        const string font_weight = font_style == TextStyle::FontStyle::Bold ? "bold" : "normal";
+        const string font_formatted = font == TextStyle::FontStyle::Italic ? "italic" : "normal";
+        const string weight = font == TextStyle::FontStyle::Bold ? "bold" : "normal";
         const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
-        Stream << std::format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)", p.x, p.y, GetFontName(), font_style_formatted, font_weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(string(text)));
+        Stream << std::format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)", p.x, p.y, GetFontName(), font_formatted, weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(string(text)));
     }
 
     // Only SVG device has a text-with-link method
@@ -221,7 +222,7 @@ struct SVGDevice : Device {
         if (!link.empty()) Stream << "</a>";
     }
 
-    void Dot(const ImVec2 &pos, const ImColor &fill_color) override {
+    void Dot(const ImVec2 &pos, u32 fill_color) override {
         const auto &p = At(pos);
         const float radius = Scale(Style.OrientationMarkRadius);
         Stream << std::format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, RgbColor(fill_color));
@@ -284,13 +285,13 @@ struct ImGuiDevice : Device {
         DrawList->AddText(text_top_left, text_style.Color, ellipsified_label.c_str());
     }
 
-    void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, const ImColor &color) override {
+    void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 color) override {
         DrawList->AddTriangle(At(p1), At(p2), At(p3), color);
     }
 
-    void Circle(const ImVec2 &p, float radius, const ImColor &fill_color, const ImColor &stroke_color) override {
-        if (fill_color.Value.w != 0) DrawList->AddCircleFilled(At(p), Scale(radius), fill_color);
-        if (stroke_color.Value.w != 0) DrawList->AddCircle(At(p), Scale(radius), stroke_color);
+    void Circle(const ImVec2 &p, float radius, u32 fill_color, u32 stroke_color) override {
+        if (GetAlpha(fill_color) != 0) DrawList->AddCircleFilled(At(p), Scale(radius), fill_color);
+        if (GetAlpha(stroke_color) != 0) DrawList->AddCircle(At(p), Scale(radius), stroke_color);
     }
 
     void Arrow(const ImVec2 &p, GraphOrientation orientation) override {
@@ -299,7 +300,7 @@ struct ImGuiDevice : Device {
 
     // Basically `DrawList->AddLine(...)`, but avoiding extra vec2 math to cancel out the +0.5x ImGui adds to line points.
     void Line(const ImVec2 &start, const ImVec2 &end) override {
-        static const auto offset = ImVec2{0.f, 0.5f};
+        static const ImVec2 offset{0, 0.5};
         DrawList->PathLineTo(At(start) + offset);
         DrawList->PathLineTo(At(end) + offset);
         DrawList->PathStroke(Style.Colors[FlowGridGraphCol_Line], 0, Scale(Style.WireThickness));
@@ -319,7 +320,7 @@ struct ImGuiDevice : Device {
         );
     }
 
-    void Dot(const ImVec2 &p, const ImColor &fill_color) override {
+    void Dot(const ImVec2 &p, u32 fill_color) override {
         const float radius = Scale(Style.OrientationMarkRadius);
         DrawList->AddCircleFilled(At(p), radius, fill_color);
     }
@@ -431,13 +432,13 @@ string GetBoxType(Box t) {
 namespace FlowGrid {
 // An abstract block graph node.
 struct Node {
-    inline static const u32
-        BgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.1f}),
-        BorderColor = ColorConvertFloat4ToU32({0.f, 0.f, 1.f, 1.f}),
-        ChannelLabelColor = ColorConvertFloat4ToU32({0.f, 0.f, 1.f, 1.f}),
-        ChildChannelLabelColor = ColorConvertFloat4ToU32({1.f, 0.f, 0.f, 1.f}),
-        TypeLabelBgColor = ColorConvertFloat4ToU32({0.5f, 0.5f, 0.5f, 0.3f}),
-        TypeTextColor = ColorConvertFloat4ToU32({1.f, 0.f, 0.f, 1.f});
+    static constexpr u32
+        BgColor = Col32(127, 127, 127, 25),
+        BorderColor = Col32(0, 0, 255, 255),
+        ChannelLabelColor = Col32(0, 0, 255, 255),
+        ChildChannelLabelColor = Col32(255, 0, 0, 255),
+        TypeLabelBgColor = Col32(127, 127, 127, 75),
+        TypeTextColor = Col32(255, 0, 0, 255);
 
     const FaustGraph &Context;
     const FaustGraphStyle &Style;
@@ -556,9 +557,9 @@ struct Node {
                 device.Text(
                     Point(io, channel),
                     std::format("{}:{}", Capitalize(to_string(io, true)), channel),
-                    {.Color = ChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .FontStyle = TextStyle::FontStyle::Bold}
+                    {.Color = ChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .Font = TextStyle::FontStyle::Bold}
                 );
-                device.Circle(Point(io, channel), 3, {0.f, 0.f, 1.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
+                device.Circle(Point(io, channel), 3, Col32(0, 0, 255, 255), Col32(0, 0, 0, 255));
             }
         }
     }
@@ -570,9 +571,9 @@ struct Node {
                     device.Text(
                         child->ChildPoint(io, channel),
                         std::format("C{}->{}:{}", child_index, Capitalize(to_string(io, true)), channel),
-                        {.Color = ChildChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .FontStyle = TextStyle::FontStyle::Bold}
+                        {.Color = ChildChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .Font = TextStyle::FontStyle::Bold}
                     );
-                    device.Circle(child->ChildPoint(io, channel), 2, {1.f, 0.f, 0.f, 1.f}, {0.f, 0.f, 0.f, 1.f});
+                    device.Circle(child->ChildPoint(io, channel), 2, Col32(255, 0, 0, 255), Col32(0, 0, 0, 255));
                 }
             }
         }
@@ -710,7 +711,7 @@ struct InverterNode : BlockNode {
         const auto tri_a = ImVec2{XMargin() + (IsLr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : W()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
-        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, {0.f, 0.f, 0.f, 0.f}, Style.Colors[Color]);
+        device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, Col32(0, 0, 0, 0), Style.Colors[Color]);
         device.Triangle(tri_a, tri_b, tri_c, Style.Colors[Color]);
     }
 };
@@ -1026,7 +1027,7 @@ private:
 };
 
 struct RouteNode : Node {
-    inline static const u32 RouteFrameBgColor = ColorConvertFloat4ToU32({0.93f, 0.93f, 0.65f, 1.f});
+    static constexpr u32 RouteFrameBgColor = Col32(237, 237, 166, 255);
 
     RouteNode(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, std::vector<int> routes)
         : Node(context, tree, in_count, out_count), Routes(std::move(routes)) {}
@@ -1053,8 +1054,7 @@ struct RouteNode : Node {
             }
         }
         for (u32 i = 0; i < Routes.size() - 1; i += 2) {
-            const u32 src = Routes[i];
-            const u32 dst = Routes[i + 1];
+            const u32 src = Routes[i], dst = Routes[i + 1];
             if (src > 0 && src <= InCount && dst > 0 && dst <= OutCount) {
                 device.Line(Point(IO_In, src - 1) + d, Point(IO_Out, dst - 1) - d);
             }

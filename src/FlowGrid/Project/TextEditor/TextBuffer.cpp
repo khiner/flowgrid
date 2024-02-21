@@ -1456,8 +1456,8 @@ void TextBufferImpl::Render(bool is_focused) {
                 dl->AddText(glyph_pos, char_style.Color, seq_begin, seq_begin + seq_length);
             }
             if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
-                const auto c = SetAlpha(Syntax->StyleByCaptureId.at(*transition_it).Color, 40);
-                dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, c);
+                const auto color = SetAlpha(Syntax->StyleByCaptureId.at(*transition_it).Color, 40);
+                dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, color);
             }
             if (ShowChangedCaptureRanges) {
                 for (const auto &range : Syntax->ChangedCaptureRanges) {

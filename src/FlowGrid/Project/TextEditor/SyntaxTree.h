@@ -158,9 +158,11 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
 // These classes corresponds to tree-sitter's `config.json`.
 // https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
 struct TextEditorCharStyle {
-    ImU32 Color{Col32(255, 255, 255)};
-    bool Bold{false}, Italic{false}, Underline{false};
+    u32 Color{Col32(255, 255, 255)};
+    // This struct is 8 bytes with or w/o bitfields due to alignment, but if we add more fields it could help.
+    bool Bold : 1, Italic : 1, Underline : 1;
 };
+
 struct TSConfig {
     std::vector<std::string> ParserDirectories{};
     std::unordered_map<std::string, TextEditorCharStyle> StyleByHighlightName{};
@@ -193,9 +195,9 @@ struct TSConfig {
 void from_json(const json &j, TextEditorCharStyle &style) {
     if (j.is_object()) {
         if (j.contains("color")) style.Color = CharStyleColorValuetoU32(j.at("color"));
-        if (j.contains("bold")) j.at("bold").get_to(style.Bold);
-        if (j.contains("italic")) j.at("italic").get_to(style.Italic);
-        if (j.contains("underline")) j.at("italic").get_to(style.Underline);
+        if (j.contains("bold")) style.Bold = j.at("bold");
+        if (j.contains("italic")) style.Italic = j.at("italic");
+        if (j.contains("underline")) style.Underline = j.at("underline");
     } else if (j.is_number() || j.is_string()) {
         style.Color = CharStyleColorValuetoU32(j);
     } else {

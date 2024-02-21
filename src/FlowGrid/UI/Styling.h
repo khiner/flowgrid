@@ -2,9 +2,8 @@
 
 #include <string>
 
-#include "Core/Primitive/Scalar.h"
+using u32 = unsigned int;
 
-using std::string;
 struct ImVec2;
 
 enum Dir_ {
@@ -18,13 +17,13 @@ enum Dir_ {
 
 // Uses same argument ordering as CSS.
 struct Padding {
-    Padding(const float top, const float right, const float bottom, const float left) : Top(top), Right(right), Bottom(bottom), Left(left) {}
-    Padding(const float top, const float x, const float bottom) : Padding(top, x, bottom, x) {}
-    Padding(const float y, const float x) : Padding(y, x, y, x) {}
-    Padding(const float all) : Padding(all, all, all, all) {}
-    Padding() : Padding(0, 0, 0, 0) {}
-
     const float Top, Right, Bottom, Left;
+
+    Padding(float top, float right, float bottom, float left) : Top(top), Right(right), Bottom(bottom), Left(left) {}
+    Padding(float top, float x, float bottom) : Padding(top, x, bottom, x) {}
+    Padding(float y, float x) : Padding(y, x, y, x) {}
+    Padding(float all) : Padding(all, all, all, all) {}
+    Padding() : Padding(0, 0, 0, 0) {}
 };
 
 enum HJustify_ {
@@ -47,7 +46,7 @@ struct Justify {
 
 struct TextStyle {
     enum FontStyle {
-        Normal,
+        Regular,
         Bold,
         Italic
     };
@@ -55,7 +54,7 @@ struct TextStyle {
     const u32 Color;
     const Justify Justify{HJustify_Middle, VJustify_Middle};
     const Padding Padding;
-    const FontStyle FontStyle{Normal};
+    const FontStyle Font{Regular};
 };
 
 struct RectStyle {
@@ -66,9 +65,9 @@ struct RectStyle {
 float CalcAlignedX(HJustify h_justify, float inner_w, float outer_w, bool is_label = false); // todo better name than `is_label`
 float CalcAlignedY(VJustify v_justify, float inner_h, float outer_h);
 
-ImVec2 CalcTextSize(const string &text);
+ImVec2 CalcTextSize(const std::string &);
 
 // There's `RenderTextEllipsis` in `imgui_internal`, but it's way too complex and scary.
-string Ellipsify(string copy, float max_width);
+std::string Ellipsify(std::string copy, float max_width);
 
-void FillRowItemBg(const u32 col);
+void FillRowItemBg(u32 color);

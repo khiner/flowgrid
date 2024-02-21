@@ -5,9 +5,8 @@
 #include "imgui.h"
 
 void Fonts::Init() {
-    auto &io = ImGui::GetIO();
-    Main = io.Fonts->AddFontFromFileTTF("res/fonts/AbletonSansMedium.otf", 16 * AtlasScale);
-    FixedWidth = io.Fonts->AddFontFromFileTTF("res/fonts/Cousine-Regular.ttf", 15 * AtlasScale);
-    io.Fonts->AddFontFromFileTTF("res/fonts/ProggyClean.ttf", 14 * AtlasScale);
+    const auto &io = ImGui::GetIO();
+    Main = io.Fonts->AddFontFromFileTTF("res/fonts/Inter-Regular.ttf", 15 * AtlasScale);
+    Monospace = io.Fonts->AddFontFromFileTTF("res/fonts/JetBrainsMono-Regular.ttf", 17 * AtlasScale);
     FileDialogImp.AddFonts();
 }

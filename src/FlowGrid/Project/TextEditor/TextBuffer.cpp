@@ -1584,7 +1584,7 @@ void TextBuffer::Render() const {
     );
 
     const bool is_parent_focused = IsWindowFocused();
-    PushFont(gFonts.FixedWidth);
+    PushFont(gFonts.Monospace);
     PushStyleColor(ImGuiCol_ChildBg, Impl->GetColor(PaletteIndex::Background));
     PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
     BeginChild("TextBuffer", {}, false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);

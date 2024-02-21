@@ -104,9 +104,10 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 - [miniaudio](https://github.com/mackron/miniaudio) for the audio backend
 - [fftw](https://www.fftw.org/) for computing spectrograms (visualized with ImPlot)
 
-### UI/UX
+### UI
 
-- [ImGui](https://github.com/ocornut/imgui) + [SDL3](https://github.com/libsdl-org/SDL) + [Vulkan](https://www.vulkan.org/) + [FreeType](https://freetype.org): UI & interactions
+- [ImGui](https://github.com/ocornut/imgui) + [SDL3](https://github.com/libsdl-org/SDL) + [Vulkan](https://www.vulkan.org/) + [FreeType](https://freetype.org): UI
+  - Using fonts: [Inter 4.0](https://github.com/rsms/inter/releases/tag/v4.0) for regular text and [JetBrains Mono 2.304](https://www.jetbrains.com/lp/mono/) for monospace
 - [ImPlot](https://github.com/epezent/implot): plotting
 - [ImGuiFileDialog](https://github.com/aiekick/ImGuiFileDialog): file selection
 

@@ -8,5 +8,5 @@ struct Fonts {
     void Init(); // Not in constructor so we can instantiate but delay loading fonts until after ImGui is initialized.
 
     ImFont *Main{nullptr};
-    ImFont *FixedWidth{nullptr};
+    ImFont *Monospace{nullptr};
 };

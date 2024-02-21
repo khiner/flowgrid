@@ -176,30 +176,28 @@ struct TSConfig {
 
     inline static const TextEditorCharStyle DefaultCharStyle{};
 
-    TextEditorCharStyle FindStyleByCaptureName(const std::string &) const;
+    /**
+    From the [tree-sitter docs](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme):
+    A theme can contain multiple keys that share a common subsequence.
+    Examples:
+    - 'variable' and 'variable.parameter'
+    - 'function', 'function.builtin', and 'function.method'
+
+    For a given highlight, styling will be determined based on the longest matching theme key.
+    For example, the highlight 'function.builtin.static' would match the key 'function.builtin' rather than 'function'.
+    */
+    TextEditorCharStyle FindStyleByCaptureName(const std::string &capture_name) const {
+        size_t pos = capture_name.size();
+        do {
+            if (auto it = StyleByHighlightName.find(capture_name.substr(0, pos)); it != StyleByHighlightName.end()) {
+                return it->second;
+            }
+            pos = capture_name.rfind('.', pos - 1); // Move to the last '.' before the current `pos`.
+        } while (pos != std::string::npos);
+
+        return DefaultCharStyle;
+    }
 };
-
-/**
-From the [tree-sitter docs](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme):
-A theme can contain multiple keys that share a common subsequence.
-Examples:
-- 'variable' and 'variable.parameter'
-- 'function', 'function.builtin', and 'function.method'
-
-For a given highlight, styling will be determined based on the longest matching theme key.
-For example, the highlight 'function.builtin.static' would match the key 'function.builtin' rather than 'function'.
-*/
-TextEditorCharStyle TSConfig::FindStyleByCaptureName(const std::string &capture_name) const {
-    size_t pos = capture_name.size();
-    do {
-        if (auto it = StyleByHighlightName.find(capture_name.substr(0, pos)); it != StyleByHighlightName.end()) {
-            return it->second;
-        }
-        pos = capture_name.rfind('.', pos - 1); // Move to the last '.' before the current `pos`.
-    } while (pos != std::string::npos);
-
-    return DefaultCharStyle;
-}
 
 void from_json(const json &j, TextEditorCharStyle &style) {
     if (j.is_object()) {

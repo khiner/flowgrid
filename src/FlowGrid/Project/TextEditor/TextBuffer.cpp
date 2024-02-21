@@ -1451,9 +1451,10 @@ void TextBufferImpl::Render(bool is_focused) {
                     const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
                     dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
-                // Find color for the current character.
-                const string text = subrange(line.begin() + ci, line.begin() + ci + seq_length) | ranges::to<string>();
-                dl->AddText(glyph_pos, Syntax->StyleByCaptureId.at(*transition_it).Color, text.c_str());
+                // Render the current character.
+                const auto &char_style = Syntax->StyleByCaptureId.at(*transition_it);
+                const char *seq_begin = &line[ci];
+                dl->AddText(glyph_pos, char_style.Color, seq_begin, seq_begin + seq_length);
             }
             if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
                 const auto color = Syntax->StyleByCaptureId.at(*transition_it).Color;

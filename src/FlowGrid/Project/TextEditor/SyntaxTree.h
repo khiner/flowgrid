@@ -21,14 +21,16 @@ extern "C" TSLanguage *tree_sitter_cpp();
 extern "C" TSLanguage *tree_sitter_faust();
 extern "C" TSLanguage *tree_sitter_json();
 
-constexpr ImU32 Col32(uint r, uint g, uint b, uint a = 255) { return IM_COL32(r, g, b, a); }
-
-inline static ImU32 HexToImU32(const std::string_view hex) {
-    if (hex.empty() || hex.front() != '#' || (hex.size() != 7 && hex.size() != 9)) return IM_COL32_WHITE;
+// Copy of `IM_COL32` logic (doesn't respect `IMGUI_USE_BGRA_PACKED_COLOR` since we don't use that).
+constexpr u32 Col32(uint r, uint g, uint b, uint a = 255) {
+    return ((u32)(a) << 24) | ((u32)(b) << 16) | ((u32)(g) << 8) | ((u32)(r) << 0);
+}
+constexpr u32 HexToCol32(const std::string_view hex) {
+    if (hex.empty() || hex.front() != '#' || (hex.size() != 7 && hex.size() != 9)) return Col32(255, 255, 255);
 
     const uint c = std::stoul(std::string{hex.substr(1)}, nullptr, 16);
-    // Assume full opacity if alpha is not specified
-    return Col32((c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF, hex.length() == 7 ? 0xFF : ((c >> 24) & 0xFF));
+    // Assume full opacity if alpha is not specified.
+    return Col32((c >> 16) & 0xFF, (c >> 8) & 0xFF, (c >> 0) & 0xFF, hex.length() == 7 ? 0xFF : ((c >> 24) & 0xFF));
 }
 
 /*
@@ -131,14 +133,14 @@ static ImU32 AnsiToRgb(uint code) {
         // 6x6x6 color cube
         static const uint step = 255 / 5;
         const uint red = (code - 16) / 36, green = (code - 16) / 6 % 6, blue = (code - 16) % 6;
-        return IM_COL32(red * step, green * step, blue * step, 255);
+        return Col32(red * step, green * step, blue * step, 255);
     }
     if (code <= 255) {
         // Grayscale ramp, starts at 8 and increases by 10 up to 238.
         const uint shade = 8 + (code - 232) * 10;
-        return IM_COL32(shade, shade, shade, 255);
+        return Col32(shade, shade, shade, 255);
     }
-    return IM_COL32(0, 0, 0, 255); // Default to black if out of range.
+    return Col32(0, 0, 0, 255); // Default to black if out of range.
 }
 
 ImU32 CharStyleColorValuetoU32(const json &j) {
@@ -155,7 +157,7 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
 
     if (j.is_string()) {
         const auto str_value = j.get<std::string>();
-        if (str_value.front() == '#') return HexToImU32(str_value);
+        if (str_value.front() == '#') return HexToCol32(str_value);
         if (auto it = ColorByName.find(str_value); it != ColorByName.end()) return it->second;
         throw std::runtime_error("Unsupported color name in tree-sitter config JSON.");
     }
@@ -167,7 +169,7 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
 // These classes corresponds to tree-sitter's `config.json`.
 // https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
 struct TextEditorCharStyle {
-    ImU32 Color{IM_COL32_WHITE};
+    ImU32 Color{Col32(255, 255, 255)};
     bool Bold{false}, Italic{false}, Underline{false};
 };
 struct TSConfig {

@@ -15,11 +15,10 @@
 #include <string>
 #include <vector>
 
+#include "imgui_internal.h"
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
 #include <immer/vector.hpp>
-
-#include "imgui_internal.h"
 
 #include "Application/ApplicationPreferences.h"
 #include "Core/Windows.h"

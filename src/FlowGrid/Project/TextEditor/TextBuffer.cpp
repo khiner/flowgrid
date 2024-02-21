@@ -1452,8 +1452,10 @@ void TextBufferImpl::Render(bool is_focused) {
                 }
                 // Render the current character.
                 const auto &char_style = Syntax->StyleByCaptureId.at(*transition_it);
+                const bool font_changed = Fonts::Push(FontFamily::Monospace, char_style.Font);
                 const char *seq_begin = &line[ci];
                 dl->AddText(glyph_pos, char_style.Color, seq_begin, seq_begin + seq_length);
+                if (font_changed) Fonts::Pop();
             }
             if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
                 const auto color = SetAlpha(Syntax->StyleByCaptureId.at(*transition_it).Color, 40);
@@ -1582,19 +1584,19 @@ void TextBuffer::Render() const {
     );
 
     const bool is_parent_focused = IsWindowFocused();
-    PushFont(gFonts.Monospace);
     PushStyleColor(ImGuiCol_ChildBg, Impl->GetColor(PaletteIndex::Background));
-    PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
+    PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, 0});
     BeginChild("TextBuffer", {}, false, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
 
+    const bool font_changed = Fonts::Push(FontFamily::Monospace);
     const bool is_focused = IsWindowFocused() || is_parent_focused;
     if (is_focused) HandleKeyboardInputs();
     Impl->Render(is_focused);
+    if (font_changed) Fonts::Pop();
 
     EndChild();
     PopStyleVar();
     PopStyleColor();
-    PopFont();
 }
 
 void TextBuffer::RenderMenu() const {

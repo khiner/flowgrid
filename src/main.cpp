@@ -39,7 +39,8 @@ int main() {
     Project project{store, primitive_queuer, q};
 
     const UIContext ui{project.ImGuiSettings, project.Style}; // Initialize ImGui and other UI state.
-    Component::gFonts.Init(); // Must be done after initializing ImGui.
+    Fonts::Init(); // Must be done after initializing ImGui.
+    FileDialogImp.AddFonts();
     ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
 
     // Initialize the global canonical store with all project state values set during project initialization.

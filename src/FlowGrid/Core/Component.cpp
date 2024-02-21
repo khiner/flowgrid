@@ -6,10 +6,7 @@
 
 #include "Helper/String.h"
 #include "Project/Style/Style.h"
-#include "UI/Fonts.h"
 #include "UI/HelpMarker.h"
-
-Fonts Component::gFonts{};
 
 DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio)
     : Component(std::move(args)), SplitRatio(split_ratio) {}

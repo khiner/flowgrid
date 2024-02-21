@@ -61,14 +61,8 @@ enum WindowFlags_ {
     WindowFlags_MenuBar = 1 << 10,
 };
 
-struct Field;
-struct FileDialog;
-struct Fonts;
-
 struct Component {
     using References = std::vector<std::reference_wrapper<const Component>>;
-
-    static Fonts gFonts;
 
     struct ChangeListener {
         // Called when at least one of the listened components has changed.

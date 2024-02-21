@@ -209,8 +209,8 @@ struct SVGDevice : Device {
     void Text(const ImVec2 &pos, string_view text, const TextStyle &style) override {
         const auto &[color, justify, padding, font] = style;
         const string anchor = justify.h == HJustify_Left ? "start" : (justify.h == HJustify_Middle ? "middle" : "end");
-        const string font_formatted = font == TextStyle::FontStyle::Italic ? "italic" : "normal";
-        const string weight = font == TextStyle::FontStyle::Bold ? "bold" : "normal";
+        const string font_formatted = font == FontStyle_Italic ? "italic" : "normal";
+        const string weight = font == FontStyle_Bold ? "bold" : "normal";
         const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
         Stream << std::format(R"(<text x="{}" y="{}" font-family="{}" font-style="{}" font-weight="{}" font-size="{}" text-anchor="{}" fill="{}" dominant-baseline="middle">{}</text>)", p.x, p.y, GetFontName(), font_formatted, weight, GetFontSize(), anchor, RgbColor(color), XmlSanitize(string(text)));
     }
@@ -310,6 +310,8 @@ struct ImGuiDevice : Device {
         const auto &[color, justify, padding, font_style] = style;
         const auto text_copy = string(text);
         const auto &size = CalcTextSize(text_copy);
+        const bool change_font = style.Font != FontStyle_Regular;
+        if (change_font) Fonts::Push(FontFamily::Main, style.Font);
         DrawList->AddText(
             At(p - ImVec2{padding.Right, padding.Bottom}) -
                 ImVec2{
@@ -318,6 +320,7 @@ struct ImGuiDevice : Device {
                 },
             color, text_copy.c_str()
         );
+        if (change_font) Fonts::Pop();
     }
 
     void Dot(const ImVec2 &p, u32 fill_color) override {
@@ -557,7 +560,7 @@ struct Node {
                 device.Text(
                     Point(io, channel),
                     std::format("{}:{}", Capitalize(to_string(io, true)), channel),
-                    {.Color = ChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .Font = TextStyle::FontStyle::Bold}
+                    {.Color = ChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {6, 4}, .Font = FontStyle_Bold}
                 );
                 device.Circle(Point(io, channel), 3, Col32(0, 0, 255, 255), Col32(0, 0, 0, 255));
             }
@@ -571,7 +574,7 @@ struct Node {
                     device.Text(
                         child->ChildPoint(io, channel),
                         std::format("C{}->{}:{}", child_index, Capitalize(to_string(io, true)), channel),
-                        {.Color = ChildChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .Font = TextStyle::FontStyle::Bold}
+                        {.Color = ChildChannelLabelColor, .Justify = {HJustify_Right, VJustify_Middle}, .Padding = {0, 4, 0, 0}, .Font = FontStyle_Bold}
                     );
                     device.Circle(child->ChildPoint(io, channel), 2, Col32(255, 0, 0, 255), Col32(0, 0, 0, 255));
                 }

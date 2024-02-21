@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "Fonts.h"
+
 using u32 = unsigned int;
 
 struct ImVec2;
@@ -45,16 +47,10 @@ struct Justify {
 };
 
 struct TextStyle {
-    enum FontStyle {
-        Regular,
-        Bold,
-        Italic
-    };
-
     const u32 Color;
     const Justify Justify{HJustify_Middle, VJustify_Middle};
     const Padding Padding;
-    const FontStyle Font{Regular};
+    const FontStyle Font{FontStyle_Regular};
 };
 
 struct RectStyle {

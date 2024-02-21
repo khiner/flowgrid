@@ -12,6 +12,7 @@
 #include "Core/HelpInfo.h"
 #include "Helper/Color.h"
 #include "LanguageID.h"
+#include "UI/Fonts.h"
 
 using json = nlohmann::json;
 
@@ -159,8 +160,8 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
 // https://tree-sitter.github.io/tree-sitter/syntax-highlighting#per-user-configuration
 struct TextEditorCharStyle {
     u32 Color{Col32(255, 255, 255)};
-    // This struct is 8 bytes with or w/o bitfields due to alignment, but if we add more fields it could help.
-    bool Bold : 1, Italic : 1, Underline : 1;
+    FontStyle Font;
+    bool Underline : 1; // Not currently supported. https://github.com/ocornut/imgui/issues/6323
 };
 
 struct TSConfig {
@@ -195,9 +196,9 @@ struct TSConfig {
 void from_json(const json &j, TextEditorCharStyle &style) {
     if (j.is_object()) {
         if (j.contains("color")) style.Color = CharStyleColorValuetoU32(j.at("color"));
-        if (j.contains("bold")) style.Bold = j.at("bold");
-        if (j.contains("italic")) style.Italic = j.at("italic");
-        if (j.contains("underline")) style.Underline = j.at("underline");
+        if (j.value("bold", false)) style.Font |= FontStyle_Bold;
+        if (j.value("italic", false)) style.Font |= FontStyle_Italic;
+        style.Underline = j.value("underline", false);
     } else if (j.is_number() || j.is_string()) {
         style.Color = CharStyleColorValuetoU32(j);
     } else {

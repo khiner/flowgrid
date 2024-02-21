@@ -10,6 +10,7 @@
 #include <tree_sitter/api.h>
 
 #include "Core/HelpInfo.h"
+#include "Helper/Color.h"
 #include "LanguageID.h"
 
 using json = nlohmann::json;
@@ -20,18 +21,6 @@ using std::views::filter, std::ranges::reverse_view;
 extern "C" TSLanguage *tree_sitter_cpp();
 extern "C" TSLanguage *tree_sitter_faust();
 extern "C" TSLanguage *tree_sitter_json();
-
-// Copy of `IM_COL32` logic (doesn't respect `IMGUI_USE_BGRA_PACKED_COLOR` since we don't use that).
-constexpr u32 Col32(uint r, uint g, uint b, uint a = 255) {
-    return ((u32)(a) << 24) | ((u32)(b) << 16) | ((u32)(g) << 8) | ((u32)(r) << 0);
-}
-constexpr u32 HexToCol32(const std::string_view hex) {
-    if (hex.empty() || hex.front() != '#' || (hex.size() != 7 && hex.size() != 9)) return Col32(255, 255, 255);
-
-    const uint c = std::stoul(std::string{hex.substr(1)}, nullptr, 16);
-    // Assume full opacity if alpha is not specified.
-    return Col32((c >> 16) & 0xFF, (c >> 8) & 0xFF, (c >> 0) & 0xFF, hex.length() == 7 ? 0xFF : ((c >> 24) & 0xFF));
-}
 
 /*
 WIP Syntax highlighting strategy:
@@ -105,7 +94,7 @@ LanguageDefinitions::LanguageDefinitions()
     for (const auto &ext : ByFileExtension | std::views::keys) AllFileExtensionsFilter += ext + ',';
 }
 
-static ImU32 AnsiToRgb(uint code) {
+static ImU32 AnsiToRgb(u32 code) {
     // Standard ANSI colors in hex, mapped directly to ImU32
     static const ImU32 StandardColors[16] = {
         Col32(0, 0, 0), // Black
@@ -131,13 +120,13 @@ static ImU32 AnsiToRgb(uint code) {
     // The following is a programmatic strategy to convert the >= 16 range to RGB.
     if (code < 232) {
         // 6x6x6 color cube
-        static const uint step = 255 / 5;
-        const uint red = (code - 16) / 36, green = (code - 16) / 6 % 6, blue = (code - 16) % 6;
+        static const u32 step = 255 / 5;
+        const u32 red = (code - 16) / 36, green = (code - 16) / 6 % 6, blue = (code - 16) % 6;
         return Col32(red * step, green * step, blue * step, 255);
     }
     if (code <= 255) {
         // Grayscale ramp, starts at 8 and increases by 10 up to 238.
-        const uint shade = 8 + (code - 232) * 10;
+        const u32 shade = 8 + (code - 232) * 10;
         return Col32(shade, shade, shade, 255);
     }
     return Col32(0, 0, 0, 255); // Default to black if out of range.
@@ -161,7 +150,7 @@ ImU32 CharStyleColorValuetoU32(const json &j) {
         if (auto it = ColorByName.find(str_value); it != ColorByName.end()) return it->second;
         throw std::runtime_error("Unsupported color name in tree-sitter config JSON.");
     }
-    if (j.is_number()) return AnsiToRgb(j.get<uint>());
+    if (j.is_number()) return AnsiToRgb(j.get<u32>());
 
     throw std::runtime_error("Invalid color type in tree-sitter config JSON.");
 }
@@ -225,7 +214,7 @@ void from_json(const json &j, TSConfig &config) {
 
 template<typename ValueType> struct ByteTransitions {
     struct DeltaValue {
-        uint Delta;
+        u32 Delta;
         ValueType Value;
     };
 
@@ -247,24 +236,24 @@ template<typename ValueType> struct ByteTransitions {
             return *this;
         }
 
-        uint NextByteIndex() const { return HasNext() ? ByteIndex + DeltaValues[DeltaIndex + 1].Delta : ByteIndex; }
+        u32 NextByteIndex() const { return HasNext() ? ByteIndex + DeltaValues[DeltaIndex + 1].Delta : ByteIndex; }
 
         /* Move ops all move until `ByteIndex` is _at or before_ the target byte. */
-        void MoveTo(uint target_byte) {
+        void MoveTo(u32 target_byte) {
             if (ByteIndex < target_byte) MoveForwardTo(target_byte);
             else MoveBackTo(target_byte);
         }
-        void MoveForwardTo(uint target_byte) {
+        void MoveForwardTo(u32 target_byte) {
             while (ByteIndex < target_byte && !IsEnd() && NextByteIndex() <= target_byte) ++(*this);
         }
-        void MoveBackTo(uint target_byte) {
+        void MoveBackTo(u32 target_byte) {
             while ((ByteIndex > target_byte || (IsEnd() && ByteIndex == target_byte)) && HasPrev()) --(*this);
         }
 
         ValueType operator*() const { return !IsEnd() ? DeltaValues[DeltaIndex].Value : DefaultValue; }
 
         const std::vector<DeltaValue> &DeltaValues;
-        uint DeltaIndex{0}, ByteIndex{0};
+        u32 DeltaIndex{0}, ByteIndex{0};
         ValueType DefaultValue{};
 
     private:
@@ -284,7 +273,7 @@ template<typename ValueType> struct ByteTransitions {
         EnsureStartTransition();
     }
 
-    void Insert(Iterator &it, uint byte_index, ValueType value) {
+    void Insert(Iterator &it, u32 byte_index, ValueType value) {
         it.MoveTo(byte_index);
         if (it.DeltaIndex > DeltaValues.size()) throw std::out_of_range("Insert iterator out of bounds");
         if (byte_index < it.ByteIndex) throw std::invalid_argument("Insert byte index is before iterator");
@@ -294,7 +283,7 @@ template<typename ValueType> struct ByteTransitions {
             return;
         }
 
-        const uint delta = byte_index - it.ByteIndex;
+        const u32 delta = byte_index - it.ByteIndex;
         if (it.IsEnd()) --it;
         DeltaValues.insert(DeltaValues.begin() + it.DeltaIndex + 1, {delta, value});
         ++it;
@@ -302,18 +291,18 @@ template<typename ValueType> struct ByteTransitions {
     }
 
     // Start is inclusive, end is exclusive.
-    void Delete(Iterator &it, uint start_byte, uint end_byte) {
+    void Delete(Iterator &it, u32 start_byte, u32 end_byte) {
         it.MoveTo(start_byte);
-        const uint start_index = start_byte <= it.ByteIndex ? it.DeltaIndex : it.DeltaIndex + 1;
+        const u32 start_index = start_byte <= it.ByteIndex ? it.DeltaIndex : it.DeltaIndex + 1;
         it.MoveTo(end_byte - 1);
         if (it.ByteIndex < start_byte) return;
 
         if (!it.IsEnd()) ++it;
-        const uint end_index = it.DeltaIndex;
+        const u32 end_index = it.DeltaIndex;
 
         // We're now one element after the last element to be deleted.
         // Merge the deltas of all elements to delete into this element (if we're not past the end).
-        const uint deleted_delta = std::accumulate(DeltaValues.begin() + start_index, DeltaValues.begin() + end_index, 0u, [](uint sum, const DeltaValue &dv) { return sum + dv.Delta; });
+        const u32 deleted_delta = std::accumulate(DeltaValues.begin() + start_index, DeltaValues.begin() + end_index, 0u, [](u32 sum, const DeltaValue &dv) { return sum + dv.Delta; });
         if (!it.IsEnd()) DeltaValues[it.DeltaIndex].Delta += deleted_delta;
         else it.ByteIndex -= deleted_delta;
         it.DeltaIndex -= end_index - start_index;
@@ -330,7 +319,7 @@ template<typename ValueType> struct ByteTransitions {
     }
 
     auto begin() const { return Iterator(DeltaValues, DefaultValue); }
-    uint size() const { return DeltaValues.size(); }
+    u32 size() const { return DeltaValues.size(); }
     void clear() {
         DeltaValues.clear();
         EnsureStartTransition();
@@ -351,7 +340,7 @@ private:
 };
 
 struct ByteRange {
-    uint Start{0}, End{0};
+    u32 Start{0}, End{0};
 
     auto operator<=>(const ByteRange &o) const {
         if (auto cmp = Start <=> o.Start; cmp != 0) return cmp;
@@ -386,7 +375,7 @@ TS API functions generally handle only having bytes populated.
   - For deletion, same as `start`.
 **/
 struct TextInputEdit {
-    uint StartByte{0}, OldEndByte{0}, NewEndByte{0};
+    u32 StartByte{0}, OldEndByte{0}, NewEndByte{0};
     TextInputEdit Invert() const { return TextInputEdit{StartByte, NewEndByte, OldEndByte}; }
     bool IsInsert() const { return StartByte == OldEndByte; }
     bool IsDelete() const { return StartByte == NewEndByte; }
@@ -434,12 +423,12 @@ struct SyntaxTree {
         const auto &language = Languages.Get(language_id);
         ts_parser_set_language(Parser, language.TsLanguage);
         Query = language.GetQuery();
-        const uint capture_count = ts_query_capture_count(Query);
+        const u32 capture_count = ts_query_capture_count(Query);
         StyleByCaptureId.clear();
         StyleByCaptureId.reserve(capture_count + 1);
         StyleByCaptureId[NoneCaptureId] = Config.DefaultCharStyle;
-        for (uint i = 0; i < capture_count; ++i) {
-            uint length;
+        for (u32 i = 0; i < capture_count; ++i) {
+            u32 length;
             const char *capture_name = ts_query_capture_name_for_id(Query, i, &length);
             StyleByCaptureId[i] = Config.FindStyleByCaptureName(std::string(capture_name, length));
         }
@@ -456,7 +445,7 @@ struct SyntaxTree {
         return s_expression;
     }
 
-    SyntaxNodeInfo GetNodeAtByte(uint byte_index) const {
+    SyntaxNodeInfo GetNodeAtByte(u32 byte_index) const {
         TSNode node = ts_node_descendant_for_byte_range(ts_tree_root_node(Tree), byte_index, byte_index);
         const ByteRange range{ts_node_start_byte(node), ts_node_end_byte(node)};
 
@@ -472,7 +461,7 @@ struct SyntaxTree {
         return {std::move(hierarchy), range};
     }
 
-    inline static uint NoneCaptureId{uint(-1)}; // Corresponds to the default style.
+    inline static u32 NoneCaptureId{u32(-1)}; // Corresponds to the default style.
 
     TSInput Input;
     TSConfig Config;
@@ -480,8 +469,8 @@ struct SyntaxTree {
     TSParser *Parser{nullptr};
     TSQuery *Query{nullptr};
     TSQueryCursor *QueryCursor{nullptr};
-    std::unordered_map<uint, TextEditorCharStyle> StyleByCaptureId{};
-    ByteTransitions<uint> CaptureIdTransitions{NoneCaptureId};
+    std::unordered_map<u32, TextEditorCharStyle> StyleByCaptureId{};
+    ByteTransitions<u32> CaptureIdTransitions{NoneCaptureId};
     std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
 
 private:
@@ -500,13 +489,13 @@ private:
         auto transition_it = CaptureIdTransitions.begin();
 
         // Find the minimum range needed to span all nodes whose syntactic structure has changed.
-        uint num_changed_ranges = 0;
+        u32 num_changed_ranges = 0;
         if (old_tree == nullptr) {
             CaptureIdTransitions.clear();
         } else {
             ByteRange changed_range = {UINT32_MAX, 0u};
             const TSRange *changed_ranges = ts_tree_get_changed_ranges(old_tree, Tree, &num_changed_ranges);
-            for (uint i = 0; i < num_changed_ranges; ++i) {
+            for (u32 i = 0; i < num_changed_ranges; ++i) {
                 changed_range.Start = std::min(changed_range.Start, changed_ranges[i].start_byte);
                 changed_range.End = std::max(changed_range.End, changed_ranges[i].end_byte);
             }
@@ -523,7 +512,7 @@ private:
             const auto ordered_edits = std::set<TextInputEdit>(edits.begin(), edits.end());
             if (CaptureIdTransitions.size() > 1) {
                 for (const auto &edit : reverse_view(ordered_edits)) {
-                    const uint inc_after_byte = edit.OldEndByte;
+                    const u32 inc_after_byte = edit.OldEndByte;
                     transition_it.MoveTo(inc_after_byte);
                     if (!transition_it.IsEnd()) {
                         if (transition_it.ByteIndex != inc_after_byte) ++transition_it;
@@ -544,7 +533,7 @@ private:
             ts_query_cursor_exec(QueryCursor, Query, ts_tree_root_node(Tree));
 
             TSQueryMatch match;
-            uint capture_index;
+            u32 capture_index;
             while (ts_query_cursor_next_capture(QueryCursor, &match, &capture_index)) {
                 const TSQueryCapture &capture = match.captures[capture_index];
                 // We only store the points at which there is a _transition_ from one style to another.
@@ -557,7 +546,7 @@ private:
                 ChangedCaptureRanges.insert(node_byte_range); // For debugging.
                 CaptureIdTransitions.Delete(transition_it, node_byte_range.Start, node_byte_range.End);
                 if (*transition_it != capture.index) {
-                    // uint length;
+                    // u32 length;
                     // const char *capture_name = ts_query_capture_name_for_id(Query, capture.index, &length);
                     // std::println("\t'{}'[{}:{}]: {}", ts_node_type(node), node_byte_range.Start, node_byte_range.End, string(capture_name, length));
                     CaptureIdTransitions.Insert(transition_it, node_byte_range.Start, capture.index);

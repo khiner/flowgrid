@@ -53,11 +53,11 @@ enum class PaletteIndex {
     Max
 };
 
-const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uint32_t *bytes_read);
+const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *bytes_read);
 
 // https://en.wikipedia.org/wiki/UTF-8
 // We assume that the char is a standalone character (<128) or a leading byte of an UTF-8 code sequence (non-10xxxxxx code)
-static uint UTF8CharLength(char ch) {
+static u32 UTF8CharLength(char ch) {
     if ((ch & 0xFE) == 0xFC) return 6;
     if ((ch & 0xFC) == 0xF8) return 5;
     if ((ch & 0xF8) == 0xF0) return 4;
@@ -72,7 +72,7 @@ static bool IsWordChar(char ch) {
     return UTF8CharLength(ch) > 1 || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
 }
 
-static uint NextTabstop(uint column, uint tab_size) { return ((column / tab_size) + 1) * tab_size; }
+static u32 NextTabstop(u32 column, u32 tab_size) { return ((column / tab_size) + 1) * tab_size; }
 
 static char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && ch >= 'A' && ch <= 'Z') ? ch - 'A' + 'a' : ch; }
 
@@ -103,7 +103,7 @@ struct TextBufferImpl {
 
     ~TextBufferImpl() = default;
 
-    using PaletteT = std::array<ImU32, uint(PaletteIndex::Max)>;
+    using PaletteT = std::array<u32, u32(PaletteIndex::Max)>;
     inline static const TextBufferPaletteId DefaultPaletteId{TextBufferPaletteId::Dark};
 
     inline static const PaletteT DarkPalette = {{
@@ -166,7 +166,7 @@ struct TextBufferImpl {
     // Tabs are counted as [1..NumTabSpaces] u32 empty spaces, depending on how many space is necessary to reach the next tab stop.
     // For example, `Coords{1, 5}` represents the character 'B' in the line "\tABC", when NumTabSpaces = 4, since it is rendered as "    ABC".
     struct Coords {
-        uint L{0}, C{0}; // Line, Column
+        u32 L{0}, C{0}; // Line, Column
 
         auto operator<=>(const Coords &o) const {
             if (auto cmp = L <=> o.L; cmp != 0) return cmp;
@@ -180,7 +180,7 @@ struct TextBufferImpl {
     };
 
     struct LineChar {
-        uint L{0}, C{0};
+        u32 L{0}, C{0};
 
         auto operator<=>(const LineChar &o) const {
             if (auto cmp = L <=> o.L; cmp != 0) return cmp;
@@ -241,7 +241,7 @@ struct TextBufferImpl {
                 ++LC.L;
                 LC.C = 0;
             } else {
-                LC.C = std::min(LC.C + UTF8CharLength(Text[LC.L][LC.C]), uint(Text[LC.L].size()));
+                LC.C = std::min(LC.C + UTF8CharLength(Text[LC.L][LC.C]), u32(Text[LC.L].size()));
             }
         }
 
@@ -268,19 +268,19 @@ struct TextBufferImpl {
 
         LineChar GetStart() const { return Start; }
         LineChar GetEnd() const { return End; }
-        uint GetStartColumn(const TextBufferImpl &editor) {
+        u32 GetStartColumn(const TextBufferImpl &editor) {
             if (!StartColumn) StartColumn = editor.GetColumn(Start);
             return *StartColumn;
         }
-        uint GetEndColumn(const TextBufferImpl &editor) {
+        u32 GetEndColumn(const TextBufferImpl &editor) {
             if (!EndColumn) EndColumn = editor.GetColumn(End);
             return *EndColumn;
         }
         Coords GetStartCoords(const TextBufferImpl &editor) { return {Start.L, GetStartColumn(editor)}; }
         Coords GetEndCoords(const TextBufferImpl &editor) { return {End.L, GetEndColumn(editor)}; }
 
-        uint Line() const { return End.L; }
-        uint CharIndex() const { return End.C; }
+        u32 Line() const { return End.L; }
+        u32 CharIndex() const { return End.C; }
         LineChar LC() const { return End; } // Be careful if this is a multiline cursor!
 
         LineChar Min() const { return std::min(Start, End); }
@@ -296,22 +296,22 @@ struct TextBufferImpl {
         void MarkEdited() { StartEdited = EndEdited = true; }
         void ClearEdited() { StartEdited = EndEdited = false; }
 
-        void SetStart(LineChar start, std::optional<uint> start_column = std::nullopt) {
+        void SetStart(LineChar start, std::optional<u32> start_column = std::nullopt) {
             Start = std::move(start);
             StartColumn = start_column;
             EndEdited = true; // todo maybe only if changed?
         }
-        void SetEnd(LineChar end, std::optional<uint> end_column = std::nullopt) {
+        void SetEnd(LineChar end, std::optional<u32> end_column = std::nullopt) {
             End = std::move(end);
             EndColumn = end_column;
             EndEdited = true; // todo maybe only if changed?
         }
-        void Set(LineChar end, bool set_both, std::optional<uint> end_column = std::nullopt) {
+        void Set(LineChar end, bool set_both, std::optional<u32> end_column = std::nullopt) {
             if (set_both) SetStart(end, end_column);
             SetEnd(end, end_column);
         }
-        void Set(LineChar lc, std::optional<uint> column = std::nullopt) { Set(lc, true, column); }
-        void Set(LineChar start, LineChar end, std::optional<uint> start_column = std::nullopt, std::optional<uint> end_column = std::nullopt) {
+        void Set(LineChar lc, std::optional<u32> column = std::nullopt) { Set(lc, true, column); }
+        void Set(LineChar start, LineChar end, std::optional<u32> start_column = std::nullopt, std::optional<u32> end_column = std::nullopt) {
             SetStart(start, start_column);
             SetEnd(end, end_column);
         }
@@ -325,7 +325,7 @@ struct TextBufferImpl {
         // A column is computed and set on demand when its `LineChar` is read.
         // Operationally, this means that if a column is never read, it is never computed,
         // and a non-empty column is always up-to-date with its latest `LineChar` value.
-        std::optional<uint> StartColumn{}, EndColumn{};
+        std::optional<u32> StartColumn{}, EndColumn{};
         // Cleared every frame. Used to keep recently edited cursors visible.
         // todo These should not be stored in history, since all cursors are marked as edited during an undo/redo.
         bool StartEdited{false}, EndEdited{false};
@@ -339,8 +339,8 @@ struct TextBufferImpl {
         auto cbegin() const { return Cursors.cbegin(); }
         auto cend() const { return Cursors.cend(); }
 
-        Cursor &operator[](uint i) { return Cursors[i]; }
-        const Cursor &operator[](uint i) const { return Cursors[i]; }
+        Cursor &operator[](u32 i) { return Cursors[i]; }
+        const Cursor &operator[](u32 i) const { return Cursors[i]; }
         const Cursor &front() const { return Cursors.front(); }
         const Cursor &back() const { return Cursors.back(); }
         Cursor &front() { return Cursors.front(); }
@@ -375,7 +375,7 @@ struct TextBufferImpl {
         void ClearEdited() {
             for (Cursor &c : Cursors) c.ClearEdited();
         }
-        uint GetLastAddedIndex() { return LastAddedIndex >= size() ? 0 : LastAddedIndex; }
+        u32 GetLastAddedIndex() { return LastAddedIndex >= size() ? 0 : LastAddedIndex; }
         Cursor &GetLastAdded() { return Cursors[GetLastAddedIndex()]; }
 
         void SortAndMerge() {
@@ -428,23 +428,23 @@ struct TextBufferImpl {
 
     private:
         std::vector<Cursor> Cursors{{{0, 0}}};
-        uint LastAddedIndex{0};
+        u32 LastAddedIndex{0};
     };
 
     bool Empty() const { return Text.empty() || (Text.size() == 1 && Text[0].empty()); }
 
-    uint LineCount() const { return Text.size(); }
-    const Line &GetLine(uint li) const { return Text[li]; }
+    u32 LineCount() const { return Text.size(); }
+    const Line &GetLine(u32 li) const { return Text[li]; }
     LineChar GetCursorPosition() const { return Cursors.back().LC(); }
-    LineChar CheckedNextLineBegin(uint li) const { return li < Text.size() - 1 ? LineChar{li + 1, 0} : EndLC(); }
+    LineChar CheckedNextLineBegin(u32 li) const { return li < Text.size() - 1 ? LineChar{li + 1, 0} : EndLC(); }
 
     string GetText(LineChar start, LineChar end) const {
         if (end <= start) return "";
 
-        const uint start_li = start.L, end_li = std::min(uint(Text.size()) - 1, end.L);
-        const uint start_ci = start.C, end_ci = end.C;
+        const u32 start_li = start.L, end_li = std::min(u32(Text.size()) - 1, end.L);
+        const u32 start_ci = start.C, end_ci = end.C;
         string result;
-        for (uint ci = start_ci, li = start_li; li < end_li || ci < end_ci;) {
+        for (u32 ci = start_ci, li = start_li; li < end_li || ci < end_ci;) {
             if (const auto &line = Text[li]; ci < line.size()) {
                 result += line[ci++];
             } else {
@@ -463,7 +463,7 @@ struct TextBufferImpl {
 
     const string &GetLanguageName() const { return Languages.Get(LanguageId).Name; }
 
-    ImU32 GetColor(PaletteIndex index) const { return GetPalette()[uint(index)]; }
+    u32 GetColor(PaletteIndex index) const { return GetPalette()[u32(index)]; }
 
     const PaletteT &GetPalette() const {
         switch (PaletteId) {
@@ -475,7 +475,7 @@ struct TextBufferImpl {
     }
 
     void SetText(const string &text) {
-        const uint old_end_byte = EndByteIndex();
+        const u32 old_end_byte = EndByteIndex();
         TransientLines transient_lines{};
         TransientLine current_line{};
         for (auto ch : text) {
@@ -518,7 +518,7 @@ struct TextBufferImpl {
         ApplyEdits();
     }
 
-    void SetNumTabSpaces(uint tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
+    void SetNumTabSpaces(u32 tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
     void SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(line_spacing, 1.f, 2.f); }
 
     void MoveCursorsBottom(bool select = false) {
@@ -553,16 +553,16 @@ struct TextBufferImpl {
 
         // Track the cursor's column to return back to it after moving to a line long enough.
         // (This is the only place we worry about this.)
-        const uint new_end_column = c.GetEndColumn(*this);
-        const uint new_end_li = std::clamp(int(c.GetEnd().L) + amount, 0, int(LineCount() - 1));
+        const u32 new_end_column = c.GetEndColumn(*this);
+        const u32 new_end_li = std::clamp(int(c.GetEnd().L) + amount, 0, int(LineCount() - 1));
         const LineChar new_end{
             new_end_li,
             std::min(GetCharIndex({new_end_li, new_end_column}), GetLineMaxCharIndex(new_end_li)),
         };
         if (!select) return c.Set(new_end, true, new_end_column);
         if (!move_start) return c.Set(new_end, false, new_end_column);
-        const uint new_start_column = c.GetStartColumn(*this);
-        const uint new_start_li = std::clamp(int(c.GetStart().L) + amount, 0, int(LineCount() - 1));
+        const u32 new_start_column = c.GetStartColumn(*this);
+        const u32 new_start_li = std::clamp(int(c.GetStart().L) + amount, 0, int(LineCount() - 1));
         const LineChar new_start{
             new_start_li,
             std::min(GetCharIndex({new_start_li, new_start_column}), GetLineMaxCharIndex(new_start_li)),
@@ -585,7 +585,7 @@ struct TextBufferImpl {
     }
 
     bool CanUndo() const { return !ReadOnly && HistoryIndex > 0; }
-    bool CanRedo() const { return !ReadOnly && History.size() > 1 && HistoryIndex < uint(History.size() - 1); }
+    bool CanRedo() const { return !ReadOnly && History.size() > 1 && HistoryIndex < u32(History.size() - 1); }
     bool CanCopy() const { return Cursors.AnyRanged(); }
     bool CanCut() const { return !ReadOnly && CanCopy(); }
     bool CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
@@ -644,7 +644,7 @@ struct TextBufferImpl {
         TransientLines insert_text_lines_trans{};
         const char *ptr = clip_text;
         while (*ptr != '\0') {
-            uint str_length = 0;
+            u32 str_length = 0;
             while (ptr[str_length] != '\n' && ptr[str_length] != '\0') ++str_length;
             insert_text_lines_trans.push_back({ptr, ptr + str_length});
             // Special case: Last pasted char is a newline.
@@ -675,15 +675,15 @@ struct TextBufferImpl {
                 if (AutoIndent && c.CharIndex() != 0) {
                     // Match the indentation of the current or next line, whichever has more indentation.
                     // todo use tree-sitter fold queries
-                    const uint li = c.Line();
-                    const uint indent_li = li < Text.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
+                    const u32 li = c.Line();
+                    const u32 indent_li = li < Text.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
                     const auto &indent_line = Text[indent_li];
-                    for (uint i = 0; i < insert_line_trans.size() && isblank(indent_line[i]); ++i) insert_line_trans.push_back(indent_line[i]);
+                    for (u32 i = 0; i < insert_line_trans.size() && isblank(indent_line[i]); ++i) insert_line_trans.push_back(indent_line[i]);
                 }
             } else {
                 char buf[5];
                 ImTextCharToUtf8(buf, ch);
-                for (uint i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line_trans.push_back(buf[i]);
+                for (u32 i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line_trans.push_back(buf[i]);
             }
             auto insert_line = insert_line_trans.persistent();
             InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, c);
@@ -724,10 +724,10 @@ struct TextBufferImpl {
 
     void MoveCurrentLines(bool up) {
         BeforeCursors = Cursors;
-        std::set<uint> affected_lines;
-        uint min_li = std::numeric_limits<uint>::max(), max_li = std::numeric_limits<uint>::min();
+        std::set<u32> affected_lines;
+        u32 min_li = std::numeric_limits<u32>::max(), max_li = std::numeric_limits<u32>::min();
         for (const auto &c : Cursors) {
-            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
+            for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
                 // Check if selection ends at line start.
                 if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
 
@@ -739,7 +739,7 @@ struct TextBufferImpl {
         if ((up && min_li == 0) || (!up && max_li == Text.size() - 1)) return; // Can't move up/down anymore.
 
         if (up) {
-            for (const uint li : affected_lines) SwapLines(li - 1, li);
+            for (const u32 li : affected_lines) SwapLines(li - 1, li);
         } else {
             for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) SwapLines(*it, *it + 1);
         }
@@ -754,25 +754,25 @@ struct TextBufferImpl {
 
         static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), std::ranges::find_if_not(line, isblank)); };
 
-        std::unordered_set<uint> affected_lines;
+        std::unordered_set<u32> affected_lines;
         for (const auto &c : Cursors) {
-            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
+            for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
                 if (!(c.IsRange() && c.Max() == LineChar{li, 0}) && !Text[li].empty()) affected_lines.insert(li);
             }
         }
 
-        const bool should_add_comment = any_of(affected_lines, [&](uint li) {
+        const bool should_add_comment = any_of(affected_lines, [&](u32 li) {
             return !Equals(comment, Text[li], FindFirstNonSpace(Text[li]));
         });
 
         BeforeCursors = Cursors;
-        for (uint li : affected_lines) {
+        for (u32 li : affected_lines) {
             if (should_add_comment) {
                 InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0});
             } else {
                 const auto &line = Text[li];
-                const uint ci = FindFirstNonSpace(line);
-                uint comment_ci = ci + comment.length();
+                const u32 ci = FindFirstNonSpace(line);
+                u32 comment_ci = ci + comment.length();
                 if (comment_ci < line.size() && line[comment_ci] == ' ') ++comment_ci;
 
                 DeleteRange({li, ci}, {li, comment_ci});
@@ -788,7 +788,7 @@ struct TextBufferImpl {
         Cursors.SortAndMerge();
 
         for (const auto &c : reverse_view(Cursors)) {
-            const uint li = c.Line();
+            const u32 li = c.Line();
             DeleteRange(
                 li == Text.size() - 1 && li > 0 ? LineMaxLC(li - 1) : LineChar{li, 0},
                 CheckedNextLineBegin(li)
@@ -800,7 +800,7 @@ struct TextBufferImpl {
     void ChangeCurrentLinesIndentation(bool increase) {
         BeforeCursors = Cursors;
         for (const auto &c : reverse_view(Cursors)) {
-            for (uint li = c.Min().L; li <= c.Max().L; ++li) {
+            for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
                 // Check if selection ends at line start.
                 if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
 
@@ -859,21 +859,21 @@ private:
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
 
     static LineChar BeginLC() { return {0, 0}; }
-    LineChar EndLC() const { return {uint(Text.size() - 1), uint(Text.back().size())}; }
-    uint EndByteIndex() const { return ToByteIndex(EndLC()); }
+    LineChar EndLC() const { return {u32(Text.size() - 1), u32(Text.back().size())}; }
+    u32 EndByteIndex() const { return ToByteIndex(EndLC()); }
 
     LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Text, std::move(lc), std::move(begin), std::move(end)}; }
     LinesIter Iter(LineChar lc = BeginLC()) const { return Iter(std::move(lc), BeginLC(), EndLC()); }
 
-    LineChar LineMaxLC(uint li) const { return {li, GetLineMaxCharIndex(li)}; }
+    LineChar LineMaxLC(u32 li) const { return {li, GetLineMaxCharIndex(li)}; }
     Coords ToCoords(LineChar lc) const { return {lc.L, GetColumn(Text[lc.L], lc.C)}; }
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(std::move(coords))}; }
-    uint ToByteIndex(LineChar lc) const {
+    u32 ToByteIndex(LineChar lc) const {
         if (lc.L >= Text.size()) return EndByteIndex();
-        return ranges::accumulate(subrange(Text.begin(), Text.begin() + lc.L), 0u, [](uint sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
+        return ranges::accumulate(subrange(Text.begin(), Text.begin() + lc.L), 0u, [](u32 sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
     }
 
-    void MoveCharIndexAndColumn(const Line &line, uint &ci, uint &column) const {
+    void MoveCharIndexAndColumn(const Line &line, u32 &ci, u32 &column) const {
         const char ch = line[ci];
         ci += UTF8CharLength(ch);
         column = ch == '\t' ? NextTabstop(column, NumTabSpaces) : column + 1;
@@ -886,13 +886,13 @@ private:
         if (is_over_li != nullptr) *is_over_li = local.x < TextStart;
 
         Coords coords{
-            std::min(uint(std::max(0.f, floor(local.y / CharAdvance.y))), uint(Text.size()) - 1),
-            uint(std::max(0.f, floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)))
+            std::min(u32(std::max(0.f, floor(local.y / CharAdvance.y))), u32(Text.size()) - 1),
+            u32(std::max(0.f, floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)))
         };
         // Check if the coord is in the middle of a tab character.
-        const uint li = std::min(coords.L, uint(Text.size()) - 1);
+        const u32 li = std::min(coords.L, u32(Text.size()) - 1);
         const auto &line = Text[li];
-        const uint ci = GetCharIndex(line, coords.C);
+        const u32 ci = GetCharIndex(line, coords.C);
         if (ci < line.size() && line[ci] == '\t') coords.C = GetColumn(line, ci);
 
         return {coords.L, GetLineMaxColumn(line, coords.C)};
@@ -900,35 +900,35 @@ private:
 
     LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
 
-    uint GetCharIndex(const Line &line, uint column) const {
-        uint ci = 0;
-        for (uint column_i = 0; ci < line.size() && column_i < column;) MoveCharIndexAndColumn(line, ci, column_i);
+    u32 GetCharIndex(const Line &line, u32 column) const {
+        u32 ci = 0;
+        for (u32 column_i = 0; ci < line.size() && column_i < column;) MoveCharIndexAndColumn(line, ci, column_i);
         return ci;
     }
-    uint GetCharIndex(Coords coords) const { return GetCharIndex(Text[coords.L], coords.C); }
-    uint GetLineMaxCharIndex(uint li) const { return Text[li].size(); }
+    u32 GetCharIndex(Coords coords) const { return GetCharIndex(Text[coords.L], coords.C); }
+    u32 GetLineMaxCharIndex(u32 li) const { return Text[li].size(); }
 
-    uint GetColumn(const Line &line, uint ci) const {
-        uint column = 0;
-        for (uint ci_i = 0; ci_i < ci && ci_i < line.size();) MoveCharIndexAndColumn(line, ci_i, column);
+    u32 GetColumn(const Line &line, u32 ci) const {
+        u32 column = 0;
+        for (u32 ci_i = 0; ci_i < ci && ci_i < line.size();) MoveCharIndexAndColumn(line, ci_i, column);
         return column;
     }
-    uint GetColumn(LineChar lc) const { return GetColumn(Text[lc.L], lc.C); }
+    u32 GetColumn(LineChar lc) const { return GetColumn(Text[lc.L], lc.C); }
 
-    uint GetFirstVisibleCharIndex(const Line &line, uint first_visible_column) const {
-        uint ci = 0, column = 0;
+    u32 GetFirstVisibleCharIndex(const Line &line, u32 first_visible_column) const {
+        u32 ci = 0, column = 0;
         while (column < first_visible_column && ci < line.size()) MoveCharIndexAndColumn(line, ci, column);
         return column > first_visible_column && ci > 0 ? ci - 1 : ci;
     }
 
-    uint GetLineMaxColumn(const Line &line) const {
-        uint column = 0;
-        for (uint ci = 0; ci < line.size();) MoveCharIndexAndColumn(line, ci, column);
+    u32 GetLineMaxColumn(const Line &line) const {
+        u32 column = 0;
+        for (u32 ci = 0; ci < line.size();) MoveCharIndexAndColumn(line, ci, column);
         return column;
     }
-    uint GetLineMaxColumn(const Line &line, uint limit) const {
-        uint column = 0;
-        for (uint ci = 0; ci < line.size() && column < limit;) MoveCharIndexAndColumn(line, ci, column);
+    u32 GetLineMaxColumn(const Line &line, u32 limit) const {
+        u32 column = 0;
+        for (u32 ci = 0; ci < line.size() && column < limit;) MoveCharIndexAndColumn(line, ci, column);
         return column;
     }
 
@@ -941,7 +941,7 @@ private:
         if (from.L >= Text.size()) return from;
 
         const auto &line = Text[from.L];
-        uint ci = from.C;
+        u32 ci = from.C;
         if (ci >= line.size()) return from;
 
         const char init_char = line[ci];
@@ -965,7 +965,7 @@ private:
         auto find_lci = Iter(start);
         do {
             auto match_lci = find_lci;
-            for (uint i = 0; i < text.size(); ++i) {
+            for (u32 i = 0; i < text.size(); ++i) {
                 const auto &match_lc = *match_lci;
                 if (match_lc.C == Text[match_lc.L].size()) {
                     if (text[i] != '\n' || match_lc.L + 1 >= Text.size()) break;
@@ -989,11 +989,11 @@ private:
             OpenToCloseChar{{'{', '}'}, {'(', ')'}, {'[', ']'}},
             CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
 
-        const uint li = c.Line();
+        const u32 li = c.Line();
         const auto &line = Text[li];
         if (c.IsRange() || line.empty()) return {};
 
-        uint ci = c.CharIndex();
+        u32 ci = c.CharIndex();
         // Considered on bracket if cursor is to the left or right of it.
         if (ci > 0 && (CloseToOpenChar.contains(line[ci - 1]) || OpenToCloseChar.contains(line[ci - 1]))) --ci;
 
@@ -1003,7 +1003,7 @@ private:
 
         const LineChar lc{li, ci};
         const char other_ch = is_close_char ? CloseToOpenChar.at(ch) : OpenToCloseChar.at(ch);
-        uint match_count = 0;
+        u32 match_count = 0;
         for (auto lci = Iter(lc); is_close_char ? !lci.IsBegin() : !lci.IsEnd(); is_close_char ? --lci : ++lci) {
             const char ch_inner = lci;
             if (ch_inner == ch) ++match_count;
@@ -1013,20 +1013,20 @@ private:
         return {};
     }
 
-    uint NumStartingSpaceColumns(uint li) const {
+    u32 NumStartingSpaceColumns(u32 li) const {
         const auto &line = Text[li];
-        uint column = 0;
-        for (uint ci = 0; ci < line.size() && isblank(line[ci]);) MoveCharIndexAndColumn(line, ci, column);
+        u32 column = 0;
+        for (u32 ci = 0; ci < line.size() && isblank(line[ci]);) MoveCharIndexAndColumn(line, ci, column);
         return column;
     }
 
-    void SwapLines(uint li1, uint li2) {
+    void SwapLines(u32 li1, u32 li2) {
         if (li1 == li2 || li1 >= Text.size() || li2 >= Text.size()) return;
 
         InsertText({Text[li2], {}}, {li1, 0}, false);
         if (li2 + 1 < Text.size() - 1) DeleteRange({li2 + 1, 0}, {li2 + 2, 0}, false);
         // If the second line is the last line, we also need to delete the newline we just inserted.
-        else DeleteRange({li2, uint(Text[li2].size())}, EndLC(), false);
+        else DeleteRange({li2, u32(Text[li2].size())}, EndLC(), false);
     }
 
     // Returns insertion end.
@@ -1043,17 +1043,17 @@ private:
             Text = Text + text;
         }
 
-        const uint num_new_lines = text.size() - 1;
+        const u32 num_new_lines = text.size() - 1;
         if (update_cursors) {
             auto cursors_below = Cursors | filter([&](const auto &c) { return c.Line() > at.L; });
             for (auto &c : cursors_below) c.Set({c.Line() + num_new_lines, c.CharIndex()});
         }
 
-        const uint start_byte = ToByteIndex(at);
-        const uint text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](uint sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
+        const u32 start_byte = ToByteIndex(at);
+        const u32 text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](u32 sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
         Edits.emplace_back(start_byte, start_byte, start_byte + text_byte_length);
 
-        return LineChar{at.L + num_new_lines, text.size() == 1 ? uint(at.C + text.front().size()) : uint(text.back().size())};
+        return LineChar{at.L + num_new_lines, text.size() == 1 ? u32(at.C + text.front().size()) : u32(text.back().size())};
     }
 
     void InsertTextAtCursor(Lines text, Cursor &c) {
@@ -1064,13 +1064,13 @@ private:
         if (end <= start) return;
 
         auto start_line = Text[start.L], end_line = Text[end.L];
-        const uint start_byte = ToByteIndex(start), old_end_byte = ToByteIndex(end);
+        const u32 start_byte = ToByteIndex(start), old_end_byte = ToByteIndex(end);
         if (start.L == end.L) {
             Text = Text.set(start.L, start_line.erase(start.C, end.C));
 
             if (update_cursors) {
                 auto cursors_to_right = Cursors | filter([&start](const auto &c) { return !c.IsRange() && c.IsRightOf(start); });
-                for (auto &c : cursors_to_right) c.Set({c.Line(), uint(c.CharIndex() - (end.C - start.C))});
+                for (auto &c : cursors_to_right) c.Set({c.Line(), u32(c.CharIndex() - (end.C - start.C))});
             }
         } else {
             end_line = end_line.drop(end.C);
@@ -1165,9 +1165,9 @@ private:
         }
     }
 
-    uint NumTabSpacesAtColumn(uint column) const { return NumTabSpaces - (column % NumTabSpaces); }
+    u32 NumTabSpacesAtColumn(u32 column) const { return NumTabSpaces - (column % NumTabSpaces); }
 
-    void CreateHoveredNode(uint byte_index) {
+    void CreateHoveredNode(u32 byte_index) {
         DestroyHoveredNode();
         HoveredNode = std::make_unique<SyntaxNodeInfo>(Syntax->GetNodeAtByte(byte_index));
         for (const auto &node : HoveredNode->Hierarchy) {
@@ -1190,8 +1190,8 @@ private:
     LanguageID LanguageId{LanguageID::None};
 
     float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextBufferImpl.
-    uint NumTabSpaces{4};
-    uint LeftMargin{10};
+    u32 NumTabSpaces{4};
+    u32 LeftMargin{10};
     ImVec2 CharAdvance;
 
     ImVec2 ContentDims{0, 0}; // Pixel width/height of current content area.
@@ -1216,10 +1216,10 @@ private:
 
     // The first history record is the initial state (after construction), and it's never removed from the history.
     immer::vector<Snapshot> History;
-    uint HistoryIndex{0};
+    u32 HistoryIndex{0};
 };
 
-const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uint32_t *bytes_read) {
+const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *bytes_read) {
     (void)byte_index; // Unused.
     static const char newline = '\n';
 
@@ -1355,18 +1355,18 @@ void TextBufferImpl::Render(bool is_focused) {
         ImGui::GetWindowWidth() - (scrollbars_visible.first ? ImGuiScrollbarWidth : 0.0f),
         ImGui::GetWindowHeight() - (scrollbars_visible.second ? ImGuiScrollbarWidth : 0.0f)
     };
-    const Coords first_visible_coords = {uint(scroll.y / CharAdvance.y), uint(std::max(scroll.x - TextStart, 0.0f) / CharAdvance.x)};
-    const Coords last_visible_coords = {uint((ContentDims.y + scroll.y) / CharAdvance.y), uint((ContentDims.x + scroll.x - TextStart) / CharAdvance.x)};
+    const Coords first_visible_coords = {u32(scroll.y / CharAdvance.y), u32(std::max(scroll.x - TextStart, 0.0f) / CharAdvance.x)};
+    const Coords last_visible_coords = {u32((ContentDims.y + scroll.y) / CharAdvance.y), u32((ContentDims.x + scroll.x - TextStart) / CharAdvance.x)};
     ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
 
-    uint max_column = 0;
+    u32 max_column = 0;
     auto dl = ImGui::GetWindowDrawList();
     const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
     auto transition_it = Syntax->CaptureIdTransitions.begin();
-    for (uint li = first_visible_coords.L, byte_index = ToByteIndex({first_visible_coords.L, 0});
+    for (u32 li = first_visible_coords.L, byte_index = ToByteIndex({first_visible_coords.L, 0});
          li <= last_visible_coords.L && li < Text.size(); ++li) {
         const auto &line = Text[li];
-        const uint line_max_column = GetLineMaxColumn(line, last_visible_coords.C);
+        const u32 line_max_column = GetLineMaxColumn(line, last_visible_coords.C);
         max_column = std::max(line_max_column, max_column);
 
         const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * CharAdvance.y};
@@ -1376,8 +1376,8 @@ void TextBufferImpl::Render(bool is_focused) {
         for (const auto &c : Cursors) {
             const auto selection_start = ToCoords(c.Min()), selection_end = ToCoords(c.Max());
             if (selection_start <= line_end_coord && selection_end > line_start_coord) {
-                const uint rect_start = selection_start > line_start_coord ? selection_start.C : 0;
-                const uint rect_end = selection_end < line_end_coord ?
+                const u32 rect_start = selection_start > line_start_coord ? selection_start.C : 0;
+                const u32 rect_end = selection_end < line_end_coord ?
                     selection_end.C :
                     line_end_coord.C + (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord) ? 1 : 0);
                 if (rect_start < rect_end) {
@@ -1400,7 +1400,7 @@ void TextBufferImpl::Render(bool is_focused) {
         // Render cursors
         if (is_focused) {
             for (const auto &c : filter(Cursors, [li](const auto &c) { return c.Line() == li; })) {
-                const uint ci = c.CharIndex();
+                const u32 ci = c.CharIndex();
                 const float cx = GetColumn(line, ci) * CharAdvance.x;
                 float width = 1.0f;
                 if (Overwrite && ci < line.size()) {
@@ -1415,15 +1415,15 @@ void TextBufferImpl::Render(bool is_focused) {
         }
 
         // Render colorized text
-        const uint line_start_byte_index = byte_index;
-        const uint start_ci = GetFirstVisibleCharIndex(line, first_visible_coords.C);
+        const u32 line_start_byte_index = byte_index;
+        const u32 start_ci = GetFirstVisibleCharIndex(line, first_visible_coords.C);
         byte_index += start_ci;
         transition_it.MoveForwardTo(byte_index);
-        for (uint ci = start_ci, column = first_visible_coords.C; ci < line.size() && column <= last_visible_coords.C;) {
+        for (u32 ci = start_ci, column = first_visible_coords.C; ci < line.size() && column <= last_visible_coords.C;) {
             const auto lc = LineChar{li, ci};
             const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + column * CharAdvance.x, 0};
             const char ch = line[lc.C];
-            const uint seq_length = UTF8CharLength(ch);
+            const u32 seq_length = UTF8CharLength(ch);
             if (ch == '\t') {
                 if (ShowWhitespaces) {
                     const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
@@ -1433,7 +1433,7 @@ void TextBufferImpl::Render(bool is_focused) {
                     };
                     const float gap = ImGui::GetFontSize() * (ShortTabs ? 0.16f : 0.2f);
                     const ImVec2 p3{p2.x - gap, p1.y - gap}, p4{p2.x - gap, p1.y + gap};
-                    const ImU32 color = GetColor(PaletteIndex::ControlCharacter);
+                    const u32 color = GetColor(PaletteIndex::ControlCharacter);
                     dl->AddLine(p1, p2, color);
                     dl->AddLine(p2, p3, color);
                     dl->AddLine(p2, p4, color);
@@ -1456,15 +1456,13 @@ void TextBufferImpl::Render(bool is_focused) {
                 dl->AddText(glyph_pos, char_style.Color, seq_begin, seq_begin + seq_length);
             }
             if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
-                const auto color = Syntax->StyleByCaptureId.at(*transition_it).Color;
-                auto c = ImColor(color);
-                c.Value.w = 0.2f;
+                const auto c = SetAlpha(Syntax->StyleByCaptureId.at(*transition_it).Color, 40);
                 dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, c);
             }
             if (ShowChangedCaptureRanges) {
                 for (const auto &range : Syntax->ChangedCaptureRanges) {
                     if (byte_index >= range.Start && byte_index < range.End) {
-                        dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, IM_COL32(255, 255, 255, 20));
+                        dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, Col32(255, 255, 255, 20));
                     }
                 }
             }
@@ -1477,7 +1475,7 @@ void TextBufferImpl::Render(bool is_focused) {
 
     CurrentSpaceDims = {
         std::max((max_column + std::min(ContentCoordDims.C - 1, max_column)) * CharAdvance.x, CurrentSpaceDims.x),
-        (Text.size() + std::min(ContentCoordDims.L - 1, uint(Text.size()))) * CharAdvance.y
+        (Text.size() + std::min(ContentCoordDims.L - 1, u32(Text.size()))) * CharAdvance.y
     };
 
     ImGui::SetCursorPos({0, 0});
@@ -1490,7 +1488,7 @@ void TextBufferImpl::Render(bool is_focused) {
             ImGui::InvisibleButton("", CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
             ImGui::SetCursorScreenPos(before_cursor);
         }
-        for (uint i = 0; i < HoveredNode->Hierarchy.size(); ++i) ImGui::PopID();
+        for (u32 i = 0; i < HoveredNode->Hierarchy.size(); ++i) ImGui::PopID();
     }
 
     ImGui::Dummy(CurrentSpaceDims);
@@ -1541,7 +1539,7 @@ void TextBufferImpl::DebugPanel() {
             ImGui::Text("Start: {%d, %d}(%u), End: {%d, %d}(%u)", start.L, start.C, ToByteIndex(start), end.L, end.C, ToByteIndex(end));
         }
         if (CollapsingHeader("Line lengths")) {
-            for (uint i = 0; i < Text.size(); i++) ImGui::Text("%u: %lu", i, Text[i].size());
+            for (u32 i = 0; i < Text.size(); i++) ImGui::Text("%u: %lu", i, Text[i].size());
         }
     }
     if (CollapsingHeader("History")) {

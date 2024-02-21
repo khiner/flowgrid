@@ -26,7 +26,7 @@ void Info::Render() const {
 
     PushTextWrapPos(0);
     static constexpr bool ShowId = false;
-    static constexpr uint NumColumns = ShowId ? 3 : 2;
+    static constexpr u32 NumColumns = ShowId ? 3 : 2;
 
     if (!tool->Results.empty() && BeginTable("##table", NumColumns, ImGuiTableFlags_Borders)) {
         const float id_width = CalcTextSize("0xDDDDDDDD").x;

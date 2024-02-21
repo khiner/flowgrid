@@ -724,7 +724,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         if (no_history) BeginDisabled();
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", history.Size() - 1, history.Index)) {
             if (!no_history) {
-                if (uint edited_history_index = history.Index; SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
+                if (u32 edited_history_index = history.Index; SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
                     project.Q(Action::Project::SetHistoryIndex{edited_history_index});
                 }
             }

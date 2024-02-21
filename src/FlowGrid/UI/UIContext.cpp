@@ -34,7 +34,7 @@ static VkAllocationCallbacks *g_Allocator = nullptr;
 static VkInstance g_Instance = VK_NULL_HANDLE;
 static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice g_Device = VK_NULL_HANDLE;
-static uint32_t g_QueueFamily = (uint32_t)-1;
+static u32 g_QueueFamily = u32(-1);
 static VkQueue g_Queue = VK_NULL_HANDLE;
 static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
 static VkDescriptorPool g_DescriptorPool = VK_NULL_HANDLE;
@@ -55,7 +55,7 @@ static bool IsExtensionAvailable(const ImVector<VkExtensionProperties> &properti
 }
 
 static VkPhysicalDevice SetupVulkan_SelectPhysicalDevice() {
-    uint32_t gpu_count;
+    u32 gpu_count;
     CheckVk(vkEnumeratePhysicalDevices(g_Instance, &gpu_count, nullptr));
     IM_ASSERT(gpu_count > 0);
 
@@ -84,7 +84,7 @@ static void SetupVulkan(std::vector<const char *> instance_extensions) {
         create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 
         // Enumerate available extensions
-        uint32_t properties_count;
+        u32 properties_count;
         ImVector<VkExtensionProperties> properties;
         vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, nullptr);
         properties.resize(properties_count);
@@ -102,7 +102,7 @@ static void SetupVulkan(std::vector<const char *> instance_extensions) {
 #endif
 
         // Create Vulkan Instance
-        create_info.enabledExtensionCount = uint(instance_extensions.size());
+        create_info.enabledExtensionCount = u32(instance_extensions.size());
         create_info.ppEnabledExtensionNames = instance_extensions.data();
         CheckVk(vkCreateInstance(&create_info, g_Allocator, &g_Instance));
     }
@@ -112,18 +112,18 @@ static void SetupVulkan(std::vector<const char *> instance_extensions) {
 
     // Select graphics queue family
     {
-        uint count;
+        u32 count;
         vkGetPhysicalDeviceQueueFamilyProperties(g_PhysicalDevice, &count, nullptr);
         VkQueueFamilyProperties *queues = (VkQueueFamilyProperties *)malloc(sizeof(VkQueueFamilyProperties) * count);
         vkGetPhysicalDeviceQueueFamilyProperties(g_PhysicalDevice, &count, queues);
-        for (uint i = 0; i < count; i++) {
+        for (u32 i = 0; i < count; i++) {
             if (queues[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
                 g_QueueFamily = i;
                 break;
             }
         }
         free(queues);
-        IM_ASSERT(g_QueueFamily != uint(-1));
+        IM_ASSERT(g_QueueFamily != u32(-1));
     }
 
     // Create logical device (with 1 queue)
@@ -132,7 +132,7 @@ static void SetupVulkan(std::vector<const char *> instance_extensions) {
         device_extensions.push_back("VK_KHR_swapchain");
 
         // Enumerate physical device extension
-        uint properties_count;
+        u32 properties_count;
         ImVector<VkExtensionProperties> properties;
         vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, nullptr);
         properties.resize(properties_count);
@@ -153,7 +153,7 @@ static void SetupVulkan(std::vector<const char *> instance_extensions) {
         create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         create_info.queueCreateInfoCount = sizeof(queue_info) / sizeof(queue_info[0]);
         create_info.pQueueCreateInfos = queue_info;
-        create_info.enabledExtensionCount = uint(device_extensions.size());
+        create_info.enabledExtensionCount = u32(device_extensions.size());
         create_info.ppEnabledExtensionNames = device_extensions.data();
         CheckVk(vkCreateDevice(g_PhysicalDevice, &create_info, g_Allocator, &g_Device));
         vkGetDeviceQueue(g_Device, g_QueueFamily, 0, &g_Queue);
@@ -169,7 +169,7 @@ static void SetupVulkan(std::vector<const char *> instance_extensions) {
         pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         pool_info.maxSets = 1 * IM_ARRAYSIZE(pool_sizes);
-        pool_info.poolSizeCount = uint(IM_ARRAYSIZE(pool_sizes));
+        pool_info.poolSizeCount = u32(IM_ARRAYSIZE(pool_sizes));
         pool_info.pPoolSizes = pool_sizes;
         CheckVk(vkCreateDescriptorPool(g_Device, &pool_info, g_Allocator, &g_DescriptorPool));
     }
@@ -301,7 +301,7 @@ UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Se
     Window = SDL_CreateWindow("FlowGrid", 1280, 720, window_flags);
     if (Window == nullptr) throw std::runtime_error(std::format("SDL_CreateWindow error: {}", SDL_GetError()));
 
-    uint extensions_count = 0;
+    u32 extensions_count = 0;
     const char *const *instance_extensions_raw = SDL_Vulkan_GetInstanceExtensions(&extensions_count);
     SetupVulkan({instance_extensions_raw, instance_extensions_raw + extensions_count});
 

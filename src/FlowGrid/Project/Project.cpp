@@ -240,7 +240,7 @@ void Project::Apply(const ActionType &action) const {
         Match{
             [this](const Action::Primitive::Any &a) { ApplyPrimitiveAction(a); },
             [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
-            [](const Action::TextEditor::Any &a) {
+            [](const Action::TextBuffer::Any &a) {
                 const auto *buffer = Find(a.GetComponentPath());
                 if (buffer == nullptr) throw std::runtime_error(std::format("TextEditor not found: {}", a.GetComponentPath().string()));
                 static_cast<const TextEditor *>(buffer)->Apply(a);
@@ -297,7 +297,7 @@ bool Project::CanApply(const ActionType &action) const {
         Match{
             [](const Action::Primitive::Any &) { return true; },
             [](const Action::Container::Any &) { return true; },
-            [](const Action::TextEditor::Any &) { return true; },
+            [](const Action::TextBuffer::Any &) { return true; },
 
             [this](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
             [this](const Action::Project::Redo &) { return History.CanRedo(); },

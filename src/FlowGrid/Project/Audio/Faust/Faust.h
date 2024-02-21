@@ -96,7 +96,7 @@ struct FaustDSPContainer {
     virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
 };
 
-using FaustDspProducedActionType = Action::Append<Action::Combine<Action::Faust::DSP::Any, Action::TextEditor::Any>, typename Action::AudioGraph::CreateFaustNode>;
+using FaustDspProducedActionType = Action::Append<Action::Combine<Action::Faust::DSP::Any, Action::TextBuffer::Any>, typename Action::AudioGraph::CreateFaustNode>;
 
 // `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
@@ -110,24 +110,7 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
 
     FaustDSPContainer &Container;
     const FileDialog &FileDialog;
-    ProducerProp_(
-        TextEditor, Editor, "Faust code", FileDialog,
-        TextEditor::FileConfig{
-            {
-                .owner_path = Path,
-                .title = "Open Faust DSP file",
-                .filters = FaustDspFileExtension,
-            },
-            {
-                .owner_path = Path,
-                .title = "Save Faust DSP file",
-                .filters = FaustDspFileExtension,
-                .default_file_name = "my_dsp",
-                .save_mode = true,
-            },
-        },
-        fs::path("./res") / "pitch_shifter.dsp",
-    );
+    ProducerProp(TextEditor, Editor, FileDialog, fs::path("./res") / "pitch_shifter.dsp");
 
     Box Box{nullptr};
     dsp *Dsp{nullptr};

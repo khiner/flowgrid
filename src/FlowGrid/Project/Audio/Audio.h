@@ -4,9 +4,9 @@
 #include "Core/ActionableComponent.h"
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
-#include "Project/TextEditor/TextEditorAction.h"
+#include "Project/TextEditor/TextBufferAction.h"
 
-struct Audio : ActionableComponent<Action::Audio::Any, Action::Combine<Action::Audio::Any, Action::AdjacencyList::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, Action::TextEditor::Any>> {
+struct Audio : ActionableComponent<Action::Audio::Any, Action::Combine<Action::Audio::Any, Action::AdjacencyList::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, Action::TextBuffer::Any>> {
     Audio(ArgsT &&, const FileDialog &);
     ~Audio();
 

@@ -23,7 +23,9 @@
 #include "Application/ApplicationPreferences.h"
 #include "Core/Windows.h"
 #include "Helper/File.h"
+#include "Helper/String.h"
 #include "Helper/Time.h"
+#include "Project/FileDialog/FileDialog.h"
 #include "UI/Fonts.h"
 
 #include "LanguageID.h"
@@ -1555,24 +1557,77 @@ void TextBufferImpl::DebugPanel() {
     }
 }
 
-TextBuffer::TextBuffer(ComponentArgs &&args, const fs::path &file_path)
-    : Component(std::move(args)), _LastOpenedFilePath(file_path), Impl(std::make_unique<TextBufferImpl>(file_path)) {
-}
+TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
+    : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
+      Impl(std::make_unique<TextBufferImpl>(file_path)) {}
 
 TextBuffer::~TextBuffer() {}
+
+void TextBuffer::Apply(const ActionType &action) const {
+    std::visit(
+        Match{
+            [this](const Action::TextBuffer::ShowOpenDialog &) {
+                FileDialog.Set({
+                    .owner_path = Path,
+                    .title = "Open file",
+                    .filters = ".*", // No filter for opens. Go nuts :)
+                    .save_mode = false,
+                    .max_num_selections = 1, // todo open multiple files
+                });
+            },
+            [this](const Action::TextBuffer::ShowSaveDialog &) {
+                const string current_file_ext = fs::path(LastOpenedFilePath).extension();
+                FileDialog.Set({
+                    .owner_path = Path,
+                    .title = std::format("Save {} file", Impl->GetLanguageName()),
+                    .filters = current_file_ext,
+                    .default_file_name = std::format("my_{}_program{}", StringHelper::Lowercase(Impl->GetLanguageName()), current_file_ext),
+                    .save_mode = true,
+                });
+            },
+            [this](const Action::TextBuffer::Open &a) {
+                LastOpenedFilePath.Set(a.file_path);
+                Impl->OpenFile(a.file_path);
+            },
+            [this](const Action::TextBuffer::Save &a) { FileIO::write(a.file_path, Impl->GetText()); },
+
+            [this](const Action::TextBuffer::Set &a) { Impl->SetText(a.value); },
+
+            [this](const Action::TextBuffer::Undo &) { Impl->Undo(); },
+            [this](const Action::TextBuffer::Redo &) { Impl->Redo(); },
+        },
+        action
+    );
+}
+bool TextBuffer::CanApply(const ActionType &action) const {
+    return std::visit(
+        Match{
+            [](const Action::TextBuffer::ShowOpenDialog &) { return true; },
+            [](const Action::TextBuffer::ShowSaveDialog &) { return true; },
+            [](const Action::TextBuffer::Open &) { return true; },
+            [](const Action::TextBuffer::Save &) { return true; },
+
+            [](const Action::TextBuffer::Set &) { return true; },
+
+            [this](const Action::TextBuffer::Undo &) { return Impl->CanUndo(); },
+            [this](const Action::TextBuffer::Redo &) { return Impl->CanRedo(); },
+        },
+        action
+    );
+}
 
 string TextBuffer::GetText() const { return Impl->GetText(); }
 bool TextBuffer::Empty() const { return Impl->Empty(); }
 
-const string &TextBuffer::GetLanguageFileExtensionsFilter() const { return Languages.AllFileExtensionsFilter; }
-
-void TextBuffer::SetText(const std::string &text) const { Impl->SetText(text); }
-void TextBuffer::OpenFile(const fs::path &path) const {
-    LastOpenedFilePath.Set(path);
-    Impl->OpenFile(path);
-}
-
 void TextBuffer::Render() const {
+    static string PrevSelectedPath = "";
+    if (FileDialog.OwnerPath == Path && PrevSelectedPath != FileDialog.SelectedFilePath) {
+        const fs::path selected_path = FileDialog.SelectedFilePath;
+        PrevSelectedPath = FileDialog.SelectedFilePath = "";
+        if (FileDialog.SaveMode) Q(Action::TextBuffer::Save{Path, selected_path});
+        else Q(Action::TextBuffer::Open{Path, selected_path});
+    }
+
     const auto cursor_coords = Impl->GetCursorPosition();
     const string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
     Text(
@@ -1600,6 +1655,8 @@ void TextBuffer::Render() const {
 }
 
 void TextBuffer::RenderMenu() const {
+    FileMenu.Draw();
+
     if (BeginMenu("Edit")) {
         MenuItem("Read-only mode", nullptr, &Impl->ReadOnly);
         Separator();

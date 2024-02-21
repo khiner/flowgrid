@@ -1244,89 +1244,87 @@ const char *TSReadText(void *payload, uint32_t byte_index, TSPoint position, uin
     return &line.front() + position.column;
 }
 
-static bool IsPressed(ImGuiKey key) {
-    const auto key_index = ImGui::GetKeyIndex(key);
+static bool IsChordPressed(ImGuiKeyChord chord) {
     const auto window_id = ImGui::GetCurrentWindowRead()->ID;
-    ImGui::SetKeyOwner(key_index, window_id); // Prevent app from handling this key press.
-    return ImGui::IsKeyPressed(key_index, window_id, ImGuiInputFlags_Repeat);
+    ImGui::SetKeyOwnersForKeyChord(chord, window_id); // Prevent app from handling this key press.
+    return ImGui::IsKeyChordPressed(chord, window_id, ImGuiInputFlags_Repeat);
 }
 
 void TextBuffer::HandleKeyboardInputs() const {
     auto &io = ImGui::GetIO();
     io.WantCaptureKeyboard = io.WantTextInput = true;
 
-    const bool
-        read_only = Impl->ReadOnly,
-        is_osx = io.ConfigMacOSXBehaviors,
-        alt = io.KeyAlt, ctrl = io.KeyCtrl, shift = io.KeyShift, super = io.KeySuper,
-        is_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift,
-        is_shift_shortcut = (is_osx ? (super && !ctrl) : (ctrl && !super)) && shift && !alt,
-        is_wordmove_key = is_osx ? alt : ctrl,
-        is_ctrl_only = ctrl && !alt && !shift && !super,
-        is_shift_only = shift && !alt && !ctrl && !super;
-
-    if (is_shortcut && IsPressed(ImGuiKey_Z) && Impl->CanUndo())
+    const bool read_only = Impl->ReadOnly, shift = io.KeyShift;
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_Z) && Impl->CanUndo())
         Impl->Undo();
-    else if (is_shift_shortcut && IsPressed(ImGuiKey_Z) && Impl->CanRedo())
+    else if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z) && Impl->CanRedo())
         Impl->Redo();
-    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_UpArrow))
+    else if (IsChordPressed(ImGuiKey_UpArrow))
         Impl->MoveCursorsLines(-1, shift);
-    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_DownArrow))
+    else if (IsChordPressed(ImGuiKey_DownArrow))
         Impl->MoveCursorsLines(1, shift);
-    else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_LeftArrow))
-        Impl->MoveCursorsChar(false, shift, is_wordmove_key);
-    else if ((is_osx ? !ctrl : !alt) && !super && IsPressed(ImGuiKey_RightArrow))
-        Impl->MoveCursorsChar(true, shift, is_wordmove_key);
-    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageUp))
+    else if (IsChordPressed(ImGuiKey_LeftArrow))
+        Impl->MoveCursorsChar(false, shift, false);
+    else if (IsChordPressed(ImGuiKey_RightArrow))
+        Impl->MoveCursorsChar(true, shift, false);
+    else if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_LeftArrow))
+        Impl->MoveCursorsChar(false, shift, true);
+    else if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_RightArrow))
+        Impl->MoveCursorsChar(true, shift, true);
+    else if (IsChordPressed(ImGuiKey_PageUp))
         Impl->PageCursorsLines(false, shift);
-    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_PageDown))
+    else if (IsChordPressed(ImGuiKey_PageDown))
         Impl->PageCursorsLines(true, shift);
-    else if (ctrl && !alt && !super && IsPressed(ImGuiKey_Home))
+    else if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Home))
         Impl->MoveCursorsTop(shift);
-    else if (ctrl && !alt && !super && IsPressed(ImGuiKey_End))
+    else if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_End))
         Impl->MoveCursorsBottom(shift);
-    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_Home))
+    else if (IsChordPressed(ImGuiKey_Home))
         Impl->MoveCursorsStart(shift);
-    else if (!alt && !ctrl && !super && IsPressed(ImGuiKey_End))
+    else if (IsChordPressed(ImGuiKey_End))
         Impl->MoveCursorsEnd(shift);
-    else if (!read_only && !alt && !shift && !super && IsPressed(ImGuiKey_Delete))
-        Impl->Delete(ctrl);
-    else if (!read_only && !alt && !shift && !super && IsPressed(ImGuiKey_Backspace))
-        Impl->Backspace(ctrl);
-    else if (!read_only && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_K))
+    else if (!read_only && IsChordPressed(ImGuiKey_Delete))
+        Impl->Delete(false);
+    else if (!read_only && IsChordPressed(ImGuiKey_Backspace))
+        Impl->Backspace(false);
+    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Delete))
+        Impl->Delete(true);
+    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Backspace))
+        Impl->Backspace(true);
+    else if (!read_only && IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_K))
         Impl->RemoveCurrentLines();
-    else if (!read_only && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_LeftBracket))
+    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_LeftBracket))
         Impl->ChangeCurrentLinesIndentation(false);
-    else if (!read_only && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_RightBracket))
+    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_RightBracket))
         Impl->ChangeCurrentLinesIndentation(true);
-    else if (!read_only && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_UpArrow))
+    else if (!read_only && IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_UpArrow))
         Impl->MoveCurrentLines(true);
-    else if (!read_only && !alt && ctrl && shift && !super && IsPressed(ImGuiKey_DownArrow))
+    else if (!read_only && IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_DownArrow))
         Impl->MoveCurrentLines(false);
-    else if (!read_only && !alt && ctrl && !shift && !super && IsPressed(ImGuiKey_Slash))
+    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Slash))
         Impl->ToggleLineComment();
-    else if (!alt && !ctrl && !shift && !super && IsPressed(ImGuiKey_Insert))
+    else if (IsChordPressed(ImGuiKey_Insert))
         Impl->Overwrite ^= true;
-    else if (((is_ctrl_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_C))) && Impl->CanCopy())
+    else if ((IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_C)) && Impl->CanCopy())
         Impl->Copy();
-    else if (((is_shift_only && IsPressed(ImGuiKey_Insert)) || (is_shortcut && IsPressed(ImGuiKey_V))) && Impl->CanPaste())
+    else if ((IsChordPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_V)) && Impl->CanPaste())
         Impl->Paste();
-    else if ((is_shortcut && IsPressed(ImGuiKey_X)) || (is_shift_only && IsPressed(ImGuiKey_Delete)))
+    else if (IsChordPressed(ImGuiMod_Super | ImGuiKey_X) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Delete))
         if (read_only) {
             if (Impl->CanCopy()) Impl->Copy();
         } else {
             if (Impl->CanCut()) Impl->Cut();
         }
-    else if (is_shortcut && IsPressed(ImGuiKey_A))
+    else if (IsChordPressed(ImGuiMod_Super | ImGuiKey_A))
         Impl->SelectAll();
-    else if (is_shortcut && IsPressed(ImGuiKey_D))
+    else if (IsChordPressed(ImGuiMod_Super | ImGuiKey_D))
         Impl->AddCursorForNextOccurrence();
-    else if (!read_only && !alt && !ctrl && !shift && !super && (IsPressed(ImGuiKey_Enter) || IsPressed(ImGuiKey_KeypadEnter)))
+    else if (!read_only && (IsChordPressed(ImGuiKey_Enter) || IsChordPressed(ImGuiKey_KeypadEnter)))
         Impl->EnterChar('\n', false);
-    else if (!read_only && !alt && !ctrl && !super && IsPressed(ImGuiKey_Tab))
+    else if (!read_only && IsChordPressed(ImGuiKey_Tab))
         Impl->EnterChar('\t', shift);
 
-    if (!read_only && !io.InputQueueCharacters.empty() && ctrl == alt && !super) {
+    if (!read_only && !io.InputQueueCharacters.empty() && io.KeyCtrl == io.KeyAlt && !io.KeySuper) {
         for (const auto ch : io.InputQueueCharacters) {
             if (ch != 0 && (ch == '\n' || ch >= 32)) Impl->EnterChar(ch, shift);
         }

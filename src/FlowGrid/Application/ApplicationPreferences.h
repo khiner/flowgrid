@@ -7,9 +7,12 @@
 
 struct ApplicationPreferences {
     inline static const std::string FileExtension = ".flp";
-    inline static const fs::path Path = fs::path(".flowgrid") / ("Preferences" + FileExtension);
-    // todo thinking of using this to automatically find the supported file extensions...
-    // inline static const fs::path TreeSitterGrammarsPath = fs::path("..") / "lib" / "tree-sitter-grammars";
+    inline static const fs::path
+        Path = fs::path(".flowgrid") / ("Preferences" + FileExtension),
+        // todo thinking of digging into grammars' `config.json` files to automatically find the supported file extensions...
+        TreeSitterGrammarsPath = fs::path("..") / "lib" / "tree-sitter-grammars",
+        // todo recursively copy `queries` dir to build dir in CMake.
+        TreeSitterQueriesPath = fs::path("..") / "src" / "FlowGrid" / "Project" / "TextEditor" / "queries";
 
     ApplicationPreferences();
 

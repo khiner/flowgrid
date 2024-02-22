@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include <tree_sitter/api.h>
 
+#include "Application/ApplicationPreferences.h"
 #include "Core/HelpInfo.h"
 #include "Helper/Color.h"
 #include "LanguageID.h"
@@ -39,9 +40,6 @@ There's also this huge list: https://github.com/rockerBOO/awesome-neovim?tab=rea
 */
 
 struct LanguageDefinition {
-    // todo recursively copy `queries` dir to build dir in CMake.
-    inline static fs::path QueriesDir = fs::path("..") / "src" / "FlowGrid" / "Project" / "TextEditor" / "queries";
-
     TSQuery *GetQuery() const;
 
     LanguageID Id;
@@ -69,7 +67,15 @@ static const LanguageDefinitions Languages{};
 TSQuery *LanguageDefinition::GetQuery() const {
     if (ShortName.empty()) return nullptr;
 
-    const fs::path highlights_path = QueriesDir / ShortName / "highlights.scm";
+    static const std::string HighlightsFileName = "highlights.scm";
+    fs::path highlights_path = Preferences.TreeSitterQueriesPath / ShortName / HighlightsFileName;
+    if (!fs::exists(highlights_path)) {
+        highlights_path = Preferences.TreeSitterGrammarsPath / ("tree-sitter-" + ShortName) / "queries" / HighlightsFileName;
+        if (!fs::exists(highlights_path)) {
+            std::println("No {} found for language '{}'", HighlightsFileName, Name);
+            return nullptr;
+        }
+    }
     const std::string highlights = FileIO::read(highlights_path);
 
     u32 error_offset = 0;

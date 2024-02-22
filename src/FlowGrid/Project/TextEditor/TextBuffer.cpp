@@ -1129,7 +1129,7 @@ private:
         if (shift || alt) return;
 
         if (IsOverLineNumber) DestroyHoveredNode();
-        else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc) - 1);
+        else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc));
 
         const float time = ImGui::GetTime();
         const bool is_double_click = ImGui::IsMouseDoubleClicked(MouseLeft);

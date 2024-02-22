@@ -1171,15 +1171,16 @@ private:
 
     void CreateHoveredNode(u32 byte_index) {
         DestroyHoveredNode();
-        HoveredNode = std::make_unique<SyntaxNodeInfo>(Syntax->GetNodeAtByte(byte_index));
-        for (const auto &node : HoveredNode->Hierarchy) {
-            HelpInfo::ById.emplace(node.Id, HelpInfo{.Name = node.Type, .Help = ""});
+        HoveredNode = std::make_unique<SyntaxNodeAncestry>(Syntax->GetNodeAncestryAtByte(byte_index));
+        for (const auto &node : HoveredNode->Ancestry) {
+            std::string name = !node.FieldName.empty() ? std::format("{}: {}", node.FieldName, node.Type) : node.Type;
+            HelpInfo::ById.emplace(node.Id, HelpInfo{.Name = std::move(name), .Help = ""});
         }
     }
 
     void DestroyHoveredNode() {
         if (HoveredNode) {
-            for (const auto &node : HoveredNode->Hierarchy) HelpInfo::ById.erase(node.Id);
+            for (const auto &node : HoveredNode->Ancestry) HelpInfo::ById.erase(node.Id);
             HoveredNode.reset();
         }
     }
@@ -1202,7 +1203,7 @@ private:
     ImVec2 LastClickPos{-1, -1};
     float LastClickTime{-1}; // ImGui time.
     std::optional<Cursor> MatchingBrackets{};
-    std::unique_ptr<SyntaxNodeInfo> HoveredNode{};
+    std::unique_ptr<SyntaxNodeAncestry> HoveredNode{};
     bool IsOverLineNumber{false};
     bool ScrollToTop{false};
 
@@ -1487,12 +1488,12 @@ void TextBufferImpl::Render(bool is_focused) {
     // Stack invisible items to push node hierarchy to ImGui stack.
     if (Syntax && HoveredNode) {
         const auto before_cursor = ImGui::GetCursorScreenPos();
-        for (const auto &node : reverse_view(HoveredNode->Hierarchy)) {
+        for (const auto &node : HoveredNode->Ancestry) {
             ImGui::PushOverrideID(node.Id);
             ImGui::InvisibleButton("", CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
             ImGui::SetCursorScreenPos(before_cursor);
         }
-        for (u32 i = 0; i < HoveredNode->Hierarchy.size(); ++i) ImGui::PopID();
+        for (u32 i = 0; i < HoveredNode->Ancestry.size(); ++i) ImGui::PopID();
     }
 
     ImGui::Dummy(CurrentSpaceDims);

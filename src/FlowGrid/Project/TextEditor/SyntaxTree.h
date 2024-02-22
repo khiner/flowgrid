@@ -355,13 +355,15 @@ struct ByteRange {
 
 static ByteRange ToByteRange(const TSNode &node) { return {ts_node_start_byte(node), ts_node_end_byte(node)}; }
 
-struct SyntaxNodeInfo {
-    struct Node {
-        ID Id; // For pushing to the ImGui ID stack and `HelpInfo`.
-        std::string Type;
-    };
-    std::vector<Node> Hierarchy; // Types of the leaf node and its ancestors, starting with the leaf node.
-    ByteRange Range; // Byte range of the leaf node.
+struct SyntaxNode {
+    ID Id; // For pushing to the ImGui ID stack and `HelpInfo`.
+    std::string Type, FieldName;
+};
+
+// Stack of nodes from the root to the leaf node at the given byte index,
+// with the root node at the beginning and the leaf node at the end.
+struct SyntaxNodeAncestry {
+    std::vector<SyntaxNode> Ancestry;
 };
 
 /**
@@ -448,20 +450,19 @@ struct SyntaxTree {
         return s_expression;
     }
 
-    SyntaxNodeInfo GetNodeAtByte(u32 byte_index) const {
-        TSNode node = ts_node_descendant_for_byte_range(ts_tree_root_node(Tree), byte_index, byte_index);
-        const ByteRange range{ts_node_start_byte(node), ts_node_end_byte(node)};
-
-        std::vector<SyntaxNodeInfo::Node> hierarchy;
+    SyntaxNodeAncestry GetNodeAncestryAtByte(u32 byte_index) const {
+        auto cursor = ts_tree_cursor_new(ts_tree_root_node(Tree));
+        std::vector<SyntaxNode> ancestors;
         ID id = 0;
         do {
-            const char *type = ts_node_type(node);
+            const auto node = ts_tree_cursor_current_node(&cursor);
+            const char *type = ts_node_type(node), *field = ts_tree_cursor_current_field_name(&cursor);
             id = GenerateId(id, type);
-            hierarchy.emplace_back(id, std::move(type));
-            node = ts_node_parent(node);
-        } while (node.id != 0);
+            ancestors.emplace_back(id, std::move(type), field ? std::move(field) : "");
+        } while (ts_tree_cursor_goto_first_child_for_byte(&cursor, byte_index) != -1);
+        ts_tree_cursor_delete(&cursor);
 
-        return {std::move(hierarchy), range};
+        return {std::move(ancestors)};
     }
 
     inline static u32 NoneCaptureId{u32(-1)}; // Corresponds to the default style.

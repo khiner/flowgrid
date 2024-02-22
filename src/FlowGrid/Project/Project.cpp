@@ -242,8 +242,8 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
             [](const Action::TextBuffer::Any &a) {
                 const auto *buffer = Find(a.GetComponentPath());
-                if (buffer == nullptr) throw std::runtime_error(std::format("TextEditor not found: {}", a.GetComponentPath().string()));
-                static_cast<const TextEditor *>(buffer)->Apply(a);
+                if (buffer == nullptr) throw std::runtime_error(std::format("TextBuffer not found: {}", a.GetComponentPath().string()));
+                static_cast<const TextBuffer *>(buffer)->Apply(a);
             },
 
             [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },

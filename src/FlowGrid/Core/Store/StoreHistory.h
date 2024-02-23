@@ -4,7 +4,6 @@
 #include "Helper/Path.h"
 
 struct Store;
-struct StoreImpl;
 
 enum Direction {
     Forward,
@@ -23,7 +22,7 @@ struct StoreHistory {
     };
 
     struct ReferenceRecord {
-        const StoreImpl &Store; // Reference to the store as it was at `GestureCommitTime`.
+        const Store &Store; // Reference to the store as it was at `GestureCommitTime`.
         const Gesture &Gesture; // Reference to the (compressed) gesture that caused the store change.
     };
 
@@ -39,7 +38,7 @@ struct StoreHistory {
     bool CanUndo() const;
     bool CanRedo() const;
 
-    const StoreImpl &CurrentStore() const;
+    const Store &CurrentStore() const;
     Patch CreatePatch(u32 index) const; // Create a patch between the store at `index` and the store at `index - 1`.
     ReferenceRecord RecordAt(u32 index) const;
     IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.

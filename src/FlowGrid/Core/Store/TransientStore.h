@@ -1,7 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
@@ -10,17 +8,17 @@
 
 #include "Core/Primitive/PrimitiveVariant.h"
 #include "Helper/Path.h"
-#include "IdPair.h"
+#include "IdPairs.h"
 
-struct StoreImpl;
+struct Store;
 
-struct TransientStoreImpl {
+struct TransientStore {
     using PrimitiveMap = immer::map_transient<StorePath, PrimitiveVariant, PathHash>;
     using IdPairs = immer::set_transient<IdPair, IdPairHash>;
-    using IdPairsMap = std::unordered_map<StorePath, IdPairs, PathHash>;
+    using IdPairsMap = immer::map_transient<StorePath, immer::set<IdPair, IdPairHash>, PathHash>;
 
     PrimitiveMap PrimitiveByPath;
     IdPairsMap IdPairsByPath;
 
-    StoreImpl Persistent();
+    Store Persistent();
 };

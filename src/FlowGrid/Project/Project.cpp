@@ -844,7 +844,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
                         ProjectHasChanges = true;
                     }
                 },
-                // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
+                // Note: `const auto &` capture does not work when the other type is itself a variant group - must be exhaustive.
                 [](const Action::NonSaved &) {},
             },
             action

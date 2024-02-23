@@ -7,7 +7,6 @@
 #include "immer/vector_transient.hpp"
 
 #include "Store.h"
-#include "StoreImpl.h"
 
 struct StoreHistory::Metrics {
     immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath;
@@ -22,7 +21,7 @@ struct StoreHistory::Metrics {
 };
 
 struct Record {
-    StoreImpl Store;
+    Store Store;
     Gesture Gesture;
     StoreHistory::Metrics Metrics;
 };
@@ -61,7 +60,7 @@ bool StoreHistory::Empty() const { return Size() <= 1; } // There is always an i
 bool StoreHistory::CanUndo() const { return Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
-const StoreImpl &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
+const Store &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
 
 std::map<StorePath, u32> StoreHistory::GetChangeCountByPath() const {
     return _Records->Value[Index].Metrics.CommitTimesByPath |

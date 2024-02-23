@@ -2,12 +2,19 @@
 
 #include "immer/algorithm.hpp"
 
-#include "StoreImpl.h"
-#include "TransientStoreImpl.h"
+#include "TransientStore.h"
 
 // The store starts in transient mode.
-Store::Store() : Impl(std::make_unique<StoreImpl>()), TransientImpl(std::make_unique<TransientStoreImpl>()) {}
+Store::Store() : Transient(std::make_unique<TransientStore>()) {}
+Store::Store(Store &&other) { Set(std::move(other)); }
+Store::Store(const Store &other) { Set(other); }
+
+Store::Store(PrimitiveMap &&primitives, IdPairsMap &&id_pairs)
+    : PrimitiveByPath(std::move(primitives)), IdPairsByPath(std::move(id_pairs)), Transient(std::make_unique<TransientStore>(ToTransient())) {}
+
 Store::~Store() = default;
+
+TransientStore Store::ToTransient() const { return {PrimitiveByPath.transient(), IdPairsByPath.transient()}; }
 
 void Store::ApplyPatch(const Patch &patch) const {
     for (const auto &[partial_path, op] : patch.Ops) {
@@ -26,16 +33,14 @@ void Store::Apply(const ActionType &action) const {
     );
 }
 
-PrimitiveVariant Store::Get(const StorePath &path) const { return TransientImpl->PrimitiveByPath.at(path); }
-u32 Store::CountAt(const StorePath &path) const { return TransientImpl->PrimitiveByPath.count(path); }
+PrimitiveVariant Store::Get(const StorePath &path) const { return Transient->PrimitiveByPath.at(path); }
+u32 Store::CountAt(const StorePath &path) const { return Transient->PrimitiveByPath.count(path); }
 
-void Store::Set(const StorePath &path, const PrimitiveVariant &value) const { TransientImpl->PrimitiveByPath.set(path, value); }
-void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.erase(path); }
-
-#include <algorithm>
+void Store::Set(const StorePath &path, const PrimitiveVariant &value) const { Transient->PrimitiveByPath.set(path, value); }
+void Store::Erase(const StorePath &path) const { Transient->PrimitiveByPath.erase(path); }
 
 // bool Store::HasPathStartingWith(const StorePath &path) const {
-//     const auto keys = std::views::keys(TransientImpl->PrimitiveByPath);
+//     const auto keys = std::views::keys(PrimitiveByPath);
 //     // return std::any_of(keys.begin(), keys.end(), [&path](const auto &key) { return key.starts_with(path); });
 
 //     return std::ranges::any_of(keys, [&path](const StorePath &candidate_path) {
@@ -47,53 +52,52 @@ void Store::Erase(const StorePath &path) const { TransientImpl->PrimitiveByPath.
 bool Store::Exists(const StorePath &path) const {
     // xxx this is the only place in the store where we use knowledge about vector paths.
     // It likely will soon _not_ be the only place, though, if we decide to use a `VectorsByPath`, though.
-    return TransientImpl->PrimitiveByPath.count(path) > 0 ||
-        TransientImpl->PrimitiveByPath.count(path / "0") > 0 ||
-        TransientImpl->IdPairsByPath.count(path) > 0;
+    return Transient->PrimitiveByPath.count(path) > 0 ||
+        Transient->PrimitiveByPath.count(path / "0") > 0 ||
+        Transient->IdPairsByPath.count(path) > 0;
 }
 
-IdPairs Store::IdPairs(const StorePath &path) const {
-    ::IdPairs id_pairs;
-    for (const auto &id_pair : TransientImpl->IdPairsByPath[path]) id_pairs.insert(id_pair);
-    return id_pairs;
+IdPairs Store::GetIdPairs(const StorePath &path) const { return Transient->IdPairsByPath[path]; }
+u32 Store::IdPairCount(const StorePath &path) const { return Transient->IdPairsByPath[path].size(); }
+void Store::AddIdPair(const StorePath &path, const IdPair &value) const {
+    if (!Transient->IdPairsByPath.count(path)) Transient->IdPairsByPath.set(path, {});
+    Transient->IdPairsByPath.set(path, Transient->IdPairsByPath.at(path).insert(value));
 }
-
-u32 Store::IdPairCount(const StorePath &path) const { return TransientImpl->IdPairsByPath[path].size(); }
-
-void Store::AddIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].insert(value); }
-void Store::EraseIdPair(const StorePath &path, const IdPair &value) const { TransientImpl->IdPairsByPath[path].erase(value); }
-
-void Store::ClearIdPairs(const StorePath &path) const {
-    TransientImpl->IdPairsByPath[path] = {};
+void Store::EraseIdPair(const StorePath &path, const IdPair &value) const {
+    if (!Transient->IdPairsByPath.count(path)) return;
+    Transient->IdPairsByPath.set(path,  Transient->IdPairsByPath.at(path).erase(value));
 }
+void Store::ClearIdPairs(const StorePath &path) const { Transient->IdPairsByPath.set(path, {}); }
 
 bool Store::HasIdPair(const StorePath &path, const IdPair &value) const {
-    if (!TransientImpl->IdPairsByPath.contains(path)) return false;
-    return TransientImpl->IdPairsByPath[path].count(value) > 0;
+    if (!IdPairsByPath.count(path)) return false;
+    return IdPairsByPath[path].count(value) > 0;
 }
 
-StoreImpl Store::Get() const { return TransientImpl ? TransientImpl->Persistent() : *Impl; }
+Store Store::Get() const { return Transient ? Transient->Persistent() : *this; }
 
-void Store::Set(const StoreImpl &impl) {
-    Impl = std::make_unique<StoreImpl>(std::move(impl));
-    TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
+void Store::Set(Store &&other) {
+    PrimitiveByPath = other.PrimitiveByPath;
+    IdPairsByPath = other.IdPairsByPath;
+    Transient = std::make_unique<TransientStore>(other.ToTransient());
 }
-void Store::Set(StoreImpl &&impl) {
-    Impl = std::make_unique<StoreImpl>(std::move(impl));
-    TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
+void Store::Set(const Store &other) {
+    PrimitiveByPath = other.PrimitiveByPath;
+    IdPairsByPath = other.IdPairsByPath;
+    Transient = std::make_unique<TransientStore>(other.ToTransient());
 }
 
-void Store::Commit() { Set(TransientImpl->Persistent()); }
+void Store::Commit() { Set(Transient->Persistent()); }
 
-Patch Store::CheckedSet(const StoreImpl &store) {
+Patch Store::CheckedSet(const Store &store) {
     const auto patch = CreatePatch(store);
     Set(store);
     return patch;
 }
 
-Patch Store::CheckedCommit() { return CheckedSet(TransientImpl->Persistent()); }
+Patch Store::CheckedCommit() { return CheckedSet(Transient->Persistent()); }
 
-Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const StorePath &base_path) const {
+Patch Store::CreatePatch(const Store &before, const Store &after, const StorePath &base_path) const {
     PatchOps ops{};
 
     diff(
@@ -112,7 +116,7 @@ Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const 
 
     // Added IdPair sets:
     for (const auto &[id_pairs_path, id_pairs] : after.IdPairsByPath) {
-        if (!before.IdPairsByPath.contains(id_pairs_path)) {
+        if (!before.IdPairsByPath.count(id_pairs_path)) {
             for (const auto &id_pair : id_pairs) {
                 ops[id_pairs_path.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(id_pair), {}};
             }
@@ -120,7 +124,7 @@ Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const 
     }
     // Removed IdPair sets:
     for (const auto &[id_pairs_path, id_pairs] : before.IdPairsByPath) {
-        if (!after.IdPairsByPath.contains(id_pairs_path)) {
+        if (!after.IdPairsByPath.count(id_pairs_path)) {
             for (const auto &id_pair : id_pairs) {
                 ops[id_pairs_path.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(id_pair)};
             }
@@ -128,7 +132,7 @@ Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const 
     }
     // Changed IdPair sets:
     for (const auto &id_pair_path : std::views::keys(before.IdPairsByPath)) {
-        if (!after.IdPairsByPath.contains(id_pair_path)) continue;
+        if (!after.IdPairsByPath.count(id_pair_path)) continue;
         diff(
             before.IdPairsByPath.at(id_pair_path),
             after.IdPairsByPath.at(id_pair_path),
@@ -146,10 +150,10 @@ Patch Store::CreatePatch(const StoreImpl &before, const StoreImpl &after, const 
     return {ops, base_path};
 }
 
-Patch Store::CreatePatch(const StoreImpl &store, const StorePath &base_path) const { return CreatePatch(*Impl, store, base_path); }
+Patch Store::CreatePatch(const Store &store, const StorePath &base_path) const { return CreatePatch(*this, store, base_path); }
 
 Patch Store::CreatePatchAndResetTransient(const StorePath &base_path) {
-    const auto patch = CreatePatch(*Impl, TransientImpl->Persistent(), base_path);
-    TransientImpl = std::make_unique<TransientStoreImpl>(Impl->Transient());
+    const auto patch = CreatePatch(*this, Transient->Persistent(), base_path);
+    Transient = std::make_unique<TransientStore>(ToTransient());
     return patch;
 }

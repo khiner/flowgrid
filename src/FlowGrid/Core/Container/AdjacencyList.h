@@ -4,7 +4,7 @@
 #include "Container.h"
 #include "Core/Action/ActionableProducer.h"
 #include "Core/ProducerComponentArgs.h"
-#include "Core/Store/IdPair.h"
+#include "Core/Store/IdPairs.h"
 
 struct AdjacencyList : Container, ActionableProducer<Action::AdjacencyList::Any> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
@@ -31,15 +31,17 @@ struct AdjacencyList : Container, ActionableProducer<Action::AdjacencyList::Any>
     void Refresh() override {}
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
+    bool HasPath(ID source, ID destination) const;
+    bool IsConnected(ID source, ID destination) const;
+
     void Add(IdPair &&) const;
     void Connect(ID source, ID destination) const;
     void Disconnect(ID source, ID destination) const;
     void ToggleConnection(ID source, ID destination) const;
     void DisconnectOutput(ID id) const;
-    void Erase() const override;
 
-    bool IsConnected(ID source, ID destination) const;
-    bool HasPath(ID source, ID destination) const;
     u32 SourceCount(ID destination) const;
     u32 DestinationCount(ID source) const;
+
+    void Erase() const override;
 };

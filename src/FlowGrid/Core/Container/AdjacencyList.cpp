@@ -9,43 +9,7 @@
 
 AdjacencyList::AdjacencyList(ArgsT &&args) : Container(std::move(args.Args)), ActionableProducer(std::move(args.Q)) {}
 
-IdPairs AdjacencyList::Get() const { return RootStore.IdPairs(Path); }
-
-void AdjacencyList::Add(IdPair &&id_pair) const {
-    if (RootStore.HasIdPair(Path, id_pair)) return;
-
-    RootStore.AddIdPair(Path, std::move(id_pair));
-}
-
-void AdjacencyList::Connect(ID source, ID destination) const {
-    if (IsConnected(source, destination)) return;
-
-    RootStore.AddIdPair(Path, {source, destination});
-}
-
-void AdjacencyList::Disconnect(ID source, ID destination) const {
-    RootStore.EraseIdPair(Path, {source, destination});
-}
-
-void AdjacencyList::ToggleConnection(ID source, ID destination) const {
-    if (IsConnected(source, destination)) Disconnect(source, destination);
-    else Connect(source, destination);
-}
-
-void AdjacencyList::DisconnectOutput(ID id) const {
-    const auto id_pairs = Get();
-    for (const auto &[source_id, destination_id] : id_pairs) {
-        if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);
-    }
-}
-
-void AdjacencyList::Erase() const {
-    RootStore.ClearIdPairs(Path);
-}
-
-bool AdjacencyList::IsConnected(ID source, ID destination) const {
-    return RootStore.HasIdPair(Path, {source, destination});
-}
+IdPairs AdjacencyList::Get() const { return RootStore.GetIdPairs(Path); }
 
 bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     // Non-recursive depth-first search that handles cycles.
@@ -70,14 +34,33 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 
     return false;
 }
+bool AdjacencyList::IsConnected(ID source, ID destination) const { return RootStore.HasIdPair(Path, {source, destination}); }
+void AdjacencyList::Disconnect(ID source, ID destination) const { RootStore.EraseIdPair(Path, {source, destination}); }
+void AdjacencyList::Add(IdPair &&id_pair) const {
+    if (!RootStore.HasIdPair(Path, id_pair)) RootStore.AddIdPair(Path, std::move(id_pair));
+}
+void AdjacencyList::Connect(ID source, ID destination) const {
+    if (!IsConnected(source, destination)) RootStore.AddIdPair(Path, {source, destination});
+}
+void AdjacencyList::ToggleConnection(ID source, ID destination) const {
+    if (IsConnected(source, destination)) Disconnect(source, destination);
+    else Connect(source, destination);
+}
+void AdjacencyList::DisconnectOutput(ID id) const {
+    const auto id_pairs = Get();
+    for (const auto &[source_id, destination_id] : id_pairs) {
+        if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);
+    }
+}
 
 u32 AdjacencyList::SourceCount(ID destination) const {
     return std::ranges::count_if(Get(), [destination](const auto &pair) { return pair.second == destination; });
 }
-
 u32 AdjacencyList::DestinationCount(ID source) const {
     return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
+
+void AdjacencyList::Erase() const { RootStore.ClearIdPairs(Path); }
 
 using namespace ImGui;
 
@@ -103,9 +86,8 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
 }
 
 void AdjacencyList::SetJson(json &&j) const {
-    IdPairs id_pairs = json::parse(std::string(std::move(j)));
     Erase();
-    for (IdPair id_pair : id_pairs) Add(std::move(id_pair));
+    for (IdPair id_pair : json::parse(std::string(std::move(j)))) Add(std::move(id_pair));
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.

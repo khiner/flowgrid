@@ -1,7 +1,8 @@
-#include "IdPair.h"
+#include "IdPairs.h"
 
 #include <format>
 #include <sstream>
+#include <string>
 
 IdPair DeserializeIdPair(const std::string &serialized_id_pair) {
     IdPair id_pair;
@@ -12,6 +13,4 @@ IdPair DeserializeIdPair(const std::string &serialized_id_pair) {
     return id_pair;
 }
 
-std::string SerializeIdPair(const IdPair &p) {
-    return std::format("{},{}", p.first, p.second);
-}
+std::string SerializeIdPair(const IdPair &p) { return std::format("{},{}", p.first, p.second); }

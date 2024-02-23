@@ -74,8 +74,6 @@ static bool IsWordChar(char ch) {
     return UTF8CharLength(ch) > 1 || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
 }
 
-static u32 NextTabstop(u32 column, u32 tab_size) { return ((column / tab_size) + 1) * tab_size; }
-
 static char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && ch >= 'A' && ch <= 'Z') ? ch - 'A' + 'a' : ch; }
 
 static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
@@ -879,7 +877,7 @@ private:
     void MoveCharIndexAndColumn(const Line &line, u32 &ci, u32 &column) const {
         const char ch = line[ci];
         ci += UTF8CharLength(ch);
-        column = ch == '\t' ? NextTabstop(column, NumTabSpaces) : column + 1;
+        column = ch == '\t' ? NextTabstop(column) : column + 1;
     }
 
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const {
@@ -1169,6 +1167,7 @@ private:
     }
 
     u32 NumTabSpacesAtColumn(u32 column) const { return NumTabSpaces - (column % NumTabSpaces); }
+    u32 NextTabstop(u32 column) const { return ((column / NumTabSpaces) + 1) * NumTabSpaces; }
 
     void CreateHoveredNode(u32 byte_index) {
         DestroyHoveredNode();
@@ -1467,7 +1466,7 @@ void TextBufferImpl::Render(bool is_focused) {
         max_column = std::max(line_max_column, max_column);
 
         const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * CharAdvance.y};
-        const float text_screen_pos_x = line_start_screen_pos.x + TextStart;
+        const float text_screen_x = line_start_screen_pos.x + TextStart;
         const Coords line_start_coord{li, 0}, line_end_coord{li, line_max_column};
         // Draw current line selection
         for (const auto &c : Cursors) {
@@ -1479,8 +1478,8 @@ void TextBufferImpl::Render(bool is_focused) {
                     line_end_coord.C + (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord) ? 1 : 0);
                 if (rect_start < rect_end) {
                     dl->AddRectFilled(
-                        {text_screen_pos_x + rect_start * CharAdvance.x, line_start_screen_pos.y},
-                        {text_screen_pos_x + rect_end * CharAdvance.x, line_start_screen_pos.y + CharAdvance.y},
+                        {text_screen_x + rect_start * CharAdvance.x, line_start_screen_pos.y},
+                        {text_screen_x + rect_end * CharAdvance.x, line_start_screen_pos.y + CharAdvance.y},
                         GetColor(PaletteIndex::Selection)
                     );
                 }
@@ -1491,23 +1490,16 @@ void TextBufferImpl::Render(bool is_focused) {
         if (ShowLineNumbers) {
             snprintf(li_buffer, 16, "%d  ", li + 1);
             const float line_num_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, li_buffer).x;
-            dl->AddText({text_screen_pos_x - line_num_width, line_start_screen_pos.y}, GetColor(PaletteIndex::LineNumber), li_buffer);
+            dl->AddText({text_screen_x - line_num_width, line_start_screen_pos.y}, GetColor(PaletteIndex::LineNumber), li_buffer);
         }
 
         // Render cursors
         if (is_focused) {
             for (const auto &c : filter(Cursors, [li](const auto &c) { return c.Line() == li; })) {
-                const u32 ci = c.CharIndex();
-                const float cx = GetColumn(line, ci) * CharAdvance.x;
-                float width = 1.0f;
-                if (Overwrite && ci < line.size()) {
-                    width = line[ci] == '\t' ? (1.f + std::floor((1.f + cx) / (NumTabSpaces * space_size))) * (NumTabSpaces * space_size) - cx : CharAdvance.x;
-                }
-                dl->AddRectFilled(
-                    {text_screen_pos_x + cx, line_start_screen_pos.y},
-                    {text_screen_pos_x + cx + width, line_start_screen_pos.y + CharAdvance.y},
-                    GetColor(PaletteIndex::Cursor)
-                );
+                const u32 ci = c.CharIndex(), column = GetColumn(line, ci);
+                const float width = !Overwrite || ci >= line.size() ? 1.f : (line[ci] == '\t' ? NumTabSpacesAtColumn(column) : 1) * CharAdvance.x;
+                const ImVec2 pos{text_screen_x + column * CharAdvance.x, line_start_screen_pos.y};
+                dl->AddRectFilled(pos, pos + ImVec2{width, CharAdvance.y}, GetColor(PaletteIndex::Cursor));
             }
         }
 
@@ -1523,17 +1515,13 @@ void TextBufferImpl::Render(bool is_focused) {
             const u32 seq_length = UTF8CharLength(ch);
             if (ch == '\t') {
                 if (ShowWhitespaces) {
-                    const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
-                    const ImVec2 p2{
-                        glyph_pos.x + (ShortTabs ? (NumTabSpacesAtColumn(column) * CharAdvance.x - CharAdvance.x * 0.3f) : CharAdvance.x),
-                        p1.y
-                    };
                     const float gap = ImGui::GetFontSize() * (ShortTabs ? 0.16f : 0.2f);
-                    const ImVec2 p3{p2.x - gap, p1.y - gap}, p4{p2.x - gap, p1.y + gap};
+                    const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
+                    const ImVec2 p2{glyph_pos.x + CharAdvance.x * (ShortTabs ? (NumTabSpacesAtColumn(column) - 0.3f) : 1.f), p1.y};
                     const u32 color = GetColor(PaletteIndex::ControlCharacter);
                     dl->AddLine(p1, p2, color);
-                    dl->AddLine(p2, p3, color);
-                    dl->AddLine(p2, p4, color);
+                    dl->AddLine(p2, {p2.x - gap, p1.y - gap}, color);
+                    dl->AddLine(p2, {p2.x - gap, p1.y + gap}, color);
                 }
             } else if (ch == ' ') {
                 if (ShowWhitespaces) {

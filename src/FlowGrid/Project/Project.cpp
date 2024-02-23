@@ -8,6 +8,7 @@
 #include <set>
 
 #include "Application/ApplicationPreferences.h"
+#include "Core/Action/ActionMenuItem.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
@@ -323,8 +324,27 @@ bool Project::CanApply(const ActionType &action) const {
 
 using namespace ImGui;
 
+static bool IsPressed(ImGuiKeyChord chord) {
+    return IsKeyChordPressed(chord, ImGuiKeyOwner_None, ImGuiInputFlags_Repeat);
+}
+
+std::optional<Project::ActionType> Project::ProduceKeyboardAction() const {
+    using namespace Action::Project;
+
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_N)) return OpenEmpty{};
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_O)) return ShowOpenDialog{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_S)) return ShowSaveDialog{};
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_Z)) return Undo{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Redo{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_O)) return OpenDefault{};
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_S)) return SaveCurrent{};
+
+    return {};
+}
+
 void Project::Render() const {
     MainMenu.Draw();
+
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;
@@ -339,7 +359,7 @@ void Project::Render() const {
         auto settings_node_id = DockBuilderSplitNode(info_node_id, ImGuiDir_Down, 0.25f, nullptr, &info_node_id);
         auto faust_tools_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.5f, nullptr, &dockspace_id);
         auto faust_graph_node_id = DockBuilderSplitNode(faust_tools_node_id, ImGuiDir_Left, 0.5f, nullptr, &faust_tools_node_id);
-        auto text_editor_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.5f, nullptr, &dockspace_id);
+        DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.5f, nullptr, &dockspace_id); // text editor
 
         Audio.Graph.Dock(audio_node_id);
         Audio.Graph.Connections.Dock(audio_node_id);
@@ -389,15 +409,7 @@ void Project::Render() const {
         else Q(Action::Project::Open{selected_path});
     }
 
-    static const auto Shortcuts = ActionType::CreateShortcuts();
-    for (const auto &[action_id, shortcut] : Shortcuts) {
-        const auto key_chord = shortcut.KeyChord;
-        if (IsKeyChordPressed(key_chord, ImGuiKeyOwner_None, ImGuiInputFlags_Repeat)) {
-            if (auto action = ActionType::Create(action_id); CanApply(action)) {
-                std::visit(Match{[this](auto &&a) { Q(std::move(a)); }}, std::move(action));
-            }
-        }
-    }
+    if (auto action = ProduceKeyboardAction()) Q(*action);
 }
 
 void Project::OpenRecentProjectMenuItem() const {

@@ -10,13 +10,14 @@ template<typename ActionType> struct ActionMenuItem : MenuItemDrawable {
     using EnqueueFn = ActionProducer<ActionType>::EnqueueFn;
     using ProducerOrQ = std::variant<std::reference_wrapper<const ActionableProducer<ActionType>>, EnqueueFn>;
 
-    ActionMenuItem(const Actionable<ActionType> &actionable, EnqueueFn q, ActionType &&action = {})
-        : Actionable(actionable), Q(std::move(q)), Action(std::move(action)) {}
-    ActionMenuItem(const ActionableProducer<ActionType> &actionable, ActionType &&action = {})
-        : Actionable(actionable), Q(actionable), Action(std::move(action)) {}
+    ActionMenuItem(const Actionable<ActionType> &actionable, EnqueueFn q, ActionType &&action = {}, std::string_view shortcut = "")
+        : Actionable(actionable), Q(std::move(q)), Action(std::move(action)), Shortcut(shortcut) {}
+    ActionMenuItem(const ActionableProducer<ActionType> &actionable, ActionType &&action = {}, std::string_view shortcut = "")
+        : Actionable(actionable), Q(actionable), Action(std::move(action)), Shortcut(shortcut) {}
+    ~ActionMenuItem() override = default;
 
     void MenuItem() const override {
-        if (ImGui::MenuItem(Action.GetMenuLabel().c_str(), Action.GetShortcut().c_str(), false, Actionable.CanApply(Action))) {
+        if (ImGui::MenuItem(Action.GetMenuLabel().c_str(), Shortcut.c_str(), false, Actionable.CanApply(Action))) {
             auto action = ActionType{Action}; // Make a copy.
             std::visit(
                 Match{
@@ -31,4 +32,5 @@ template<typename ActionType> struct ActionMenuItem : MenuItemDrawable {
     const Actionable<ActionType> &Actionable;
     ProducerOrQ Q;
     const ActionType Action{};
+    std::string Shortcut;
 };

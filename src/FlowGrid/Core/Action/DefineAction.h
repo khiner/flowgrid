@@ -38,7 +38,6 @@ template<class...> constexpr bool always_false_v = false;
         static fs::path GetPath() { return _TypePath / _Meta.PathLeaf; }        \
         static const std::string &GetName() { return _Meta.Name; }              \
         static const std::string &GetMenuLabel() { return _Meta.MenuLabel; }    \
-        static const std::string &GetShortcut() { return _Meta.Shortcut; }      \
         MergeType_##merge_type(ActionType);                                     \
         __VA_ARGS__;                                                            \
     };

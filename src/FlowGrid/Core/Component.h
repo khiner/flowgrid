@@ -35,7 +35,7 @@ struct Menu {
     using Item = std::variant<Menu, std::reference_wrapper<const MenuItemDrawable>, std::function<void()>>;
 
     Menu(string_view label, std::vector<const Item> &&items);
-    explicit Menu(std::vector<const Item> &&items);
+    explicit Menu(std::vector<const Item> &&);
     Menu(std::vector<const Item> &&items, const bool is_main);
 
     const string Label; // If no label is provided, this is rendered as a top-level window menu bar.

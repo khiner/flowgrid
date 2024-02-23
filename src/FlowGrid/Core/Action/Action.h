@@ -7,7 +7,6 @@
 
 #include "nlohmann/json.hpp"
 
-#include "Core/Shortcut.h"
 #include "Helper/Path.h"
 #include "Helper/Variant.h"
 
@@ -28,7 +27,7 @@ Thus, `Action::Any` has enough bytes to hold the application's largest action ty
 namespace Action {
 struct Metadata {
     /**
-    `meta_str` is of the format: "~{menu label}@{shortcut}" (order-independent, prefixes required).
+    `meta_str` is of the format: "~{menu label}" (order-independent, prefixes required).
     Add `!` to the beginning of the string to indicate that the action should not be saved to the undo stack
     (or added to the gesture history, or saved in a `.fga` (FlowGridAction) project).
     This is used for actions with only non-state-updating side effects, like saving a file.
@@ -38,7 +37,6 @@ struct Metadata {
     const std::string PathLeaf; // E.g. "Set"
     const std::string Name; // Human-readable name. By default, derived as `PascalToSentenceCase(PathLeaf)`.
     const std::string MenuLabel; // Defaults to `Name`.
-    const std::string Shortcut;
 
     // todo
     // const ID Id;
@@ -46,7 +44,7 @@ struct Metadata {
 
 private:
     struct Parsed {
-        const std::string MenuLabel, Shortcut;
+        const std::string MenuLabel;
     };
     Parsed Parse(std::string_view meta_str);
 
@@ -81,15 +79,6 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
         }
         return std::unordered_map<fs::path, size_t, PathHash>{};
     }
-    template<size_t I = 0> static auto CreateShortcuts() {
-        if constexpr (I < std::variant_size_v<variant_t>) {
-            using MemberType = std::variant_alternative_t<I, variant_t>;
-            auto shortcuts = CreateShortcuts<I + 1>();
-            if (!MemberType::GetShortcut().empty()) shortcuts.emplace_back(I, MemberType::GetShortcut());
-            return shortcuts;
-        }
-        return std::vector<std::pair<size_t, Shortcut>>{};
-    }
 
     size_t GetIndex() const { return this->index(); }
 
@@ -101,9 +90,6 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     }
     std::string GetMenuLabel() const {
         return Call([](auto &a) { return a.GetMenuLabel(); });
-    }
-    std::string GetShortcut() const {
-        return Call([](auto &a) { return a.GetShortcut(); });
     }
 
     /**

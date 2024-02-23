@@ -1293,6 +1293,7 @@ bool TextBuffer::CanApply(const ActionType &action) const {
         action
     );
 }
+
 void TextBuffer::Apply(const ActionType &action) const {
     using namespace Action::TextBuffer;
 
@@ -1357,7 +1358,7 @@ void TextBuffer::Apply(const ActionType &action) const {
 string TextBuffer::GetText() const { return Impl->GetText(); }
 bool TextBuffer::Empty() const { return Impl->Empty(); }
 
-static bool IsChordPressed(ImGuiKeyChord chord) {
+static bool IsPressed(ImGuiKeyChord chord) {
     const auto window_id = ImGui::GetCurrentWindowRead()->ID;
     ImGui::SetKeyOwnersForKeyChord(chord, window_id); // Prevent app from handling this key press.
     return ImGui::IsKeyChordPressed(chord, window_id, ImGuiInputFlags_Repeat);
@@ -1367,61 +1368,62 @@ std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const 
     using namespace Action::TextBuffer;
 
     // history
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_Z)) return Undo{Path};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Redo{Path};
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_Z)) return Undo{Path};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Redo{Path};
     // no-select moves
-    if (IsChordPressed(ImGuiKey_UpArrow)) return MoveCursorsLines{.path = Path, .amount = -1, .select = false};
-    if (IsChordPressed(ImGuiKey_DownArrow)) return MoveCursorsLines{.path = Path, .amount = 1, .select = false};
-    if (IsChordPressed(ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = false, .word = false};
-    if (IsChordPressed(ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = false, .word = false};
-    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = false, .word = true};
-    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = false, .word = true};
-    if (IsChordPressed(ImGuiKey_PageUp)) return PageCursorsLines{.path = Path, .up = false, .select = false};
-    if (IsChordPressed(ImGuiKey_PageDown)) return PageCursorsLines{.path = Path, .up = true, .select = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Home)) return MoveCursorsTop{.path = Path, .select = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_End)) return MoveCursorsBottom{.path = Path, .select = false};
-    if (IsChordPressed(ImGuiKey_Home)) return MoveCursorsStartLine{.path = Path, .select = false};
-    if (IsChordPressed(ImGuiKey_End)) return MoveCursorsEndLine{.path = Path, .select = false};
+    if (IsPressed(ImGuiKey_UpArrow)) return MoveCursorsLines{.path = Path, .amount = -1, .select = false};
+    if (IsPressed(ImGuiKey_DownArrow)) return MoveCursorsLines{.path = Path, .amount = 1, .select = false};
+    if (IsPressed(ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = false, .word = false};
+    if (IsPressed(ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = false, .word = false};
+    if (IsPressed(ImGuiMod_Alt | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = false, .word = true};
+    if (IsPressed(ImGuiMod_Alt | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = false, .word = true};
+    if (IsPressed(ImGuiKey_PageUp)) return PageCursorsLines{.path = Path, .up = false, .select = false};
+    if (IsPressed(ImGuiKey_PageDown)) return PageCursorsLines{.path = Path, .up = true, .select = false};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Home)) return MoveCursorsTop{.path = Path, .select = false};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_End)) return MoveCursorsBottom{.path = Path, .select = false};
+    if (IsPressed(ImGuiKey_Home)) return MoveCursorsStartLine{.path = Path, .select = false};
+    if (IsPressed(ImGuiKey_End)) return MoveCursorsEndLine{.path = Path, .select = false};
     // select moves
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_UpArrow)) return MoveCursorsLines{.path = Path, .amount = -1, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_DownArrow)) return MoveCursorsLines{.path = Path, .amount = 1, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = true, .word = false};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = true, .word = false};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = true, .word = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = true, .word = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageUp)) return PageCursorsLines{.path = Path, .up = false, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageDown)) return PageCursorsLines{.path = Path, .up = true, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Home)) return MoveCursorsTop{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_End)) return MoveCursorsBottom{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Home)) return MoveCursorsStartLine{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_End)) return MoveCursorsEndLine{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_A)) return SelectAll{Path};
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_D)) return SelectNextOccurrence{Path};
-
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_C)) return Copy{Path};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_V)) return Paste{Path};
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_X) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Delete)) {
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_UpArrow)) return MoveCursorsLines{.path = Path, .amount = -1, .select = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_DownArrow)) return MoveCursorsLines{.path = Path, .amount = 1, .select = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = true, .word = false};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = true, .word = false};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = true, .word = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = true, .word = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_PageUp)) return PageCursorsLines{.path = Path, .up = false, .select = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_PageDown)) return PageCursorsLines{.path = Path, .up = true, .select = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Home)) return MoveCursorsTop{.path = Path, .select = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_End)) return MoveCursorsBottom{.path = Path, .select = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_Home)) return MoveCursorsStartLine{.path = Path, .select = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_End)) return MoveCursorsEndLine{.path = Path, .select = true};
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_A)) return SelectAll{Path};
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_D)) return SelectNextOccurrence{Path};
+    // cut/copy/paste
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsPressed(ImGuiMod_Super | ImGuiKey_C)) return Copy{Path};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsPressed(ImGuiMod_Super | ImGuiKey_V)) return Paste{Path};
+    if (IsPressed(ImGuiMod_Super | ImGuiKey_X) || IsPressed(ImGuiMod_Shift | ImGuiKey_Delete)) {
         if (Impl->ReadOnly) return Copy{Path};
         return Cut{Path};
     }
-    if (IsChordPressed(ImGuiKey_Insert)) return ToggleOverwrite{Path};
+    // todo readonly toggle
+    if (IsPressed(ImGuiKey_Insert)) return ToggleOverwrite{Path};
     // edits
-    if (IsChordPressed(ImGuiKey_Delete)) return Delete{.path = Path, .word = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Delete)) return Delete{.path = Path, .word = true};
-    if (IsChordPressed(ImGuiKey_Backspace)) return Backspace{.path = Path, .word = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Backspace)) return Backspace{.path = Path, .word = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_K)) return DeleteCurrentLines{Path};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_LeftBracket) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Tab)) {
+    if (IsPressed(ImGuiKey_Delete)) return Delete{.path = Path, .word = false};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Delete)) return Delete{.path = Path, .word = true};
+    if (IsPressed(ImGuiKey_Backspace)) return Backspace{.path = Path, .word = false};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Backspace)) return Backspace{.path = Path, .word = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_K)) return DeleteCurrentLines{Path};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_LeftBracket) || IsPressed(ImGuiMod_Shift | ImGuiKey_Tab)) {
         return ChangeCurrentLinesIndentation{.path = Path, .increase = false};
     }
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_RightBracket) || (IsChordPressed(ImGuiKey_Tab) && Impl->AnyCursorsMultiline())) {
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_RightBracket) || (IsPressed(ImGuiKey_Tab) && Impl->AnyCursorsMultiline())) {
         return ChangeCurrentLinesIndentation{.path = Path, .increase = true};
     }
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_UpArrow)) return MoveCurrentLines{.path = Path, .up = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_DownArrow)) return MoveCurrentLines{.path = Path, .up = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Slash)) return ToggleLineComment{.path = Path};
-    if (IsChordPressed(ImGuiKey_Tab)) return EnterChar{.path = Path, .value = '\t'};
-    if (IsChordPressed(ImGuiKey_Enter) || IsChordPressed(ImGuiKey_KeypadEnter)) return EnterChar{.path = Path, .value = '\n'};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_UpArrow)) return MoveCurrentLines{.path = Path, .up = true};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_DownArrow)) return MoveCurrentLines{.path = Path, .up = false};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Slash)) return ToggleLineComment{.path = Path};
+    if (IsPressed(ImGuiKey_Tab)) return EnterChar{.path = Path, .value = '\t'};
+    if (IsPressed(ImGuiKey_Enter) || IsPressed(ImGuiKey_KeypadEnter)) return EnterChar{.path = Path, .value = '\n'};
 
     return {};
 }

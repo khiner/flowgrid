@@ -191,13 +191,13 @@ struct Project : Component, ActionableProducer<Action::Any> {
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
     ActionMenuItem<ActionType>
-        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}},
-        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}},
-        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}},
-        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}},
+        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}, "Cmd+N"},
+        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}, "Cmd+O"},
+        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
+        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}, "Cmd+S"},
         SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
-        UndoMenuItem{*this, Action::Project::Undo{}},
-        RedoMenuItem{*this, Action::Project::Redo{}};
+        UndoMenuItem{*this, Action::Project::Undo{}, "Cmd+Z"},
+        RedoMenuItem{*this, Action::Project::Redo{}, "Shift+Cmd+Z"};
 
     const Menu MainMenu{
         {
@@ -232,6 +232,8 @@ protected:
     void Render() const override;
 
 private:
+    std::optional<ActionType> ProduceKeyboardAction() const;
+
     void ApplyPrimitiveAction(const Action::Primitive::Any &) const;
     void ApplyContainerAction(const Action::Container::Any &) const;
 

@@ -8,6 +8,7 @@
 #include "FaustParamsStyle.h"
 #include "Project/Audio/Graph/AudioGraphAction.h"
 
+#include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionProducerComponent.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Container/Vector.h"

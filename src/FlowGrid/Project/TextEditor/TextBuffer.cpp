@@ -1254,47 +1254,51 @@ TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::
 TextBuffer::~TextBuffer() {}
 
 bool TextBuffer::CanApply(const ActionType &action) const {
+    using namespace Action::TextBuffer;
+
     return std::visit(
         Match{
-            [](const Action::TextBuffer::ShowOpenDialog &) { return true; },
-            [](const Action::TextBuffer::ShowSaveDialog &) { return true; },
-            [](const Action::TextBuffer::Open &) { return true; },
-            [](const Action::TextBuffer::Save &) { return true; },
+            [](const ShowOpenDialog &) { return true; },
+            [](const ShowSaveDialog &) { return true; },
+            [](const Open &) { return true; },
+            [](const Save &) { return true; },
 
-            [this](const Action::TextBuffer::Undo &) { return Impl->CanUndo(); },
-            [this](const Action::TextBuffer::Redo &) { return Impl->CanRedo(); },
+            [this](const Undo &) { return Impl->CanUndo(); },
+            [this](const Redo &) { return Impl->CanRedo(); },
 
-            [](const Action::TextBuffer::MoveCursorsLines &) { return true; },
-            [](const Action::TextBuffer::PageCursorsLines &) { return true; },
-            [](const Action::TextBuffer::MoveCursorsChar &) { return true; },
-            [](const Action::TextBuffer::MoveCursorsTop &) { return true; },
-            [](const Action::TextBuffer::MoveCursorsBottom &) { return true; },
-            [](const Action::TextBuffer::MoveCursorsStartLine &) { return true; },
-            [](const Action::TextBuffer::MoveCursorsEndLine &) { return true; },
-            [](const Action::TextBuffer::SelectAll &) { return true; },
-            [](const Action::TextBuffer::SelectNextOccurrence &) { return true; },
+            [](const MoveCursorsLines &) { return true; },
+            [](const PageCursorsLines &) { return true; },
+            [](const MoveCursorsChar &) { return true; },
+            [](const MoveCursorsTop &) { return true; },
+            [](const MoveCursorsBottom &) { return true; },
+            [](const MoveCursorsStartLine &) { return true; },
+            [](const MoveCursorsEndLine &) { return true; },
+            [](const SelectAll &) { return true; },
+            [](const SelectNextOccurrence &) { return true; },
 
-            [](const Action::TextBuffer::Set &) { return true; },
-            [](const Action::TextBuffer::ToggleOverwrite &) { return true; },
+            [](const Set &) { return true; },
+            [](const ToggleOverwrite &) { return true; },
 
-            [this](const Action::TextBuffer::Copy &) { return Impl->CanCopy(); },
-            [this](const Action::TextBuffer::Cut &) { return Impl->CanCut(); },
-            [this](const Action::TextBuffer::Paste &) { return Impl->CanPaste(); },
-            [this](const Action::TextBuffer::Delete &) { return !Impl->ReadOnly; },
-            [this](const Action::TextBuffer::Backspace &) { return !Impl->ReadOnly; },
-            [this](const Action::TextBuffer::DeleteCurrentLines &) { return !Impl->ReadOnly; },
-            [this](const Action::TextBuffer::ChangeCurrentLinesIndentation &) { return !Impl->ReadOnly; },
-            [this](const Action::TextBuffer::MoveCurrentLines &) { return !Impl->ReadOnly; },
-            [this](const Action::TextBuffer::ToggleLineComment &) { return !Impl->ReadOnly; },
-            [this](const Action::TextBuffer::EnterChar &) { return !Impl->ReadOnly; },
+            [this](const Copy &) { return Impl->CanCopy(); },
+            [this](const Cut &) { return Impl->CanCut(); },
+            [this](const Paste &) { return Impl->CanPaste(); },
+            [this](const Delete &) { return !Impl->ReadOnly; },
+            [this](const Backspace &) { return !Impl->ReadOnly; },
+            [this](const DeleteCurrentLines &) { return !Impl->ReadOnly; },
+            [this](const ChangeCurrentLinesIndentation &) { return !Impl->ReadOnly; },
+            [this](const MoveCurrentLines &) { return !Impl->ReadOnly; },
+            [this](const ToggleLineComment &) { return !Impl->ReadOnly; },
+            [this](const EnterChar &) { return !Impl->ReadOnly; },
         },
         action
     );
 }
 void TextBuffer::Apply(const ActionType &action) const {
+    using namespace Action::TextBuffer;
+
     std::visit(
         Match{
-            [this](const Action::TextBuffer::ShowOpenDialog &) {
+            [this](const ShowOpenDialog &) {
                 FileDialog.Set({
                     .owner_path = Path,
                     .title = "Open file",
@@ -1303,7 +1307,7 @@ void TextBuffer::Apply(const ActionType &action) const {
                     .max_num_selections = 1, // todo open multiple files
                 });
             },
-            [this](const Action::TextBuffer::ShowSaveDialog &) {
+            [this](const ShowSaveDialog &) {
                 const string current_file_ext = fs::path(LastOpenedFilePath).extension();
                 FileDialog.Set({
                     .owner_path = Path,
@@ -1313,38 +1317,38 @@ void TextBuffer::Apply(const ActionType &action) const {
                     .save_mode = true,
                 });
             },
-            [this](const Action::TextBuffer::Open &a) {
+            [this](const Open &a) {
                 LastOpenedFilePath.Set(a.file_path);
                 Impl->OpenFile(a.file_path);
             },
-            [this](const Action::TextBuffer::Save &a) { FileIO::write(a.file_path, Impl->GetText()); },
+            [this](const Save &a) { FileIO::write(a.file_path, Impl->GetText()); },
 
-            [this](const Action::TextBuffer::Undo &) { Impl->Undo(); },
-            [this](const Action::TextBuffer::Redo &) { Impl->Redo(); },
+            [this](const Undo &) { Impl->Undo(); },
+            [this](const Redo &) { Impl->Redo(); },
 
-            [this](const Action::TextBuffer::MoveCursorsLines &a) { Impl->MoveCursorsLines(a.amount, a.select); },
-            [this](const Action::TextBuffer::PageCursorsLines &a) { Impl->PageCursorsLines(a.up, a.select); },
-            [this](const Action::TextBuffer::MoveCursorsChar &a) { Impl->MoveCursorsChar(a.right, a.select, a.word); },
-            [this](const Action::TextBuffer::MoveCursorsTop &a) { Impl->MoveCursorsTop(a.select); },
-            [this](const Action::TextBuffer::MoveCursorsBottom &a) { Impl->MoveCursorsBottom(a.select); },
-            [this](const Action::TextBuffer::MoveCursorsStartLine &a) { Impl->MoveCursorsStartLine(a.select); },
-            [this](const Action::TextBuffer::MoveCursorsEndLine &a) { Impl->MoveCursorsEndLine(a.select); },
-            [this](const Action::TextBuffer::SelectAll &) { Impl->SelectAll(); },
-            [this](const Action::TextBuffer::SelectNextOccurrence &) { Impl->SelectNextOccurrence(); },
+            [this](const MoveCursorsLines &a) { Impl->MoveCursorsLines(a.amount, a.select); },
+            [this](const PageCursorsLines &a) { Impl->PageCursorsLines(a.up, a.select); },
+            [this](const MoveCursorsChar &a) { Impl->MoveCursorsChar(a.right, a.select, a.word); },
+            [this](const MoveCursorsTop &a) { Impl->MoveCursorsTop(a.select); },
+            [this](const MoveCursorsBottom &a) { Impl->MoveCursorsBottom(a.select); },
+            [this](const MoveCursorsStartLine &a) { Impl->MoveCursorsStartLine(a.select); },
+            [this](const MoveCursorsEndLine &a) { Impl->MoveCursorsEndLine(a.select); },
+            [this](const SelectAll &) { Impl->SelectAll(); },
+            [this](const SelectNextOccurrence &) { Impl->SelectNextOccurrence(); },
 
-            [this](const Action::TextBuffer::Set &a) { Impl->SetText(a.value); },
-            [this](const Action::TextBuffer::ToggleOverwrite &) { Impl->ToggleOverwrite(); },
+            [this](const Set &a) { Impl->SetText(a.value); },
+            [this](const ToggleOverwrite &) { Impl->ToggleOverwrite(); },
 
-            [this](const Action::TextBuffer::Copy &) { Impl->Copy(); },
-            [this](const Action::TextBuffer::Cut &) { Impl->Cut(); },
-            [this](const Action::TextBuffer::Paste &) { Impl->Paste(); },
-            [this](const Action::TextBuffer::Delete &a) { Impl->Delete(a.word); },
-            [this](const Action::TextBuffer::Backspace &a) { Impl->Backspace(a.word); },
-            [this](const Action::TextBuffer::DeleteCurrentLines &) { Impl->DeleteCurrentLines(); },
-            [this](const Action::TextBuffer::ChangeCurrentLinesIndentation &a) { Impl->ChangeCurrentLinesIndentation(a.increase); },
-            [this](const Action::TextBuffer::MoveCurrentLines &a) { Impl->MoveCurrentLines(a.up); },
-            [this](const Action::TextBuffer::ToggleLineComment &) { Impl->ToggleLineComment(); },
-            [this](const Action::TextBuffer::EnterChar &a) { Impl->EnterChar(a.value); },
+            [this](const Copy &) { Impl->Copy(); },
+            [this](const Cut &) { Impl->Cut(); },
+            [this](const Paste &) { Impl->Paste(); },
+            [this](const Delete &a) { Impl->Delete(a.word); },
+            [this](const Backspace &a) { Impl->Backspace(a.word); },
+            [this](const DeleteCurrentLines &) { Impl->DeleteCurrentLines(); },
+            [this](const ChangeCurrentLinesIndentation &a) { Impl->ChangeCurrentLinesIndentation(a.increase); },
+            [this](const MoveCurrentLines &a) { Impl->MoveCurrentLines(a.up); },
+            [this](const ToggleLineComment &) { Impl->ToggleLineComment(); },
+            [this](const EnterChar &a) { Impl->EnterChar(a.value); },
         },
         action
     );
@@ -1360,62 +1364,64 @@ static bool IsChordPressed(ImGuiKeyChord chord) {
 }
 
 std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const {
-    // history
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_Z)) return Action::TextBuffer::Undo{Path};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Action::TextBuffer::Redo{Path};
-    // no-select moves
-    if (IsChordPressed(ImGuiKey_UpArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = -1, .select = false};
-    if (IsChordPressed(ImGuiKey_DownArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = 1, .select = false};
-    if (IsChordPressed(ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = false, .word = false};
-    if (IsChordPressed(ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = false, .word = false};
-    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = false, .word = true};
-    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = false, .word = true};
-    if (IsChordPressed(ImGuiKey_PageUp)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = false, .select = false};
-    if (IsChordPressed(ImGuiKey_PageDown)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = true, .select = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsTop{.path = Path, .select = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_End)) return Action::TextBuffer::MoveCursorsBottom{.path = Path, .select = false};
-    if (IsChordPressed(ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsStartLine{.path = Path, .select = false};
-    if (IsChordPressed(ImGuiKey_End)) return Action::TextBuffer::MoveCursorsEndLine{.path = Path, .select = false};
-    // select moves
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_UpArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = -1, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_DownArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = 1, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = true, .word = false};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = true, .word = false};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = true, .word = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = true, .word = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageUp)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = false, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageDown)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = true, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsTop{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_End)) return Action::TextBuffer::MoveCursorsBottom{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsStartLine{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_End)) return Action::TextBuffer::MoveCursorsEndLine{.path = Path, .select = true};
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_A)) return Action::TextBuffer::SelectAll{Path};
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_D)) return Action::TextBuffer::SelectNextOccurrence{Path};
+    using namespace Action::TextBuffer;
 
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_C)) return Action::TextBuffer::Copy{Path};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_V)) return Action::TextBuffer::Paste{Path};
+    // history
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_Z)) return Undo{Path};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Redo{Path};
+    // no-select moves
+    if (IsChordPressed(ImGuiKey_UpArrow)) return MoveCursorsLines{.path = Path, .amount = -1, .select = false};
+    if (IsChordPressed(ImGuiKey_DownArrow)) return MoveCursorsLines{.path = Path, .amount = 1, .select = false};
+    if (IsChordPressed(ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = false, .word = false};
+    if (IsChordPressed(ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = false, .word = false};
+    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = false, .word = true};
+    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = false, .word = true};
+    if (IsChordPressed(ImGuiKey_PageUp)) return PageCursorsLines{.path = Path, .up = false, .select = false};
+    if (IsChordPressed(ImGuiKey_PageDown)) return PageCursorsLines{.path = Path, .up = true, .select = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Home)) return MoveCursorsTop{.path = Path, .select = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_End)) return MoveCursorsBottom{.path = Path, .select = false};
+    if (IsChordPressed(ImGuiKey_Home)) return MoveCursorsStartLine{.path = Path, .select = false};
+    if (IsChordPressed(ImGuiKey_End)) return MoveCursorsEndLine{.path = Path, .select = false};
+    // select moves
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_UpArrow)) return MoveCursorsLines{.path = Path, .amount = -1, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_DownArrow)) return MoveCursorsLines{.path = Path, .amount = 1, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = true, .word = false};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = true, .word = false};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_LeftArrow)) return MoveCursorsChar{.path = Path, .right = false, .select = true, .word = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_RightArrow)) return MoveCursorsChar{.path = Path, .right = true, .select = true, .word = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageUp)) return PageCursorsLines{.path = Path, .up = false, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageDown)) return PageCursorsLines{.path = Path, .up = true, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Home)) return MoveCursorsTop{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_End)) return MoveCursorsBottom{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Home)) return MoveCursorsStartLine{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_End)) return MoveCursorsEndLine{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_A)) return SelectAll{Path};
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_D)) return SelectNextOccurrence{Path};
+
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_C)) return Copy{Path};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_V)) return Paste{Path};
     if (IsChordPressed(ImGuiMod_Super | ImGuiKey_X) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Delete)) {
-        if (Impl->ReadOnly) return Action::TextBuffer::Copy{Path};
-        return Action::TextBuffer::Cut{Path};
+        if (Impl->ReadOnly) return Copy{Path};
+        return Cut{Path};
     }
-    if (IsChordPressed(ImGuiKey_Insert)) return Action::TextBuffer::ToggleOverwrite{Path};
+    if (IsChordPressed(ImGuiKey_Insert)) return ToggleOverwrite{Path};
     // edits
-    if (IsChordPressed(ImGuiKey_Delete)) return Action::TextBuffer::Delete{.path = Path, .word = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Delete)) return Action::TextBuffer::Delete{.path = Path, .word = true};
-    if (IsChordPressed(ImGuiKey_Backspace)) return Action::TextBuffer::Backspace{.path = Path, .word = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Backspace)) return Action::TextBuffer::Backspace{.path = Path, .word = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_K)) return Action::TextBuffer::DeleteCurrentLines{Path};
+    if (IsChordPressed(ImGuiKey_Delete)) return Delete{.path = Path, .word = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Delete)) return Delete{.path = Path, .word = true};
+    if (IsChordPressed(ImGuiKey_Backspace)) return Backspace{.path = Path, .word = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Backspace)) return Backspace{.path = Path, .word = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_K)) return DeleteCurrentLines{Path};
     if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_LeftBracket) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Tab)) {
-        return Action::TextBuffer::ChangeCurrentLinesIndentation{.path = Path, .increase = false};
+        return ChangeCurrentLinesIndentation{.path = Path, .increase = false};
     }
     if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_RightBracket) || (IsChordPressed(ImGuiKey_Tab) && Impl->AnyCursorsMultiline())) {
-        return Action::TextBuffer::ChangeCurrentLinesIndentation{.path = Path, .increase = true};
+        return ChangeCurrentLinesIndentation{.path = Path, .increase = true};
     }
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_UpArrow)) return Action::TextBuffer::MoveCurrentLines{.path = Path, .up = true};
-    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_DownArrow)) return Action::TextBuffer::MoveCurrentLines{.path = Path, .up = false};
-    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Slash)) return Action::TextBuffer::ToggleLineComment{.path = Path};
-    if (IsChordPressed(ImGuiKey_Tab)) return Action::TextBuffer::EnterChar{.path = Path, .value = '\t'};
-    if (IsChordPressed(ImGuiKey_Enter) || IsChordPressed(ImGuiKey_KeypadEnter)) return Action::TextBuffer::EnterChar{.path = Path, .value = '\n'};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_UpArrow)) return MoveCurrentLines{.path = Path, .up = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_DownArrow)) return MoveCurrentLines{.path = Path, .up = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Slash)) return ToggleLineComment{.path = Path};
+    if (IsChordPressed(ImGuiKey_Tab)) return EnterChar{.path = Path, .value = '\t'};
+    if (IsChordPressed(ImGuiKey_Enter) || IsChordPressed(ImGuiKey_KeypadEnter)) return EnterChar{.path = Path, .value = '\n'};
 
     return {};
 }

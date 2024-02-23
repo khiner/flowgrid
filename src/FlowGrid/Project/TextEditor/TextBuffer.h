@@ -23,7 +23,7 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     void RenderMenu() const;
     void RenderDebug() const override;
 
-    void HandleKeyboardInputs() const;
+    std::optional<ActionType> ProduceKeyboardAction() const;
 
     const FileDialog &FileDialog;
     fs::path _LastOpenedFilePath;

@@ -1359,71 +1359,65 @@ static bool IsChordPressed(ImGuiKeyChord chord) {
     return ImGui::IsKeyChordPressed(chord, window_id, ImGuiInputFlags_Repeat);
 }
 
-void TextBuffer::HandleKeyboardInputs() const {
-    auto &io = ImGui::GetIO();
-    io.WantCaptureKeyboard = io.WantTextInput = true;
-
-    const bool read_only = Impl->ReadOnly;
+std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const {
     // history
-    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_Z)) Q(Action::TextBuffer::Undo{Path});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) Q(Action::TextBuffer::Redo{Path});
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_Z)) return Action::TextBuffer::Undo{Path};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Action::TextBuffer::Redo{Path};
     // no-select moves
-    else if (IsChordPressed(ImGuiKey_UpArrow)) Q(Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = -1, .select = false});
-    else if (IsChordPressed(ImGuiKey_DownArrow)) Q(Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = 1, .select = false});
-    else if (IsChordPressed(ImGuiKey_LeftArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = false, .word = false});
-    else if (IsChordPressed(ImGuiKey_RightArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = false, .word = false});
-    else if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_LeftArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = false, .word = true});
-    else if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_RightArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = false, .word = true});
-    else if (IsChordPressed(ImGuiKey_PageUp)) Q(Action::TextBuffer::PageCursorsLines{.path = Path, .up = false, .select = false});
-    else if (IsChordPressed(ImGuiKey_PageDown)) Q(Action::TextBuffer::PageCursorsLines{.path = Path, .up = true, .select = false});
-    else if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Home)) Q(Action::TextBuffer::MoveCursorsTop{.path = Path, .select = false});
-    else if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_End)) Q(Action::TextBuffer::MoveCursorsBottom{.path = Path, .select = false});
-    else if (IsChordPressed(ImGuiKey_Home)) Q(Action::TextBuffer::MoveCursorsStartLine{.path = Path, .select = false});
-    else if (IsChordPressed(ImGuiKey_End)) Q(Action::TextBuffer::MoveCursorsEndLine{.path = Path, .select = false});
+    if (IsChordPressed(ImGuiKey_UpArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = -1, .select = false};
+    if (IsChordPressed(ImGuiKey_DownArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = 1, .select = false};
+    if (IsChordPressed(ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = false, .word = false};
+    if (IsChordPressed(ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = false, .word = false};
+    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = false, .word = true};
+    if (IsChordPressed(ImGuiMod_Alt | ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = false, .word = true};
+    if (IsChordPressed(ImGuiKey_PageUp)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = false, .select = false};
+    if (IsChordPressed(ImGuiKey_PageDown)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = true, .select = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsTop{.path = Path, .select = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_End)) return Action::TextBuffer::MoveCursorsBottom{.path = Path, .select = false};
+    if (IsChordPressed(ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsStartLine{.path = Path, .select = false};
+    if (IsChordPressed(ImGuiKey_End)) return Action::TextBuffer::MoveCursorsEndLine{.path = Path, .select = false};
     // select moves
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_UpArrow)) Q(Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = -1, .select = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_DownArrow)) Q(Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = 1, .select = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_LeftArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = true, .word = false});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_RightArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = true, .word = false});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_LeftArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = true, .word = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_RightArrow)) Q(Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = true, .word = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageUp)) Q(Action::TextBuffer::PageCursorsLines{.path = Path, .up = false, .select = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageDown)) Q(Action::TextBuffer::PageCursorsLines{.path = Path, .up = true, .select = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Home)) Q(Action::TextBuffer::MoveCursorsTop{.path = Path, .select = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_End)) Q(Action::TextBuffer::MoveCursorsBottom{.path = Path, .select = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Home)) Q(Action::TextBuffer::MoveCursorsStartLine{.path = Path, .select = true});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_End)) Q(Action::TextBuffer::MoveCursorsEndLine{.path = Path, .select = true});
-    else if (IsChordPressed(ImGuiMod_Super | ImGuiKey_A)) Q(Action::TextBuffer::SelectAll{Path});
-    else if (IsChordPressed(ImGuiMod_Super | ImGuiKey_D)) Q(Action::TextBuffer::SelectNextOccurrence{Path});
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_UpArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = -1, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_DownArrow)) return Action::TextBuffer::MoveCursorsLines{.path = Path, .amount = 1, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = true, .word = false};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = true, .word = false};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_LeftArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = false, .select = true, .word = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Alt | ImGuiKey_RightArrow)) return Action::TextBuffer::MoveCursorsChar{.path = Path, .right = true, .select = true, .word = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageUp)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = false, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_PageDown)) return Action::TextBuffer::PageCursorsLines{.path = Path, .up = true, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsTop{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_End)) return Action::TextBuffer::MoveCursorsBottom{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Home)) return Action::TextBuffer::MoveCursorsStartLine{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_End)) return Action::TextBuffer::MoveCursorsEndLine{.path = Path, .select = true};
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_A)) return Action::TextBuffer::SelectAll{Path};
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_D)) return Action::TextBuffer::SelectNextOccurrence{Path};
 
-    else if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_C)) Q(Action::TextBuffer::Copy{Path});
-    else if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_V)) Q(Action::TextBuffer::Paste{Path});
-    else if (IsChordPressed(ImGuiMod_Super | ImGuiKey_X) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Delete))
-        if (read_only) Q(Action::TextBuffer::Copy{Path});
-        else Q(Action::TextBuffer::Cut{Path});
-    else if (IsChordPressed(ImGuiKey_Insert)) Q(Action::TextBuffer::ToggleOverwrite{Path});
-    // edits
-    else if (!read_only && IsChordPressed(ImGuiKey_Delete)) Q(Action::TextBuffer::Delete{.path = Path, .word = false});
-    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Delete)) Q(Action::TextBuffer::Delete{.path = Path, .word = true});
-    else if (!read_only && IsChordPressed(ImGuiKey_Backspace)) Q(Action::TextBuffer::Backspace{.path = Path, .word = false});
-    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Backspace)) Q(Action::TextBuffer::Backspace{.path = Path, .word = true});
-    else if (!read_only && IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_K)) Q(Action::TextBuffer::DeleteCurrentLines{Path});
-    else if (!read_only && (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_LeftBracket) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Tab))) {
-        Q(Action::TextBuffer::ChangeCurrentLinesIndentation{.path = Path, .increase = false});
-    } else if (!read_only && (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_RightBracket) || (IsChordPressed(ImGuiKey_Tab) && Impl->AnyCursorsMultiline()))) {
-        Q(Action::TextBuffer::ChangeCurrentLinesIndentation{.path = Path, .increase = true});
-    } else if (!read_only && IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_UpArrow)) Q(Action::TextBuffer::MoveCurrentLines{.path = Path, .up = true});
-    else if (!read_only && IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_DownArrow)) Q(Action::TextBuffer::MoveCurrentLines{.path = Path, .up = false});
-    else if (!read_only && IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Slash)) Q(Action::TextBuffer::ToggleLineComment{.path = Path});
-    else if (!read_only && IsChordPressed(ImGuiKey_Tab)) Q(Action::TextBuffer::EnterChar{.path = Path, .value = '\t'});
-    else if (!read_only && (IsChordPressed(ImGuiKey_Enter) || IsChordPressed(ImGuiKey_KeypadEnter))) Q(Action::TextBuffer::EnterChar{.path = Path, .value = '\n'});
-
-    if (!read_only && !io.InputQueueCharacters.empty() && io.KeyCtrl == io.KeyAlt && !io.KeySuper) {
-        for (const auto ch : io.InputQueueCharacters) {
-            if (ch != 0 && (ch == '\n' || ch >= 32)) Q(Action::TextBuffer::EnterChar{.path = Path, .value = ch});
-        }
-        io.InputQueueCharacters.resize(0);
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_C)) return Action::TextBuffer::Copy{Path};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsChordPressed(ImGuiMod_Super | ImGuiKey_V)) return Action::TextBuffer::Paste{Path};
+    if (IsChordPressed(ImGuiMod_Super | ImGuiKey_X) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Delete)) {
+        if (Impl->ReadOnly) return Action::TextBuffer::Copy{Path};
+        return Action::TextBuffer::Cut{Path};
     }
+    if (IsChordPressed(ImGuiKey_Insert)) return Action::TextBuffer::ToggleOverwrite{Path};
+    // edits
+    if (IsChordPressed(ImGuiKey_Delete)) return Action::TextBuffer::Delete{.path = Path, .word = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Delete)) return Action::TextBuffer::Delete{.path = Path, .word = true};
+    if (IsChordPressed(ImGuiKey_Backspace)) return Action::TextBuffer::Backspace{.path = Path, .word = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Backspace)) return Action::TextBuffer::Backspace{.path = Path, .word = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_K)) return Action::TextBuffer::DeleteCurrentLines{Path};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_LeftBracket) || IsChordPressed(ImGuiMod_Shift | ImGuiKey_Tab)) {
+        return Action::TextBuffer::ChangeCurrentLinesIndentation{.path = Path, .increase = false};
+    }
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_RightBracket) || (IsChordPressed(ImGuiKey_Tab) && Impl->AnyCursorsMultiline())) {
+        return Action::TextBuffer::ChangeCurrentLinesIndentation{.path = Path, .increase = true};
+    }
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_UpArrow)) return Action::TextBuffer::MoveCurrentLines{.path = Path, .up = true};
+    if (IsChordPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_DownArrow)) return Action::TextBuffer::MoveCurrentLines{.path = Path, .up = false};
+    if (IsChordPressed(ImGuiMod_Ctrl | ImGuiKey_Slash)) return Action::TextBuffer::ToggleLineComment{.path = Path};
+    if (IsChordPressed(ImGuiKey_Tab)) return Action::TextBuffer::EnterChar{.path = Path, .value = '\t'};
+    if (IsChordPressed(ImGuiKey_Enter) || IsChordPressed(ImGuiKey_KeypadEnter)) return Action::TextBuffer::EnterChar{.path = Path, .value = '\n'};
+
+    return {};
 }
 
 void TextBufferImpl::Render(bool is_focused) {
@@ -1676,7 +1670,18 @@ void TextBuffer::Render() const {
 
     const bool font_changed = Fonts::Push(FontFamily::Monospace);
     const bool is_focused = IsWindowFocused() || is_parent_focused;
-    if (is_focused) HandleKeyboardInputs();
+    if (is_focused) {
+        auto &io = ImGui::GetIO();
+        io.WantCaptureKeyboard = io.WantTextInput = true;
+
+        if (auto action = ProduceKeyboardAction()) Q(*action);
+        else if (!io.InputQueueCharacters.empty() && io.KeyCtrl == io.KeyAlt && !io.KeySuper) {
+            for (const auto ch : io.InputQueueCharacters) {
+                if (ch != 0 && (ch == '\n' || ch >= 32)) Q(Action::TextBuffer::EnterChar{.path = Path, .value = ch});
+            }
+            io.InputQueueCharacters.resize(0);
+        }
+    }
     Impl->Render(is_focused);
     if (font_changed) Fonts::Pop();
 

@@ -880,26 +880,23 @@ private:
         column = ch == '\t' ? NextTabstop(column) : column + 1;
     }
 
-    Coords ScreenPosToCoords(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const {
+    Coords ScreenPosToCoords(const ImVec2 &screen_pos, ImVec2 char_advance, float text_start_x, bool *is_over_li = nullptr) const {
         static constexpr float PosToCoordsColumnOffset = 0.33;
 
-        const auto local = ImVec2{screen_pos.x + 3.0f, screen_pos.y} - ImGui::GetCursorScreenPos();
-        if (is_over_li != nullptr) *is_over_li = local.x < TextStart;
+        const auto local = screen_pos + ImVec2{3, 0} - ImGui::GetCursorScreenPos();
+        if (is_over_li != nullptr) *is_over_li = local.x < text_start_x;
 
         Coords coords{
-            std::min(u32(std::max(0.f, floor(local.y / CharAdvance.y))), u32(Text.size()) - 1),
-            u32(std::max(0.f, floor((local.x - TextStart + PosToCoordsColumnOffset * CharAdvance.x) / CharAdvance.x)))
+            std::min(u32(std::max(0.f, floor(local.y / char_advance.y))), u32(Text.size()) - 1),
+            u32(std::max(0.f, floor((local.x - text_start_x + PosToCoordsColumnOffset * char_advance.x) / char_advance.x)))
         };
         // Check if the coord is in the middle of a tab character.
-        const u32 li = std::min(coords.L, u32(Text.size()) - 1);
-        const auto &line = Text[li];
+        const auto &line = Text[std::min(coords.L, u32(Text.size()) - 1)];
         const u32 ci = GetCharIndex(line, coords.C);
         if (ci < line.size() && line[ci] == '\t') coords.C = GetColumn(line, ci);
 
         return {coords.L, GetLineMaxColumn(line, coords.C)};
     }
-
-    LineChar ScreenPosToLC(const ImVec2 &screen_pos, bool *is_over_li = nullptr) const { return ToLineChar(ScreenPosToCoords(screen_pos, is_over_li)); }
 
     u32 GetCharIndex(const Line &line, u32 column) const {
         u32 ci = 0;
@@ -1096,75 +1093,7 @@ private:
         c.Set(c.Min());
     }
 
-    void HandleMouseInputs() {
-        if (ImGui::IsWindowHovered()) {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_TextInput);
-        } else {
-            DestroyHoveredNode();
-            IsOverLineNumber = false;
-            return;
-        }
-
-        constexpr static ImGuiMouseButton MouseLeft = ImGuiMouseButton_Left, MouseMiddle = ImGuiMouseButton_Middle;
-
-        const auto &io = ImGui::GetIO();
-        const bool shift = io.KeyShift,
-                   ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
-                   alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
-
-        if (const bool panning = ImGui::IsMouseDown(MouseMiddle); panning && ImGui::IsMouseDragging(MouseMiddle)) {
-            const ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
-            const ImVec2 mouse_delta = ImGui::GetMouseDragDelta(MouseMiddle);
-            ImGui::SetScrollX(scroll.x - mouse_delta.x);
-            ImGui::SetScrollY(scroll.y - mouse_delta.y);
-        }
-
-        const auto mouse_pos = ImGui::GetMousePos();
-        const auto mouse_lc = ScreenPosToLC(mouse_pos, &IsOverLineNumber);
-        if (ImGui::IsMouseDragging(MouseLeft)) Cursors.GetLastAdded().SetEnd(mouse_lc);
-
-        const auto is_click = ImGui::IsMouseClicked(MouseLeft);
-        if (shift && is_click) return Cursors.GetLastAdded().SetEnd(mouse_lc);
-        if (shift || alt) return;
-
-        if (IsOverLineNumber) DestroyHoveredNode();
-        else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc));
-
-        const float time = ImGui::GetTime();
-        const bool is_double_click = ImGui::IsMouseDoubleClicked(MouseLeft);
-        const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
-            time - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
-        if (is_triple_click) {
-            if (ctrl) Cursors.Add();
-            else Cursors.Reset();
-
-            SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
-
-            LastClickTime = -1.0f;
-        } else if (is_double_click) {
-            if (ctrl) Cursors.Add();
-            else Cursors.Reset();
-
-            SetSelection(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false), Cursors.back());
-
-            LastClickTime = time;
-            LastClickPos = mouse_pos;
-        } else if (is_click) {
-            if (ctrl) Cursors.Add();
-            else Cursors.Reset();
-
-            if (IsOverLineNumber) {
-                SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
-            } else {
-                Cursors.GetLastAdded().Set(mouse_lc);
-            }
-
-            LastClickTime = time;
-            LastClickPos = mouse_pos;
-        } else if (ImGui::IsMouseReleased(MouseLeft)) {
-            Cursors.SortAndMerge();
-        }
-    }
+    void HandleMouseInputs(ImVec2 char_advance, float text_start_x);
 
     u32 NumTabSpacesAtColumn(u32 column) const { return NumTabSpaces - (column % NumTabSpaces); }
     u32 NextTabstop(u32 column) const { return ((column / NumTabSpaces) + 1) * NumTabSpaces; }
@@ -1192,10 +1121,7 @@ private:
     TextBufferPaletteId PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
 
-    float TextStart{20}; // Position (in pixels) where a code line starts relative to the left of the TextBufferImpl.
     u32 NumTabSpaces{4};
-    u32 LeftMargin{10};
-    ImVec2 CharAdvance;
 
     ImVec2 ContentDims{0, 0}; // Pixel width/height of current content area.
     Coords ContentCoordDims{0, 0}; // Coords width/height of current content area.
@@ -1427,37 +1353,100 @@ std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const 
     return {};
 }
 
-void TextBufferImpl::Render(bool is_focused) {
-    static constexpr float ImGuiScrollbarWidth = 14;
+using namespace ImGui;
 
-    HandleMouseInputs();
-
-    const float font_size = ImGui::GetFontSize();
-    const float font_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
-    const float font_height = ImGui::GetTextLineHeightWithSpacing();
-    CharAdvance = {font_width, font_height * LineSpacing};
-
-    // Deduce `TextStart` by evaluating `Text` size plus two spaces as text width.
-    TextStart = LeftMargin;
-    static char li_buffer[16];
-    if (ShowLineNumbers) {
-        snprintf(li_buffer, 16, " %lu ", Text.size());
-        TextStart += ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, li_buffer, nullptr, nullptr).x;
+void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) {
+    if (IsWindowHovered()) {
+        SetMouseCursor(ImGuiMouseCursor_TextInput);
+    } else {
+        DestroyHoveredNode();
+        IsOverLineNumber = false;
+        return;
     }
-    const ImVec2 scroll{ImGui::GetScrollX(), ImGui::GetScrollY()};
-    const ImVec2 cursor_screen_pos = ImGui::GetCursorScreenPos();
-    const std::pair<bool, bool> scrollbars_visible = {CurrentSpaceDims.x > ContentDims.x, CurrentSpaceDims.y > ContentDims.y};
-    const ImVec2 ContentDims{
-        ImGui::GetWindowWidth() - (scrollbars_visible.first ? ImGuiScrollbarWidth : 0.0f),
-        ImGui::GetWindowHeight() - (scrollbars_visible.second ? ImGuiScrollbarWidth : 0.0f)
+
+    constexpr static ImGuiMouseButton MouseLeft = ImGuiMouseButton_Left, MouseMiddle = ImGuiMouseButton_Middle;
+
+    const auto &io = GetIO();
+    const bool shift = io.KeyShift,
+               ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
+               alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
+
+    if (IsMouseDown(MouseMiddle) && IsMouseDragging(MouseMiddle)) {
+        const auto new_scroll = ImVec2{GetScrollX(), GetScrollY()} - GetMouseDragDelta(MouseMiddle);
+        SetScrollX(new_scroll.x);
+        SetScrollY(new_scroll.y);
+    }
+
+    const auto mouse_pos = GetMousePos();
+    const auto mouse_lc = ToLineChar(ScreenPosToCoords(mouse_pos, char_advance, text_start_x, &IsOverLineNumber));
+    if (IsMouseDragging(MouseLeft)) Cursors.GetLastAdded().SetEnd(mouse_lc);
+
+    const auto is_click = IsMouseClicked(MouseLeft);
+    if (shift && is_click) return Cursors.GetLastAdded().SetEnd(mouse_lc);
+    if (shift || alt) return;
+
+    if (IsOverLineNumber) DestroyHoveredNode();
+    else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc));
+
+    const float time = GetTime();
+    const bool is_double_click = IsMouseDoubleClicked(MouseLeft);
+    const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
+        time - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
+    if (is_triple_click) {
+        if (ctrl) Cursors.Add();
+        else Cursors.Reset();
+
+        SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
+
+        LastClickTime = -1.0f;
+    } else if (is_double_click) {
+        if (ctrl) Cursors.Add();
+        else Cursors.Reset();
+
+        SetSelection(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false), Cursors.back());
+
+        LastClickTime = time;
+        LastClickPos = mouse_pos;
+    } else if (is_click) {
+        if (ctrl) Cursors.Add();
+        else Cursors.Reset();
+
+        if (IsOverLineNumber) {
+            SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
+        } else {
+            Cursors.GetLastAdded().Set(mouse_lc);
+        }
+
+        LastClickTime = time;
+        LastClickPos = mouse_pos;
+    } else if (IsMouseReleased(MouseLeft)) {
+        Cursors.SortAndMerge();
+    }
+}
+
+void TextBufferImpl::Render(bool is_focused) {
+    static constexpr float ScrollbarWidth = 14, LeftMargin = 10;
+
+    const float font_size = GetFontSize();
+    const float font_width = GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, "#", nullptr, nullptr).x;
+    const float font_height = GetTextLineHeightWithSpacing();
+    const ImVec2 char_advance = {font_width, font_height * LineSpacing};
+    // Line-number column has room for the max line-num digits plus two spaces.
+    const float text_start_x = LeftMargin + (ShowLineNumbers ? std::format("{}  ", std::max(0, int(Text.size()) - 1)).size() * font_width : 0);
+    HandleMouseInputs(char_advance, text_start_x);
+
+    const ImVec2 scroll{GetScrollX(), GetScrollY()};
+    const ImVec2 cursor_screen_pos = GetCursorScreenPos();
+    ContentDims = {
+        GetWindowWidth() - (CurrentSpaceDims.x > ContentDims.x ? ScrollbarWidth : 0.0f),
+        GetWindowHeight() - (CurrentSpaceDims.y > ContentDims.y ? ScrollbarWidth : 0.0f)
     };
-    const Coords first_visible_coords = {u32(scroll.y / CharAdvance.y), u32(std::max(scroll.x - TextStart, 0.0f) / CharAdvance.x)};
-    const Coords last_visible_coords = {u32((ContentDims.y + scroll.y) / CharAdvance.y), u32((ContentDims.x + scroll.x - TextStart) / CharAdvance.x)};
+    const Coords first_visible_coords = {u32(scroll.y / char_advance.y), u32(std::max(scroll.x - text_start_x, 0.0f) / char_advance.x)};
+    const Coords last_visible_coords = {u32((ContentDims.y + scroll.y) / char_advance.y), u32((ContentDims.x + scroll.x - text_start_x) / char_advance.x)};
     ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
 
     u32 max_column = 0;
-    auto dl = ImGui::GetWindowDrawList();
-    const float space_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, " ").x;
+    auto dl = GetWindowDrawList();
     auto transition_it = Syntax->CaptureIdTransitions.begin();
     for (u32 li = first_visible_coords.L, byte_index = ToByteIndex({first_visible_coords.L, 0});
          li <= last_visible_coords.L && li < Text.size(); ++li) {
@@ -1465,8 +1454,8 @@ void TextBufferImpl::Render(bool is_focused) {
         const u32 line_max_column = GetLineMaxColumn(line, last_visible_coords.C);
         max_column = std::max(line_max_column, max_column);
 
-        const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * CharAdvance.y};
-        const float text_screen_x = line_start_screen_pos.x + TextStart;
+        const ImVec2 line_start_screen_pos{cursor_screen_pos.x, cursor_screen_pos.y + li * char_advance.y};
+        const float text_screen_x = line_start_screen_pos.x + text_start_x;
         const Coords line_start_coord{li, 0}, line_end_coord{li, line_max_column};
         // Draw current line selection
         for (const auto &c : Cursors) {
@@ -1478,28 +1467,27 @@ void TextBufferImpl::Render(bool is_focused) {
                     line_end_coord.C + (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord) ? 1 : 0);
                 if (rect_start < rect_end) {
                     dl->AddRectFilled(
-                        {text_screen_x + rect_start * CharAdvance.x, line_start_screen_pos.y},
-                        {text_screen_x + rect_end * CharAdvance.x, line_start_screen_pos.y + CharAdvance.y},
+                        {text_screen_x + rect_start * char_advance.x, line_start_screen_pos.y},
+                        {text_screen_x + rect_end * char_advance.x, line_start_screen_pos.y + char_advance.y},
                         GetColor(PaletteIndex::Selection)
                     );
                 }
             }
         }
 
-        // Draw line number (right aligned)
         if (ShowLineNumbers) {
-            snprintf(li_buffer, 16, "%d  ", li + 1);
-            const float line_num_width = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, -1.0f, li_buffer).x;
-            dl->AddText({text_screen_x - line_num_width, line_start_screen_pos.y}, GetColor(PaletteIndex::LineNumber), li_buffer);
+            // Draw line number (right aligned).
+            const string line_num_str = std::format("{}  ", li);
+            dl->AddText({text_screen_x - line_num_str.size() * font_width, line_start_screen_pos.y}, GetColor(PaletteIndex::LineNumber), line_num_str.c_str());
         }
 
         // Render cursors
         if (is_focused) {
             for (const auto &c : filter(Cursors, [li](const auto &c) { return c.Line() == li; })) {
                 const u32 ci = c.CharIndex(), column = GetColumn(line, ci);
-                const float width = !Overwrite || ci >= line.size() ? 1.f : (line[ci] == '\t' ? NumTabSpacesAtColumn(column) : 1) * CharAdvance.x;
-                const ImVec2 pos{text_screen_x + column * CharAdvance.x, line_start_screen_pos.y};
-                dl->AddRectFilled(pos, pos + ImVec2{width, CharAdvance.y}, GetColor(PaletteIndex::Cursor));
+                const float width = !Overwrite || ci >= line.size() ? 1.f : (line[ci] == '\t' ? NumTabSpacesAtColumn(column) : 1) * char_advance.x;
+                const ImVec2 pos{text_screen_x + column * char_advance.x, line_start_screen_pos.y};
+                dl->AddRectFilled(pos, pos + ImVec2{width, char_advance.y}, GetColor(PaletteIndex::Cursor));
             }
         }
 
@@ -1510,14 +1498,14 @@ void TextBufferImpl::Render(bool is_focused) {
         transition_it.MoveForwardTo(byte_index);
         for (u32 ci = start_ci, column = first_visible_coords.C; ci < line.size() && column <= last_visible_coords.C;) {
             const auto lc = LineChar{li, ci};
-            const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{TextStart + column * CharAdvance.x, 0};
+            const ImVec2 glyph_pos = line_start_screen_pos + ImVec2{text_start_x + column * char_advance.x, 0};
             const char ch = line[lc.C];
             const u32 seq_length = UTF8CharLength(ch);
             if (ch == '\t') {
                 if (ShowWhitespaces) {
-                    const float gap = ImGui::GetFontSize() * (ShortTabs ? 0.16f : 0.2f);
-                    const ImVec2 p1{glyph_pos + ImVec2{CharAdvance.x * 0.3f, font_height * 0.5f}};
-                    const ImVec2 p2{glyph_pos.x + CharAdvance.x * (ShortTabs ? (NumTabSpacesAtColumn(column) - 0.3f) : 1.f), p1.y};
+                    const float gap = font_size * (ShortTabs ? 0.16f : 0.2f);
+                    const ImVec2 p1{glyph_pos + ImVec2{char_advance.x * 0.3f, font_height * 0.5f}};
+                    const ImVec2 p2{glyph_pos.x + char_advance.x * (ShortTabs ? (NumTabSpacesAtColumn(column) - 0.3f) : 1.f), p1.y};
                     const u32 color = GetColor(PaletteIndex::ControlCharacter);
                     dl->AddLine(p1, p2, color);
                     dl->AddLine(p2, {p2.x - gap, p1.y - gap}, color);
@@ -1525,15 +1513,12 @@ void TextBufferImpl::Render(bool is_focused) {
                 }
             } else if (ch == ' ') {
                 if (ShowWhitespaces) {
-                    dl->AddCircleFilled(
-                        glyph_pos + ImVec2{space_size, ImGui::GetFontSize()} * 0.5f,
-                        1.5f, GetColor(PaletteIndex::ControlCharacter), 4
-                    );
+                    dl->AddCircleFilled(glyph_pos + ImVec2{font_width, font_size} * 0.5f, 1.5f, GetColor(PaletteIndex::ControlCharacter), 4);
                 }
             } else {
                 if (seq_length == 1 && MatchingBrackets && (MatchingBrackets->GetStart() == lc || MatchingBrackets->GetEnd() == lc)) {
                     const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
-                    dl->AddRectFilled(top_left, top_left + ImVec2{CharAdvance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
+                    dl->AddRectFilled(top_left, top_left + ImVec2{char_advance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                 }
                 // Render the current character.
                 const auto &char_style = Syntax->StyleByCaptureId.at(*transition_it);
@@ -1544,12 +1529,12 @@ void TextBufferImpl::Render(bool is_focused) {
             }
             if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
                 const auto color = SetAlpha(Syntax->StyleByCaptureId.at(*transition_it).Color, 40);
-                dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, color);
+                dl->AddRectFilled(glyph_pos, glyph_pos + char_advance, color);
             }
             if (ShowChangedCaptureRanges) {
                 for (const auto &range : Syntax->ChangedCaptureRanges) {
                     if (byte_index >= range.Start && byte_index < range.End) {
-                        dl->AddRectFilled(glyph_pos, glyph_pos + CharAdvance, Col32(255, 255, 255, 20));
+                        dl->AddRectFilled(glyph_pos, glyph_pos + char_advance, Col32(255, 255, 255, 20));
                     }
                 }
             }
@@ -1561,24 +1546,24 @@ void TextBufferImpl::Render(bool is_focused) {
     }
 
     CurrentSpaceDims = {
-        std::max((max_column + std::min(ContentCoordDims.C - 1, max_column)) * CharAdvance.x, CurrentSpaceDims.x),
-        (Text.size() + std::min(ContentCoordDims.L - 1, u32(Text.size()))) * CharAdvance.y
+        std::max((max_column + std::min(ContentCoordDims.C - 1, max_column)) * char_advance.x, CurrentSpaceDims.x),
+        (Text.size() + std::min(ContentCoordDims.L - 1, u32(Text.size()))) * char_advance.y
     };
 
-    ImGui::SetCursorPos({0, 0});
+    SetCursorPos({0, 0});
 
     // Stack invisible items to push node hierarchy to ImGui stack.
     if (Syntax && HoveredNode) {
-        const auto before_cursor = ImGui::GetCursorScreenPos();
+        const auto before_cursor = GetCursorScreenPos();
         for (const auto &node : HoveredNode->Ancestry) {
-            ImGui::PushOverrideID(node.Id);
-            ImGui::InvisibleButton("", CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
-            ImGui::SetCursorScreenPos(before_cursor);
+            PushOverrideID(node.Id);
+            InvisibleButton("", CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
+            SetCursorScreenPos(before_cursor);
         }
-        for (u32 i = 0; i < HoveredNode->Ancestry.size(); ++i) ImGui::PopID();
+        for (u32 i = 0; i < HoveredNode->Ancestry.size(); ++i) PopID();
     }
 
-    ImGui::Dummy(CurrentSpaceDims);
+    Dummy(CurrentSpaceDims);
     if (auto edited_cursor = Cursors.GetEditedCursor(); edited_cursor) {
         Cursors.ClearEdited();
         Cursors.SortAndMerge();
@@ -1593,23 +1578,21 @@ void TextBufferImpl::Render(bool is_focused) {
         const bool target_start = edited_cursor->IsStartEdited() && end_in_view;
         const auto target = target_start ? edited_cursor->GetStartCoords(*this) : end;
         if (target.L <= first_visible_coords.L) {
-            ImGui::SetScrollY(std::max((target.L - 0.5f) * CharAdvance.y, 0.f));
+            SetScrollY(std::max((target.L - 0.5f) * char_advance.y, 0.f));
         } else if (target.L >= last_visible_coords.L) {
-            ImGui::SetScrollY(std::max((target.L + 1.5f) * CharAdvance.y - ContentDims.y, 0.f));
+            SetScrollY(std::max((target.L + 1.5f) * char_advance.y - ContentDims.y, 0.f));
         }
         if (target.C <= first_visible_coords.C) {
-            ImGui::SetScrollX(std::clamp(TextStart + (target.C - 0.5f) * CharAdvance.x, 0.f, scroll.x));
+            SetScrollX(std::clamp(text_start_x + (target.C - 0.5f) * char_advance.x, 0.f, scroll.x));
         } else if (target.C >= last_visible_coords.C) {
-            ImGui::SetScrollX(std::max(TextStart + (target.C + 1.5f) * CharAdvance.x - ContentDims.x, 0.f));
+            SetScrollX(std::max(text_start_x + (target.C + 1.5f) * char_advance.x - ContentDims.x, 0.f));
         }
     }
     if (ScrollToTop) {
         ScrollToTop = false;
-        ImGui::SetScrollY(0);
+        SetScrollY(0);
     }
 }
-
-using namespace ImGui;
 
 static void DrawEdits(const std::vector<TextInputEdit> &edits) {
     Text("Edits: %lu", edits.size());
@@ -1667,7 +1650,7 @@ void TextBuffer::Render() const {
     const bool font_changed = Fonts::Push(FontFamily::Monospace);
     const bool is_focused = IsWindowFocused() || is_parent_focused;
     if (is_focused) {
-        auto &io = ImGui::GetIO();
+        auto &io = GetIO();
         io.WantCaptureKeyboard = io.WantTextInput = true;
 
         if (auto action = ProduceKeyboardAction()) Q(*action);

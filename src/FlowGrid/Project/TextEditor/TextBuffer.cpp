@@ -490,9 +490,6 @@ struct TextBufferImpl {
         }
         transient_lines.push_back(current_line.persistent());
         Text = transient_lines.persistent();
-
-        ScrollToTop = true;
-
         History = {};
         HistoryIndex = -1;
 
@@ -1128,11 +1125,7 @@ private:
     ImVec2 CurrentSpaceDims{20, 20}; // Pixel width/height given to `ImGui::Dummy`.
     ImVec2 LastClickPos{-1, -1};
     float LastClickTime{-1}; // ImGui time.
-    std::optional<Cursor> MatchingBrackets{};
     std::unique_ptr<SyntaxNodeAncestry> HoveredNode{};
-    bool IsOverLineNumber{false};
-    bool ScrollToTop{false};
-
     std::unique_ptr<SyntaxTree> Syntax;
 
     struct Snapshot {
@@ -1360,16 +1353,10 @@ void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) 
         SetMouseCursor(ImGuiMouseCursor_TextInput);
     } else {
         DestroyHoveredNode();
-        IsOverLineNumber = false;
         return;
     }
 
     constexpr static ImGuiMouseButton MouseLeft = ImGuiMouseButton_Left, MouseMiddle = ImGuiMouseButton_Middle;
-
-    const auto &io = GetIO();
-    const bool shift = io.KeyShift,
-               ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
-               alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
     if (IsMouseDown(MouseMiddle) && IsMouseDragging(MouseMiddle)) {
         const auto new_scroll = ImVec2{GetScrollX(), GetScrollY()} - GetMouseDragDelta(MouseMiddle);
@@ -1377,15 +1364,21 @@ void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) 
         SetScrollY(new_scroll.y);
     }
 
+    bool is_over_line_number = false;
     const auto mouse_pos = GetMousePos();
-    const auto mouse_lc = ToLineChar(ScreenPosToCoords(mouse_pos, char_advance, text_start_x, &IsOverLineNumber));
+    const auto mouse_lc = ToLineChar(ScreenPosToCoords(mouse_pos, char_advance, text_start_x, &is_over_line_number));
     if (IsMouseDragging(MouseLeft)) Cursors.GetLastAdded().SetEnd(mouse_lc);
+
+    const auto &io = GetIO();
+    const bool shift = io.KeyShift,
+               ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
+               alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
     const auto is_click = IsMouseClicked(MouseLeft);
     if (shift && is_click) return Cursors.GetLastAdded().SetEnd(mouse_lc);
     if (shift || alt) return;
 
-    if (IsOverLineNumber) DestroyHoveredNode();
+    if (is_over_line_number) DestroyHoveredNode();
     else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc));
 
     const float time = GetTime();
@@ -1411,7 +1404,7 @@ void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) 
         if (ctrl) Cursors.Add();
         else Cursors.Reset();
 
-        if (IsOverLineNumber) {
+        if (is_over_line_number) {
             SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
         } else {
             Cursors.GetLastAdded().Set(mouse_lc);
@@ -1461,16 +1454,14 @@ void TextBufferImpl::Render(bool is_focused) {
         for (const auto &c : Cursors) {
             const auto selection_start = ToCoords(c.Min()), selection_end = ToCoords(c.Max());
             if (selection_start <= line_end_coord && selection_end > line_start_coord) {
-                const u32 rect_start = selection_start > line_start_coord ? selection_start.C : 0;
-                const u32 rect_end = selection_end < line_end_coord ?
+                const u32 start_col = selection_start > line_start_coord ? selection_start.C : 0;
+                const u32 end_col = selection_end < line_end_coord ?
                     selection_end.C :
                     line_end_coord.C + (selection_end.L > li || (selection_end.L == li && selection_end > line_end_coord) ? 1 : 0);
-                if (rect_start < rect_end) {
-                    dl->AddRectFilled(
-                        {text_screen_x + rect_start * char_advance.x, line_start_screen_pos.y},
-                        {text_screen_x + rect_end * char_advance.x, line_start_screen_pos.y + char_advance.y},
-                        GetColor(PaletteIndex::Selection)
-                    );
+                if (start_col < end_col) {
+                    const ImVec2 rect_start{text_screen_x + start_col * char_advance.x, line_start_screen_pos.y};
+                    const ImVec2 rect_end = rect_start + ImVec2{(end_col - start_col) * char_advance.x, char_advance.y};
+                    dl->AddRectFilled(rect_start, rect_end, GetColor(PaletteIndex::Selection));
                 }
             }
         }
@@ -1516,9 +1507,13 @@ void TextBufferImpl::Render(bool is_focused) {
                     dl->AddCircleFilled(glyph_pos + ImVec2{font_width, font_size} * 0.5f, 1.5f, GetColor(PaletteIndex::ControlCharacter), 4);
                 }
             } else {
-                if (seq_length == 1 && MatchingBrackets && (MatchingBrackets->GetStart() == lc || MatchingBrackets->GetEnd() == lc)) {
-                    const ImVec2 top_left{glyph_pos + ImVec2{0, font_height + 1.0f}};
-                    dl->AddRectFilled(top_left, top_left + ImVec2{char_advance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
+                if (seq_length == 1 && Cursors.size() == 1) {
+                    if (const auto matching_brackets = FindMatchingBrackets(Cursors.front())) {
+                        if (matching_brackets->GetStart() == lc || matching_brackets->GetEnd() == lc) {
+                            const ImVec2 start{glyph_pos + ImVec2{0, font_height + 1.0f}};
+                            dl->AddRectFilled(start, start + ImVec2{char_advance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
+                        }
+                    }
                 }
                 // Render the current character.
                 const auto &char_style = Syntax->StyleByCaptureId.at(*transition_it);
@@ -1564,10 +1559,10 @@ void TextBufferImpl::Render(bool is_focused) {
     }
 
     Dummy(CurrentSpaceDims);
+
     if (auto edited_cursor = Cursors.GetEditedCursor(); edited_cursor) {
         Cursors.ClearEdited();
         Cursors.SortAndMerge();
-        MatchingBrackets = Cursors.size() == 1 ? FindMatchingBrackets(Cursors.front()) : std::nullopt;
         // Move scroll to keep the edited cursor visible.
         // Goal: Keep the _entirity_ of the edited cursor(s) visible at all times.
         // So, vars like `end_in_view` mean, "is the end of the edited cursor in _fully_ in view?"
@@ -1587,10 +1582,6 @@ void TextBufferImpl::Render(bool is_focused) {
         } else if (target.C >= last_visible_coords.C) {
             SetScrollX(std::max(text_start_x + (target.C + 1.5f) * char_advance.x - ContentDims.x, 0.f));
         }
-    }
-    if (ScrollToTop) {
-        ScrollToTop = false;
-        SetScrollY(0);
     }
 }
 

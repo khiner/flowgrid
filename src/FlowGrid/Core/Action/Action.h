@@ -54,14 +54,14 @@ private:
 template<typename T>
 concept IsAction = requires(T t) {
     { T::_Meta } -> std::same_as<const Metadata &>;
-    { T::IsSavable } -> std::same_as<const bool &>;
+    { T::IsSaved } -> std::same_as<const bool &>;
 };
 
-template<IsAction T> struct IsSavable {
-    static constexpr bool value = T::IsSavable;
+template<IsAction T> struct IsSaved {
+    static constexpr bool value = T::IsSaved;
 };
-template<IsAction T> struct IsNotSavable {
-    static constexpr bool value = !T::IsSavable;
+template<IsAction T> struct IsNotSaved {
+    static constexpr bool value = !T::IsSaved;
 };
 
 template<IsAction... T> struct ActionVariant : std::variant<T...> {
@@ -167,7 +167,7 @@ template<typename... Ts, typename T> struct AppendImpl<ActionVariant<Ts...>, T> 
 template<typename Var, typename T> using Append = typename AppendImpl<Var, T>::type;
 
 // Filter an `ActionVariant` by a predicate.
-// E.g. `using Savable = Action::Filter<Action::IsSavable, Any>;`
+// E.g. `using Saved = Action::Filter<Action::IsSaved, Any>;`
 template<template<typename> class Predicate, typename Var> struct FilterImpl;
 template<template<typename> class Predicate, typename... Types> struct FilterImpl<Predicate, Action::ActionVariant<Types...>> {
     template<typename Type>

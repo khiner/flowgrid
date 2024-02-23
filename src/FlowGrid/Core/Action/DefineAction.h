@@ -32,7 +32,7 @@ template<class...> constexpr bool always_false_v = false;
 #define DefineActionInternal(ActionType, is_savable, merge_type, meta_str, ...) \
     struct ActionType {                                                         \
         inline static const Metadata _Meta{#ActionType, meta_str};              \
-        static constexpr bool IsSavable = is_savable;                           \
+        static constexpr bool IsSaved = is_savable;                             \
         void q() const;                                                         \
         static void MenuItem();                                                 \
         static fs::path GetPath() { return _TypePath / _Meta.PathLeaf; }        \

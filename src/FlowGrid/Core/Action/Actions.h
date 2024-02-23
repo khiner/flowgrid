@@ -15,30 +15,30 @@
 namespace Action {
 // `Any` holds all action types.
 using Any = Combine<Primitive::Any, Container::Any, Project::Any, Store::Any, TextBuffer::Any, Audio::Any, FileDialog::Any, Windows::Any, Style::Any>;
-using Savable = Filter<Action::IsSavable, Any>;
-using NonSavable = Filter<Action::IsNotSavable, Any>;
+using Saved = Filter<Action::IsSaved, Any>;
+using NonSaved = Filter<Action::IsNotSaved, Any>;
 } // namespace Action
 
-using SavableActionMoment = ActionMoment<Action::Savable>;
-using SavableActionMoments = std::vector<SavableActionMoment>;
+using SavedActionMoment = ActionMoment<Action::Saved>;
+using SavedActionMoments = std::vector<SavedActionMoment>;
 
 struct Gesture {
-    SavableActionMoments Actions;
+    SavedActionMoments Actions;
     TimePoint CommitTime;
 };
 
 using Gestures = std::vector<Gesture>;
 
-SavableActionMoments MergeActions(const SavableActionMoments &);
+SavedActionMoments MergeActions(const SavedActionMoments &);
 
 namespace nlohmann {
-inline static void to_json(json &j, const Action::Savable &action) {
+inline static void to_json(json &j, const Action::Saved &action) {
     action.to_json(j);
 }
-inline static void from_json(const json &j, Action::Savable &action) {
-    Action::Savable::from_json(j, action);
+inline static void from_json(const json &j, Action::Saved &action) {
+    Action::Saved::from_json(j, action);
 }
 
-Json(SavableActionMoment, Action, QueueTime);
+Json(SavedActionMoment, Action, QueueTime);
 Json(Gesture, Actions, CommitTime);
 } // namespace nlohmann

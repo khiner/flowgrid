@@ -18,7 +18,7 @@
 using std::vector;
 using namespace FlowGrid;
 
-static SavableActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
+static SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
 static Patch LatestPatch;
 
 // Project constants:
@@ -678,7 +678,7 @@ void Project::Debug::ProjectPreview::Render() const {
     }
 }
 
-void ShowActions(const SavableActionMoments &actions) {
+void ShowActions(const SavedActionMoments &actions) {
     for (u32 action_index = 0; action_index < actions.size(); action_index++) {
         const auto &[action, queue_time] = actions[action_index];
         if (TreeNodeEx(to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
@@ -794,7 +794,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     Separator();
     {
         // Various internals
-        Text("Action variant size: %lu bytes", sizeof(Action::Savable));
+        Text("Action variant size: %lu bytes", sizeof(Action::Saved));
         Text("Primitive variant size: %lu bytes", sizeof(PrimitiveVariant));
         SameLine();
         fg::HelpMarker(
@@ -836,7 +836,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
 
         std::visit(
             Match{
-                [&store = RootStore, &queue_time](const Action::Savable &a) {
+                [&store = RootStore, &queue_time](const Action::Saved &a) {
                     LatestPatch = store.CheckedCommit();
                     if (!LatestPatch.Empty()) {
                         RefreshChanged(LatestPatch, true);
@@ -845,7 +845,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
                     }
                 },
                 // Note: `const auto &` capture does not work when the other type is itself a variant group. Need to be exhaustive.
-                [](const Action::NonSavable &) {},
+                [](const Action::NonSaved &) {},
             },
             action
         );

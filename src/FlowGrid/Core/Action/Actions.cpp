@@ -1,11 +1,11 @@
 #include "Actions.h"
 
-SavableActionMoments MergeActions(const SavableActionMoments &actions) {
-    SavableActionMoments merged_actions; // Mutable return value.
+SavedActionMoments MergeActions(const SavedActionMoments &actions) {
+    SavedActionMoments merged_actions; // Mutable return value.
 
     // `active` keeps track of which action we're merging into.
     // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
-    std::optional<const SavableActionMoment> active;
+    std::optional<const SavedActionMoment> active;
     for (u32 i = 0; i < actions.size(); i++) {
         if (!active) active.emplace(actions[i]);
         const auto &a = *active;
@@ -18,7 +18,7 @@ SavableActionMoments MergeActions(const SavableActionMoments &actions) {
                     else merged_actions.emplace_back(a); //
                     active.reset(); // No merge in either case. Move on to try compressing the next action.
                 },
-                [&](const Action::Savable &merged_action) {
+                [&](const Action::Saved &merged_action) {
                     // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
                     active.emplace(merged_action, b.QueueTime);
                 },

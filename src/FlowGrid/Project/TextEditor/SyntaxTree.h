@@ -91,7 +91,7 @@ TSQuery *LanguageDefinition::GetQuery() const {
 LanguageDefinitions::LanguageDefinitions()
     : ById{
           {ID::None, {ID::None, "None"}},
-          {ID::Cpp, {ID::Cpp, "C++", "cpp", tree_sitter_cpp(), {".h", ".hpp", ".cpp"}, "//"}},
+          {ID::Cpp, {ID::Cpp, "C++", "cpp", tree_sitter_cpp(), {".h", ".hpp", ".cpp", ".ipp"}, "//"}},
           {ID::Faust, {ID::Faust, "Faust", "faust", tree_sitter_faust(), {".dsp"}, "//"}},
           {ID::Json, {ID::Json, "JSON", "json", tree_sitter_json(), {".json"}}},
       } {

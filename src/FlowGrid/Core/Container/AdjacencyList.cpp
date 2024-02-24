@@ -17,7 +17,6 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     std::unordered_set<ID> visited;
     std::stack<ID> to_visit;
     to_visit.push(from_id);
-
     while (!to_visit.empty()) {
         ID current = to_visit.top();
         to_visit.pop();
@@ -47,8 +46,7 @@ void AdjacencyList::ToggleConnection(ID source, ID destination) const {
     else Connect(source, destination);
 }
 void AdjacencyList::DisconnectOutput(ID id) const {
-    const auto id_pairs = Get();
-    for (const auto &[source_id, destination_id] : id_pairs) {
+    for (const auto &[source_id, destination_id] : Get()) {
         if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);
     }
 }

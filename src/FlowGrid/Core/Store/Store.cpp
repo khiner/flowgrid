@@ -2,7 +2,19 @@
 
 #include "immer/algorithm.hpp"
 
-#include "TransientStore.h"
+#include "immer/map_transient.hpp"
+#include "immer/set_transient.hpp"
+
+struct TransientStore {
+    using PrimitiveMap = immer::map_transient<StorePath, PrimitiveVariant, PathHash>;
+    using IdPairs = immer::set_transient<IdPair, IdPairHash>;
+    using IdPairsMap = immer::map_transient<StorePath, immer::set<IdPair, IdPairHash>, PathHash>;
+
+    PrimitiveMap PrimitiveByPath;
+    IdPairsMap IdPairsByPath;
+
+    Store Persistent();
+};
 
 // The store starts in transient mode.
 Store::Store() : Transient(std::make_unique<TransientStore>()) {}
@@ -15,6 +27,7 @@ Store::Store(PrimitiveMap &&primitives, IdPairsMap &&id_pairs)
 Store::~Store() = default;
 
 TransientStore Store::ToTransient() const { return {PrimitiveByPath.transient(), IdPairsByPath.transient()}; }
+Store TransientStore::Persistent() { return {PrimitiveByPath.persistent(), IdPairsByPath.persistent()}; }
 
 void Store::ApplyPatch(const Patch &patch) const {
     for (const auto &[partial_path, op] : patch.Ops) {

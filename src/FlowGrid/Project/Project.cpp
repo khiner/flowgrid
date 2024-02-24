@@ -15,11 +15,9 @@
 #include "Helper/String.h"
 #include "Helper/Time.h"
 
-using std::vector;
 using namespace FlowGrid;
 
 static SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
-static Patch LatestPatch;
 
 // Project constants:
 static const fs::path InternalPath = ".flowgrid";
@@ -172,15 +170,15 @@ void Project::SetHistoryIndex(u32 index) const {
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
-    LatestPatch = RootStore.CheckedSet(History.CurrentStore());
-    RefreshChanged(LatestPatch);
+    const auto patch = RootStore.CheckedSet(History.CurrentStore());
+    RefreshChanged(patch);
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
     // However, style changes need to be applied to the ImGui context in all cases, since these are issued from component changes.
     // We don't make `ImGuiSettings` a component change listener for this because it would would end up being slower,
     // since it has many descendents, and we would wastefully check for changes during the forward action pass, as explained above.
-    if (LatestPatch.IsPrefixOfAnyPath(ImGuiSettings.Path)) ImGuiSettings::IsChanged = true;
+    if (patch.IsPrefixOfAnyPath(ImGuiSettings.Path)) ImGuiSettings::IsChanged = true;
     ProjectHasChanges = true;
 }
 
@@ -514,8 +512,7 @@ void Project::Open(const fs::path &file_path) const {
         for (auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
-                LatestPatch = RootStore.CheckedCommit();
-                RefreshChanged(LatestPatch);
+                RefreshChanged(RootStore.CheckedCommit());
             }
             History.AddGesture(std::move(gesture));
         }
@@ -566,11 +563,9 @@ void Project::WindowMenuItem() const {
 #include "date.h"
 #include "implot.h"
 
-#include <range/v3/range/conversion.hpp>
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/map.hpp>
 
-#include "Helper/String.h"
 #include "UI/HelpMarker.h"
 #include "UI/JsonTree.h"
 
@@ -837,9 +832,9 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
         std::visit(
             Match{
                 [&store = RootStore, &queue_time](const Action::Saved &a) {
-                    LatestPatch = store.CheckedCommit();
-                    if (!LatestPatch.Empty()) {
-                        RefreshChanged(LatestPatch, true);
+                    const auto patch = store.CheckedCommit();
+                    if (!patch.Empty()) {
+                        RefreshChanged(patch, true);
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;
                     }

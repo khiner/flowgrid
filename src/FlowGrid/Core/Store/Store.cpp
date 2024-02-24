@@ -65,7 +65,7 @@ void Store::AddIdPair(const StorePath &path, const IdPair &value) const {
 }
 void Store::EraseIdPair(const StorePath &path, const IdPair &value) const {
     if (!Transient->IdPairsByPath.count(path)) return;
-    Transient->IdPairsByPath.set(path,  Transient->IdPairsByPath.at(path).erase(value));
+    Transient->IdPairsByPath.set(path, Transient->IdPairsByPath.at(path).erase(value));
 }
 void Store::ClearIdPairs(const StorePath &path) const { Transient->IdPairsByPath.set(path, {}); }
 
@@ -114,38 +114,34 @@ Patch Store::CreatePatch(const Store &before, const Store &after, const StorePat
         }
     );
 
-    // Added IdPair sets:
-    for (const auto &[id_pairs_path, id_pairs] : after.IdPairsByPath) {
-        if (!before.IdPairsByPath.count(id_pairs_path)) {
-            for (const auto &id_pair : id_pairs) {
-                ops[id_pairs_path.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(id_pair), {}};
+    diff(
+        before.IdPairsByPath,
+        after.IdPairsByPath,
+        [&](const auto &added) {
+            for (const auto &id_pair : added.second) {
+                ops[added.first.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(id_pair), {}};
             }
-        }
-    }
-    // Removed IdPair sets:
-    for (const auto &[id_pairs_path, id_pairs] : before.IdPairsByPath) {
-        if (!after.IdPairsByPath.count(id_pairs_path)) {
-            for (const auto &id_pair : id_pairs) {
-                ops[id_pairs_path.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(id_pair)};
+        },
+        [&](const auto &removed) {
+            for (const auto &id_pair : removed.second) {
+                ops[removed.first.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(id_pair)};
             }
+        },
+        [&](const auto &old_element, const auto &new_element) {
+            diff(
+                old_element.second,
+                new_element.second,
+                [&](const auto &added) {
+                    ops[new_element.first.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(added), {}};
+                },
+                [&](const auto &removed) {
+                    ops[old_element.first.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(removed)};
+                },
+                // Change callback required but never called for `immer::set`.
+                [](const auto &, const auto &) {}
+            );
         }
-    }
-    // Changed IdPair sets:
-    for (const auto &id_pair_path : std::views::keys(before.IdPairsByPath)) {
-        if (!after.IdPairsByPath.count(id_pair_path)) continue;
-        diff(
-            before.IdPairsByPath.at(id_pair_path),
-            after.IdPairsByPath.at(id_pair_path),
-            [&ops, &id_pair_path, &base_path](const auto &added) {
-                ops[id_pair_path.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(added), {}};
-            },
-            [&ops, &id_pair_path, &base_path](const auto &removed) {
-                ops[id_pair_path.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(removed)};
-            },
-            // Change callback required but never called for `immer::set`.
-            [](const auto &, const auto &) {}
-        );
-    }
+    );
 
     return {ops, base_path};
 }

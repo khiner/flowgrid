@@ -10,7 +10,6 @@
 #include "ComponentArgs.h"
 #include "Core/HelpInfo.h"
 #include "Core/Primitive/PrimitiveVariant.h"
-#include "Core/Store/Patch/PatchOp.h"
 #include "Helper/Paths.h"
 #include "MenuItemDrawable.h"
 
@@ -22,7 +21,6 @@ namespace fg = FlowGrid;
 using std::string, std::string_view;
 
 struct Store;
-struct Patch;
 struct PrimitiveActionQueuer;
 
 namespace FlowGrid {
@@ -240,7 +238,7 @@ protected:
     void FlashUpdateRecencyBackground(std::optional<StorePath> relative_path = {}) const;
 
 private:
-    Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo meta, ImGuiWindowFlags flags, Menu &&menu);
+    Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo, ImGuiWindowFlags, Menu &&);
 };
 
 // Minimal/base debug component.

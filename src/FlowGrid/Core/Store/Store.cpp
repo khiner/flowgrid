@@ -2,12 +2,30 @@
 
 #include "immer/algorithm.hpp"
 
+// Utility to transform a tuple into another tuple, applying a function to each element.
+template<typename ResultTuple, typename InputTuple, typename Func, std::size_t... I>
+ResultTuple TransformTupleImpl(InputTuple &in, Func func, std::index_sequence<I...>) {
+    return {func(std::get<I>(in))...};
+}
+template<typename ResultTuple, typename InputTuple, typename Func>
+ResultTuple TransformTuple(InputTuple &in, Func func) {
+    return TransformTupleImpl<ResultTuple>(in, func, std::make_index_sequence<std::tuple_size_v<InputTuple>>{});
+}
+
+Store::StoreMaps Store::Persistent() const {
+    if (!TransientMaps) throw std::runtime_error("Store is not in transient mode.");
+    return TransformTuple<StoreMaps>(*TransientMaps, [](auto &map) { return map.persistent(); });
+}
+Store::TransientStoreMaps Store::Transient() const {
+    return TransformTuple<TransientStoreMaps>(Maps, [](auto &map) { return map.transient(); });
+}
+
 Patch Store::CreatePatch(const Store &before, const Store &after, const StorePath &base_path) const {
     PatchOps ops{};
 
     diff(
-        before.PrimitiveByPath,
-        after.PrimitiveByPath,
+        before.GetMap<PrimitiveVariant>(),
+        after.GetMap<PrimitiveVariant>(),
         [&](const auto &added) {
             ops[added.first.lexically_relative(base_path)] = {PatchOp::Type::Add, added.second, {}};
         },
@@ -20,8 +38,8 @@ Patch Store::CreatePatch(const Store &before, const Store &after, const StorePat
     );
 
     diff(
-        before.IdPairsByPath,
-        after.IdPairsByPath,
+        before.GetMap<IdPairs>(),
+        after.GetMap<IdPairs>(),
         [&](const auto &added) {
             for (const auto &id_pair : added.second) {
                 ops[added.first.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(id_pair), {}};

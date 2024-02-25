@@ -9,7 +9,7 @@
 
 AdjacencyList::AdjacencyList(ArgsT &&args) : Container(std::move(args.Args)), ActionableProducer(std::move(args.Q)) {}
 
-IdPairs AdjacencyList::Get() const { return RootStore.GetIdPairs(Path); }
+IdPairs AdjacencyList::Get() const { return RootStore.CountAt<IdPairs>(Path) ? RootStore.Get<IdPairs>(Path) : IdPairs{}; }
 
 bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     // Non-recursive depth-first search that handles cycles.
@@ -20,7 +20,6 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     while (!to_visit.empty()) {
         ID current = to_visit.top();
         to_visit.pop();
-
         if (current == to_id) return true;
 
         if (!visited.contains(current)) {
@@ -33,14 +32,19 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 
     return false;
 }
-bool AdjacencyList::IsConnected(ID source, ID destination) const { return RootStore.HasIdPair(Path, {source, destination}); }
-void AdjacencyList::Disconnect(ID source, ID destination) const { RootStore.EraseIdPair(Path, {source, destination}); }
+bool AdjacencyList::IsConnected(ID source, ID destination) const {
+    return RootStore.CountAt<IdPairs>(Path) > 0 && RootStore.Get<IdPairs>(Path).count({source, destination}) > 0;
+}
+void AdjacencyList::Disconnect(ID source, ID destination) const {
+    if (RootStore.CountAt<IdPairs>(Path)) RootStore.Set(Path, RootStore.Get<IdPairs>(Path).erase({source, destination}));
+}
 void AdjacencyList::Add(IdPair &&id_pair) const {
-    if (!RootStore.HasIdPair(Path, id_pair)) RootStore.AddIdPair(Path, std::move(id_pair));
+    if (!IsConnected(id_pair.first, id_pair.second)) {
+        if (!RootStore.CountAt<IdPairs>(Path)) RootStore.Set<IdPairs>(Path, {});
+        RootStore.Set(Path, RootStore.Get<IdPairs>(Path).insert(std::move(id_pair)));
+    }
 }
-void AdjacencyList::Connect(ID source, ID destination) const {
-    if (!IsConnected(source, destination)) RootStore.AddIdPair(Path, {source, destination});
-}
+void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
 void AdjacencyList::ToggleConnection(ID source, ID destination) const {
     if (IsConnected(source, destination)) Disconnect(source, destination);
     else Connect(source, destination);
@@ -58,14 +62,14 @@ u32 AdjacencyList::DestinationCount(ID source) const {
     return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
-void AdjacencyList::Erase() const { RootStore.ClearIdPairs(Path); }
+void AdjacencyList::Erase() const { RootStore.Set<IdPairs>(Path, {}); }
 
 using namespace ImGui;
 
 void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
-    if (!RootStore.IdPairCount(Path)) {
+    if (RootStore.Get<IdPairs>(Path).empty()) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());
         return;
     }

@@ -27,7 +27,7 @@ struct Record {
 };
 
 struct StoreHistory::Records {
-    Records(const ::Store &initial_store) : Value{{initial_store.Get(), Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
+    Records(const ::Store &initial_store) : Value{{initial_store, Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
 
     std::vector<Record> Value;
 };
@@ -44,7 +44,7 @@ void StoreHistory::Clear() {
 }
 
 void StoreHistory::AddGesture(Gesture &&gesture) {
-    const auto store_impl = Store.Get();
+    const auto store_impl = Store;
     const auto patch = Store.CreatePatch(this->CurrentStore(), store_impl);
     if (patch.Empty()) return;
 

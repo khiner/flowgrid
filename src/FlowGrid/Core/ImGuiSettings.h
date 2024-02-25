@@ -3,6 +3,8 @@
 #include "Core/Container/PrimitiveVector.h"
 #include "Core/Container/PrimitiveVector2D.h"
 
+struct Patch;
+
 template<typename T> struct ImChunkStream;
 template<typename T> struct ImVector;
 
@@ -84,12 +86,12 @@ struct ImGuiSettings : Component {
     inline static bool IsChanged{false};
 
     // Create a patch resulting from applying the current ImGui context.
-    Patch CreatePatch(ImGuiContext *ctx) const;
+    Patch CreatePatch(ImGuiContext *) const;
 
     // `Update(ctx)` is basically `imgui_context.settings = this`.
     // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized `.ini` text format.
-    void UpdateIfChanged(ImGuiContext *ctx) const;
+    void UpdateIfChanged(ImGuiContext *) const;
 
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);

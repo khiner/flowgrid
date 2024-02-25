@@ -14,7 +14,7 @@ template<IsPrimitive T> void PrimitiveVector<T>::Set(const std::vector<T> &value
 }
 
 template<IsPrimitive T> void PrimitiveVector<T>::Set(size_t i, const T &value) const {
-    RootStore.Set(PathAt(i), value);
+    RootStore.Set(PathAt(i), PrimitiveVariant{value});
 }
 
 template<IsPrimitive T> void PrimitiveVector<T>::Set(const std::vector<std::pair<int, T>> &values) const {
@@ -22,18 +22,18 @@ template<IsPrimitive T> void PrimitiveVector<T>::Set(const std::vector<std::pair
 }
 
 template<IsPrimitive T> void PrimitiveVector<T>::PushBack(const T &value) const {
-    RootStore.Set(PathAt(Value.size()), value);
+    RootStore.Set(PathAt(Value.size()), PrimitiveVariant{value});
 }
 
 template<IsPrimitive T> void PrimitiveVector<T>::PopBack() const {
     if (Value.empty()) return;
-    RootStore.Erase(PathAt(Value.size() - 1));
+    RootStore.Erase<PrimitiveVariant>(PathAt(Value.size() - 1));
 }
 
 template<IsPrimitive T> void PrimitiveVector<T>::Resize(u32 size) const {
     u32 i = size;
-    while (RootStore.CountAt(PathAt(i))) {
-        RootStore.Erase(PathAt(i));
+    while (RootStore.CountAt<PrimitiveVariant>(PathAt(i))) {
+        RootStore.Erase<PrimitiveVariant>(PathAt(i));
         i++;
     }
 }
@@ -52,8 +52,8 @@ template<IsPrimitive T> void PrimitiveVector<T>::Erase(const T &value) const {
 
 template<IsPrimitive T> void PrimitiveVector<T>::Refresh() {
     u32 i = 0;
-    while (RootStore.CountAt(PathAt(i))) {
-        const T value = std::get<T>(RootStore.Get(PathAt(i)));
+    while (RootStore.CountAt<PrimitiveVariant>(PathAt(i))) {
+        const T value = std::get<T>(RootStore.Get<PrimitiveVariant>(PathAt(i)));
         if (Value.size() == i) Value.push_back(value);
         else Value[i] = value;
         i++;

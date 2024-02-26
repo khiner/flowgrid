@@ -12,7 +12,7 @@ template<IsPrimitive T> void PrimitiveVector2D<T>::Set(const std::vector<std::ve
             Set(i, j, value[i][j]);
             j++;
         }
-        while (RootStore.CountAt<PrimitiveVariant>(PathAt(i, j))) RootStore.Erase<PrimitiveVariant>(PathAt(i, j++));
+        while (RootStore.CountAt<T>(PathAt(i, j))) RootStore.Erase<T>(PathAt(i, j++));
         i++;
     }
 
@@ -20,12 +20,12 @@ template<IsPrimitive T> void PrimitiveVector2D<T>::Set(const std::vector<std::ve
 }
 
 template<IsPrimitive T> void PrimitiveVector2D<T>::Set(u32 i, u32 j, const T &value) const {
-    RootStore.Set(PathAt(i, j), PrimitiveVariant{value});
+    RootStore.Set(PathAt(i, j), value);
 }
 
 template<IsPrimitive T> void PrimitiveVector2D<T>::Resize(u32 size) const {
     u32 i = size;
-    while (RootStore.CountAt<PrimitiveVariant>(PathAt(i, 0))) {
+    while (RootStore.CountAt<T>(PathAt(i, 0))) {
         Resize(i, 0);
         i++;
     }
@@ -33,18 +33,18 @@ template<IsPrimitive T> void PrimitiveVector2D<T>::Resize(u32 size) const {
 
 template<IsPrimitive T> void PrimitiveVector2D<T>::Resize(u32 i, u32 size) const {
     u32 j = size;
-    while (RootStore.CountAt<PrimitiveVariant>(PathAt(i, j))) RootStore.Erase<PrimitiveVariant>(PathAt(i, j++));
+    while (RootStore.CountAt<T>(PathAt(i, j))) RootStore.Erase<T>(PathAt(i, j++));
 }
 
 template<IsPrimitive T> void PrimitiveVector2D<T>::Erase() const { Resize(0); }
 
 template<IsPrimitive T> void PrimitiveVector2D<T>::Refresh() {
     u32 i = 0;
-    while (RootStore.CountAt<PrimitiveVariant>(PathAt(i, 0))) {
+    while (RootStore.CountAt<T>(PathAt(i, 0))) {
         if (Value.size() == i) Value.push_back({});
         u32 j = 0;
-        while (RootStore.CountAt<PrimitiveVariant>(PathAt(i, j))) {
-            const T value = std::get<T>(RootStore.Get<PrimitiveVariant>(PathAt(i, j)));
+        while (RootStore.CountAt<T>(PathAt(i, j))) {
+            const T value = RootStore.Get<T>(PathAt(i, j));
             if (Value[i].size() == j) Value[i].push_back(value);
             else Value[i][j] = value;
             j++;

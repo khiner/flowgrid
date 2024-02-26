@@ -30,8 +30,8 @@ struct Plottable {
 
 /**
 This class fully describes the project at any point in time.
-It is a structured representation of its underlying store (of type `Store`, which itself is an `immer::map<Path, PrimitiveVariant>`),
-along with additional metadata about each state member, such as its `Path`/`ID`/`Name`.
+It is a structured representation of its underlying store (of type `Store`,
+which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
 struct Project : Component, ActionableProducer<Action::Any> {
     Project(Store &, PrimitiveActionQueuer &, ActionProducer::Enqueue);
@@ -60,7 +60,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
     static void MarkAllChanged(const Patch &);
 
     // Find the field whose `Refresh()` should be called in response to a patch with this path and op type.
-    static Component *FindChanged(const StorePath &, PatchOp::Type);
+    static Component *FindChanged(const StorePath &, PatchOpType);
 
     void OpenRecentProjectMenuItem() const;
 

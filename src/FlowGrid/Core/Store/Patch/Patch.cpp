@@ -4,9 +4,9 @@
 #include <filesystem>
 
 PatchOps Merge(const PatchOps &a, const PatchOps &b) {
-    static constexpr auto AddOp = PatchOp::Type::Add;
-    static constexpr auto RemoveOp = PatchOp::Type::Remove;
-    static constexpr auto ReplaceOp = PatchOp::Type::Replace;
+    static constexpr auto AddOp = PatchOpType::Add;
+    static constexpr auto RemoveOp = PatchOpType::Remove;
+    static constexpr auto ReplaceOp = PatchOpType::Replace;
 
     PatchOps merged = a;
     for (const auto &[path, op] : b) {

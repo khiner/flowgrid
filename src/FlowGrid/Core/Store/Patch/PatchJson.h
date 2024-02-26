@@ -7,11 +7,11 @@
 
 namespace nlohmann {
 NLOHMANN_JSON_SERIALIZE_ENUM(
-    PatchOp::Type,
+    PatchOpType,
     {
-        {PatchOp::Type::Add, "add"},
-        {PatchOp::Type::Remove, "remove"},
-        {PatchOp::Type::Replace, "replace"},
+        {PatchOpType::Add, "add"},
+        {PatchOpType::Remove, "remove"},
+        {PatchOpType::Replace, "replace"},
     }
 );
 Json(PatchOp, Op, Value, Old);

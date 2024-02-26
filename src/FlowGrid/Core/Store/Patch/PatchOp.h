@@ -7,6 +7,13 @@
 
 // todo use `IsPrimitive` concept instead of holding `Primitive` values.
 // Need to think about how.
+
+enum PatchOpType {
+    Add,
+    Remove,
+    Replace,
+};
+
 struct PatchOp {
     enum Type {
         Add,
@@ -14,9 +21,9 @@ struct PatchOp {
         Replace,
     };
 
-    Type Op{};
+    PatchOpType Op{};
     std::optional<PrimitiveVariant> Value{}; // Present for add/replace
     std::optional<PrimitiveVariant> Old{}; // Present for remove/replace
 };
 
-std::string to_string(PatchOp::Type);
+std::string to_string(PatchOpType);

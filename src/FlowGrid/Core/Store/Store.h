@@ -7,7 +7,6 @@
 #include "immer/vector.hpp"
 
 #include "Core/Action/Actionable.h"
-#include "Core/Primitive/PrimitiveVariant.h"
 #include "Helper/Path.h"
 #include "IdPairs.h"
 #include "Patch/Patch.h"
@@ -23,7 +22,7 @@ struct Store : Actionable<Action::Store::Any> {
     template<typename T> using Map = immer::map<StorePath, T, PathHash>;
     template<typename T> using TransientMap = immer::map_transient<StorePath, T, PathHash>;
 
-    using ValueTypes = std::tuple<PrimitiveVariant, IdPairs, immer::set<u32>>;
+    using ValueTypes = std::tuple<bool, u32, s32, float, std::string, IdPairs, immer::set<u32>>;
     using StoreMaps = typename WrapTypes<Map, ValueTypes>::type;
     using TransientStoreMaps = typename WrapTypes<TransientMap, ValueTypes>::type;
 
@@ -43,17 +42,30 @@ struct Store : Actionable<Action::Store::Any> {
         );
     }
 
+    template<typename ValueType> const Map<ValueType> &GetMap() const { return std::get<Map<ValueType>>(Maps); }
+
     template<typename ValueType> const ValueType &Get(const StorePath &path) const { return GetTransientMap<ValueType>().at(path); }
     template<typename ValueType> u32 CountAt(const StorePath &path) const { return GetTransientMap<ValueType>().count(path); }
 
     template<typename ValueType> void Set(const StorePath &path, const ValueType &value) const { GetTransientMap<ValueType>().set(path, value); }
     template<typename ValueType> void Erase(const StorePath &path) const { GetTransientMap<ValueType>().erase(path); }
+    void ErasePrimitive(const StorePath &path) const {
+        if (Contains<bool>(path)) Erase<bool>(path);
+        else if (Contains<u32>(path)) Erase<u32>(path);
+        else if (Contains<s32>(path)) Erase<s32>(path);
+        else if (Contains<float>(path)) Erase<float>(path);
+        else if (Contains<std::string>(path)) Erase<std::string>(path);
+    }
 
     template<typename ValueType> bool Contains(const StorePath &path) const { return CountAt<ValueType>(path) > 0; }
 
+    bool ContainsPrimitive(const StorePath &path) const {
+        return Contains<bool>(path) || Contains<u32>(path) || Contains<s32>(path) || Contains<float>(path) || Contains<std::string>(path);
+    }
+
     bool Contains(const StorePath &path) const {
         // xxx this is the only place in the store where we use knowledge about vector paths.
-        return Contains<PrimitiveVariant>(path) || Contains<PrimitiveVariant>(path / "0") || Contains<IdPairs>(path);
+        return ContainsPrimitive(path) || ContainsPrimitive(path / "0") || Contains<IdPairs>(path);
     }
 
     // Overwrite the store with the provided store and return the resulting patch.
@@ -98,14 +110,16 @@ private:
     StoreMaps Persistent() const;
     TransientStoreMaps Transient() const;
 
-    template<typename ValueType> const Map<ValueType> &GetMap() const { return std::get<Map<ValueType>>(Maps); }
     template<typename ValueType> TransientMap<ValueType> &GetTransientMap() const { return std::get<TransientMap<ValueType>>(*TransientMaps); }
 
     void ApplyPatch(const Patch &patch) const {
         for (const auto &[partial_path, op] : patch.Ops) {
             const auto path = patch.BasePath / partial_path;
-            if (op.Op == PatchOp::Type::Add || op.Op == PatchOp::Type::Replace) Set(path, *op.Value);
-            else if (op.Op == PatchOp::Type::Remove) Erase<PrimitiveVariant>(path);
+            std::visit([this, &path, &op](auto &&v) {
+                if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) Set(path, std::move(v));
+                else if (op.Op == PatchOpType::Remove) ErasePrimitive(path);
+            },
+                       *op.Value);
         }
     }
 };

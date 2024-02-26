@@ -13,14 +13,14 @@ Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, flo
 }
 
 Vec2::~Vec2() {
-    RootStore.Erase<PrimitiveVariant>(Path / "X");
-    RootStore.Erase<PrimitiveVariant>(Path / "Y");
+    RootStore.Erase<float>(Path / "X");
+    RootStore.Erase<float>(Path / "Y");
 }
 
 Vec2::operator ImVec2() const { return {X(), Y()}; }
 
-void Vec2::SetX(float x) const { RootStore.Set(Path / "X", PrimitiveVariant{x}); }
-void Vec2::SetY(float y) const { RootStore.Set(Path / "Y", PrimitiveVariant{y}); }
+void Vec2::SetX(float x) const { RootStore.Set(Path / "X", x); }
+void Vec2::SetY(float y) const { RootStore.Set(Path / "Y", y); }
 
 void Vec2::Set(const std::pair<float, float> &value) const {
     SetX(value.first);
@@ -43,7 +43,7 @@ void Vec2::Apply(const ActionType &action) const {
 }
 
 void Vec2::Refresh() {
-    Value = {std::get<float>(RootStore.Get<PrimitiveVariant>(Path / "X")), std::get<float>(RootStore.Get<PrimitiveVariant>(Path / "Y"))};
+    Value = {RootStore.Get<float>(Path / "X"), RootStore.Get<float>(Path / "Y")};
 }
 
 void Vec2::SetJson(json &&j) const {
@@ -80,7 +80,7 @@ Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, fl
     : Vec2Linked(std::move(args), std::move(value), min, max, true, fmt) {}
 
 Vec2Linked::~Vec2Linked() {
-    RootStore.Erase<PrimitiveVariant>(Path / "Linked");
+    RootStore.Erase<float>(Path / "Linked");
 }
 
 void Vec2Linked::Apply(const ActionType &action) const {
@@ -101,13 +101,11 @@ void Vec2Linked::Apply(const ActionType &action) const {
     );
 }
 
-void Vec2Linked::SetLinked(bool linked) const {
-    RootStore.Set(Path / "Linked", PrimitiveVariant{linked});
-}
+void Vec2Linked::SetLinked(bool linked) const { RootStore.Set(Path / "Linked", linked); }
 
 void Vec2Linked::Refresh() {
     Vec2::Refresh();
-    Linked = std::get<bool>(RootStore.Get<PrimitiveVariant>(Path / "Linked"));
+    Linked = RootStore.Get<bool>(Path / "Linked");
 }
 
 void Vec2Linked::SetJson(json &&j) const {

@@ -4,8 +4,8 @@
 
 #include "immer/set.hpp"
 
-#include "Core/Component.h"
 #include "Core/Action/Actionable.h"
+#include "Core/Component.h"
 #include "PrimitiveSetAction.h"
 
 // todo unite with `Primitive` after moving `PrimitiveVector` to this pattern

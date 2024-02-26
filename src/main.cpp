@@ -12,16 +12,12 @@ FileDialogImpl FileDialogImp;
 bool Tick(const Project &project, const UIContext &ui) {
     static auto &io = ImGui::GetIO();
 
-    bool running = ui.Tick(project);
+    const bool running = ui.Tick(project);
     if (running && io.WantSaveIniSettings) {
-        // ImGui sometimes sets this flags when settings have not actually changed.
-        // E.g. if you press and hold a window-resize bar, it will set this flag every frame,
-        // even if the cursor remains stationary (no window size change).
-        // Rather than modifying the ImGui fork to not set this flag in all such cases
-        // (which would likely be a rabbit hole), we just check for diffs here.
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        const auto &patch = project.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext());
-        if (!patch.Empty()) project.Q(Action::Store::ApplyPatch{patch});
+        if (auto patch = project.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext()); !patch.Empty()) {
+            project.Q(Action::Store::ApplyPatch{std::move(patch)});
+        }
         io.WantSaveIniSettings = false;
     }
 

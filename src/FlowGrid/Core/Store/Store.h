@@ -53,7 +53,7 @@ struct Store : Actionable<Action::Store::Any> {
 
     bool Contains(const StorePath &path) const {
         // xxx this is the only place in the store where we use knowledge about vector paths.
-        return Contains<PrimitiveVariant>(path) || Contains<PrimitiveVariant>(path / "0") ||  Contains<IdPairs>(path);
+        return Contains<PrimitiveVariant>(path) || Contains<PrimitiveVariant>(path / "0") || Contains<IdPairs>(path);
     }
 
     // Overwrite the store with the provided store and return the resulting patch.

@@ -70,12 +70,12 @@ using namespace ImGui;
 void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
-    if (RootStore.Get<IdPairs>(Path).empty()) {
+    const auto value = Get();
+    if (value.empty()) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());
         return;
     }
 
-    auto value = Get();
     if (TreeNode(Name, false, nullptr, false, auto_select)) {
         u32 i = 0;
         for (const auto &v : value) {

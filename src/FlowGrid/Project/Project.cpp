@@ -573,7 +573,7 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
     std::map<StorePath, u32> gesture_change_counts;
     for (const auto &[id, changed_paths] : GestureChangedPaths) {
         const auto &field = ById.at(id);
-        for (const PathsMoment &paths_moment : changed_paths) {
+        for (const auto &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
                 gesture_change_counts[path == "" ? field->Path : field->Path / path]++;
             }
@@ -830,8 +830,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
         std::visit(
             Match{
                 [&store = RootStore, &queue_time](const Action::Saved &a) {
-                    const auto patch = store.CheckedCommit();
-                    if (!patch.Empty()) {
+                    if (const auto patch = store.CheckedCommit(); !patch.Empty()) {
                         RefreshChanged(patch, true);
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;

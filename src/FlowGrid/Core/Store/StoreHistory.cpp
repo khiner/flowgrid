@@ -13,9 +13,8 @@ struct StoreHistory::Metrics {
 
     void AddPatch(const Patch &patch, const TimePoint &commit_time) {
         for (const auto &path : patch.GetPaths()) {
-            auto commit_times = CommitTimesByPath.count(path) == 0 ? immer::vector<TimePoint>{} : CommitTimesByPath.at(path);
-            commit_times = commit_times.push_back(commit_time);
-            CommitTimesByPath = CommitTimesByPath.set(path, commit_times);
+            auto commit_times = CommitTimesByPath.count(path) ? CommitTimesByPath.at(path).push_back(commit_time) : immer::vector<TimePoint>{commit_time};
+            CommitTimesByPath = CommitTimesByPath.set(path, std::move(commit_times));
         }
     }
 };
@@ -45,7 +44,7 @@ void StoreHistory::Clear() {
 
 void StoreHistory::AddGesture(Gesture &&gesture) {
     const auto store_impl = Store;
-    const auto patch = Store.CreatePatch(this->CurrentStore(), store_impl);
+    const auto patch = Store.CreatePatch(CurrentStore(), store_impl);
     if (patch.Empty()) return;
 
     _Metrics->AddPatch(patch, gesture.CommitTime);

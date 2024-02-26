@@ -30,7 +30,7 @@ struct StoreHistory {
     ~StoreHistory();
 
     void Clear();
-    void AddGesture(Gesture &&); // Add a gesture to the history.
+    void AddGesture(Gesture &&);
     void SetIndex(u32);
 
     u32 Size() const;

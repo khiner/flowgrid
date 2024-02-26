@@ -18,7 +18,7 @@ void UInt::Apply(const ActionType &action) const {
     );
 }
 
-string UInt::ValueName(const u32 value) const { return GetName ? (*GetName)(value) : to_string(value); }
+string UInt::ValueName(u32 value) const { return GetName ? (*GetName)(value) : std::to_string(value); }
 
 using namespace ImGui;
 

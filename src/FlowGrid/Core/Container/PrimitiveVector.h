@@ -36,7 +36,7 @@ template<IsPrimitive T> struct PrimitiveVector : Container, Actionable<typename 
     auto begin() const { return Value.begin(); }
     auto end() const { return Value.end(); }
 
-    StorePath PathAt(u32 i) const { return Path / to_string(i); }
+    StorePath PathAt(u32 i) const { return Path / std::to_string(i); }
     u32 Size() const { return Value.size(); }
 
     void Set(const std::vector<T> &) const;

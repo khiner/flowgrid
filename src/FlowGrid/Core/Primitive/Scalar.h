@@ -33,7 +33,3 @@ using s64 = ImS64;
 using u64 = ImU64;
 
 #include "ID.h"
-
-#include <string>
-
-static constexpr std::string to_string(u32 value) noexcept { return std::to_string(int(value)); }

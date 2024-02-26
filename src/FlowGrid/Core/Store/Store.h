@@ -23,7 +23,7 @@ struct Store : Actionable<Action::Store::Any> {
     template<typename T> using Map = immer::map<StorePath, T, PathHash>;
     template<typename T> using TransientMap = immer::map_transient<StorePath, T, PathHash>;
 
-    using ValueTypes = std::tuple<PrimitiveVariant, IdPairs>;
+    using ValueTypes = std::tuple<PrimitiveVariant, IdPairs, immer::set<u32>>;
     using StoreMaps = typename WrapTypes<Map, ValueTypes>::type;
     using TransientStoreMaps = typename WrapTypes<TransientMap, ValueTypes>::type;
 

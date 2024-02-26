@@ -69,7 +69,6 @@ template<IsPrimitive T> void PrimitiveVector<T>::SetJson(json &&j) const {
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
 template<IsPrimitive T> json PrimitiveVector<T>::ToJson() const { return json(Value).dump(); }
 
-// Explicit instantiations.
 using namespace ImGui;
 
 template<IsPrimitive T> void PrimitiveVector<T>::RenderValueTree(bool annotate, bool auto_select) const {
@@ -82,9 +81,9 @@ template<IsPrimitive T> void PrimitiveVector<T>::RenderValueTree(bool annotate, 
 
     if (TreeNode(Name, false, nullptr, false, auto_select)) {
         for (u32 i = 0; i < Value.size(); i++) {
-            FlashUpdateRecencyBackground(to_string(i));
+            FlashUpdateRecencyBackground(std::to_string(i));
             T value = Value[i];
-            TreeNode(to_string(i), false, to_string(value).c_str());
+            TreeNode(std::to_string(i), false, std::format("{}", value).c_str());
         }
         TreePop();
     }

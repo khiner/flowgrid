@@ -12,5 +12,3 @@ namespace nlohmann {
 void to_json(json &, const PrimitiveVariant &);
 void from_json(const json &, PrimitiveVariant &);
 } // namespace nlohmann
-
-std::string to_string(const PrimitiveVariant &); // Implementation depends on json definitions.

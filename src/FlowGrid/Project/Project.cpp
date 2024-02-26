@@ -220,6 +220,7 @@ void Project::ApplyContainerAction(const Action::Container::Any &action) const {
             [&container](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(container)->Apply(a); },
             [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
             [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
+            [&container](const PrimitiveSet<u32>::ActionType &a) { static_cast<const PrimitiveSet<u32> *>(container)->Apply(a); },
             [&container](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(container)->Apply(a); },
             [&container](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(container)->Apply(a); },
             [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
@@ -676,7 +677,7 @@ void Project::Debug::ProjectPreview::Render() const {
 void ShowActions(const SavedActionMoments &actions) {
     for (u32 action_index = 0; action_index < actions.size(); action_index++) {
         const auto &[action, queue_time] = actions[action_index];
-        if (TreeNodeEx(to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
+        if (TreeNodeEx(std::to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
             BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
             SameLine();
             fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
@@ -737,7 +738,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
             }
             for (u32 i = 1; i < history.Size(); i++) {
                 // todo button to navitate to this history index.
-                if (TreeNodeEx(to_string(i).c_str(), i == history.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
+                if (TreeNodeEx(std::to_string(i).c_str(), i == history.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[store_record, gesture] = history.RecordAt(i);
                     BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", gesture.CommitTime).c_str());
                     if (TreeNode("Actions")) {
@@ -751,8 +752,8 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                             const auto &path = patch.BasePath / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                                 BulletText("Op: %s", to_string(op.Op).c_str());
-                                if (op.Value) BulletText("Value: %s", to_string(*op.Value).c_str());
-                                if (op.Old) BulletText("Old value: %s", to_string(*op.Old).c_str());
+                                if (op.Value) BulletText("Value: %s", json(*op.Value).dump().c_str());
+                                if (op.Old) BulletText("Old value: %s", json(*op.Old).dump().c_str());
                                 TreePop();
                             }
                         }

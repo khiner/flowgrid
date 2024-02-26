@@ -94,7 +94,7 @@ void Colors::RenderValueTree(bool annotate, bool auto_select) const {
 
     if (TreeNode(Name)) {
         for (u32 i = 0; i < Value.size(); i++) {
-            TreeNode(annotate ? GetName(i) : to_string(i), annotate, U32ToHex(Value[i], true).c_str());
+            TreeNode(annotate ? GetName(i) : std::to_string(i), annotate, U32ToHex(Value[i], true).c_str());
         }
         TreePop();
     }

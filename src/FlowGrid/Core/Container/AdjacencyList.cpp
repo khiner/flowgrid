@@ -81,7 +81,7 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
             const std::string label = can_annotate ?
                 std::format("{} -> {}", ById.at(source_id)->Name, ById.at(destination_id)->Name) :
                 std::format("#{:08X} -> #{:08X}", source_id, destination_id);
-            TreeNode(to_string(i++), false, label.c_str(), can_annotate);
+            TreeNode(std::to_string(i++), false, label.c_str(), can_annotate);
         }
         TreePop();
     }

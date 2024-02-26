@@ -26,7 +26,7 @@ struct UInt : Primitive<u32>, Actionable<Action::Primitive::UInt::Any> {
 
 private:
     void Render() const override;
-    string ValueName(const u32 value) const;
+    string ValueName(u32 value) const;
 
     const std::optional<std::function<const string(u32)>> GetName{};
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ActionableComponent.h"
-#include "Core/Container/PrimitiveVector.h"
+#include "Core/Container/PrimitiveSet.h"
 #include "WindowsAction.h"
 
 struct Windows : ActionableComponent<Action::Windows::Any> {
@@ -18,13 +18,13 @@ struct Windows : ActionableComponent<Action::Windows::Any> {
     void ToggleMenuItem(const Component &) const;
     void ToggleDebugMenuItem(const Component &) const;
 
-    Prop(PrimitiveVector<ID>, VisibleComponents);
-
-    std::vector<ID> WindowComponentIds;
+    Prop(PrimitiveSet<ID>, VisibleComponents);
 
 protected:
     void Render() const override;
 
 private:
+    std::set<ID> WindowComponentIds;
+
     void ToggleVisible(ID component_id) const;
 };

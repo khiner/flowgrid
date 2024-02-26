@@ -557,7 +557,7 @@ u32 AudioGraph::GetDefaultSampleRate() const {
 }
 
 std::string AudioGraph::GetSampleRateName(u32 sample_rate) const {
-    return std::format("{}{}", to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
+    return std::format("{}{}", std::to_string(sample_rate), IsNativeSampleRate(sample_rate) ? "*" : "");
 }
 
 // Return the first output device's frame count, or 0 if there are no output devices.
@@ -872,7 +872,7 @@ void AudioGraph::RenderNodeCreateSelector() const {
         }
         if (!DspById.empty() && ImGui::TreeNode(FaustNodeTypeId.c_str())) {
             for (const auto &[id, _] : DspById) {
-                if (Button(to_string(id).c_str())) Q(Action::AudioGraph::CreateFaustNode{id});
+                if (Button(std::to_string(id).c_str())) Q(Action::AudioGraph::CreateFaustNode{id});
             }
             TreePop();
         }

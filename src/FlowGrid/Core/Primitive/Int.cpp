@@ -26,10 +26,10 @@ void Int::Render() const {
 void Int::Render(const std::vector<int> &options) const {
     if (options.empty()) return;
 
-    if (const int value = Value; BeginCombo(ImGuiLabel.c_str(), to_string(value).c_str())) {
+    if (const int value = Value; BeginCombo(ImGuiLabel.c_str(), std::to_string(value).c_str())) {
         for (const auto option : options) {
             const bool is_selected = option == value;
-            if (Selectable(to_string(option).c_str(), is_selected)) IssueSet(option);
+            if (Selectable(std::to_string(option).c_str(), is_selected)) IssueSet(option);
             if (is_selected) SetItemDefaultFocus();
         }
         EndCombo();

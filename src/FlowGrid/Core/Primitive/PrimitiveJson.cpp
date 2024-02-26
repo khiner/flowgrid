@@ -31,5 +31,3 @@ void from_json(const json &j, PrimitiveVariant &field) {
     } else throw std::runtime_error(std::format("Could not parse Primitive JSON value: {}", j.dump()));
 }
 } // namespace nlohmann
-
-string to_string(const PrimitiveVariant &primitive) { return json(primitive).dump(); }

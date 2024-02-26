@@ -29,7 +29,7 @@ template<IsPrimitive T> struct PrimitiveVector2D : Container, Actionable<typenam
 
     T operator()(u32 i, u32 j) const { return Value[i][j]; }
 
-    StorePath PathAt(const u32 i, const u32 j) const { return Path / to_string(i) / to_string(j); }
+    StorePath PathAt(const u32 i, const u32 j) const { return Path / std::to_string(i) / std::to_string(j); }
     u32 Size() const { return Value.size(); }; // Number of outer vectors
     u32 Size(u32 i) const { return Value[i].size(); }; // Size of inner vector at index `i`
 

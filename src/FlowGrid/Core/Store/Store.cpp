@@ -2,6 +2,8 @@
 
 #include "immer/algorithm.hpp"
 
+using std::string;
+
 // Utility to transform a tuple into another tuple, applying a function to each element.
 template<typename ResultTuple, typename InputTuple, typename Func, std::size_t... I>
 ResultTuple TransformTupleImpl(InputTuple &in, Func func, std::index_sequence<I...>) {
@@ -59,6 +61,34 @@ Patch Store::CreatePatch(const Store &before, const Store &after, const StorePat
                 },
                 [&](const auto &removed) {
                     ops[old_element.first.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(removed)};
+                },
+                [](const auto &, const auto &) {} // Change callback required but never called for `immer::set`.
+            );
+        }
+    );
+
+    diff(
+        before.GetMap<immer::set<u32>>(),
+        after.GetMap<immer::set<u32>>(),
+        [&](const auto &added) {
+            for (auto value : added.second) {
+                ops[added.first.lexically_relative(base_path) / std::to_string(value)] = {PatchOp::Type::Add, value, {}};
+            }
+        },
+        [&](const auto &removed) {
+            for (auto value : removed.second) {
+                ops[removed.first.lexically_relative(base_path) / std::to_string(value)] = {PatchOp::Type::Remove, {}, value};
+            }
+        },
+        [&](const auto &old_element, const auto &new_element) {
+            diff(
+                old_element.second,
+                new_element.second,
+                [&](auto added) {
+                    ops[new_element.first.lexically_relative(base_path) / std::to_string(added)] = {PatchOp::Type::Add, added, {}};
+                },
+                [&](unsigned int removed) {
+                    ops[old_element.first.lexically_relative(base_path) / std::to_string(removed)] = {PatchOp::Type::Remove, {}, removed};
                 },
                 [](const auto &, const auto &) {} // Change callback required but never called for `immer::set`.
             );

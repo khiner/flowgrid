@@ -44,12 +44,14 @@ Patch Store::CreatePatch(const Store &before, const Store &after, const StorePat
         after.GetMap<IdPairs>(),
         [&](const auto &added) {
             for (const auto &id_pair : added.second) {
-                ops[added.first.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(id_pair), {}};
+                auto serialized = SerializeIdPair(id_pair);
+                ops[added.first.lexically_relative(base_path) / serialized] = {PatchOp::Type::Add, serialized, {}};
             }
         },
         [&](const auto &removed) {
             for (const auto &id_pair : removed.second) {
-                ops[removed.first.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(id_pair)};
+                auto serialized = SerializeIdPair(id_pair);
+                ops[removed.first.lexically_relative(base_path) / serialized] = {PatchOp::Type::Remove, {}, serialized};
             }
         },
         [&](const auto &old_element, const auto &new_element) {
@@ -57,10 +59,12 @@ Patch Store::CreatePatch(const Store &before, const Store &after, const StorePat
                 old_element.second,
                 new_element.second,
                 [&](const auto &added) {
-                    ops[new_element.first.lexically_relative(base_path)] = {PatchOp::Type::Add, SerializeIdPair(added), {}};
+                    auto serialized = SerializeIdPair(added);
+                    ops[new_element.first.lexically_relative(base_path) / serialized] = {PatchOp::Type::Add, serialized, {}};
                 },
                 [&](const auto &removed) {
-                    ops[old_element.first.lexically_relative(base_path)] = {PatchOp::Type::Remove, {}, SerializeIdPair(removed)};
+                    auto serialized = SerializeIdPair(removed);
+                    ops[old_element.first.lexically_relative(base_path) / serialized] = {PatchOp::Type::Remove, {}, serialized};
                 },
                 [](const auto &, const auto &) {} // Change callback required but never called for `immer::set`.
             );

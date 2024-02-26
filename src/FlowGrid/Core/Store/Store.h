@@ -49,10 +49,11 @@ struct Store : Actionable<Action::Store::Any> {
     template<typename ValueType> void Set(const StorePath &path, const ValueType &value) const { GetTransientMap<ValueType>().set(path, value); }
     template<typename ValueType> void Erase(const StorePath &path) const { GetTransientMap<ValueType>().erase(path); }
 
+    template<typename ValueType> bool Contains(const StorePath &path) const { return CountAt<ValueType>(path) > 0; }
+
     bool Contains(const StorePath &path) const {
         // xxx this is the only place in the store where we use knowledge about vector paths.
-        return CountAt<PrimitiveVariant>(path) > 0 || CountAt<PrimitiveVariant>(path / "0") > 0 ||
-            CountAt<IdPairs>(path) > 0;
+        return Contains<PrimitiveVariant>(path) || Contains<PrimitiveVariant>(path / "0") ||  Contains<IdPairs>(path);
     }
 
     // Overwrite the store with the provided store and return the resulting patch.

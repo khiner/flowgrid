@@ -1,16 +1,22 @@
 #pragma once
 
 #include "AdjacencyListAction.h"
-#include "Container.h"
 #include "Core/Action/ActionableProducer.h"
+#include "Core/Component.h"
 #include "Core/ProducerComponentArgs.h"
 #include "Core/Store/IdPairs.h"
 
-struct AdjacencyList : Container, ActionableProducer<Action::AdjacencyList::Any> {
+struct AdjacencyList : Component, ActionableProducer<Action::AdjacencyList::Any> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
     using Edge = IdPair; // Source, destination
 
-    AdjacencyList(ArgsT &&);
+    AdjacencyList(ArgsT &&args) : Component(std::move(args.Args)), ActionableProducer(std::move(args.Q)) {
+        FieldIds.insert(Id);
+    }
+    ~AdjacencyList() {
+        Erase();
+        FieldIds.erase(Id);
+    }
 
     void Apply(const ActionType &action) const override {
         std::visit(
@@ -27,8 +33,7 @@ struct AdjacencyList : Container, ActionableProducer<Action::AdjacencyList::Any>
 
     IdPairs Get() const;
 
-    // This value is not cached like other fields, because it uses a backing store (a single `immer::set`) that's performant to query.
-    void Refresh() override {}
+    void Refresh() override {} // Not cached.
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     bool HasPath(ID source, ID destination) const;
@@ -43,5 +48,6 @@ struct AdjacencyList : Container, ActionableProducer<Action::AdjacencyList::Any>
     u32 SourceCount(ID destination) const;
     u32 DestinationCount(ID source) const;
 
+    bool Exists() const; // Check if exists in store.
     void Erase() const override;
 };

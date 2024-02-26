@@ -4,15 +4,22 @@
 
 #include "immer/set.hpp"
 
-#include "Container.h"
+#include "Core/Component.h"
 #include "Core/Action/Actionable.h"
 #include "PrimitiveSetAction.h"
 
-template<IsPrimitive T> struct PrimitiveSet : Container, Actionable<typename Action::PrimitiveSet<T>::Any> {
-    using Container::Container;
+// todo unite with `Primitive` after moving `PrimitiveVector` to this pattern
+template<IsPrimitive T> struct PrimitiveSet : Component, Actionable<typename Action::PrimitiveSet<T>::Any> {
     using typename Actionable<typename Action::PrimitiveSet<T>::Any>::ActionType;
     using ContainerT = immer::set<T>;
 
+    PrimitiveSet(ComponentArgs &&args) : Component(std::move(args)) {
+        FieldIds.insert(Id);
+    }
+    ~PrimitiveSet() {
+        Erase();
+        FieldIds.erase(Id);
+    }
     void Apply(const ActionType &action) const override {
         std::visit(
             Match{
@@ -24,7 +31,7 @@ template<IsPrimitive T> struct PrimitiveSet : Container, Actionable<typename Act
     }
     bool CanApply(const ActionType &) const override { return true; }
 
-    void Refresh() override;
+    void Refresh() override {} // Not cached.
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void SetJson(json &&) const override;
@@ -38,4 +45,7 @@ template<IsPrimitive T> struct PrimitiveSet : Container, Actionable<typename Act
 
     ContainerT Get() const;
     void Set(const std::set<T> &) const;
+
+    bool Exists() const; // Check if exists in store.
+    void Erase() const override;
 };

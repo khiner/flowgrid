@@ -7,9 +7,7 @@
 
 #include "Core/Store/Store.h"
 
-AdjacencyList::AdjacencyList(ArgsT &&args) : Container(std::move(args.Args)), ActionableProducer(std::move(args.Q)) {}
-
-IdPairs AdjacencyList::Get() const { return RootStore.CountAt<IdPairs>(Path) ? RootStore.Get<IdPairs>(Path) : IdPairs{}; }
+IdPairs AdjacencyList::Get() const { return Exists() ? RootStore.Get<IdPairs>(Path) : IdPairs{}; }
 
 bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     // Non-recursive depth-first search that handles cycles.
@@ -32,15 +30,18 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 
     return false;
 }
+
+bool AdjacencyList::Exists() const { return RootStore.Contains<IdPairs>(Path); }
+
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
-    return RootStore.CountAt<IdPairs>(Path) > 0 && RootStore.Get<IdPairs>(Path).count({source, destination}) > 0;
+    return Exists() && RootStore.Get<IdPairs>(Path).count({source, destination}) > 0;
 }
 void AdjacencyList::Disconnect(ID source, ID destination) const {
-    if (RootStore.CountAt<IdPairs>(Path)) RootStore.Set(Path, RootStore.Get<IdPairs>(Path).erase({source, destination}));
+    if (Exists()) RootStore.Set(Path, RootStore.Get<IdPairs>(Path).erase({source, destination}));
 }
 void AdjacencyList::Add(IdPair &&id_pair) const {
     if (!IsConnected(id_pair.first, id_pair.second)) {
-        if (!RootStore.CountAt<IdPairs>(Path)) RootStore.Set<IdPairs>(Path, {});
+        if (!Exists()) RootStore.Set<IdPairs>(Path, {});
         RootStore.Set(Path, RootStore.Get<IdPairs>(Path).insert(std::move(id_pair)));
     }
 }
@@ -62,7 +63,7 @@ u32 AdjacencyList::DestinationCount(ID source) const {
     return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
-void AdjacencyList::Erase() const { RootStore.Set<IdPairs>(Path, {}); }
+void AdjacencyList::Erase() const { RootStore.Erase<IdPairs>(Path); }
 
 using namespace ImGui;
 
@@ -74,9 +75,12 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
         return;
     }
 
-    if (TreeNode(Name)) {
+    auto value = Get();
+    if (TreeNode(Name, false, nullptr, false, auto_select)) {
         u32 i = 0;
-        for (const auto &[source_id, destination_id] : Get()) {
+        for (const auto &v : value) {
+            FlashUpdateRecencyBackground(SerializeIdPair(v));
+            const auto &[source_id, destination_id] = v;
             const bool can_annotate = annotate && ById.contains(source_id) && ById.contains(destination_id);
             const std::string label = can_annotate ?
                 std::format("{} -> {}", ById.at(source_id)->Name, ById.at(destination_id)->Name) :

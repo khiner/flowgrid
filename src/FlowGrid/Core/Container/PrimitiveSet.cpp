@@ -6,7 +6,10 @@
 
 #include "immer/set_transient.hpp"
 
-template<IsPrimitive T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const { return RootStore.Get<ContainerT>(Path);}
+template<IsPrimitive T> bool PrimitiveSet<T>::Exists() const { return RootStore.Contains<ContainerT>(Path); }
+template<IsPrimitive T> void PrimitiveSet<T>::Erase() const { RootStore.Erase<ContainerT>(Path); }
+
+template<IsPrimitive T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const { return RootStore.Get<ContainerT>(Path); }
 
 template<IsPrimitive T> void PrimitiveSet<T>::Set(const std::set<T> &value) const {
     immer::set_transient<T> val{};
@@ -15,20 +18,14 @@ template<IsPrimitive T> void PrimitiveSet<T>::Set(const std::set<T> &value) cons
 }
 
 template<IsPrimitive T> void PrimitiveSet<T>::Insert(const T &value) const {
-    if (!RootStore.CountAt<ContainerT>(Path)) RootStore.Set<ContainerT>(Path, {});
-    RootStore.Set(Path, RootStore.Get<ContainerT>(Path).insert(value));
+    if (!Exists()) RootStore.Set<ContainerT>(Path, {});
+    RootStore.Set(Path, Get().insert(value));
 }
 template<IsPrimitive T> void PrimitiveSet<T>::Erase_(const T &value) const {
-    if (RootStore.CountAt<ContainerT>(Path)) RootStore.Set(Path, RootStore.Get<ContainerT>(Path).erase(value));
+    if (Exists()) RootStore.Set(Path, Get().erase(value));
 }
-template<IsPrimitive T> bool PrimitiveSet<T>::Contains(const T &value) const {
-    return RootStore.CountAt<ContainerT>(Path) && RootStore.Get<ContainerT>(Path).count(value);
-}
-template<IsPrimitive T> bool PrimitiveSet<T>::Empty() const {
-    return !RootStore.CountAt<ContainerT>(Path) || RootStore.Get<ContainerT>(Path).empty();
-}
-
-template<IsPrimitive T> void PrimitiveSet<T>::Refresh() {} // Not cached.
+template<IsPrimitive T> bool PrimitiveSet<T>::Contains(const T &value) const { return Exists() && Get().count(value); }
+template<IsPrimitive T> bool PrimitiveSet<T>::Empty() const { return !Exists() || Get().empty(); }
 
 template<IsPrimitive T> void PrimitiveSet<T>::SetJson(json &&j) const {
     std::set<T> value = json::parse(std::string(std::move(j)));
@@ -37,7 +34,7 @@ template<IsPrimitive T> void PrimitiveSet<T>::SetJson(json &&j) const {
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
 template<IsPrimitive T> json PrimitiveSet<T>::ToJson() const {
-    auto value = RootStore.Get<ContainerT>(Path);
+    auto value = Get();
     std::set<T> val{};
     for (const auto &v : value) val.insert(v);
     return json(val).dump();
@@ -48,7 +45,7 @@ using namespace ImGui;
 template<IsPrimitive T> void PrimitiveSet<T>::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
-    auto value = RootStore.Get<ContainerT>(Path);
+    auto value = Get();
     if (value.empty()) {
         TextUnformatted(std::format("{} (empty)", Name).c_str());
         return;

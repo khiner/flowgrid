@@ -131,9 +131,6 @@ void Project::MarkAllChanged(const Patch &patch) {
     for (const auto &[partial_path, op] : patch.Ops) {
         const auto path = patch.BasePath / partial_path;
         if (auto *changed = FindChanged(path, op.Op)) {
-            // if (!changed) throw std::runtime_error(std::format("Could not find a component to attribute for op: {} at path: {}", to_string(op.Op), path.string()));
-            if (!changed) continue;
-
             const ID id = changed->Id;
             const StorePath relative_path = path == changed->Path ? "" : path.lexically_relative(changed->Path);
             ChangedPaths[id].first = change_time;

@@ -9,7 +9,7 @@
 
 #include "ComponentArgs.h"
 #include "Core/HelpInfo.h"
-#include "Core/Primitive/PrimitiveVariant.h"
+#include "Core/Primitive/Scalar.h"
 #include "Helper/Paths.h"
 #include "MenuItemDrawable.h"
 

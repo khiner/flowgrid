@@ -1,10 +1,9 @@
 #pragma once
 
 #include "Core/Action/DefineAction.h"
-#include "Core/Primitive/PrimitiveVariant.h"
 
 namespace Action {
-template<IsPrimitive T> struct PrimitiveVector {
+template<typename T> struct PrimitiveVector {
     static_assert(always_false_v<T>, "There is no `PrimitiveVector` action type for this primitive type.");
 };
 

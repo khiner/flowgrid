@@ -4,7 +4,7 @@
 
 #include "Core/Store/Store.h"
 
-template<IsPrimitive T> void PrimitiveVector<T>::Set(const std::vector<T> &value) const {
+template<typename T> void PrimitiveVector<T>::Set(const std::vector<T> &value) const {
     u32 i = 0;
     while (i < value.size()) {
         Set(i, value[i]);
@@ -13,24 +13,24 @@ template<IsPrimitive T> void PrimitiveVector<T>::Set(const std::vector<T> &value
     Resize(i);
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::Set(size_t i, const T &value) const {
+template<typename T> void PrimitiveVector<T>::Set(size_t i, const T &value) const {
     RootStore.Set(PathAt(i), value);
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::Set(const std::vector<std::pair<int, T>> &values) const {
+template<typename T> void PrimitiveVector<T>::Set(const std::vector<std::pair<int, T>> &values) const {
     for (const auto &[i, value] : values) Set(i, value);
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::PushBack(const T &value) const {
+template<typename T> void PrimitiveVector<T>::PushBack(const T &value) const {
     RootStore.Set(PathAt(Value.size()), value);
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::PopBack() const {
+template<typename T> void PrimitiveVector<T>::PopBack() const {
     if (Value.empty()) return;
     RootStore.Erase<T>(PathAt(Value.size() - 1));
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::Resize(u32 size) const {
+template<typename T> void PrimitiveVector<T>::Resize(u32 size) const {
     u32 i = size;
     while (RootStore.CountAt<T>(PathAt(i))) {
         RootStore.Erase<T>(PathAt(i));
@@ -38,9 +38,9 @@ template<IsPrimitive T> void PrimitiveVector<T>::Resize(u32 size) const {
     }
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::Erase() const { Resize(0); }
+template<typename T> void PrimitiveVector<T>::Erase() const { Resize(0); }
 
-template<IsPrimitive T> void PrimitiveVector<T>::Erase(const T &value) const {
+template<typename T> void PrimitiveVector<T>::Erase(const T &value) const {
     if (auto it = std::find(Value.begin(), Value.end(), value); it != Value.end()) {
         const u32 index = it - Value.begin();
         for (u32 relocate_index = Value.size() - 1; relocate_index > index; relocate_index--) {
@@ -50,7 +50,7 @@ template<IsPrimitive T> void PrimitiveVector<T>::Erase(const T &value) const {
     }
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::Refresh() {
+template<typename T> void PrimitiveVector<T>::Refresh() {
     u32 i = 0;
     while (RootStore.CountAt<T>(PathAt(i))) {
         const T value = RootStore.Get<T>(PathAt(i));
@@ -61,17 +61,17 @@ template<IsPrimitive T> void PrimitiveVector<T>::Refresh() {
     Value.resize(i);
 }
 
-template<IsPrimitive T> void PrimitiveVector<T>::SetJson(json &&j) const {
+template<typename T> void PrimitiveVector<T>::SetJson(json &&j) const {
     std::vector<T> new_value = json::parse(std::string(std::move(j)));
     Set(std::move(new_value));
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
-template<IsPrimitive T> json PrimitiveVector<T>::ToJson() const { return json(Value).dump(); }
+template<typename T> json PrimitiveVector<T>::ToJson() const { return json(Value).dump(); }
 
 using namespace ImGui;
 
-template<IsPrimitive T> void PrimitiveVector<T>::RenderValueTree(bool annotate, bool auto_select) const {
+template<typename T> void PrimitiveVector<T>::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
     if (Value.empty()) {

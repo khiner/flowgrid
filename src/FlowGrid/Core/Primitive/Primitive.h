@@ -2,7 +2,7 @@
 
 #include "Core/Component.h"
 
-template<IsPrimitive T> struct Primitive : Component {
+template<typename T> struct Primitive : Component {
     Primitive(ComponentArgs &&args, T value = {}) : Component(std::move(args)), Value(value) {
         FieldIds.insert(Id);
         if (Exists()) Refresh();

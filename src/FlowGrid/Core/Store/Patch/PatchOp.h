@@ -5,9 +5,6 @@
 
 #include "Core/Primitive/PrimitiveVariant.h"
 
-// todo use `IsPrimitive` concept instead of holding `Primitive` values.
-// Need to think about how.
-
 enum PatchOpType {
     Add,
     Remove,

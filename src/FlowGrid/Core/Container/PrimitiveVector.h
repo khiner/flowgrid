@@ -4,7 +4,7 @@
 #include "Core/Action/Actionable.h"
 #include "PrimitiveVectorAction.h"
 
-template<IsPrimitive T> struct PrimitiveVector : Container, Actionable<typename Action::PrimitiveVector<T>::Any> {
+template<typename T> struct PrimitiveVector : Container, Actionable<typename Action::PrimitiveVector<T>::Any> {
     using Container::Container;
 
     // `ActionType` is a type alias in `Actionable`, but it is not accessible here.

@@ -5,7 +5,7 @@
 #include "PrimitiveVector2DAction.h"
 
 // PrimitiveVector of vectors. Inner vectors may have different sizes.
-template<IsPrimitive T> struct PrimitiveVector2D : Container, Actionable<typename Action::PrimitiveVector2D<T>::Any> {
+template<typename T> struct PrimitiveVector2D : Container, Actionable<typename Action::PrimitiveVector2D<T>::Any> {
     using Container::Container;
 
     using ActionT = typename Action::PrimitiveVector2D<T>;

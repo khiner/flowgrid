@@ -1,11 +1,12 @@
 #pragma once
 
+#include "Core/Json.h"
 #include "Patch.h"
 
-#include "Core/Json.h"
-#include "Core/Primitive/PrimitiveJson.h"
-
 namespace nlohmann {
+void to_json(json &, const PrimitiveVariant &);
+void from_json(const json &, PrimitiveVariant &);
+
 NLOHMANN_JSON_SERIALIZE_ENUM(
     PatchOpType,
     {

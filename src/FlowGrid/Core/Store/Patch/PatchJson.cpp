@@ -1,8 +1,6 @@
-#include "PrimitiveJson.h"
+#include "PatchJson.h"
 
 #include <format>
-
-using std::string;
 
 namespace nlohmann {
 void to_json(json &j, const PrimitiveVariant &value) {
@@ -11,12 +9,7 @@ void to_json(json &j, const PrimitiveVariant &value) {
     } else if (std::holds_alternative<float>(value) && std::isnan(std::get<float>(value))) {
         j = "NaN";
     } else {
-        std::visit(
-            [&](auto &&inner_value) {
-                j = std::forward<decltype(inner_value)>(inner_value);
-            },
-            value
-        );
+        std::visit([&](auto &&inner_value) { j = std::forward<decltype(inner_value)>(inner_value); }, value);
     }
 }
 void from_json(const json &j, PrimitiveVariant &field) {
@@ -24,10 +17,10 @@ void from_json(const json &j, PrimitiveVariant &field) {
     else if (j.is_number_integer()) field = j.get<int>();
     else if (j.is_number_float()) field = j.get<float>();
     else if (j.is_string()) {
-        const auto j_string = j.get<string>();
-        if (j_string == "NaN") field = NAN;
-        else if (j_string.starts_with("0X")) field = u32(std::stoul(j_string, nullptr, 0));
-        else field = j.get<string>();
+        const auto str = j.get<std::string>();
+        if (str == "NaN") field = NAN;
+        else if (str.starts_with("0X")) field = u32(std::stoul(str, nullptr, 0));
+        else field = str;
     } else throw std::runtime_error(std::format("Could not parse Primitive JSON value: {}", j.dump()));
 }
 } // namespace nlohmann

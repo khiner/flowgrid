@@ -9,7 +9,7 @@
 
 FileDialogImpl FileDialogImp;
 
-bool Tick(const Project &project, const UIContext &ui) {
+bool Tick(Project &project, const UIContext &ui) {
     static auto &io = ImGui::GetIO();
 
     const bool running = ui.Tick(project);

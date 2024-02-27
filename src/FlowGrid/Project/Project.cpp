@@ -223,10 +223,6 @@ void Project::ApplyContainerAction(const Action::Container::Any &action) const {
             [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
             [&container](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(container)->Apply(a); },
             [&container](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector2D<bool>::ActionType &a) { static_cast<const PrimitiveVector2D<bool> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector2D<int>::ActionType &a) { static_cast<const PrimitiveVector2D<int> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector2D<u32>::ActionType &a) { static_cast<const PrimitiveVector2D<u32> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector2D<float>::ActionType &a) { static_cast<const PrimitiveVector2D<float> *>(container)->Apply(a); },
         },
         action
     );

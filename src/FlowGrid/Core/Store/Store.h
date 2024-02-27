@@ -85,6 +85,7 @@ struct Store : Actionable<Action::Store::Any> {
 
     // Create a patch comparing the provided store with the current persistent store.
     Patch CreatePatch(const Store &store, const StorePath &base_path = RootPath) const { return CreatePatch(*this, store, base_path); }
+
     // Create a patch comparing the current transient store with the current persistent store.
     // **Resets the transient store to the current persisent store.**
     Patch CreatePatchAndResetTransient(const StorePath &base_path = RootPath) {

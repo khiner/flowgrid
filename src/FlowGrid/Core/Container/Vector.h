@@ -4,10 +4,8 @@
 #include "Helper/Hex.h"
 
 inline static std::pair<std::string, std::string> Split(fs::path relative_path) {
-    auto it = relative_path.begin();
-    const auto first = *it;
-    const auto secong = *std::next(it);
-    return {first.string(), secong.string()};
+    const auto it = relative_path.begin();
+    return {it->string(), std::next(it)->string()};
 }
 
 /*
@@ -51,7 +49,6 @@ template<typename ChildType> struct Vector : Container {
     Vector(ComponentArgs &&args, CreatorFunction creator = DefaultCreator)
         : Vector(std::move(args), Menu{{}}, std::move(creator)) {}
 
-    void Clear() { Value.clear(); }
     bool Empty() const { return Value.empty(); }
     u32 Size() const { return Value.size(); }
 
@@ -59,7 +56,7 @@ template<typename ChildType> struct Vector : Container {
         if (child == nullptr) return {};
 
         const auto path = child->Path.lexically_relative(Path);
-        auto it = path.begin();
+        const auto it = path.begin();
         return *it / *std::next(it);
     }
 
@@ -159,6 +156,8 @@ template<typename ChildType> struct Vector : Container {
         EraseId(id);
         Refresh();
     }
+
+    void Clear() { Value.clear(); }
 
     void RenderValueTree(bool annotate, bool auto_select) const override {
         if (Value.empty()) {

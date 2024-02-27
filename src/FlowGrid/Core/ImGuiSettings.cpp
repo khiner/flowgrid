@@ -12,21 +12,15 @@ constexpr ImVec2ih UnpackImVec2ih(const u32 packed) { return {s16(u32(packed) >>
 
 // Copy of ImGui version, which is not defined publicly
 struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
-    ID NodeId;
-    ID ParentNodeId;
-    ID ParentWindowId;
-    ID SelectedTabId;
+    ID NodeId, ParentNodeId, ParentWindowId, SelectedTabId;
     s8 SplitAxis;
     char Depth;
     ImGuiDockNodeFlags Flags;
-    ImVec2ih Pos;
-    ImVec2ih Size;
-    ImVec2ih SizeRef;
+    ImVec2ih Pos, Size, SizeRef;
 };
 
 void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss) const {
     const u32 size = dss.Size;
-
     NodeId.Resize(size);
     ParentNodeId.Resize(size);
     ParentWindowId.Resize(size);
@@ -39,7 +33,7 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss) const {
     SizeRef.Resize(size);
 
     for (u32 i = 0; i < size; i++) {
-        const auto &ds = dss[int(i)];
+        const auto &ds = dss[i];
         NodeId.Set(i, ds.NodeId);
         ParentNodeId.Set(i, ds.ParentNodeId);
         ParentWindowId.Set(i, ds.ParentWindowId);
@@ -118,6 +112,7 @@ void WindowSettings::Update(ImGuiContext *) const {
             const auto viewport_pos = UnpackImVec2ih(ViewportPos[i]);
             window->ViewportPos = ImVec2(viewport_pos.x, viewport_pos.y);
         }
+
         const auto pos = UnpackImVec2ih(Pos[i]);
         window->Pos = ImVec2(pos.x, pos.y) + ImFloor(window->ViewportPos);
 
@@ -129,7 +124,7 @@ void WindowSettings::Update(ImGuiContext *) const {
     }
 }
 
-void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) const {
+void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) {
     const u32 size = tss.size();
     // Table settings
     ID.Resize(size);
@@ -138,42 +133,36 @@ void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) const {
     ColumnsCount.Resize(size);
     ColumnsCountMax.Resize(size);
     WantApply.Resize(size);
-    // Column settings
-    Columns.WidthOrWeight.Resize(size);
-    Columns.UserID.Resize(size);
-    Columns.Index.Resize(size);
-    Columns.DisplayOrder.Resize(size);
-    Columns.SortOrder.Resize(size);
-    Columns.SortDirection.Resize(size);
-    Columns.IsEnabled.Resize(size);
-    Columns.IsStretch.Resize(size);
+    // xxx this is the only non-const operation in all of `ImGuiSettings::CreatePatch`
+    for (u32 i = Columns.Size(); i < size; ++i) Columns.EmplaceBack_(std::to_string(i));
 
     u32 i = 0;
     for (auto *ts_it = tss.begin(); ts_it != nullptr; ts_it = tss.next_chunk(ts_it)) {
         auto &ts = *ts_it;
         const u32 columns_count = ts.ColumnsCount;
 
-        Columns.WidthOrWeight.Resize(i, columns_count);
-        Columns.UserID.Resize(i, columns_count);
-        Columns.Index.Resize(i, columns_count);
-        Columns.DisplayOrder.Resize(i, columns_count);
-        Columns.SortOrder.Resize(i, columns_count);
-        Columns.SortDirection.Resize(i, columns_count);
-        Columns.IsEnabled.Resize(i, columns_count);
-        Columns.IsStretch.Resize(i, columns_count);
+        const auto *column = Columns[i];
+        column->WidthOrWeight.Resize(columns_count);
+        column->UserID.Resize(columns_count);
+        column->Index.Resize(columns_count);
+        column->DisplayOrder.Resize(columns_count);
+        column->SortOrder.Resize(columns_count);
+        column->SortDirection.Resize(columns_count);
+        column->IsEnabled.Resize(columns_count);
+        column->IsStretch.Resize(columns_count);
 
         for (u32 j = 0; j < columns_count; j++) {
             const auto &cs = ts.GetColumnSettings()[j];
             // todo these nans show up when we start with a default layout showing a table and then switch the tab so that the table is hidden.
             //   should probably handle this more robustly.
-            Columns.WidthOrWeight.Set(i, j, std::isnan(cs.WidthOrWeight) ? 0 : cs.WidthOrWeight);
-            Columns.UserID.Set(i, j, cs.UserID);
-            Columns.Index.Set(i, j, cs.Index);
-            Columns.DisplayOrder.Set(i, j, cs.DisplayOrder);
-            Columns.SortOrder.Set(i, j, cs.SortOrder);
-            Columns.SortDirection.Set(i, j, cs.SortDirection);
-            Columns.IsEnabled.Set(i, j, cs.IsEnabled);
-            Columns.IsStretch.Set(i, j, cs.IsStretch);
+            column->WidthOrWeight.Set(j, std::isnan(cs.WidthOrWeight) ? 0 : cs.WidthOrWeight);
+            column->UserID.Set(j, cs.UserID);
+            column->Index.Set(j, cs.Index);
+            column->DisplayOrder.Set(j, cs.DisplayOrder);
+            column->SortOrder.Set(j, cs.SortOrder);
+            column->SortDirection.Set(j, cs.SortDirection);
+            column->IsEnabled.Set(j, cs.IsEnabled);
+            column->IsStretch.Set(j, cs.IsStretch);
         }
         i++;
     }
@@ -194,46 +183,50 @@ void TableSettings::Update(ImGuiContext *) const {
         table->SettingsLoadedFlags = SaveFlags[i]; // todo remove this var/behavior?
         table->RefScale = RefScale[i];
 
+        const auto &settings = *Columns[i];
         // Serialize ImGuiTableSettings/ImGuiTableColumnSettings into ImGuiTable/ImGuiTableColumn
         ImU64 display_order_mask = 0;
         for (u32 j = 0; j < ColumnsCount[i]; j++) {
-            int column_n = Columns.Index(i, j);
+            const int column_n = settings.Index[j];
             if (column_n < 0 || column_n >= table->ColumnsCount) continue;
 
             ImGuiTableColumn *column = &table->Columns[column_n];
             if (ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Resizable) {
-                float width_or_weight = Columns.WidthOrWeight(i, j);
-                if (Columns.IsStretch(i, j)) column->StretchWeight = width_or_weight;
+                const float width_or_weight = settings.WidthOrWeight[j];
+                if (settings.IsStretch[j]) column->StretchWeight = width_or_weight;
                 else column->WidthRequest = width_or_weight;
                 column->AutoFitQueue = 0x00;
             }
-            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(Columns.DisplayOrder(i, j)) : (ImGuiTableColumnIdx)column_n;
-            display_order_mask |= (ImU64)1 << column->DisplayOrder;
-            column->IsUserEnabled = column->IsUserEnabledNextFrame = Columns.IsEnabled(i, j);
-            column->SortOrder = ImGuiTableColumnIdx(Columns.SortOrder(i, j));
-            column->SortDirection = Columns.SortDirection(i, j);
+            column->DisplayOrder = ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Reorderable ? ImGuiTableColumnIdx(settings.DisplayOrder[j]) : ImGuiTableColumnIdx(column_n);
+            display_order_mask |= ImU64(1) << column->DisplayOrder;
+            column->IsUserEnabled = column->IsUserEnabledNextFrame = settings.IsEnabled[j];
+            column->SortOrder = ImGuiTableColumnIdx(settings.SortOrder[j]);
+            column->SortDirection = settings.SortDirection[j];
         }
 
         // Validate and fix invalid display order data
-        const ImU64 expected_display_order_mask = ColumnsCount[i] == 64 ? ~0 : ((ImU64)1 << ImU8(ColumnsCount[i])) - 1;
+        const ImU64 expected_display_order_mask = ColumnsCount[i] == 64 ? ~0 : (ImU64(1) << ImU8(ColumnsCount[i])) - 1;
         if (display_order_mask != expected_display_order_mask) {
             for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
-                table->Columns[column_n].DisplayOrder = (ImGuiTableColumnIdx)column_n;
+                table->Columns[column_n].DisplayOrder = ImGuiTableColumnIdx(column_n);
             }
         }
         // Rebuild index
         for (int column_n = 0; column_n < table->ColumnsCount; column_n++) {
-            table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = (ImGuiTableColumnIdx)column_n;
+            table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = ImGuiTableColumnIdx(column_n);
         }
     }
 }
 
-Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) const {
+Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) {
     Nodes.Set(ctx->DockContext.NodesSettings);
     Windows.Set(ctx->SettingsWindows);
     Tables.Set(ctx->SettingsTables);
 
-    return RootStore.CreatePatchAndResetTransient(Path);
+    auto patch = RootStore.CreatePatchAndResetTransient(Path);
+    Tables.Refresh(); // xxx tables may have been modified.
+
+    return patch;
 }
 
 void ImGuiSettings::UpdateIfChanged(ImGuiContext *ctx) const {

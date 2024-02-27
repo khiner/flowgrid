@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Container/PrimitiveVector.h"
-#include "Core/Container/PrimitiveVector2D.h"
+#include "Core/Container/Vector.h"
 
 struct Patch;
 
@@ -54,21 +54,20 @@ struct WindowSettings : Component {
 struct TableColumnSettings : Component {
     using Component::Component;
 
-    // [table_index][column_index]
-    Prop(PrimitiveVector2D<float>, WidthOrWeight);
-    Prop(PrimitiveVector2D<ID>, UserID);
-    Prop(PrimitiveVector2D<int>, Index);
-    Prop(PrimitiveVector2D<int>, DisplayOrder);
-    Prop(PrimitiveVector2D<int>, SortOrder);
-    Prop(PrimitiveVector2D<int>, SortDirection);
-    Prop(PrimitiveVector2D<bool>, IsEnabled); // "Visible" in ini file
-    Prop(PrimitiveVector2D<bool>, IsStretch);
+    Prop(PrimitiveVector<float>, WidthOrWeight);
+    Prop(PrimitiveVector<ID>, UserID);
+    Prop(PrimitiveVector<int>, Index);
+    Prop(PrimitiveVector<int>, DisplayOrder);
+    Prop(PrimitiveVector<int>, SortOrder);
+    Prop(PrimitiveVector<int>, SortDirection);
+    Prop(PrimitiveVector<bool>, IsEnabled); // "Visible" in ini file
+    Prop(PrimitiveVector<bool>, IsStretch);
 };
 
 struct TableSettings : Component {
     using Component::Component;
 
-    void Set(ImChunkStream<ImGuiTableSettings> &) const;
+    void Set(ImChunkStream<ImGuiTableSettings> &);
     void Update(ImGuiContext *) const;
 
     Prop(PrimitiveVector<ImGuiID>, ID);
@@ -77,7 +76,7 @@ struct TableSettings : Component {
     Prop(PrimitiveVector<u32>, ColumnsCount);
     Prop(PrimitiveVector<u32>, ColumnsCountMax);
     Prop(PrimitiveVector<bool>, WantApply);
-    Prop(TableColumnSettings, Columns);
+    Prop(Vector<TableColumnSettings>, Columns);
 };
 
 struct ImGuiSettings : Component {
@@ -86,7 +85,7 @@ struct ImGuiSettings : Component {
     inline static bool IsChanged{false};
 
     // Create a patch resulting from applying the current ImGui context.
-    Patch CreatePatch(ImGuiContext *) const;
+    Patch CreatePatch(ImGuiContext *);
 
     // `Update(ctx)` is basically `imgui_context.settings = this`.
     // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members

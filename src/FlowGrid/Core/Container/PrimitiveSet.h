@@ -15,6 +15,7 @@ template<typename T> struct PrimitiveSet : Component, Actionable<typename Action
 
     PrimitiveSet(ComponentArgs &&args) : Component(std::move(args)) {
         FieldIds.insert(Id);
+        Refresh();
     }
     ~PrimitiveSet() {
         Erase();

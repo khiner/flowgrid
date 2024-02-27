@@ -13,18 +13,18 @@
 using namespace ImGui;
 
 Colors::Colors(ArgsT &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
-    : PrimitiveVector(std::move(args.Args)), ActionProducer(std::move(args.Q)), GetName(get_name), AllowAuto(allow_auto) {
-    PrimitiveVector::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<u32>>);
+    : PrimitiveVec(std::move(args.Args)), ActionProducer(std::move(args.Q)), GetName(get_name), AllowAuto(allow_auto) {
+    PrimitiveVec::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<u32>>);
 }
 
 u32 Colors::Float4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
 ImVec4 Colors::U32ToFloat4(u32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
 void Colors::Set(const std::vector<ImVec4> &values) const {
-    PrimitiveVector::Set(values | std::views::transform([](const auto &value) { return Float4ToU32(value); }) | ranges::to<std::vector>);
+    PrimitiveVec::Set(values | std::views::transform([](const auto &value) { return Float4ToU32(value); }) | ranges::to<std::vector>);
 }
-void Colors::Set(const std::vector<std::pair<int, ImVec4>> &entries) const {
-    PrimitiveVector::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | ranges::to<std::vector>);
+void Colors::Set(const std::vector<std::pair<size_t, ImVec4>> &entries) const {
+    PrimitiveVec::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | ranges::to<std::vector>);
 }
 
 void Colors::Render() const {
@@ -47,7 +47,7 @@ void Colors::Render() const {
 
     for (u32 i = 0; i < Size(); i++) {
         if (const std::string &color_name = GetName(i); filter.PassFilter(color_name.c_str())) {
-            u32 color = Value[i];
+            u32 color = (*this)[i];
             const bool is_auto = AllowAuto && color == AutoColor;
             const u32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : color;
 
@@ -58,7 +58,7 @@ void Colors::Render() const {
             // todo use auto for FG colors (link to ImGui colors)
             if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) Q(Action::PrimitiveVector<u32>::SetAt{Path, i, is_auto ? mapped_value : AutoColor});
+                if (Button("Auto")) Q(Action::PrimitiveVector<u32>::Set{Path, i, is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
@@ -74,7 +74,7 @@ void Colors::Render() const {
 
             PopID();
 
-            if (changed) Q(Action::PrimitiveVector<u32>::SetAt{Path, i, ColorConvertFloat4ToU32(value)});
+            if (changed) Q(Action::PrimitiveVector<u32>::Set{Path, i, ColorConvertFloat4ToU32(value)});
         }
     }
     if (AllowAuto) {
@@ -93,8 +93,9 @@ void Colors::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
     if (TreeNode(Name)) {
-        for (u32 i = 0; i < Value.size(); i++) {
-            TreeNode(annotate ? GetName(i) : std::to_string(i), annotate, U32ToHex(Value[i], true).c_str());
+        const auto &value = Get();
+        for (u32 i = 0; i < value.size(); i++) {
+            TreeNode(annotate ? GetName(i) : std::to_string(i), annotate, U32ToHex(value[i], true).c_str());
         }
         TreePop();
     }

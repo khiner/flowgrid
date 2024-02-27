@@ -4,7 +4,7 @@
 
 namespace Action {
 template<typename T> struct PrimitiveSet {
-    static_assert(always_false_v<T>, "There is no `PrimitiveSet` action type for this primitive type.");
+    static_assert(always_false_v<T>, "There is no `PrimitiveSet` action type for this type.");
 };
 
 DefineTemplatedActionType(

@@ -15,7 +15,7 @@ template<typename T> struct PrimitiveVector : Container, Actionable<typename Act
     void Apply(const ActionType &action) const override {
         std::visit(
             Match{
-                [this](const Action::PrimitiveVector<T>::SetAt &a) { Set(a.i, a.value); },
+                [this](const Action::PrimitiveVector<T>::Set &a) { Set(a.i, a.value); },
             },
             action
         );

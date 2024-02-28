@@ -1,4 +1,9 @@
-#include "Store.h"
+#include "TypedStore.h"
+
+#include "IdPairs.h"
+
+#include "immer/set.hpp"
+#include "immer/vector.hpp"
 
 #include "immer/algorithm.hpp"
 
@@ -31,30 +36,26 @@ void diff(const immer::vector<T> &before, const immer::vector<T> &after, Add add
     }
 }
 
-template<typename ValueType, typename... ValueTypes>
-void AddOps(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, const StorePath &base_path, PatchOps &ops) {
+template<typename ValueType>
+void AddOps(const auto &before, const auto &after, const StorePath &base_path, PatchOps &ops) {
+    AddOps(before.template GetMap<ValueType>(), after.template GetMap<ValueType>(), base_path, ops);
+}
+
+template<typename ValueType>
+void AddOps(const StoreMap<ValueType> &before, const StoreMap<ValueType> &after, const StorePath &base_path, PatchOps &ops) {
     diff(
-        before.template GetMap<ValueType>(),
-        after.template GetMap<ValueType>(),
+        before,
+        after,
         [&](const auto &added) { ops[added.first.lexically_relative(base_path)] = {PatchOpType::Add, added.second, {}}; },
         [&](const auto &removed) { ops[removed.first.lexically_relative(base_path)] = {PatchOpType::Remove, {}, removed.second}; },
         [&](const auto &o, const auto &n) { ops[o.first.lexically_relative(base_path)] = {PatchOpType::Replace, n.second, o.second}; }
     );
 }
 
-template<typename... ValueTypes>
-Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, const StorePath &base_path) const {
-    PatchOps ops{};
-
-    AddOps<bool>(before, after, base_path, ops);
-    AddOps<u32>(before, after, base_path, ops);
-    AddOps<s32>(before, after, base_path, ops);
-    AddOps<float>(before, after, base_path, ops);
-    AddOps<string>(before, after, base_path, ops);
-
+void AddOps(const StoreMap<IdPairs> &before, const StoreMap<IdPairs> &after, const StorePath &base_path, PatchOps &ops) {
     diff(
-        before.GetMap<IdPairs>(),
-        after.GetMap<IdPairs>(),
+        before,
+        after,
         [&](const auto &added) {
             for (const auto &id_pair : added.second) {
                 const auto serialized = SerializeIdPair(id_pair);
@@ -83,9 +84,12 @@ Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &be
             );
         }
     );
+}
+
+void AddOps(const StoreMap<immer::set<u32>> &before, const StoreMap<immer::set<u32>> &after, const StorePath &base_path, PatchOps &ops) {
     diff(
-        before.GetMap<immer::set<u32>>(),
-        after.GetMap<immer::set<u32>>(),
+        before,
+        after,
         [&](const auto &added) {
             for (auto value : added.second) {
                 ops[added.first.lexically_relative(base_path) / std::to_string(value)] = {PatchOpType::Add, value, {}};
@@ -106,9 +110,12 @@ Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &be
             );
         }
     );
+}
+
+void AddOps(const StoreMap<immer::vector<u32>> &before, const StoreMap<immer::vector<u32>> &after, const StorePath &base_path, PatchOps &ops) {
     diff(
-        before.GetMap<immer::vector<u32>>(),
-        after.GetMap<immer::vector<u32>>(),
+        before,
+        after,
         [&](const auto &added) {
             for (uint i = 0; i < added.second.size(); i++) {
                 ops[added.first.lexically_relative(base_path) / std::to_string(i)] = {PatchOpType::Add, added.second[i], {}};
@@ -133,27 +140,23 @@ Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &be
             );
         }
     );
+}
+
+template<typename... ValueTypes>
+Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, const StorePath &base_path) {
+    PatchOps ops{};
+
+    AddOps<bool>(before, after, base_path, ops);
+    AddOps<u32>(before, after, base_path, ops);
+    AddOps<s32>(before, after, base_path, ops);
+    AddOps<float>(before, after, base_path, ops);
+    AddOps<string>(before, after, base_path, ops);
+    AddOps<IdPairs>(before, after, base_path, ops);
+    AddOps<immer::set<u32>>(before, after, base_path, ops);
+    AddOps<immer::vector<u32>>(before, after, base_path, ops);
 
     return {ops, base_path};
 }
 
-// Utility to transform a tuple into another tuple, applying a function to each element.
-template<typename ResultTuple, typename InputTuple, typename Func, std::size_t... I>
-ResultTuple TransformTupleImpl(InputTuple &in, Func func, std::index_sequence<I...>) {
-    return {func(std::get<I>(in))...};
-}
-template<typename ResultTuple, typename InputTuple, typename Func>
-ResultTuple TransformTuple(InputTuple &in, Func func) {
-    return TransformTupleImpl<ResultTuple>(in, func, std::make_index_sequence<std::tuple_size_v<InputTuple>>{});
-}
-
-template<typename... ValueTypes> TypedStore<ValueTypes...>::StoreMaps TypedStore<ValueTypes...>::Persistent() const {
-    if (!TransientMaps) throw std::runtime_error("Store is not in transient mode.");
-    return TransformTuple<StoreMaps>(*TransientMaps, [](auto &map) { return map.persistent(); });
-}
-template<typename... ValueTypes> TypedStore<ValueTypes...>::TransientStoreMaps TypedStore<ValueTypes...>::Transient() const {
-    return TransformTuple<TransientStoreMaps>(Maps, [](auto &map) { return map.transient(); });
-}
-
-// Explicit instantiations for the default value types.
+// Explicit instantiation for the default value types.
 template struct TypedStore<bool, u32, s32, float, std::string, IdPairs, immer::set<u32>, immer::vector<u32>>;

@@ -44,7 +44,7 @@ void StoreHistory::Clear() {
 
 void StoreHistory::AddGesture(Gesture &&gesture) {
     const auto store_impl = Store;
-    const auto patch = Store.CreatePatch(CurrentStore(), store_impl);
+    const auto patch = Store.CreatePatch(CurrentStore(), store_impl, RootPath);
     if (patch.Empty()) return;
 
     _Metrics->AddPatch(patch, gesture.CommitTime);
@@ -70,7 +70,7 @@ std::map<StorePath, u32> StoreHistory::GetChangeCountByPath() const {
 u32 StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesByPath.size(); }
 
 Patch StoreHistory::CreatePatch(u32 index) const {
-    return Store.CreatePatch(_Records->Value[index - 1].Store, _Records->Value[index].Store);
+    return Store.CreatePatch(_Records->Value[index - 1].Store, _Records->Value[index].Store, RootPath);
 }
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(u32 index) const {

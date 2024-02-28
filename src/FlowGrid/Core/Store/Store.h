@@ -1,15 +1,14 @@
 #include "TypedStore.h"
 
 #include "Core/Action/Actionable.h"
-#include "StoreAction.h"
 #include "IdPairs.h"
+#include "StoreAction.h"
 
 #include "immer/set.hpp"
 #include "immer/vector.hpp"
 
-using DefaultStoreValueTypes = std::tuple<bool, u32, s32, float, std::string, IdPairs, immer::set<u32>, immer::vector<u32>>;
-
-struct Store : TypedStore<DefaultStoreValueTypes>, Actionable<Action::Store::Any>  {
+struct Store : TypedStore<bool, u32, s32, float, std::string, IdPairs, immer::set<u32>, immer::vector<u32>>,
+               Actionable<Action::Store::Any> {
     bool CanApply(const ActionType &) const override { return true; }
     void Apply(const ActionType &action) const override {
         std::visit(

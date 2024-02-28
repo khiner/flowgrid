@@ -31,17 +31,19 @@ void diff(const immer::vector<T> &before, const immer::vector<T> &after, Add add
     }
 }
 
-template<typename T, typename V> void AddOps(const TypedStore<V> &before, const TypedStore<V> &after, const StorePath &base_path, PatchOps &ops) {
+template<typename ValueType, typename... ValueTypes>
+void AddOps(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, const StorePath &base_path, PatchOps &ops) {
     diff(
-        before.template GetMap<T>(),
-        after.template GetMap<T>(),
+        before.template GetMap<ValueType>(),
+        after.template GetMap<ValueType>(),
         [&](const auto &added) { ops[added.first.lexically_relative(base_path)] = {PatchOpType::Add, added.second, {}}; },
         [&](const auto &removed) { ops[removed.first.lexically_relative(base_path)] = {PatchOpType::Remove, {}, removed.second}; },
         [&](const auto &o, const auto &n) { ops[o.first.lexically_relative(base_path)] = {PatchOpType::Replace, n.second, o.second}; }
     );
 }
 
-template<typename ValueTypes> Patch TypedStore<ValueTypes>::CreatePatch(const TypedStore<ValueTypes> &before, const TypedStore<ValueTypes> &after, const StorePath &base_path) const {
+template<typename... ValueTypes>
+Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, const StorePath &base_path) const {
     PatchOps ops{};
 
     AddOps<bool>(before, after, base_path, ops);
@@ -145,13 +147,13 @@ ResultTuple TransformTuple(InputTuple &in, Func func) {
     return TransformTupleImpl<ResultTuple>(in, func, std::make_index_sequence<std::tuple_size_v<InputTuple>>{});
 }
 
-template<typename ValueTypes> TypedStore<ValueTypes>::StoreMaps TypedStore<ValueTypes>::Persistent() const {
+template<typename... ValueTypes> TypedStore<ValueTypes...>::StoreMaps TypedStore<ValueTypes...>::Persistent() const {
     if (!TransientMaps) throw std::runtime_error("Store is not in transient mode.");
     return TransformTuple<StoreMaps>(*TransientMaps, [](auto &map) { return map.persistent(); });
 }
-template<typename ValueTypes> TypedStore<ValueTypes>::TransientStoreMaps TypedStore<ValueTypes>::Transient() const {
+template<typename... ValueTypes> TypedStore<ValueTypes...>::TransientStoreMaps TypedStore<ValueTypes...>::Transient() const {
     return TransformTuple<TransientStoreMaps>(Maps, [](auto &map) { return map.transient(); });
 }
 
 // Explicit instantiations for the default value types.
-template struct TypedStore<DefaultStoreValueTypes>;
+template struct TypedStore<bool, u32, s32, float, std::string, IdPairs, immer::set<u32>, immer::vector<u32>>;

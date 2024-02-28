@@ -8,19 +8,12 @@
 #include "Helper/Path.h"
 #include "Patch/Patch.h"
 
-// Utility to transform a tuple of types into a tuple of types wrapped by a wrapper type.
-template<template<typename> class WrapperType, typename TypesTuple> struct WrapTypes;
-template<template<typename> class WrapperType, typename... Types> struct WrapTypes<WrapperType, std::tuple<Types...>> {
-    using type = std::tuple<WrapperType<Types>...>;
-};
-
-template<typename ValueTypes>
-struct TypedStore{
+template<typename... ValueTypes> struct TypedStore {
     template<typename T> using Map = immer::map<StorePath, T, PathHash>;
     template<typename T> using TransientMap = immer::map_transient<StorePath, T, PathHash>;
 
-    using StoreMaps = typename WrapTypes<Map, ValueTypes>::type;
-    using TransientStoreMaps = typename WrapTypes<TransientMap, ValueTypes>::type;
+    using StoreMaps = std::tuple<Map<ValueTypes>...>;
+    using TransientStoreMaps = std::tuple<TransientMap<ValueTypes>...>;
 
     // The store starts in transient mode.
     TypedStore() : TransientMaps(std::make_unique<TransientStoreMaps>()) {}

@@ -32,7 +32,7 @@ template<typename T> void PrimitiveVector<T>::PopBack() const {
 
 template<typename T> void PrimitiveVector<T>::Resize(u32 size) const {
     u32 i = size;
-    while (RootStore.CountAt<T>(PathAt(i))) {
+    while (RootStore.Count<T>(PathAt(i))) {
         RootStore.Erase<T>(PathAt(i));
         i++;
     }
@@ -52,7 +52,7 @@ template<typename T> void PrimitiveVector<T>::Erase(const T &value) const {
 
 template<typename T> void PrimitiveVector<T>::Refresh() {
     u32 i = 0;
-    while (RootStore.CountAt<T>(PathAt(i))) {
+    while (RootStore.Count<T>(PathAt(i))) {
         const T value = RootStore.Get<T>(PathAt(i));
         if (Value.size() == i) Value.push_back(value);
         else Value[i] = value;

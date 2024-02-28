@@ -4,24 +4,6 @@
 
 using std::string;
 
-// Utility to transform a tuple into another tuple, applying a function to each element.
-template<typename ResultTuple, typename InputTuple, typename Func, std::size_t... I>
-ResultTuple TransformTupleImpl(InputTuple &in, Func func, std::index_sequence<I...>) {
-    return {func(std::get<I>(in))...};
-}
-template<typename ResultTuple, typename InputTuple, typename Func>
-ResultTuple TransformTuple(InputTuple &in, Func func) {
-    return TransformTupleImpl<ResultTuple>(in, func, std::make_index_sequence<std::tuple_size_v<InputTuple>>{});
-}
-
-Store::StoreMaps Store::Persistent() const {
-    if (!TransientMaps) throw std::runtime_error("Store is not in transient mode.");
-    return TransformTuple<StoreMaps>(*TransientMaps, [](auto &map) { return map.persistent(); });
-}
-Store::TransientStoreMaps Store::Transient() const {
-    return TransformTuple<TransientStoreMaps>(Maps, [](auto &map) { return map.transient(); });
-}
-
 // Naive `diff` method for `immer::vector`s.
 // Callbacks receive an index and a value (for `add` and `remove`) or two values (for `change`).
 template<typename T, typename Add, typename Remove, typename Change>
@@ -49,17 +31,17 @@ void diff(const immer::vector<T> &before, const immer::vector<T> &after, Add add
     }
 }
 
-template<typename T> void AddOps(const Store &before, const Store &after, const StorePath &base_path, PatchOps &ops) {
+template<typename T, typename V> void AddOps(const TypedStore<V> &before, const TypedStore<V> &after, const StorePath &base_path, PatchOps &ops) {
     diff(
-        before.GetMap<T>(),
-        after.GetMap<T>(),
+        before.template GetMap<T>(),
+        after.template GetMap<T>(),
         [&](const auto &added) { ops[added.first.lexically_relative(base_path)] = {PatchOpType::Add, added.second, {}}; },
         [&](const auto &removed) { ops[removed.first.lexically_relative(base_path)] = {PatchOpType::Remove, {}, removed.second}; },
         [&](const auto &o, const auto &n) { ops[o.first.lexically_relative(base_path)] = {PatchOpType::Replace, n.second, o.second}; }
     );
 }
 
-Patch Store::CreatePatch(const Store &before, const Store &after, const StorePath &base_path) const {
+template<typename ValueTypes> Patch TypedStore<ValueTypes>::CreatePatch(const TypedStore<ValueTypes> &before, const TypedStore<ValueTypes> &after, const StorePath &base_path) const {
     PatchOps ops{};
 
     AddOps<bool>(before, after, base_path, ops);
@@ -152,3 +134,24 @@ Patch Store::CreatePatch(const Store &before, const Store &after, const StorePat
 
     return {ops, base_path};
 }
+
+// Utility to transform a tuple into another tuple, applying a function to each element.
+template<typename ResultTuple, typename InputTuple, typename Func, std::size_t... I>
+ResultTuple TransformTupleImpl(InputTuple &in, Func func, std::index_sequence<I...>) {
+    return {func(std::get<I>(in))...};
+}
+template<typename ResultTuple, typename InputTuple, typename Func>
+ResultTuple TransformTuple(InputTuple &in, Func func) {
+    return TransformTupleImpl<ResultTuple>(in, func, std::make_index_sequence<std::tuple_size_v<InputTuple>>{});
+}
+
+template<typename ValueTypes> TypedStore<ValueTypes>::StoreMaps TypedStore<ValueTypes>::Persistent() const {
+    if (!TransientMaps) throw std::runtime_error("Store is not in transient mode.");
+    return TransformTuple<StoreMaps>(*TransientMaps, [](auto &map) { return map.persistent(); });
+}
+template<typename ValueTypes> TypedStore<ValueTypes>::TransientStoreMaps TypedStore<ValueTypes>::Transient() const {
+    return TransformTuple<TransientStoreMaps>(Maps, [](auto &map) { return map.transient(); });
+}
+
+// Explicit instantiations for the default value types.
+template struct TypedStore<DefaultStoreValueTypes>;

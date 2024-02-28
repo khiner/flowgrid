@@ -6,7 +6,7 @@
 
 #include "immer/set_transient.hpp"
 
-template<typename T> bool PrimitiveSet<T>::Exists() const { return RootStore.Contains<ContainerT>(Path); }
+template<typename T> bool PrimitiveSet<T>::Exists() const { return RootStore.Count<ContainerT>(Path); }
 template<typename T> void PrimitiveSet<T>::Erase() const { RootStore.Erase<ContainerT>(Path); }
 
 template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const { return RootStore.Get<ContainerT>(Path); }

@@ -31,7 +31,7 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     return false;
 }
 
-bool AdjacencyList::Exists() const { return RootStore.Contains<IdPairs>(Path); }
+bool AdjacencyList::Exists() const { return RootStore.Count<IdPairs>(Path); }
 
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
     return Exists() && RootStore.Get<IdPairs>(Path).count({source, destination}) > 0;

@@ -6,7 +6,7 @@
 
 #include "immer/vector_transient.hpp"
 
-template<typename T> bool PrimitiveVec<T>::Exists() const { return RootStore.Contains<ContainerT>(Path); }
+template<typename T> bool PrimitiveVec<T>::Exists() const { return RootStore.Count<ContainerT>(Path); }
 template<typename T> void PrimitiveVec<T>::Erase() const { RootStore.Erase<ContainerT>(Path); }
 
 template<typename T> PrimitiveVec<T>::ContainerT PrimitiveVec<T>::Get() const { return RootStore.Get<ContainerT>(Path); }

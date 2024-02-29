@@ -21,6 +21,7 @@ struct Store : TypedStore<bool, u32, s32, float, std::string, IdPairs, immer::se
 
     bool Contains(const StorePath &path) const {
         // xxx this is the only place in the store where we use knowledge about vector paths.
+        // It should go away after finishing the `PrimitiveVec` refactor to back `PrimitiveVector` with `immer::vector`.
         return ContainsPrimitive(path) || ContainsPrimitive(path / "0") || Count<IdPairs>(path);
     }
 
@@ -35,15 +36,14 @@ struct Store : TypedStore<bool, u32, s32, float, std::string, IdPairs, immer::se
         }
     }
 
-    void ErasePrimitive(const StorePath &path) const {
-        if (Count<bool>(path)) Erase<bool>(path);
-        else if (Count<u32>(path)) Erase<u32>(path);
-        else if (Count<s32>(path)) Erase<s32>(path);
-        else if (Count<float>(path)) Erase<float>(path);
-        else if (Count<std::string>(path)) Erase<std::string>(path);
-    }
-
     bool ContainsPrimitive(const StorePath &path) const {
         return Count<bool>(path) || Count<u32>(path) || Count<s32>(path) || Count<float>(path) || Count<std::string>(path);
+    }
+    void ErasePrimitive(const StorePath &path) const {
+        Erase<bool>(path);
+        Erase<u32>(path);
+        Erase<s32>(path);
+        Erase<float>(path);
+        Erase<std::string>(path);
     }
 };

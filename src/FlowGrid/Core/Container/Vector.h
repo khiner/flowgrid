@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Container/PrimitiveVector.h"
+#include "Core/Container/PrimitiveVec.h"
 #include "Helper/Hex.h"
 
 inline static std::pair<std::string, std::string> Split(fs::path relative_path) {
@@ -100,7 +100,7 @@ template<typename ChildType> struct Vector : Container {
         if (initializer) initializer(child.get());
         const auto child_prefix = GetChildPrefix(child.get());
         Value.emplace_back(std::move(child));
-        ChildPrefixes.PushBack_(child_prefix);
+        ChildPrefixes.PushBack(child_prefix);
     }
 
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
@@ -130,13 +130,15 @@ template<typename ChildType> struct Vector : Container {
     }
 
     void Refresh() override {
-        ChildPrefixes.Refresh();
+        ChildPrefixes.Refresh(); // xxx no-op now
 
-        for (const StorePath prefix : ChildPrefixes) {
+        auto size = ChildPrefixes.Size();
+        for (size_t i = 0; i < size; ++i) {
+            const auto &prefix = ChildPrefixes[i];
             if (const auto child_it = FindIt(prefix); child_it == Value.end()) {
                 const auto &[path_prefix, path_segment] = Split(prefix);
                 auto new_child = Creator({this, path_segment, "", path_prefix});
-                u32 index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));
+                size_t index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));
                 Value.insert(Value.begin() + index, std::move(new_child));
             }
         }
@@ -149,7 +151,7 @@ template<typename ChildType> struct Vector : Container {
         if (!child) return;
 
         child->Erase();
-        ChildPrefixes.Erase(GetChildPrefix(child));
+        ChildPrefixes.Erase(ChildPrefixes.IndexOf(GetChildPrefix(child)));
     }
 
     void EraseId_(ID id) {
@@ -179,7 +181,7 @@ template<typename ChildType> struct Vector : Container {
 private:
     // Keep track of child ordering.
     // Each prefix is a path containing two segments: The child's unique prefix and its `PathSegment`.
-    Prop(PrimitiveVector<std::string>, ChildPrefixes);
+    Prop(PrimitiveVec<std::string>, ChildPrefixes);
 
     CreatorFunction Creator;
     std::vector<std::unique_ptr<ChildType>> Value;

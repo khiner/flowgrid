@@ -38,6 +38,7 @@ template<typename... ValueTypes> struct TypedStore {
     template<typename ValueType> size_t Count(const StorePath &path) const { return GetTransientMap<ValueType>().count(path); }
 
     template<typename ValueType> void Set(const StorePath &path, const ValueType &value) const { GetTransientMap<ValueType>().set(path, value); }
+    template<typename ValueType> void Clear(const StorePath &path) const { Set(path, ValueType{}); }
     template<typename ValueType> void Erase(const StorePath &path) const {
         if (Count<ValueType>(path)) GetTransientMap<ValueType>().erase(path);
     }
@@ -80,7 +81,6 @@ private:
         Maps = other.Get();
         TransientMaps = std::make_unique<TransientStoreMaps>(Transient());
     }
-
     StoreMaps Persistent() const {
         if (!TransientMaps) throw std::runtime_error("Store is not in transient mode.");
         return TransformTuple<StoreMaps>(*TransientMaps, [](auto &map) { return map.persistent(); });

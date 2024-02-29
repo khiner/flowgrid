@@ -1,21 +1,25 @@
 #include "Patch.h"
 
 #include <algorithm>
-#include <filesystem>
 
 PatchOps Merge(const PatchOps &a, const PatchOps &b) {
-    static constexpr auto AddOp = PatchOpType::Add;
-    static constexpr auto RemoveOp = PatchOpType::Remove;
-    static constexpr auto ReplaceOp = PatchOpType::Replace;
+    static constexpr auto AddOp = PatchOpType::Add, RemoveOp = PatchOpType::Remove, ReplaceOp = PatchOpType::Replace;
 
     PatchOps merged = a;
-    for (const auto &[path, op] : b) {
+    for (const auto &[path, ops] : b) {
         if (!merged.contains(path)) {
-            merged[path] = op;
+            merged[path] = ops;
             continue;
         }
 
-        const auto &old_op = merged.at(path);
+        auto &old_ops = merged.at(path);
+        if (old_ops.size() > 1) {
+            for (const auto &op : ops) old_ops.push_back(op);
+            continue;
+        }
+
+        const auto &old_op = old_ops.front();
+        const auto &op = ops.front();
         // Strictly, two consecutive patches that both add or both remove the same key should throw an exception,
         // but I'm being lax here to allow for merging multiple patches by only looking at neighbors.
         // For example, if the first patch removes a path, and the second one adds the same path,
@@ -23,17 +27,17 @@ PatchOps Merge(const PatchOps &a, const PatchOps &b) {
         // (in which case it should just be `Remove` during merge) or if it was different (in which case the merged action should be a `Replace`).
         if (old_op.Op == AddOp) {
             if (op.Op == RemoveOp || ((op.Op == AddOp || op.Op == ReplaceOp) && old_op.Value == op.Value)) merged.erase(path); // Cancel out
-            else merged[path] = {AddOp, op.Value, {}};
+            else merged[path] = {{AddOp, op.Value, {}}};
         } else if (old_op.Op == RemoveOp) {
             if (op.Op == AddOp || op.Op == ReplaceOp) {
                 if (old_op.Value == op.Value) merged.erase(path); // Cancel out
-                else merged[path] = {ReplaceOp, op.Value, old_op.Old};
+                else merged[path] = {{ReplaceOp, op.Value, old_op.Old}};
             } else {
-                merged[path] = {RemoveOp, {}, old_op.Old};
+                merged[path] = {{RemoveOp, {}, old_op.Old}};
             }
         } else if (old_op.Op == ReplaceOp) {
-            if (op.Op == AddOp || op.Op == ReplaceOp) merged[path] = {ReplaceOp, op.Value, old_op.Old};
-            else merged[path] = {RemoveOp, {}, old_op.Old};
+            if (op.Op == AddOp || op.Op == ReplaceOp) merged[path] = {{ReplaceOp, op.Value, old_op.Old}};
+            else merged[path] = {{RemoveOp, {}, old_op.Old}};
         }
     }
 

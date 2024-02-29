@@ -2,11 +2,12 @@
 
 #include <ranges>
 #include <unordered_map>
+#include <vector>
 
 #include "Helper/Path.h"
 #include "PatchOp.h"
 
-using PatchOps = std::unordered_map<StorePath, PatchOp, PathHash>;
+using PatchOps = std::unordered_map<StorePath, std::vector<PatchOp>, PathHash>;
 PatchOps Merge(const PatchOps &a, const PatchOps &b);
 
 struct Patch {

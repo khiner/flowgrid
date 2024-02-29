@@ -8,37 +8,27 @@
 
 template<typename T> bool PrimitiveSet<T>::Exists() const { return RootStore.Count<ContainerT>(Path); }
 template<typename T> void PrimitiveSet<T>::Erase() const { RootStore.Erase<ContainerT>(Path); }
+template<typename T> void PrimitiveSet<T>::Clear() const { RootStore.Clear<ContainerT>(Path); }
 
-template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const { return RootStore.Get<ContainerT>(Path); }
-
-template<typename T> void PrimitiveSet<T>::Set(const std::set<T> &value) const {
-    immer::set_transient<T> val{};
-    for (const auto &v : value) val.insert(v);
-    RootStore.Set(Path, val.persistent());
+template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const {
+    if (!Exists()) return {};
+    return RootStore.Get<ContainerT>(Path);
 }
 
 template<typename T> void PrimitiveSet<T>::Insert(const T &value) const {
     if (!Exists()) RootStore.Set<ContainerT>(Path, {});
     RootStore.Set(Path, Get().insert(value));
 }
-template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const {
-    if (Exists()) RootStore.Set(Path, Get().erase(value));
-}
-template<typename T> bool PrimitiveSet<T>::Contains(const T &value) const { return Exists() && Get().count(value); }
-template<typename T> bool PrimitiveSet<T>::Empty() const { return !Exists() || Get().empty(); }
+template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const { RootStore.SetErase(Path, value); }
 
 template<typename T> void PrimitiveSet<T>::SetJson(json &&j) const {
-    std::set<T> value = json::parse(std::string(std::move(j)));
-    Set(std::move(value));
+    immer::set_transient<T> val{};
+    for (const auto &v : json::parse(std::string(std::move(j)))) val.insert(v);
+    RootStore.Set(Path, val.persistent());
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
-template<typename T> json PrimitiveSet<T>::ToJson() const {
-    auto value = Get();
-    std::set<T> val{};
-    for (const auto &v : value) val.insert(v);
-    return json(val).dump();
-}
+template<typename T> json PrimitiveSet<T>::ToJson() const { return json(Get()).dump(); }
 
 using namespace ImGui;
 

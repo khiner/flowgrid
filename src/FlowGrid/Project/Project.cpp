@@ -109,8 +109,9 @@ void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     }
 }
 
-Component *Project::FindChanged(const StorePath &path, PatchOpType op) {
-    if ((op == PatchOpType::Add || op == PatchOpType::Remove) && !StringHelper::IsInteger(path.filename().string())) {
+Component *Project::FindChanged(const StorePath &path, const std::vector<PatchOp> &ops) {
+    if (ops.size() == 1 && (ops.front().Op == PatchOpType::Add || ops.front().Op == PatchOpType::Remove) &&
+        !StringHelper::IsInteger(path.filename().string())) {
         // Do not mark any components as added/removed if they are within a container.
         // The container's auxiliary component is marked as changed instead (and its path will be in same patch).
         if (auto *component_container = FindContainerByPath(path)) return nullptr;
@@ -128,9 +129,9 @@ void Project::MarkAllChanged(const Patch &patch) {
     const auto change_time = Clock::now();
     ClearChanged();
 
-    for (const auto &[partial_path, op] : patch.Ops) {
+    for (const auto &[partial_path, ops] : patch.Ops) {
         const auto path = patch.BasePath / partial_path;
-        if (auto *changed = FindChanged(path, op.Op)) {
+        if (auto *changed = FindChanged(path, ops)) {
             const ID id = changed->Id;
             const StorePath relative_path = path == changed->Path ? "" : path.lexically_relative(changed->Path);
             ChangedPaths[id].first = change_time;
@@ -218,11 +219,11 @@ void Project::ApplyContainerAction(const Action::Container::Any &action) const {
             [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
             [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
             [&container](const PrimitiveSet<u32>::ActionType &a) { static_cast<const PrimitiveSet<u32> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(container)->Apply(a); },
+            [&container](const PrimitiveVec<bool>::ActionType &a) { static_cast<const PrimitiveVec<bool> *>(container)->Apply(a); },
+            [&container](const PrimitiveVec<int>::ActionType &a) { static_cast<const PrimitiveVec<int> *>(container)->Apply(a); },
+            [&container](const PrimitiveVec<u32>::ActionType &a) { static_cast<const PrimitiveVec<u32> *>(container)->Apply(a); },
+            [&container](const PrimitiveVec<float>::ActionType &a) { static_cast<const PrimitiveVec<float> *>(container)->Apply(a); },
+            [&container](const PrimitiveVec<std::string>::ActionType &a) { static_cast<const PrimitiveVec<std::string> *>(container)->Apply(a); },
         },
         action
     );
@@ -741,12 +742,14 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
                         const auto &patch = history.CreatePatch(i);
-                        for (const auto &[partial_path, op] : patch.Ops) {
+                        for (const auto &[partial_path, ops] : patch.Ops) {
                             const auto &path = patch.BasePath / partial_path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                                BulletText("Op: %s", to_string(op.Op).c_str());
-                                if (op.Value) BulletText("Value: %s", json(*op.Value).dump().c_str());
-                                if (op.Old) BulletText("Old value: %s", json(*op.Old).dump().c_str());
+                                for (const auto &op : ops) {
+                                    BulletText("Op: %s", ToString(op.Op).c_str());
+                                    if (op.Value) BulletText("Value: %s", json(*op.Value).dump().c_str());
+                                    if (op.Old) BulletText("Old value: %s", json(*op.Old).dump().c_str());
+                                }
                                 TreePop();
                             }
                         }

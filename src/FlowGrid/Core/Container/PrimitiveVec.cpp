@@ -8,8 +8,12 @@
 
 template<typename T> bool PrimitiveVec<T>::Exists() const { return RootStore.Count<ContainerT>(Path); }
 template<typename T> void PrimitiveVec<T>::Erase() const { RootStore.Erase<ContainerT>(Path); }
+template<typename T> void PrimitiveVec<T>::Clear() const { RootStore.Clear<ContainerT>(Path); }
 
-template<typename T> PrimitiveVec<T>::ContainerT PrimitiveVec<T>::Get() const { return RootStore.Get<ContainerT>(Path); }
+template<typename T> PrimitiveVec<T>::ContainerT PrimitiveVec<T>::Get() const {
+    if (!Exists()) return {};
+    return RootStore.Get<ContainerT>(Path);
+}
 
 template<typename T> void PrimitiveVec<T>::Set(const std::vector<T> &value) const {
     immer::vector_transient<T> val{};
@@ -17,39 +21,36 @@ template<typename T> void PrimitiveVec<T>::Set(const std::vector<T> &value) cons
     RootStore.Set(Path, val.persistent());
 }
 
-template<typename T> void PrimitiveVec<T>::Set(size_t i, const T &value) const {
-    if (Exists()) RootStore.Set(Path, Get().set(i, value));
-}
+template<typename T> void PrimitiveVec<T>::Set(size_t i, const T &value) const { RootStore.VectorSet(Path, i, value); }
+template<typename T> void PrimitiveVec<T>::PushBack(const T &value) const { RootStore.PushBack(Path, value); }
+template<typename T> void PrimitiveVec<T>::PopBack() const { RootStore.PopBack<T>(Path); }
 
-template<typename T> void PrimitiveVec<T>::Set(const std::vector<std::pair<size_t, T>> &values) const {
-    for (const auto &[i, value] : values) Set(i, value);
-}
+template<typename T> void PrimitiveVec<T>::Resize(size_t size) const {
+    if (Size() == size) return;
 
-template<typename T> void PrimitiveVec<T>::PushBack(const T &value) const {
-    if (!Exists()) RootStore.Set<ContainerT>(Path, {});
-    RootStore.Set(Path, Get().push_back(value));
-}
-
-template<typename T> void PrimitiveVec<T>::PopBack() const {
-    if (Exists()) RootStore.Set(Path, Get().take(Get().size() - 1));
-}
-
-template<typename T> void PrimitiveVec<T>::Resize(u32 size) const {
     if (Exists()) RootStore.Set(Path, Get().take(size));
+    else RootStore.Set(Path, ContainerT{});
+
+    while (Size() < size) PushBack(T{});
+}
+template<typename T> void PrimitiveVec<T>::Erase(size_t i) const {
+    if (!Exists() || i >= Size()) return;
+
+    // `immer::vector` does not have an `erase` or a `drop` like `flex_vector` does.
+    auto val = Get();
+    auto new_val = val.take(i).transient();
+    for (size_t j = i + 1; j < val.size(); j++) new_val.push_back(val[j]);
+    RootStore.Set(Path, new_val.persistent());
 }
 
 template<typename T> void PrimitiveVec<T>::SetJson(json &&j) const {
-    std::vector<T> new_value = json::parse(std::string(std::move(j)));
-    Set(std::move(new_value));
+    immer::vector_transient<T> val{};
+    for (const auto &v : json::parse(std::string(std::move(j)))) val.push_back(v);
+    RootStore.Set(Path, val.persistent());
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
-template<typename T> json PrimitiveVec<T>::ToJson() const {
-    auto value = Get();
-    std::vector<T> val{};
-    for (const auto &v : value) val.push_back(v);
-    return json(val).dump();
-}
+template<typename T> json PrimitiveVec<T>::ToJson() const { return json(Get()).dump(); }
 
 using namespace ImGui;
 
@@ -71,9 +72,9 @@ template<typename T> void PrimitiveVec<T>::RenderValueTree(bool annotate, bool a
     }
 }
 
-template<typename T> bool PrimitiveVec<T>::Empty() const { return Get().empty(); }
-template<typename T> T PrimitiveVec<T>::operator[](u32 i) const { return Get()[i]; }
-template<typename T> u32 PrimitiveVec<T>::Size() const { return Get().size(); }
-
 // Explicit instantiations.
+template struct PrimitiveVec<bool>;
+template struct PrimitiveVec<s32>;
 template struct PrimitiveVec<u32>;
+template struct PrimitiveVec<float>;
+template struct PrimitiveVec<std::string>;

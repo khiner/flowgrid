@@ -7,14 +7,8 @@ namespace nlohmann {
 void to_json(json &, const PrimitiveVariant &);
 void from_json(const json &, PrimitiveVariant &);
 
-NLOHMANN_JSON_SERIALIZE_ENUM(
-    PatchOpType,
-    {
-        {PatchOpType::Add, "add"},
-        {PatchOpType::Remove, "remove"},
-        {PatchOpType::Replace, "replace"},
-    }
-);
-Json(PatchOp, Op, Value, Old);
+void to_json(json &, const PatchOp &);
+void from_json(const json &, PatchOp &);
+
 Json(Patch, Ops, BasePath);
 } // namespace nlohmann

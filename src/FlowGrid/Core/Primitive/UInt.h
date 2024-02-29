@@ -17,6 +17,7 @@ struct UInt : Primitive<u32>, Actionable<Action::Primitive::UInt::Any> {
     // `u32` conversion is already provided by `Primitive`.
     operator bool() const { return Value != 0; }
     operator int() const { return Value; };
+    operator size_t() const { return Value; };
     operator float() const { return Value; };
     operator ImColor() const;
 

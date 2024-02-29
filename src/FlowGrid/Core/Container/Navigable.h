@@ -2,7 +2,7 @@
 
 #include "Container.h"
 #include "Core/Action/ActionableProducer.h"
-#include "Core/Container/PrimitiveVector.h"
+#include "Core/Container/PrimitiveVec.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/ProducerComponentArgs.h"
 #include "NavigableAction.h"
@@ -54,7 +54,7 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
     auto Back() const { return Value.back(); }
 
     void Clear_() {
-        Value.Clear_();
+        Value.Clear();
         Cursor.Set_(0);
     }
 
@@ -70,8 +70,8 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
         }
     }
     template<typename U> void Push_(U &&value) {
-        Value.Resize_(Cursor);
-        Value.PushBack_(std::forward<U>(value));
+        Value.Resize(Cursor);
+        Value.PushBack(std::forward<U>(value));
         Cursor.Set_(Value.Size() - 1);
     }
     void Pop() const {
@@ -96,6 +96,6 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
     }
 
 private:
-    Prop(PrimitiveVector<T>, Value);
+    Prop(PrimitiveVec<T>, Value);
     Prop(UInt, Cursor);
 };

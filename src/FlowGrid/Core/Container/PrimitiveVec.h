@@ -39,18 +39,28 @@ template<typename T> struct PrimitiveVec : Component, Actionable<typename Action
     void SetJson(json &&) const override;
     json ToJson() const override;
 
-    bool Empty() const;
-    T operator[](u32 i) const;
-
-    u32 Size() const;
+    bool Empty() const { return Get().empty(); }
+    T operator[](u32 i) const { return Get()[i]; }
+    u32 Size() const { return Get().size(); }
 
     ContainerT Get() const;
     void Set(const std::vector<T> &) const;
     void Set(size_t i, const T &) const;
-    void Set(const std::vector<std::pair<size_t, T>> &) const;
+    void Set(const std::vector<std::pair<size_t, T>> &values) const {
+        for (const auto &[i, value] : values) Set(i, value);
+    }
+
     void PushBack(const T &) const;
     void PopBack() const;
-    void Resize(u32) const;
+    void Resize(size_t) const;
+    void Clear() const;
     bool Exists() const; // Check if exists in store.
     void Erase() const override;
+
+    size_t IndexOf(const T &value) const {
+        auto vec = Get();
+        return std::find(vec.begin(), vec.end(), value) - vec.begin();
+    }
+    bool Contains(const T &value) const { return IndexOf(value) != Size(); }
+    void Erase(size_t i) const;
 };

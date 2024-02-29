@@ -60,7 +60,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
     static void MarkAllChanged(const Patch &);
 
     // Find the field whose `Refresh()` should be called in response to a patch with this path and op type.
-    static Component *FindChanged(const StorePath &, PatchOpType);
+    static Component *FindChanged(const StorePath &, const std::vector<PatchOp> &ops);
 
     void OpenRecentProjectMenuItem() const;
 

@@ -23,4 +23,15 @@ void from_json(const json &j, PrimitiveVariant &field) {
         else field = str;
     } else throw std::runtime_error(std::format("Could not parse Primitive JSON value: {}", j.dump()));
 }
+
+void to_json(json &j, const PatchOp &op) {
+    j = json{{"op", ToString(op.Op)}};
+    optional_to_json(j, "value", op.Value);
+    optional_to_json(j, "old", op.Old);
+}
+void from_json(const json &j, PatchOp &op) {
+    op.Op = ToPatchOpType(j.at("op").get<std::string>());
+    if (j.contains("value")) optional_from_json(j, "value", op.Value);
+    if (j.contains("old")) optional_from_json(j, "old", op.Old);
+}
 } // namespace nlohmann

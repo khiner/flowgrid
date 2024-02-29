@@ -13,8 +13,7 @@ struct adl_serializer<std::chrono::time_point<Clock, Duration>> {
         j = tp.time_since_epoch().count();
     }
     inline static void from_json(const json &j, std::chrono::time_point<Clock, Duration> &tp) {
-        Duration duration(j);
-        tp = std::chrono::time_point<Clock, Duration>{duration};
+        tp = std::chrono::time_point<Clock, Duration>{Duration{j}};
     }
 };
 
@@ -30,7 +29,6 @@ template<class J, class T> constexpr void optional_from_json(const J &j, const c
 
 template<typename> constexpr bool is_optional = false;
 template<typename T> constexpr bool is_optional<std::optional<T>> = true;
-
 template<typename T> constexpr void extended_to_json(const char *key, json &j, const T &value) {
     if constexpr (is_optional<T>) optional_to_json(j, key, value);
     else j[key] = value;

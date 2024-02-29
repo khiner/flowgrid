@@ -4,8 +4,11 @@
 
 void Windows::SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &components) {
     WindowComponentIds.clear();
-    for (const auto &component : components) WindowComponentIds.insert(component.get().Id);
-    VisibleComponents.Set(WindowComponentIds);
+    VisibleComponents.Clear();
+    for (const auto &component : components) {
+        WindowComponentIds.insert(component.get().Id);
+        VisibleComponents.Insert(component.get().Id);
+    }
 }
 
 bool Windows::IsWindow(ID component_id) const { return WindowComponentIds.contains(component_id); }

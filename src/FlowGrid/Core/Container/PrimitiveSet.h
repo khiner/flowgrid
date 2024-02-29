@@ -38,14 +38,14 @@ template<typename T> struct PrimitiveSet : Component, Actionable<typename Action
     void SetJson(json &&) const override;
     json ToJson() const override;
 
-    bool Contains(const T &) const;
-    bool Empty() const;
+    bool Contains(const T &value) const { return Exists() && Get().count(value); }
+    bool Empty() const { return !Exists() || Get().empty(); }
 
     void Insert(const T &) const;
     void Erase_(const T &) const;
+    void Clear() const;
 
     ContainerT Get() const;
-    void Set(const std::set<T> &) const;
 
     bool Exists() const; // Check if exists in store.
     void Erase() const override;

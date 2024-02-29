@@ -7,8 +7,17 @@
 #include "immer/set.hpp"
 #include "immer/vector.hpp"
 
+// xxx should inherit from `TypedStore`.
 struct Store : TypedStore<bool, u32, s32, float, std::string, IdPairs, immer::set<u32>, immer::vector<u32>>,
                Actionable<Action::Store::Any> {
+    using TypedStore::TypedStore;
+    // Implement copy constructor and assignment operator to avoid the default ones.
+    Store(const Store &other) : TypedStore(other) {}
+    Store &operator=(const Store &other) {
+        TypedStore::operator=(other);
+        return *this;
+    }
+
     bool CanApply(const ActionType &) const override { return true; }
     void Apply(const ActionType &action) const override {
         std::visit(

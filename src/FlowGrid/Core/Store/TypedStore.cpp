@@ -10,7 +10,7 @@ void AddOps(const auto &before, const auto &after, const StorePath &base, PatchO
 }
 
 template<typename... ValueTypes>
-Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, const StorePath &base) {
+Patch TypedStoreImpl<ValueTypes...>::CreatePatch(const TypedStoreImpl<ValueTypes...> &before, const TypedStoreImpl<ValueTypes...> &after, const StorePath &base) {
     PatchOps ops{};
     // Use template lambda to call `AddOps` for each value type.
     ([&]<typename T>() { AddOps<T>(before, after, base, ops); }.template operator()<ValueTypes>(), ...);

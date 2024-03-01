@@ -14,18 +14,7 @@ struct Store : TypedStore<
                Actionable<Action::Store::Any> {
     bool CanApply(const ActionType &) const override { return true; }
     void Apply(const ActionType &action) const override {
-        std::visit(
-            Match{
-                [this](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); },
-            },
-            action
-        );
-    }
-
-    bool Contains(const StorePath &path) const {
-        // xxx this is the only place in the store where we use knowledge about vector paths.
-        // It should go away after finishing the `PrimitiveVec` refactor to back `PrimitiveVector` with `immer::vector`.
-        return ContainsPrimitive(path) || ContainsPrimitive(path / "0") || Count<IdPairs>(path);
+        std::visit([this](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); }, action);
     }
 
     // Set operations
@@ -76,16 +65,12 @@ struct Store : TypedStore<
                                 if (op.Op == PatchOpType::Insert) Insert(path, v);
                                 else if (op.Op == PatchOpType::Erase) SetErase(path, v);
                             },
-                            [&](auto &&) {},
+                            [](auto &&) {},
                         },
                         *op.Value
                     );
                 }
             }
         }
-    }
-
-    bool ContainsPrimitive(const StorePath &path) const {
-        return Count<bool>(path) || Count<u32>(path) || Count<s32>(path) || Count<float>(path) || Count<std::string>(path);
     }
 };

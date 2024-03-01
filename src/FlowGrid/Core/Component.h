@@ -75,7 +75,7 @@ struct Component {
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
-    inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (Primitives/Containers).
+    inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (primitives/containers).
 
     // Use when you expect a component with exactly this path to exist.
     inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IdByPath.at(path)); }
@@ -83,9 +83,6 @@ struct Component {
 
     inline static Component *Find(const StorePath &search_path) noexcept {
         if (IdByPath.contains(search_path)) return ByPath(search_path);
-        // Search for container fields.
-        if (IdByPath.contains(search_path.parent_path())) return ByPath(search_path.parent_path());
-        if (IdByPath.contains(search_path.parent_path().parent_path())) return ByPath(search_path.parent_path().parent_path());
         return nullptr;
     }
 

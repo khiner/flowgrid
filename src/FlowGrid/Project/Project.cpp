@@ -110,8 +110,7 @@ void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
 }
 
 Component *Project::FindChanged(const StorePath &path, const std::vector<PatchOp> &ops) {
-    if (ops.size() == 1 && (ops.front().Op == PatchOpType::Add || ops.front().Op == PatchOpType::Remove) &&
-        !StringHelper::IsInteger(path.filename().string())) {
+    if (ops.size() == 1 && (ops.front().Op == PatchOpType::Add || ops.front().Op == PatchOpType::Remove)) {
         // Do not mark any components as added/removed if they are within a container.
         // The container's auxiliary component is marked as changed instead (and its path will be in same patch).
         if (auto *component_container = FindContainerByPath(path)) return nullptr;

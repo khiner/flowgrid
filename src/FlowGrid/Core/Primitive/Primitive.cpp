@@ -3,7 +3,7 @@
 #include "Core/Store/Store.h"
 #include "PrimitiveActionQueuer.h"
 
-template<typename T> bool Primitive<T>::Exists() const { return RootStore.Contains(Path); }
+template<typename T> bool Primitive<T>::Exists() const { return RootStore.Count<T>(Path); }
 template<typename T> T Primitive<T>::Get() const { return RootStore.Get<T>(Path); }
 
 template<typename T> json Primitive<T>::ToJson() const { return Value; }

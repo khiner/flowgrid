@@ -24,8 +24,6 @@ static constexpr string Lowercase(string copy) {
     return copy;
 }
 
-static constexpr bool IsInteger(string_view str) { return !str.empty() && std::ranges::all_of(str, ::isdigit); }
-
 static constexpr string Replace(string subject, string_view search, string_view replace) {
     size_t pos = 0;
     while ((pos = subject.find(search, pos)) != string::npos) {

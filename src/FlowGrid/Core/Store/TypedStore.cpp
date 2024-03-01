@@ -1,8 +1,7 @@
 #include "TypedStore.h"
 
-// Here, we include `AddOps` function definitions for all specialized `ValueTypes`,
-// to fully implement the `CreatePatch` method.
-#include "StoreOps.h"
+// Include `AddOps` function definitions for all specialized `ValueTypes` to fully implement the `CreatePatch` method.
+#include "StoreDiff.h"
 
 template<typename ValueType>
 void AddOps(const auto &before, const auto &after, const StorePath &base, PatchOps &ops) {

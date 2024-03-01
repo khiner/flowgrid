@@ -2,7 +2,7 @@
 
 #include "Container.h"
 #include "Core/Action/ActionableProducer.h"
-#include "Core/Container/PrimitiveVec.h"
+#include "Core/Container/PrimitiveVector.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/ProducerComponentArgs.h"
 #include "NavigableAction.h"
@@ -96,6 +96,6 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
     }
 
 private:
-    Prop(PrimitiveVec<T>, Value);
+    Prop(PrimitiveVector<T>, Value);
     Prop(UInt, Cursor);
 };

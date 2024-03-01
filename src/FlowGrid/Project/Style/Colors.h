@@ -1,13 +1,13 @@
 #pragma once
 
 #include "Core/Action/ActionProducer.h"
-#include "Core/Container/PrimitiveVec.h"
+#include "Core/Container/PrimitiveVector.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/ProducerComponentArgs.h"
 
 struct ImVec4;
 
-struct Colors : PrimitiveVec<u32>, ActionProducer<Action::PrimitiveVector<u32>::Any> {
+struct Colors : PrimitiveVector<u32>, ActionProducer<Action::PrimitiveVector<u32>::Any> {
     using typename ActionProducer<typename Action::PrimitiveVector<u32>::Any>::ProducedActionType;
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 

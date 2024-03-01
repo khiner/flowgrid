@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Container/PrimitiveVec.h"
+#include "Core/Container/PrimitiveVector.h"
 #include "Helper/Hex.h"
 
 inline static std::pair<std::string, std::string> Split(fs::path relative_path) {
@@ -181,7 +181,7 @@ template<typename ChildType> struct Vector : Container {
 private:
     // Keep track of child ordering.
     // Each prefix is a path containing two segments: The child's unique prefix and its `PathSegment`.
-    Prop(PrimitiveVec<std::string>, ChildPrefixes);
+    Prop(PrimitiveVector<std::string>, ChildPrefixes);
 
     CreatorFunction Creator;
     std::vector<std::unique_ptr<ChildType>> Value;

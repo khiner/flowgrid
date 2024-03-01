@@ -218,11 +218,11 @@ void Project::ApplyContainerAction(const Action::Container::Any &action) const {
             [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
             [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
             [&container](const PrimitiveSet<u32>::ActionType &a) { static_cast<const PrimitiveSet<u32> *>(container)->Apply(a); },
-            [&container](const PrimitiveVec<bool>::ActionType &a) { static_cast<const PrimitiveVec<bool> *>(container)->Apply(a); },
-            [&container](const PrimitiveVec<int>::ActionType &a) { static_cast<const PrimitiveVec<int> *>(container)->Apply(a); },
-            [&container](const PrimitiveVec<u32>::ActionType &a) { static_cast<const PrimitiveVec<u32> *>(container)->Apply(a); },
-            [&container](const PrimitiveVec<float>::ActionType &a) { static_cast<const PrimitiveVec<float> *>(container)->Apply(a); },
-            [&container](const PrimitiveVec<std::string>::ActionType &a) { static_cast<const PrimitiveVec<std::string> *>(container)->Apply(a); },
+            [&container](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(container)->Apply(a); },
+            [&container](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(container)->Apply(a); },
+            [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
+            [&container](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(container)->Apply(a); },
+            [&container](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(container)->Apply(a); },
         },
         action
     );

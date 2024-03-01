@@ -6,7 +6,7 @@
 #include "Core/Action/Actionable.h"
 #include "PrimitiveVectorAction.h"
 
-template<typename T> struct PrimitiveVec : Component, Actionable<typename Action::PrimitiveVector<T>::Any> {
+template<typename T> struct PrimitiveVector : Component, Actionable<typename Action::PrimitiveVector<T>::Any> {
     // `ActionType` is a type alias in `Actionable`, but it is not accessible here.
     // `Actionable` is templated on `Action::PrimitiveVector::Type<T>::type`, which is a dependent type (it depends on `T`),
     // and base class members that use dependent template types are not visible in subclasses at compile time.
@@ -22,11 +22,11 @@ template<typename T> struct PrimitiveVec : Component, Actionable<typename Action
         );
     }
 
-    PrimitiveVec(ComponentArgs &&args) : Component(std::move(args)) {
+    PrimitiveVector(ComponentArgs &&args) : Component(std::move(args)) {
         FieldIds.insert(Id);
         Refresh();
     }
-    ~PrimitiveVec() {
+    ~PrimitiveVector() {
         Erase();
         FieldIds.erase(Id);
     }

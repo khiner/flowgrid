@@ -10,7 +10,8 @@
 #include "ComponentArgs.h"
 #include "Core/HelpInfo.h"
 #include "Core/Primitive/Scalar.h"
-#include "Helper/Paths.h"
+#include "Helper/Path.h"
+#include "Helper/Time.h"
 #include "MenuItemDrawable.h"
 
 using json = nlohmann::json;
@@ -61,6 +62,8 @@ enum WindowFlags_ {
 
 struct Component {
     using References = std::vector<std::reference_wrapper<const Component>>;
+    using UniquePaths = std::unordered_set<StorePath, PathHash>;
+    using PathsMoment = std::pair<TimePoint, UniquePaths>;
 
     struct ChangeListener {
         // Called when at least one of the listened components has changed.

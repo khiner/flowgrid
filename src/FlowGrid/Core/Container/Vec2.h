@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/Component.h"
 #include "Core/Action/Actionable.h"
+#include "Core/Component.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Float.h"
 #include "Vec2Action.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Container.h"
+#include "Core/Component.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Float.h"
@@ -8,31 +8,26 @@
 
 struct ImVec2;
 
-struct Vec2 : Container, Actionable<Action::Vec2::Any> {
+// todo next up: Use `Float`/`Bool`, to avoid manual path construction.
+//   (towards IDs instead of paths in store)
+struct Vec2 : Component, Actionable<Action::Vec2::Any> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
-    ~Vec2();
+    ~Vec2() = default;
+
+    operator ImVec2() const;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
-    void SetJson(json &&) const override;
-    json ToJson() const override;
+    void SetX(float x) const { X.Set(x); }
+    void SetY(float y) const { Y.Set(y); }
+    void Set(const std::pair<float, float> &value) const {
+        SetX(value.first);
+        SetY(value.second);
+    }
 
-    void Refresh() override;
-    void RenderValueTree(bool annotate, bool auto_select) const override;
-
-    operator ImVec2() const;
-
-    void SetX(float) const;
-    void SetY(float) const;
-    void Set(const std::pair<float, float> &) const;
-
-    float X() const noexcept { return Value.first; }
-    float Y() const noexcept { return Value.second; }
-
-    const float Min, Max;
-    const char *Format;
+    Float X, Y;
 
 protected:
     virtual void Render(ImGuiSliderFlags) const;
@@ -45,20 +40,14 @@ struct Vec2Linked : Vec2 {
     // Defaults to linked.
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt = nullptr);
-    ~Vec2Linked();
+    ~Vec2Linked() = default;
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
 
-    void Refresh() override;
-    void RenderValueTree(bool annotate, bool auto_select) const override;
+    void SetLinked(bool linked) const { Linked.Set(linked); }
 
-    void SetLinked(bool) const;
-
-    void SetJson(json &&) const override;
-    json ToJson() const override;
-
-    bool Linked;
+    Bool Linked;
 
 protected:
     void Render(ImGuiSliderFlags) const override;

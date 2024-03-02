@@ -636,8 +636,8 @@ struct BlockNode : Node {
         const auto text_size = CalcTextSize(string(Text));
         Size = Margin() * 2 +
             ImVec2{
-                max(Style.NodeMinSize.X(), text_size.x + Padding().x * 2),
-                max(Style.NodeMinSize.Y(), max(text_size.y, float(max(InCount, OutCount)) * WireGap())),
+                max(float(Style.NodeMinSize.X), text_size.x + Padding().x * 2),
+                max(float(Style.NodeMinSize.Y), max(text_size.y, float(max(InCount, OutCount)) * WireGap())),
             };
         if (Inner && type == DeviceType_SVG) Inner->Place(type);
     }
@@ -672,7 +672,7 @@ struct BlockNode : Node {
 
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
-            const float arrow_width = in ? Style.ArrowSize.X() : 0.f;
+            const float arrow_width = in ? Style.ArrowSize.X : 0.f;
             for (u32 channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = Point(io, channel);
                 const auto &b = channel_point + ImVec2{(XMargin() - arrow_width) * DirUnit(io), 0};
@@ -1006,7 +1006,7 @@ struct GroupNode : Node {
         for (const IO io : IO_All) {
             const bool in = io == IO_In;
             const bool has_arrow = Type == NodeType_Decorate && !in;
-            const float arrow_width = has_arrow ? Style.ArrowSize.X() : 0.f;
+            const float arrow_width = has_arrow ? Style.ArrowSize.X : 0.f;
             for (u32 channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
                 const ImVec2 &a = {in ? 0 : (Size - offset).x, channel_point.y};
@@ -1036,8 +1036,8 @@ struct RouteNode : Node {
         : Node(context, tree, in_count, out_count), Routes(std::move(routes)) {}
 
     void Place(const DeviceType) override {
-        const float h = 2 * YMargin() + max(Style.NodeMinSize.Y(), float(max(InCount, OutCount)) * WireGap());
-        Size = {2 * XMargin() + max(Style.NodeMinSize.X(), h * 0.75f), h};
+        const float h = 2 * YMargin() + max(float(Style.NodeMinSize.Y), float(max(InCount, OutCount)) * WireGap());
+        Size = {2 * XMargin() + max(float(Style.NodeMinSize.X), h * 0.75f), h};
     }
 
     void Render(Device &device, InteractionFlags) const override {

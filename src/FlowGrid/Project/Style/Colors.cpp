@@ -58,7 +58,7 @@ void Colors::Render() const {
             // todo use auto for FG colors (link to ImGui colors)
             if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) Q(Action::PrimitiveVector<u32>::Set{Path, i, is_auto ? mapped_value : AutoColor});
+                if (Button("Auto")) Q(Action::PrimitiveVector<u32>::Set{Id, i, is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
@@ -74,7 +74,7 @@ void Colors::Render() const {
 
             PopID();
 
-            if (changed) Q(Action::PrimitiveVector<u32>::Set{Path, i, ColorConvertFloat4ToU32(value)});
+            if (changed) Q(Action::PrimitiveVector<u32>::Set{Id, i, ColorConvertFloat4ToU32(value)});
         }
     }
     if (AllowAuto) {

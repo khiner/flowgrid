@@ -8,13 +8,15 @@
 
 #include "Store.h"
 
+#include "Core/Component.h"
+
 struct StoreHistory::Metrics {
-    immer::map<StorePath, immer::vector<TimePoint>, PathHash> CommitTimesByPath;
+    immer::map<ID, immer::vector<TimePoint>> CommitTimesById;
 
     void AddPatch(const Patch &patch, const TimePoint &commit_time) {
-        for (const auto &path : patch.GetPaths()) {
-            auto commit_times = CommitTimesByPath.count(path) ? CommitTimesByPath.at(path).push_back(commit_time) : immer::vector<TimePoint>{commit_time};
-            CommitTimesByPath = CommitTimesByPath.set(path, std::move(commit_times));
+        for (ID id : patch.GetIds()) {
+            auto commit_times = CommitTimesById.count(id) ? CommitTimesById.at(id).push_back(commit_time) : immer::vector<TimePoint>{commit_time};
+            CommitTimesById = CommitTimesById.set(id, std::move(commit_times));
         }
     }
 };
@@ -42,9 +44,9 @@ void StoreHistory::Clear() {
     _Metrics = std::make_unique<Metrics>();
 }
 
-void StoreHistory::AddGesture(Gesture &&gesture) {
+void StoreHistory::AddGesture(Gesture &&gesture, ID component_id) {
     const auto store_impl = Store;
-    const auto patch = Store.CreatePatch(CurrentStore(), store_impl, RootPath);
+    const auto patch = Store.CreatePatch(CurrentStore(), store_impl, component_id);
     if (patch.Empty()) return;
 
     _Metrics->AddPatch(patch, gesture.CommitTime);
@@ -61,16 +63,16 @@ bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 const Store &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
 
-std::map<StorePath, u32> StoreHistory::GetChangeCountByPath() const {
-    return _Records->Value[Index].Metrics.CommitTimesByPath |
+std::map<ID, u32> StoreHistory::GetChangeCountById() const {
+    return _Records->Value[Index].Metrics.CommitTimesById |
         std::views::transform([](const auto &entry) { return std::pair(entry.first, entry.second.size()); }) |
-        ranges::to<std::map<StorePath, u32>>;
+        ranges::to<std::map<ID, u32>>;
 }
 
-u32 StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesByPath.size(); }
+u32 StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesById.size(); }
 
-Patch StoreHistory::CreatePatch(u32 index) const {
-    return Store.CreatePatch(_Records->Value[index - 1].Store, _Records->Value[index].Store, RootPath);
+Patch StoreHistory::CreatePatch(u32 index, ID component_id) const {
+    return Store.CreatePatch(_Records->Value[index - 1].Store, _Records->Value[index].Store, component_id);
 }
 
 StoreHistory::ReferenceRecord StoreHistory::RecordAt(u32 index) const {

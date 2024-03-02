@@ -14,7 +14,7 @@ void Bool::Apply(const ActionType &action) const {
     );
 }
 
-void Bool::IssueToggle() const { PrimitiveQ.QueueToggle(Path); }
+void Bool::IssueToggle() const { PrimitiveQ.QueueToggle(Id); }
 
 using namespace ImGui;
 

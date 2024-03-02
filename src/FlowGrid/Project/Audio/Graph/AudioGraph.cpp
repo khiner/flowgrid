@@ -829,7 +829,7 @@ void AudioGraph::Connections::Render() const {
 
             const auto cell_interaction_flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
             if (cell_interaction_flags & InteractionFlags_Clicked) {
-                Q(Action::AdjacencyList::ToggleConnection{Path, out_node->Id, in_node->Id});
+                Q(Action::AdjacencyList::ToggleConnection{Id, out_node->Id, in_node->Id});
             }
 
             const bool is_connected = IsConnected(out_node->Id, in_node->Id);

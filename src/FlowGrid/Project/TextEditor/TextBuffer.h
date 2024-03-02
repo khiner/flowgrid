@@ -34,8 +34,8 @@ private:
     std::unique_ptr<TextBufferImpl> Impl;
 
     ActionMenuItem<ActionType>
-        ShowOpenDialogMenuItem{*this, Action::TextBuffer::ShowOpenDialog{Path}},
-        ShowSaveDialogMenuItem{*this, Action::TextBuffer::ShowSaveDialog{Path}};
+        ShowOpenDialogMenuItem{*this, Action::TextBuffer::ShowOpenDialog{Id}},
+        ShowSaveDialogMenuItem{*this, Action::TextBuffer::ShowSaveDialog{Id}};
 
     const Menu FileMenu{
         "File",

@@ -23,6 +23,7 @@ struct PatchOp {
     PatchOpType Op{};
     std::optional<PrimitiveVariant> Value{}; // Present for add/replace
     std::optional<PrimitiveVariant> Old{}; // Present for remove/replace
+    std::optional<size_t> Index{}; // Present for vector set
 };
 
 inline static std::string ToString(PatchOpType type) {

@@ -4,14 +4,14 @@
 #include "StoreDiff.h"
 
 template<typename ValueType>
-void AddOps(const auto &before, const auto &after, const StorePath &base, PatchOps &ops) {
-    AddOps(before.template GetMap<ValueType>(), after.template GetMap<ValueType>(), base, ops);
+void AddOps(const auto &before, const auto &after, PatchOps &ops) {
+    AddOps(before.template GetMap<ValueType>(), after.template GetMap<ValueType>(), ops);
 }
 
 template<typename... ValueTypes>
-Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, const StorePath &base) {
+Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, ID base_component_id) {
     PatchOps ops{};
     // Use template lambda to call `AddOps` for each value type.
-    ([&]<typename T>() { AddOps<T>(before, after, base, ops); }.template operator()<ValueTypes>(), ...);
-    return {ops, base};
+    ([&]<typename T>() { AddOps<T>(before, after, ops); }.template operator()<ValueTypes>(), ...);
+    return {base_component_id, ops};
 }

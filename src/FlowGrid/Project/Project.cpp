@@ -109,32 +109,32 @@ void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
     }
 }
 
-Component *Project::FindChanged(const StorePath &path, const std::vector<PatchOp> &ops) {
-    if (ops.size() == 1 && (ops.front().Op == PatchOpType::Add || ops.front().Op == PatchOpType::Remove)) {
-        // Do not mark any components as added/removed if they are within a container.
-        // The container's auxiliary component is marked as changed instead (and its path will be in same patch).
-        if (auto *component_container = FindContainerByPath(path)) return nullptr;
-    }
-    auto *component = Find(path);
-    if (component && ContainerAuxiliaryIds.contains(component->Id)) {
+Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops) {
+    if (auto it = ById.find(component_id); it != ById.end()) {
+        auto *component = it->second;
+        if (ops.size() == 1 && (ops.front().Op == PatchOpType::Add || ops.front().Op == PatchOpType::Remove)) {
+            // Do not mark any components as added/removed if they are within a container.
+            // The container's auxiliary component is marked as changed instead (and its ID will be in same patch).
+            if (auto *container = FindAncestorContainer(*component)) return nullptr;
+        }
         // When a container's auxiliary component is changed, mark the container as changed instead.
-        return component->Parent;
+        if (ContainerAuxiliaryIds.contains(component_id)) return component->Parent;
+        return component;
     }
 
-    return component;
+    return nullptr;
 }
 
 void Project::MarkAllChanged(const Patch &patch) {
     const auto change_time = Clock::now();
     ClearChanged();
 
-    for (const auto &[partial_path, ops] : patch.Ops) {
-        const auto path = patch.BasePath / partial_path;
-        if (auto *changed = FindChanged(path, ops)) {
+    for (const auto &[id, ops] : patch.Ops) {
+        if (auto *changed = FindChanged(id, ops)) {
             const ID id = changed->Id;
-            const StorePath relative_path = path == changed->Path ? "" : path.lexically_relative(changed->Path);
+            const auto path = changed->Path;
             ChangedPaths[id].first = change_time;
-            ChangedPaths[id].second.insert(relative_path);
+            ChangedPaths[id].second.insert(path); // todo build path for containers from ops.
 
             // Mark the changed field and all its ancestors.
             ChangedIds.insert(id);
@@ -157,7 +157,7 @@ void Project::CommitGesture() const {
     ActiveGestureActions.clear();
     if (merged_actions.empty()) return;
 
-    History.AddGesture({merged_actions, Clock::now()});
+    History.AddGesture({merged_actions, Clock::now()}, Id);
 }
 
 void Project::SetHistoryIndex(u32 index) const {
@@ -167,7 +167,7 @@ void Project::SetHistoryIndex(u32 index) const {
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
-    const auto patch = RootStore.CheckedSet(History.CurrentStore());
+    const auto patch = RootStore.CheckedSet(History.CurrentStore(), Id);
     RefreshChanged(patch);
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
@@ -175,7 +175,9 @@ void Project::SetHistoryIndex(u32 index) const {
     // However, style changes need to be applied to the ImGui context in all cases, since these are issued from component changes.
     // We don't make `ImGuiSettings` a component change listener for this because it would would end up being slower,
     // since it has many descendents, and we would wastefully check for changes during the forward action pass, as explained above.
-    if (patch.IsPrefixOfAnyPath(ImGuiSettings.Path)) ImGuiSettings::IsChanged = true;
+    // xxx how to update to patches using IDs instead of paths? Check every ImGuiSettings descendent ID?
+    // if (patch.IsPrefixOfAnyPath(ImGuiSettings.Path)) ImGuiSettings::IsChanged = true;
+    ImGuiSettings::IsChanged = true;
     ProjectHasChanges = true;
 }
 
@@ -191,9 +193,7 @@ json Project::GetProjectJson(const ProjectFormat format) const {
 //   Could also have each primitive accept an `Action::Primitive::Any`,
 //   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
 void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
-    const auto *prim = Find(action.GetComponentPath());
-    if (prim == nullptr) throw std::runtime_error(std::format("Primitive not found: {}", action.GetComponentPath().string()));
-
+    const auto *prim = ById.at(action.GetComponentId());
     std::visit(
         Match{
             [&prim](const Bool::ActionType &a) { static_cast<const Bool *>(prim)->Apply(a); },
@@ -209,9 +209,7 @@ void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
 }
 
 void Project::ApplyContainerAction(const Action::Container::Any &action) const {
-    const auto *container = Find(action.GetComponentPath());
-    if (container == nullptr) throw std::runtime_error(std::format("Container not found: {}", action.GetComponentPath().string()));
-
+    const auto *container = ById.at(action.GetComponentId());
     std::visit(
         Match{
             [&container](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(container)->Apply(a); },
@@ -234,8 +232,7 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Primitive::Any &a) { ApplyPrimitiveAction(a); },
             [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
             [](const Action::TextBuffer::Any &a) {
-                const auto *buffer = Find(a.GetComponentPath());
-                if (buffer == nullptr) throw std::runtime_error(std::format("TextBuffer not found: {}", a.GetComponentPath().string()));
+                const auto *buffer = ById.at(a.GetComponentId());
                 static_cast<const TextBuffer *>(buffer)->Apply(a);
             },
 
@@ -270,12 +267,12 @@ void Project::Apply(const ActionType &action) const {
             [this](const Store::ActionType &a) { RootStore.Apply(a); },
             [this](const Action::Project::ShowOpenDialog &) {
                 FileDialog.Set({
-                    .owner_path = Path,
+                    .owner_id = Id,
                     .title = "Choose file",
                     .filters = AllProjectExtensionsDelimited,
                 });
             },
-            [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Path, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+            [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             [this](const Audio::ActionType &a) { Audio.Apply(a); },
             [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
             [this](const Windows::ActionType &a) { Windows.Apply(a); },
@@ -394,7 +391,7 @@ void Project::Render() const {
 
     // Handle file dialog.
     static string PrevSelectedPath = "";
-    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.OwnerPath == Path) {
+    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.OwnerId == Id) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         PrevSelectedPath = FileDialog.SelectedFilePath = "";
         if (FileDialog.SaveMode) Q(Action::Project::Save{selected_path});
@@ -478,7 +475,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     // Now, every flattened JSON pointer is 1:1 with an instance path.
     SetJson(std::move(j));
 
-    // We could do `RefreshChanged(RootStore.CheckedCommit())`, and only refresh the changed components,
+    // We could do `RefreshChanged(RootStore.CheckedCommit(Id))`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
     // that have already been accounted for above.
     RootStore.Commit();
@@ -506,9 +503,9 @@ void Project::Open(const fs::path &file_path) const {
         for (auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
-                RefreshChanged(RootStore.CheckedCommit());
+                RefreshChanged(RootStore.CheckedCommit(Id));
             }
-            History.AddGesture(std::move(gesture));
+            History.AddGesture(std::move(gesture), Id);
         }
         SetHistoryIndex(indexed_gestures.Index);
         LatestChangedPaths.clear();
@@ -559,6 +556,8 @@ void Project::WindowMenuItem() const {
 
 #include <range/v3/view/concat.hpp>
 #include <range/v3/view/map.hpp>
+#include <range/v3/view/transform.hpp>
+#include <ranges>
 
 #include "UI/HelpMarker.h"
 #include "UI/JsonTree.h"
@@ -568,15 +567,15 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
 
     std::map<StorePath, u32> gesture_change_counts;
     for (const auto &[id, changed_paths] : GestureChangedPaths) {
-        const auto &field = ById.at(id);
+        const auto &component = ById.at(id);
         for (const auto &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
-                gesture_change_counts[path == "" ? field->Path : field->Path / path]++;
+                gesture_change_counts[path == "" ? component->Path : component->Path / path]++;
             }
         }
     }
 
-    const auto history_change_counts = History.GetChangeCountByPath();
+    const auto history_change_counts = History.GetChangeCountById() | std::views::transform([](const auto &entry) { return std::pair(ById.at(entry.first)->Path, entry.second); }) | ranges::to<std::map>;
     const std::set<StorePath> paths = ranges::views::concat(ranges::views::keys(history_change_counts), ranges::views::keys(gesture_change_counts)) | ranges::to<std::set>;
 
     u32 i = 0;
@@ -740,9 +739,9 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                     }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
-                        const auto &patch = history.CreatePatch(i);
-                        for (const auto &[partial_path, ops] : patch.Ops) {
-                            const auto &path = patch.BasePath / partial_path;
+                        const auto &patch = history.CreatePatch(i, project.Id);
+                        for (const auto &[id, ops] : patch.Ops) {
+                            const auto &path = ById.at(id)->Path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                                 for (const auto &op : ops) {
                                     BulletText("Op: %s", ToString(op.Op).c_str());
@@ -827,8 +826,8 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
 
         std::visit(
             Match{
-                [&store = RootStore, &queue_time](const Action::Saved &a) {
-                    if (const auto patch = store.CheckedCommit(); !patch.Empty()) {
+                [this, &store = RootStore, &queue_time](const Action::Saved &a) {
+                    if (const auto patch = store.CheckedCommit(Id); !patch.Empty()) {
                         RefreshChanged(patch, true);
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;

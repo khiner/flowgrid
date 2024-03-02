@@ -10,5 +10,5 @@ void from_json(const json &, PrimitiveVariant &);
 void to_json(json &, const PatchOp &);
 void from_json(const json &, PatchOp &);
 
-Json(Patch, Ops, BasePath);
+Json(Patch, BaseComponentId, Ops);
 } // namespace nlohmann

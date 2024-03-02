@@ -12,6 +12,8 @@
 
 using json = nlohmann::json;
 
+using ID = unsigned int;
+
 /**
 An action is an immutable and complete representation of a user interaction event affecting application state.
 Each action stores all the information needed to apply it to a `Store` instance.
@@ -68,7 +70,7 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     using variant_t = std::variant<T...>; // Alias for the base variant type.
     using variant_t::variant; // Inherit the base variant's ctors.
 
-    // Note: these maps are declared to be instantiated for each `ActionVariant` type,
+    // Note: this map is declared to be instantiated for each `ActionVariant` type,
     // but the compiler only instantiates them for the types with references to the map.
     template<size_t I = 0> static auto CreatePathToIndex() {
         if constexpr (I < std::variant_size_v<variant_t>) {
@@ -85,8 +87,8 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
     fs::path GetPath() const {
         return Call([](auto &a) { return a.GetPath(); });
     }
-    fs::path GetComponentPath() const {
-        return Call([](auto &a) { return a.GetComponentPath(); });
+    ID GetComponentId() const {
+        return Call([](auto &a) { return a.GetComponentId(); });
     }
     std::string GetMenuLabel() const {
         return Call([](auto &a) { return a.GetMenuLabel(); });

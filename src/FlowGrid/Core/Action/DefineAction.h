@@ -4,8 +4,8 @@
 #include "Core/Json.h"
 #include "Core/Primitive/Scalar.h" // Not actually used in this file, but included as a convenience for action definitions.
 
-// Component actions hold a `path` to the component they act on.
-#define ComponentActionJson(ActionType, ...) Json(ActionType, path __VA_OPT__(, ) __VA_ARGS__);
+// Component actions hold the `component_id` of the component they act on.
+#define ComponentActionJson(ActionType, ...) Json(ActionType, component_id __VA_OPT__(, ) __VA_ARGS__);
 
 template<class...> constexpr bool always_false_v = false;
 
@@ -15,9 +15,9 @@ template<class...> constexpr bool always_false_v = false;
 #define MergeType_Merge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &other) const { return other; }
 #define MergeType_CustomMerge(ActionType) std::variant<ActionType, bool> Merge(const ActionType &) const;
-#define MergeType_SamePathMerge(ActionType)                                      \
+#define MergeType_SameIdMerge(ActionType)                                        \
     inline std::variant<ActionType, bool> Merge(const ActionType &other) const { \
-        if (this->path == other.path) return other;                              \
+        if (this->component_id == other.component_id) return other;              \
         return false;                                                            \
     }
 
@@ -53,23 +53,23 @@ template<class...> constexpr bool always_false_v = false;
 
 #define DefineComponentAction(ActionType, meta_str, ...)               \
     DefineActionInternal(                                              \
-        ActionType, 1, SamePathMerge, meta_str,                        \
-        fs::path path;                                                 \
-        fs::path GetComponentPath() const { return path; } __VA_ARGS__ \
+        ActionType, 1, SameIdMerge, meta_str,                          \
+        ID component_id;                                               \
+        ID GetComponentId() const { return component_id; } __VA_ARGS__ \
     )
 
 #define DefineUnsavedComponentAction(ActionType, merge_type, meta_str, ...) \
     DefineActionInternal(                                                   \
         ActionType, 0, merge_type, meta_str,                                \
-        fs::path path;                                                      \
-        fs::path GetComponentPath() const { return path; } __VA_ARGS__      \
+        ID component_id;                                                    \
+        ID GetComponentId() const { return component_id; } __VA_ARGS__      \
     )
 
 #define DefineUnmergableComponentAction(ActionType, ...)               \
     DefineActionInternal(                                              \
         ActionType, 1, NoMerge, "",                                    \
-        fs::path path;                                                 \
-        fs::path GetComponentPath() const { return path; } __VA_ARGS__ \
+        ID component_id;                                               \
+        ID GetComponentId() const { return component_id; } __VA_ARGS__ \
     )
 
 #define DefineActionType(TypePath, ...)                \

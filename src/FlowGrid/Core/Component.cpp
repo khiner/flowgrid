@@ -22,7 +22,7 @@ Component::Component(Store &store, PrimitiveActionQueuer &primitive_q, const Win
     : RootStore(store), PrimitiveQ(primitive_q), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
-    IdByPath.emplace(Path, Id);
+    IDs::ByPath.emplace(Path, Id);
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo info, ImGuiWindowFlags flags, Menu &&menu)
@@ -41,7 +41,7 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {
     ById.emplace(Id, this);
-    IdByPath.emplace(Path, Id);
+    IDs::ByPath.emplace(Path, Id);
     HelpInfo::ById.emplace(Id, HelpInfo{Name, Help});
     parent->Children.emplace_back(this);
 }
@@ -59,7 +59,7 @@ Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu)
 Component::~Component() {
     if (Parent) std::erase_if(Parent->Children, [this](const auto *child) { return child == this; });
     ById.erase(Id);
-    IdByPath.erase(Path);
+    IDs::ByPath.erase(Path);
     HelpInfo::ById.erase(Id);
     ChangeListenersById.erase(Id);
 }
@@ -67,14 +67,9 @@ Component::~Component() {
 bool Component::IsChanged(bool include_descendents) const noexcept {
     return ChangedIds.contains(Id) || (include_descendents && IsDescendentChanged());
 }
-
-Component *Component::FindContainerByPath(const StorePath &search_path) {
-    StorePath subpath = search_path;
-    while (subpath != "/") {
-        if (auto it = IdByPath.find(subpath); it != IdByPath.end() && ContainerIds.contains(it->second)) {
-            return ById[it->second];
-        }
-        subpath = subpath.parent_path();
+const Component *Component::FindAncestorContainer(const Component &component) {
+    for (const auto *ancestor = component.Parent; ancestor != nullptr; ancestor = ancestor->Parent) {
+        if (ContainerIds.contains(ancestor->Id)) return ancestor;
     }
     return nullptr;
 }

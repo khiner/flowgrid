@@ -5,6 +5,7 @@
 
 // Specialized `ValueTypes`
 #include "IdPairs.h"
+
 #include "immer/set.hpp"
 #include "immer/vector.hpp"
 
@@ -18,52 +19,51 @@ struct Store : TypedStore<
     }
 
     // Set operations
-    template<typename ValueType> void Insert(const StorePath &set_path, const ValueType &value) const {
-        if (!Count<immer::set<ValueType>>(set_path)) Set(set_path, immer::set<ValueType>{});
-        Set(set_path, Get<immer::set<ValueType>>(set_path).insert(value));
+    template<typename ValueType> void Insert(ID set_id, const ValueType &value) const {
+        if (!Count<immer::set<ValueType>>(set_id)) Set(set_id, immer::set<ValueType>{});
+        Set(set_id, Get<immer::set<ValueType>>(set_id).insert(value));
     }
-    template<typename ValueType> void SetErase(const StorePath &set_path, const ValueType &value) const {
-        if (Count<immer::set<ValueType>>(set_path)) Set(set_path, Get<immer::set<ValueType>>(set_path).erase(value));
+    template<typename ValueType> void SetErase(ID set_id, const ValueType &value) const {
+        if (Count<immer::set<ValueType>>(set_id)) Set(set_id, Get<immer::set<ValueType>>(set_id).erase(value));
     }
 
     // Vector operations
-    template<typename ValueType> void VectorSet(const StorePath &vec_path, size_t i, const ValueType &value) const {
-        if (Count<immer::vector<ValueType>>(vec_path)) {
-            Set(vec_path, Get<immer::vector<ValueType>>(vec_path).set(i, value));
+    template<typename ValueType> void VectorSet(ID vec_id, size_t i, const ValueType &value) const {
+        if (Count<immer::vector<ValueType>>(vec_id)) {
+            Set(vec_id, Get<immer::vector<ValueType>>(vec_id).set(i, value));
         }
     }
-    template<typename ValueType> void PushBack(const StorePath &vec_path, const ValueType &value) const {
-        if (!Count<immer::vector<ValueType>>(vec_path)) Set(vec_path, immer::vector<ValueType>{});
-        Set(vec_path, Get<immer::vector<ValueType>>(vec_path).push_back(value));
+    template<typename ValueType> void PushBack(ID vec_id, const ValueType &value) const {
+        if (!Count<immer::vector<ValueType>>(vec_id)) Set(vec_id, immer::vector<ValueType>{});
+        Set(vec_id, Get<immer::vector<ValueType>>(vec_id).push_back(value));
     }
-    template<typename ValueType> void PopBack(const StorePath &vec_path) const {
-        if (Count<immer::vector<ValueType>>(vec_path)) {
-            auto vec = Get<immer::vector<ValueType>>(vec_path);
-            Set(vec_path, vec.take(vec.size() - 1));
+    template<typename ValueType> void PopBack(ID vec_id) const {
+        if (Count<immer::vector<ValueType>>(vec_id)) {
+            auto vec = Get<immer::vector<ValueType>>(vec_id);
+            Set(vec_id, vec.take(vec.size() - 1));
         }
     }
 
     void ApplyPatch(const Patch &patch) const {
-        for (const auto &[partial_path, ops] : patch.Ops) {
-            const auto path = patch.BasePath / partial_path;
+        for (const auto &[id, ops] : patch.Ops) {
             for (const auto &op : ops) {
                 if (op.Op == PatchOpType::PopBack) {
-                    std::visit([&](auto &&v) { PopBack<std::decay_t<decltype(v)>>(path); }, *op.Old);
+                    std::visit([&](auto &&v) { PopBack<std::decay_t<decltype(v)>>(id); }, *op.Old);
                 } else if (op.Op == PatchOpType::Remove) {
-                    std::visit([&](auto &&v) { Erase<std::decay_t<decltype(v)>>(path); }, *op.Old);
+                    std::visit([&](auto &&v) { Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
                 } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
-                    std::visit([&](auto &&v) { Set(path, std::move(v)); }, *op.Value);
+                    std::visit([&](auto &&v) { Set(id, std::move(v)); }, *op.Value);
                 } else if (op.Op == PatchOpType::PushBack) {
-                    std::visit([&](auto &&v) { PushBack(path, std::move(v)); }, *op.Value);
+                    std::visit([&](auto &&v) { PushBack(id, std::move(v)); }, *op.Value);
                 } else if (op.Op == PatchOpType::Set) {
-                    std::visit([&](auto &&v) { VectorSet(path.parent_path(), std::stoul(std::string(path.filename())), v); }, *op.Value);
+                    std::visit([&](auto &&v) { VectorSet(id, *op.Index, v); }, *op.Value);
                 } else {
                     // `set` ops - currently, u32 is the only set value type.
                     std::visit(
                         Match{
                             [&](u32 v) {
-                                if (op.Op == PatchOpType::Insert) Insert(path, v);
-                                else if (op.Op == PatchOpType::Erase) SetErase(path, v);
+                                if (op.Op == PatchOpType::Insert) Insert(id, v);
+                                else if (op.Op == PatchOpType::Erase) SetErase(id, v);
                             },
                             [](auto &&) {},
                         },

@@ -36,10 +36,10 @@ template<typename T> struct Navigable : Container, ActionableProducer<typename A
         );
     }
 
-    template<typename U> void IssuePush(U &&value) const { ActionProducer<ProducedActionType>::Q(typename ActionT::Push{Path, std::forward<U>(value)}); }
-    void IssueMoveTo(u32 index) const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Path, index}); }
-    void IssueStepForward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Path, u32(Cursor) + 1}); }
-    void IssueStepBackward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Path, u32(Cursor) - 1}); }
+    template<typename U> void IssuePush(U &&value) const { ActionProducer<ProducedActionType>::Q(typename ActionT::Push{Id, std::forward<U>(value)}); }
+    void IssueMoveTo(u32 index) const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Id, index}); }
+    void IssueStepForward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Id, u32(Cursor) + 1}); }
+    void IssueStepBackward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Id, u32(Cursor) - 1}); }
 
     inline auto begin() { return Value.begin(); }
     inline auto end() { return Value.end(); }

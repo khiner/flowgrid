@@ -7,7 +7,7 @@
 
 #include "Core/Store/Store.h"
 
-IdPairs AdjacencyList::Get() const { return Exists() ? RootStore.Get<IdPairs>(Path) : IdPairs{}; }
+IdPairs AdjacencyList::Get() const { return Exists() ? RootStore.Get<IdPairs>(Id) : IdPairs{}; }
 
 bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     // Non-recursive depth-first search that handles cycles.
@@ -31,18 +31,18 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     return false;
 }
 
-bool AdjacencyList::Exists() const { return RootStore.Count<IdPairs>(Path); }
+bool AdjacencyList::Exists() const { return RootStore.Count<IdPairs>(Id); }
 
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
-    return Exists() && RootStore.Get<IdPairs>(Path).count({source, destination}) > 0;
+    return Exists() && RootStore.Get<IdPairs>(Id).count({source, destination}) > 0;
 }
 void AdjacencyList::Disconnect(ID source, ID destination) const {
-    if (Exists()) RootStore.Set(Path, RootStore.Get<IdPairs>(Path).erase({source, destination}));
+    if (Exists()) RootStore.Set(Id, RootStore.Get<IdPairs>(Id).erase({source, destination}));
 }
 void AdjacencyList::Add(IdPair &&id_pair) const {
     if (!IsConnected(id_pair.first, id_pair.second)) {
-        if (!Exists()) RootStore.Set<IdPairs>(Path, {});
-        RootStore.Set(Path, RootStore.Get<IdPairs>(Path).insert(std::move(id_pair)));
+        if (!Exists()) RootStore.Set<IdPairs>(Id, {});
+        RootStore.Set(Id, RootStore.Get<IdPairs>(Id).insert(std::move(id_pair)));
     }
 }
 void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
@@ -63,7 +63,7 @@ u32 AdjacencyList::DestinationCount(ID source) const {
     return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
-void AdjacencyList::Erase() const { RootStore.Erase<IdPairs>(Path); }
+void AdjacencyList::Erase() const { RootStore.Erase<IdPairs>(Id); }
 
 using namespace ImGui;
 

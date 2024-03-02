@@ -6,25 +6,25 @@
 
 #include "immer/set_transient.hpp"
 
-template<typename T> bool PrimitiveSet<T>::Exists() const { return RootStore.Count<ContainerT>(Path); }
-template<typename T> void PrimitiveSet<T>::Erase() const { RootStore.Erase<ContainerT>(Path); }
-template<typename T> void PrimitiveSet<T>::Clear() const { RootStore.Clear<ContainerT>(Path); }
+template<typename T> bool PrimitiveSet<T>::Exists() const { return RootStore.Count<ContainerT>(Id); }
+template<typename T> void PrimitiveSet<T>::Erase() const { RootStore.Erase<ContainerT>(Id); }
+template<typename T> void PrimitiveSet<T>::Clear() const { RootStore.Clear<ContainerT>(Id); }
 
 template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const {
     if (!Exists()) return {};
-    return RootStore.Get<ContainerT>(Path);
+    return RootStore.Get<ContainerT>(Id);
 }
 
 template<typename T> void PrimitiveSet<T>::Insert(const T &value) const {
-    if (!Exists()) RootStore.Set<ContainerT>(Path, {});
-    RootStore.Set(Path, Get().insert(value));
+    if (!Exists()) RootStore.Set<ContainerT>(Id, {});
+    RootStore.Set(Id, Get().insert(value));
 }
-template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const { RootStore.SetErase(Path, value); }
+template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const { RootStore.SetErase(Id, value); }
 
 template<typename T> void PrimitiveSet<T>::SetJson(json &&j) const {
     immer::set_transient<T> val{};
     for (const auto &v : json::parse(std::string(std::move(j)))) val.insert(v);
-    RootStore.Set(Path, val.persistent());
+    RootStore.Set(Id, val.persistent());
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.

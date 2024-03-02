@@ -11,11 +11,11 @@ struct PrimitiveActionQueuer {
 
     PrimitiveActionQueuer(EnqueueFn enqueue) : Enqueue(enqueue) {}
 
-    bool QueueToggle(const StorePath &path) { return Enqueue(Action::Primitive::Bool::Toggle{path}); }
-    bool QueueSet(const StorePath &path, u32 value) { return Enqueue(Action::Primitive::UInt::Set{path, value}); }
-    bool QueueSet(const StorePath &path, s32 value) { return Enqueue(Action::Primitive::Int::Set{path, value}); }
-    bool QueueSet(const StorePath &path, float value) { return Enqueue(Action::Primitive::Float::Set{path, value}); }
-    bool QueueSet(const StorePath &path, const std::string &value) { return Enqueue(Action::Primitive::String::Set{path, value}); }
+    bool QueueToggle(ID id) { return Enqueue(Action::Primitive::Bool::Toggle{id}); }
+    bool QueueSet(ID id, u32 value) { return Enqueue(Action::Primitive::UInt::Set{id, value}); }
+    bool QueueSet(ID id, s32 value) { return Enqueue(Action::Primitive::Int::Set{id, value}); }
+    bool QueueSet(ID id, float value) { return Enqueue(Action::Primitive::Float::Set{id, value}); }
+    bool QueueSet(ID id, const std::string &value) { return Enqueue(Action::Primitive::String::Set{id, value}); }
 
     EnqueueFn Enqueue;
 };

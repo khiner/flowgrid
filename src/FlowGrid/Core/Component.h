@@ -10,7 +10,7 @@
 #include "ComponentArgs.h"
 #include "Core/HelpInfo.h"
 #include "Core/Primitive/Scalar.h"
-#include "Helper/Path.h"
+#include "Core/Store/IDs.h"
 #include "Helper/Time.h"
 #include "MenuItemDrawable.h"
 
@@ -74,18 +74,17 @@ struct Component {
 
     // todo these should be non-static members on the Project (root) component.
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
-    inline static std::unordered_map<StorePath, ID, PathHash> IdByPath;
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
     inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (primitives/containers).
 
     // Use when you expect a component with exactly this path to exist.
-    inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IdByPath.at(path)); }
-    inline static Component *ByPath(StorePath &&path) noexcept { return ById.at(IdByPath.at(std::move(path))); }
+    inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IDs::ByPath.at(path)); }
+    inline static Component *ByPath(StorePath &&path) noexcept { return ById.at(IDs::ByPath.at(std::move(path))); }
 
     inline static Component *Find(const StorePath &search_path) noexcept {
-        if (IdByPath.contains(search_path)) return ByPath(search_path);
+        if (IDs::ByPath.contains(search_path)) return ByPath(search_path);
         return nullptr;
     }
 
@@ -94,7 +93,7 @@ struct Component {
     inline static std::unordered_set<ID> ContainerIds;
     inline static std::unordered_set<ID> ContainerAuxiliaryIds;
 
-    static Component *FindContainerByPath(const StorePath &search_path);
+    static const Component *FindAncestorContainer(const Component &);
 
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
 

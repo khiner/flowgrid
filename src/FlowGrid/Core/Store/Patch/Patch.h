@@ -4,21 +4,17 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Helper/Path.h"
 #include "PatchOp.h"
 
-using PatchOps = std::unordered_map<StorePath, std::vector<PatchOp>, PathHash>;
+using PatchOps = std::unordered_map<ID, std::vector<PatchOp>>;
 PatchOps Merge(const PatchOps &a, const PatchOps &b);
 
 struct Patch {
+    ID BaseComponentId;
     PatchOps Ops;
-    StorePath BasePath{RootPath};
 
     // Returns a view.
-    inline auto GetPaths() const noexcept {
-        return Ops | std::views::keys | std::views::transform([this](const auto &partial_path) { return BasePath / partial_path; });
-    }
+    inline auto GetIds() const noexcept { return Ops | std::views::keys; }
 
     bool Empty() const noexcept { return Ops.empty(); }
-    bool IsPrefixOfAnyPath(const StorePath &) const noexcept;
 };

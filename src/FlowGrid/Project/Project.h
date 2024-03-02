@@ -59,8 +59,8 @@ struct Project : Component, ActionableProducer<Action::Any> {
     // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
     static void MarkAllChanged(const Patch &);
 
-    // Find the field whose `Refresh()` should be called in response to a patch with this path and op type.
-    static Component *FindChanged(const StorePath &, const std::vector<PatchOp> &ops);
+    // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
+    static Component *FindChanged(ID component_id, const std::vector<PatchOp> &ops);
 
     void OpenRecentProjectMenuItem() const;
 

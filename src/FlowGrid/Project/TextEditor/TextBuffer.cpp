@@ -92,12 +92,12 @@ struct TextBufferImpl {
         : Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         SetLanguage(language_id);
         SetText(string(text));
-        Commit();
+        Commit({});
     }
     TextBufferImpl(const fs::path &file_path)
         : Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         OpenFile(file_path);
-        Commit();
+        Commit({});
     }
 
     ~TextBufferImpl() = default;
@@ -627,10 +627,10 @@ struct TextBufferImpl {
     void Cut() {
         if (!Cursors.AnyRanged()) return;
 
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         Copy();
         for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void Paste() {
@@ -638,7 +638,7 @@ struct TextBufferImpl {
         const char *clip_text = ImGui::GetClipboardText();
         if (*clip_text == '\0') return;
 
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
 
         TransientLines insert_text_lines_trans{};
         const char *ptr = clip_text;
@@ -658,11 +658,11 @@ struct TextBufferImpl {
         } else {
             for (auto &c : reverse_view(Cursors)) InsertTextAtCursor(insert_text_lines, c);
         }
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void EnterChar(ImWchar ch) {
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
 
         // Order is important here for typing '\n' in the same line with multiple cursors.
@@ -686,11 +686,11 @@ struct TextBufferImpl {
             InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, c);
         }
 
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void Backspace(bool is_word_mode = false) {
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         if (!Cursors.AnyRanged()) {
             MoveCursorsChar(false, true, is_word_mode);
             // Can't do backspace if any cursor is at {0,0}.
@@ -701,11 +701,11 @@ struct TextBufferImpl {
             Cursors.SortAndMerge();
         }
         for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void Delete(bool is_word_mode = false) {
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         if (!Cursors.AnyRanged()) {
             MoveCursorsChar(true, true, is_word_mode);
             // Can't do delete if any cursor is at the end of the last line.
@@ -716,11 +716,11 @@ struct TextBufferImpl {
             Cursors.SortAndMerge();
         }
         for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void MoveCurrentLines(bool up) {
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         std::set<u32> affected_lines;
         u32 min_li = std::numeric_limits<u32>::max(), max_li = std::numeric_limits<u32>::min();
         for (const auto &c : Cursors) {
@@ -742,7 +742,7 @@ struct TextBufferImpl {
         }
         MoveCursorsLines(up ? -1 : 1, true, true, true);
 
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void ToggleLineComment() {
@@ -762,7 +762,7 @@ struct TextBufferImpl {
             return !Equals(comment, Text[li], FindFirstNonSpace(Text[li]));
         });
 
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         for (u32 li : affected_lines) {
             if (should_add_comment) {
                 InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0});
@@ -775,11 +775,11 @@ struct TextBufferImpl {
                 DeleteRange({li, ci}, {li, comment_ci});
             }
         }
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void DeleteCurrentLines() {
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         for (auto &c : reverse_view(Cursors)) DeleteSelection(c);
         MoveCursorsStartLine();
         Cursors.SortAndMerge();
@@ -791,11 +791,11 @@ struct TextBufferImpl {
                 CheckedNextLineBegin(li)
             );
         }
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void ChangeCurrentLinesIndentation(bool increase) {
-        BeforeCursors = Cursors;
+        auto before_cursors = Cursors;
         for (const auto &c : reverse_view(Cursors)) {
             for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
                 // Check if selection ends at line start.
@@ -813,7 +813,7 @@ struct TextBufferImpl {
                 }
             }
         }
-        Commit();
+        Commit(std::move(before_cursors));
     }
 
     void SelectNextOccurrence(bool case_sensitive = true) {
@@ -838,13 +838,12 @@ struct TextBufferImpl {
     float LineSpacing{1};
 
 private:
-    // Commit a snapshot to the undo history, and edit the tree (see `EditTree`).
-    // **Every `Commit` should be paired with a `BeforeCursors = Cursors`.**
-    void Commit() {
+    // Commit a snapshot to the undo history and edit the tree (see `EditTree`).
+    void Commit(Cursors &&before_cursors) {
         if (Edits.empty()) return;
 
         History = History.take(++HistoryIndex);
-        History = History.push_back({Text, Cursors, BeforeCursors, Edits});
+        History = History.push_back({Text, Cursors, std::move(before_cursors), Edits});
         ApplyEdits();
     }
 
@@ -1111,7 +1110,7 @@ private:
     }
 
     Lines Text{Line{}};
-    Cursors Cursors, BeforeCursors;
+    Cursors Cursors;
     std::vector<TextInputEdit> Edits{};
 
     TextBufferPaletteId PaletteId{DefaultPaletteId};

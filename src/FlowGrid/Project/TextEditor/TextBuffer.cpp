@@ -359,13 +359,13 @@ struct TextBufferImpl {
             return any_of(Cursors, [](const auto &c) { return c.IsEdited(); });
         }
 
-        void Add() {
-            Cursors.push_back({});
+        void Add(Cursor &&c) {
+            Cursors.emplace_back(std::move(c));
             LastAddedIndex = size() - 1;
         }
-        void Reset() {
+        void Clear() {
             Cursors.clear();
-            Add();
+            LastAddedIndex = 0;
         }
 
         void MarkEdited() {
@@ -374,8 +374,7 @@ struct TextBufferImpl {
         void ClearEdited() {
             for (Cursor &c : Cursors) c.ClearEdited();
         }
-        u32 GetLastAddedIndex() { return LastAddedIndex >= size() ? 0 : LastAddedIndex; }
-        Cursor &GetLastAdded() { return Cursors[GetLastAddedIndex()]; }
+        Cursor &GetLastAdded() { return Cursors[LastAddedIndex]; }
 
         void SortAndMerge() {
             if (size() <= 1) return;
@@ -512,7 +511,8 @@ struct TextBufferImpl {
 
         LanguageId = language_id;
         Syntax->SetLanguage(language_id);
-        ApplyEdits();
+        Syntax->ApplyEdits(Edits);
+        Edits.clear();
     }
 
     void SetNumTabSpaces(u32 tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
@@ -575,11 +575,7 @@ struct TextBufferImpl {
         }
     }
 
-    void SelectAll() {
-        Cursors.Reset();
-        MoveCursorsTop();
-        MoveCursorsBottom(true);
-    }
+    void SelectAll() { SetSelection({{0, 0}, EndLC()}, false); }
 
     void ToggleOverwrite() { Overwrite ^= true; } // todo use Bool prop
 
@@ -592,14 +588,13 @@ struct TextBufferImpl {
     void Undo() {
         if (!CanUndo()) return;
 
-        const auto &current = History[HistoryIndex];
-        const auto restore = History[--HistoryIndex];
+        const auto &current = History[HistoryIndex], &restore = History[--HistoryIndex];
         Text = restore.Text;
         Cursors = current.BeforeCursors;
         Cursors.MarkEdited();
-        assert(Edits.empty());
         for (const auto &edit : reverse_view(current.Edits)) Edits.push_back(edit.Invert());
-        ApplyEdits();
+        Syntax->ApplyEdits(Edits);
+        Edits.clear();
     }
     void Redo() {
         if (!CanRedo()) return;
@@ -608,9 +603,9 @@ struct TextBufferImpl {
         Text = restore.Text;
         Cursors = restore.Cursors;
         Cursors.MarkEdited();
-        assert(Edits.empty());
         Edits = restore.Edits;
-        ApplyEdits();
+        Syntax->ApplyEdits(Edits);
+        Edits.clear();
     }
 
     void Copy() {
@@ -819,8 +814,7 @@ struct TextBufferImpl {
     void SelectNextOccurrence(bool case_sensitive = true) {
         const auto &c = Cursors.GetLastAdded();
         if (const auto match_range = FindNextOccurrence(GetSelectedText(c), c.Max(), case_sensitive)) {
-            Cursors.Add();
-            SetSelection(match_range->GetStart(), match_range->GetEnd(), Cursors.back());
+            SetSelection({match_range->GetStart(), match_range->GetEnd()}, true);
             Cursors.SortAndMerge();
         }
     }
@@ -844,10 +838,6 @@ private:
 
         History = History.take(++HistoryIndex);
         History = History.push_back({Text, Cursors, std::move(before_cursors), Edits});
-        ApplyEdits();
-    }
-
-    void ApplyEdits() {
         Syntax->ApplyEdits(Edits);
         Edits.clear();
     }
@@ -855,7 +845,8 @@ private:
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
 
     static LineChar BeginLC() { return {0, 0}; }
-    LineChar EndLC() const { return {u32(Text.size() - 1), u32(Text.back().size())}; }
+
+    LineChar EndLC() const { return LineMaxLC(Text.size() - 1); }
     u32 EndByteIndex() const { return ToByteIndex(EndLC()); }
 
     LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Text, std::move(lc), std::move(begin), std::move(end)}; }
@@ -925,9 +916,16 @@ private:
         return column;
     }
 
-    void SetSelection(LineChar start, LineChar end, Cursor &c) {
-        const LineChar min_lc{0, 0}, max_lc{LineMaxLC(Text.size() - 1)};
-        c.Set(std::clamp(start, min_lc, max_lc), std::clamp(end, min_lc, max_lc));
+    Cursor ClampedCursor(LineChar start, LineChar end) {
+        const auto begin_lc = BeginLC(), end_lc = EndLC();
+        return {std::clamp(start, begin_lc, end_lc), std::clamp(end, begin_lc, end_lc)};
+    }
+
+    // If `add == true`, a new cursor is added and set.
+    // Otherwise, the cursors are _cleared_ and a new cursor is added and set.
+    void SetSelection(Cursor &&cursor, bool add = false) {
+        if (!add) Cursors.Clear();
+        Cursors.Add(std::move(cursor));
     }
 
     LineChar FindWordBoundary(LineChar from, bool is_start = false) const {
@@ -1384,30 +1382,15 @@ void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) 
     const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
         time - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
     if (is_triple_click) {
-        if (ctrl) Cursors.Add();
-        else Cursors.Reset();
-
-        SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
-
+        SetSelection(ClampedCursor({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)), ctrl);
         LastClickTime = -1.0f;
     } else if (is_double_click) {
-        if (ctrl) Cursors.Add();
-        else Cursors.Reset();
-
-        SetSelection(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false), Cursors.back());
-
+        SetSelection(ClampedCursor(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false)), ctrl);
         LastClickTime = time;
         LastClickPos = mouse_pos;
     } else if (is_click) {
-        if (ctrl) Cursors.Add();
-        else Cursors.Reset();
-
-        if (is_over_line_number) {
-            SetSelection({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L), Cursors.back());
-        } else {
-            Cursors.GetLastAdded().Set(mouse_lc);
-        }
-
+        auto cursor = is_over_line_number ? ClampedCursor({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)) : ClampedCursor(mouse_lc, mouse_lc);
+        SetSelection(std::move(cursor), ctrl);
         LastClickTime = time;
         LastClickPos = mouse_pos;
     } else if (IsMouseReleased(MouseLeft)) {

@@ -32,10 +32,10 @@ using Gestures = std::vector<Gesture>;
 SavedActionMoments MergeActions(const SavedActionMoments &);
 
 namespace nlohmann {
-inline static void to_json(json &j, const Action::Saved &action) {
+inline void to_json(json &j, const Action::Saved &action) {
     action.to_json(j);
 }
-inline static void from_json(const json &j, Action::Saved &action) {
+inline void from_json(const json &j, Action::Saved &action) {
     Action::Saved::from_json(j, action);
 }
 

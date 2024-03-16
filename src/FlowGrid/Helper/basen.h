@@ -35,7 +35,7 @@ const char Error = -1;
 
 namespace {
 
-static constexpr char extract_partial_bits(char value, size_t start_bit, size_t bits_count) {
+constexpr char extract_partial_bits(char value, size_t start_bit, size_t bits_count) {
     assert(start_bit + bits_count < 8);
     // shift extracted bits to the beginning of the byte
     char t1 = value >> (8 - bits_count - start_bit);
@@ -44,7 +44,7 @@ static constexpr char extract_partial_bits(char value, size_t start_bit, size_t 
     return t2;
 }
 
-static constexpr char extract_overlapping_bits(char previous, char next, size_t start_bit, size_t bits_count) {
+constexpr char extract_overlapping_bits(char previous, char next, size_t start_bit, size_t bits_count) {
     assert(start_bit + bits_count < 16);
     size_t bits_count_in_previous = 8 - start_bit;
     size_t bits_count_in_next = bits_count - bits_count_in_previous;

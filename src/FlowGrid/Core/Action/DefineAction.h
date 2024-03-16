@@ -72,22 +72,22 @@ template<class...> constexpr bool always_false_v = false;
         ID GetComponentId() const { return component_id; } __VA_ARGS__ \
     )
 
-#define DefineActionType(TypePath, ...)                \
-    namespace Action {                                 \
-    namespace TypePath {                               \
-    inline static const fs::path _TypePath{#TypePath}; \
-    __VA_ARGS__;                                       \
-    }                                                  \
+#define DefineActionType(TypePath, ...)         \
+    namespace Action {                          \
+    namespace TypePath {                        \
+    inline const fs::path _TypePath{#TypePath}; \
+    __VA_ARGS__;                                \
+    }                                           \
     }
 
-#define DefineNestedActionType(ParentType, InnerType, ...)                      \
-    namespace Action {                                                          \
-    namespace ParentType {                                                      \
-    namespace InnerType {                                                       \
-    inline static const fs::path _TypePath{fs::path{#ParentType} / #InnerType}; \
-    __VA_ARGS__;                                                                \
-    }                                                                           \
-    }                                                                           \
+#define DefineNestedActionType(ParentType, InnerType, ...)               \
+    namespace Action {                                                   \
+    namespace ParentType {                                               \
+    namespace InnerType {                                                \
+    inline const fs::path _TypePath{fs::path{#ParentType} / #InnerType}; \
+    __VA_ARGS__;                                                         \
+    }                                                                    \
+    }                                                                    \
     }
 
 #define DefineTemplatedActionType(ParentType, InnerType, TemplateType, ...)         \

@@ -3,7 +3,7 @@
 #include "Core/Container/PrimitiveVector.h"
 #include "Helper/Hex.h"
 
-inline static std::pair<std::string, std::string> Split(fs::path relative_path) {
+inline std::pair<std::string, std::string> Split(fs::path relative_path) {
     const auto it = relative_path.begin();
     return {it->string(), std::next(it)->string()};
 }

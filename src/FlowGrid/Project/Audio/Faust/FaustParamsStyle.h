@@ -37,7 +37,7 @@ using TableFlags = int;
 
 ImGuiTableFlags TableFlagsToImGui(TableFlags);
 
-inline static const std::vector<Flags::Item> TableFlagItems{
+inline const std::vector<Flags::Item> TableFlagItems{
     "Resizable?Enable resizing columns",
     "Reorderable?Enable reordering columns in header row",
     "Hideable?Enable hiding/disabling columns in context menu",

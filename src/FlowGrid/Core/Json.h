@@ -45,7 +45,7 @@ template<typename T> constexpr void extended_from_json(const char *key, const js
     void to_json(json &, const Type &); \
     void from_json(const json &, Type &);
 
-#define Json(Type, ...)                                                                                                                                                                           \
-    inline static void to_json(json &__VA_OPT__(nlohmann_json_j), const Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedToJson, __VA_ARGS__))) } \
-    inline static void from_json(const json &__VA_OPT__(nlohmann_json_j), Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedFromJson, __VA_ARGS__))) }
+#define Json(Type, ...)                                                                                                                                                                    \
+    inline void to_json(json &__VA_OPT__(nlohmann_json_j), const Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedToJson, __VA_ARGS__))) } \
+    inline void from_json(const json &__VA_OPT__(nlohmann_json_j), Type &__VA_OPT__(nlohmann_json_t)) { __VA_OPT__(NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(ExtendedFromJson, __VA_ARGS__))) }
 } // namespace nlohmann

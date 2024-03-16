@@ -15,10 +15,10 @@ struct ma_node_graph;
 struct InputDeviceNode;
 struct OutputDeviceNode;
 
-inline static const std::string InputDeviceNodeTypeId = "Input";
-inline static const std::string OutputDeviceNodeTypeId = "Output";
-inline static const std::string WaveformNodeTypeId = "Waveform";
-inline static const std::string FaustNodeTypeId = "Faust";
+inline const std::string InputDeviceNodeTypeId = "Input";
+inline const std::string OutputDeviceNodeTypeId = "Output";
+inline const std::string WaveformNodeTypeId = "Waveform";
+inline const std::string FaustNodeTypeId = "Faust";
 
 struct AudioGraph
     : AudioGraphNode,

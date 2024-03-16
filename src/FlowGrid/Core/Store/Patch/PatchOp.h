@@ -26,7 +26,7 @@ struct PatchOp {
     std::optional<size_t> Index{}; // Present for vector set
 };
 
-inline static std::string ToString(PatchOpType type) {
+inline std::string ToString(PatchOpType type) {
     switch (type) {
         case PatchOpType::Add: return "Add";
         case PatchOpType::Remove: return "Remove";
@@ -39,7 +39,7 @@ inline static std::string ToString(PatchOpType type) {
     }
 }
 
-inline static PatchOpType ToPatchOpType(const std::string &str) {
+inline PatchOpType ToPatchOpType(const std::string &str) {
     if (str == ToString(PatchOpType::Add)) return PatchOpType::Add;
     if (str == ToString(PatchOpType::Remove)) return PatchOpType::Remove;
     if (str == ToString(PatchOpType::Replace)) return PatchOpType::Replace;

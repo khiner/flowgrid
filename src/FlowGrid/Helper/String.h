@@ -10,21 +10,21 @@ using std::string, std::string_view;
 using namespace std::string_literals;
 
 namespace StringHelper {
-static constexpr string Capitalize(string copy) {
+constexpr string Capitalize(string copy) {
     if (copy.empty()) return "";
 
     copy[0] = toupper(copy[0], std::locale());
     return copy;
 }
 
-static constexpr string Lowercase(string copy) {
+constexpr string Lowercase(string copy) {
     if (copy.empty()) return "";
 
     copy[0] = tolower(copy[0], std::locale());
     return copy;
 }
 
-static constexpr string Replace(string subject, string_view search, string_view replace) {
+constexpr string Replace(string subject, string_view search, string_view replace) {
     size_t pos = 0;
     while ((pos = subject.find(search, pos)) != string::npos) {
         subject.replace(pos, search.length(), replace);
@@ -34,7 +34,7 @@ static constexpr string Replace(string subject, string_view search, string_view 
 }
 
 // Same as above, but with single char search.
-static constexpr string Replace(string subject, const char search, string_view replace) {
+constexpr string Replace(string subject, const char search, string_view replace) {
     size_t pos = 0;
     while ((pos = subject.find(search, pos)) != string::npos) {
         subject.replace(pos, 1, replace);
@@ -52,7 +52,7 @@ std::vector<string> Split(const string &text, const char *delims);
 string PascalToSentenceCase(string_view str, const std::vector<string> &skip_words, const std::vector<string> &all_caps_words);
 
 // Use the default `skip_word`s and `all_caps_words`.
-static inline string PascalToSentenceCase(string_view str) {
+inline string PascalToSentenceCase(string_view str) {
     static const std::vector<string> SkipWords{"FlowGrid", "ImGui", "ImPlot", "Faust"};
     static const std::vector<string> AllCapsWords{"Id", "Svg", "Dsp"};
     return PascalToSentenceCase(str, SkipWords, AllCapsWords);

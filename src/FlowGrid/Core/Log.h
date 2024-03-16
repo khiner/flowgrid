@@ -24,7 +24,7 @@ enum class LogLevel {
     Critical = 50,
 };
 
-static constexpr std::string LogLevelToString(LogLevel level) {
+constexpr std::string LogLevelToString(LogLevel level) {
     using enum LogLevel;
     switch (level) {
         case Trace: return "Trace";

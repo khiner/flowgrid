@@ -11,7 +11,7 @@ using std::string;
 using namespace ImGui;
 
 namespace FlowGrid {
-inline static ImColor ScaleColor(const ImColor &color, const float scale) {
+inline ImColor ScaleColor(const ImColor &color, const float scale) {
     return ImColor(color.Value.x * scale, color.Value.y * scale, color.Value.z * scale, color.Value.w);
 }
 

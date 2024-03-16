@@ -32,13 +32,13 @@ enum GraphOrientation {
     GraphReverse
 };
 
-inline static ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientation) {
+ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientation) {
     ImGuiDir dir = style.Direction;
     return (dir == ImGuiDir_Right && orientation == GraphForward) || (dir == ImGuiDir_Left && orientation == GraphReverse) ?
         ImGuiDir_Right :
         ImGuiDir_Left;
 }
-inline static bool IsLr(const FaustGraphStyle &style, GraphOrientation orientation) {
+bool IsLr(const FaustGraphStyle &style, GraphOrientation orientation) {
     return GlobalDirection(style, orientation) == ImGuiDir_Right;
 }
 
@@ -83,15 +83,15 @@ struct Device {
 using namespace ImGui;
 
 // ImGui saves font name as "{Name}.{Ext}, {Size}px"
-static inline string GetFontName() {
+string GetFontName() {
     const string name = GetFont()->GetDebugName();
     return name.substr(0, name.find_first_of('.'));
 }
-static inline fs::path GetFontPath() {
+fs::path GetFontPath() {
     const string name = GetFont()->GetDebugName();
     return fs::path("./res") / "fonts" / name.substr(0, name.find_first_of(','));
 }
-static inline string GetFontBase64() {
+string GetFontBase64() {
     static std::unordered_map<string, string> base64_for_font_name; // avoid recomputing
     const string font_name = GetFontName();
     if (!base64_for_font_name.contains(font_name)) {
@@ -384,7 +384,7 @@ static bool isBoxInverter(Box box) {
     return ::ranges::contains(inverters, box);
 }
 
-static inline string PrintTree(Tree tree) {
+string PrintTree(Tree tree) {
     static const int max_num_characters = 20;
     const auto &str = printBox(tree, false, max_num_characters);
     return str.substr(0, str.size() - 1); // Last character is a newline.

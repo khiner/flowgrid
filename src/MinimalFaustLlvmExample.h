@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 A minimal example of using the Faust LLVM backend to compile (DSP source->Boxes->DSP instance).
 The logic is similar to FlowGrid's usage.
 */
-inline static int RunMinimalFaustLlvmExample() {
+inline int RunMinimalFaustLlvmExample() {
     static const std::string FaustCode = R"#(import("stdfaust.lib");
     pitchshifter = vgroup("Pitch Shifter", ef.transpose(
        vslider("window (samples)", 1000, 50, 10000, 1),

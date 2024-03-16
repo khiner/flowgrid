@@ -10,6 +10,6 @@ using Clock = std::chrono::system_clock; // Main system clock
 using fsec = std::chrono::duration<float>; // float seconds as a std::chrono::duration
 using TimePoint = Clock::time_point;
 
-inline static std::string FormatMillis(auto duration) {
+inline std::string FormatMillis(auto duration) {
     return std::format("{:.3f}ms", std::chrono::duration<float, std::milli>(duration).count());
 }

@@ -13,7 +13,7 @@ using IO = IO_;
 constexpr IO IO_All[] = {IO_In, IO_Out};
 constexpr int IO_Count = 2;
 
-static constexpr std::string to_string(const IO io, bool shorten = false) {
+constexpr std::string to_string(const IO io, bool shorten = false) {
     switch (io) {
         case IO_In: return shorten ? "in" : "input";
         case IO_Out: return shorten ? "out" : "output";

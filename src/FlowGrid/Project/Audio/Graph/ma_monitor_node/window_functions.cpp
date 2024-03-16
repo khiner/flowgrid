@@ -2,7 +2,7 @@
 
 #include "window_functions.h"
 
-static constexpr real sq(real x) noexcept { return x * x; }
+constexpr real sq(real x) noexcept { return x * x; }
 
 void cosine_window(real *w, unsigned n, const real *coeff, unsigned ncoeff, bool sflag) {
     // Generalized cosine window.

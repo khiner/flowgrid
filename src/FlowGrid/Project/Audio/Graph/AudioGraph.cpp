@@ -83,8 +83,8 @@ struct DeviceNode : AudioGraphNode {
 
     virtual ~DeviceNode() = default;
 
-    inline static string GetDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
-    inline static string GetConfigName(const ma_device_info *info) { return info->isDefault ? "" : info->name; }
+    static string GetDisplayName(const ma_device_info *info) { return !info ? "None" : (string(info->name) + (info->isDefault ? "*" : "")); }
+    static string GetConfigName(const ma_device_info *info) { return info->isDefault ? "" : info->name; }
 
     DeviceMaNode *GetDeviceMaNode() const { return static_cast<DeviceMaNode *>(Node.get()); }
 

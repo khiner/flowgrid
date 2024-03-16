@@ -80,10 +80,10 @@ struct Component {
     inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (primitives/containers).
 
     // Use when you expect a component with exactly this path to exist.
-    inline static Component *ByPath(const StorePath &path) noexcept { return ById.at(IDs::ByPath.at(path)); }
-    inline static Component *ByPath(StorePath &&path) noexcept { return ById.at(IDs::ByPath.at(std::move(path))); }
+    static Component *ByPath(const StorePath &path) noexcept { return ById.at(IDs::ByPath.at(path)); }
+    static Component *ByPath(StorePath &&path) noexcept { return ById.at(IDs::ByPath.at(std::move(path))); }
 
-    inline static Component *Find(const StorePath &search_path) noexcept {
+    static Component *Find(const StorePath &search_path) noexcept {
         if (IDs::ByPath.contains(search_path)) return ByPath(search_path);
         return nullptr;
     }
@@ -97,10 +97,10 @@ struct Component {
 
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
 
-    inline static void RegisterChangeListener(ChangeListener *listener, const Component &component) noexcept {
+    static void RegisterChangeListener(ChangeListener *listener, const Component &component) noexcept {
         ChangeListenersById[component.Id].insert(listener);
     }
-    inline static void UnregisterChangeListener(ChangeListener *listener) noexcept {
+    static void UnregisterChangeListener(ChangeListener *listener) noexcept {
         for (auto &[component_id, listeners] : ChangeListenersById) listeners.erase(listener);
         std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); });
     }
@@ -126,7 +126,7 @@ struct Component {
     // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
     inline static std::unordered_set<ID> ChangedIds;
 
-    inline static std::optional<TimePoint> LatestUpdateTime(ID field_id, std::optional<StorePath> relative_path = {}) noexcept {
+    static std::optional<TimePoint> LatestUpdateTime(ID field_id, std::optional<StorePath> relative_path = {}) noexcept {
         if (!LatestChangedPaths.contains(field_id)) return {};
 
         const auto &[update_time, paths] = LatestChangedPaths.at(field_id);
@@ -137,7 +137,7 @@ struct Component {
 
     // Refresh the cached values of all fields.
     // Only used during `main.cpp` initialization.
-    inline static void RefreshAll() {
+    static void RefreshAll() {
         for (auto id : FieldIds) ById.at(id)->Refresh();
     }
 

@@ -22,7 +22,7 @@ struct Fonts {
 
     static void Init(); // Must be called after ImGui context is created.
 
-    inline static ImFont *Get(FontFamily family, FontStyle style = FontStyle_Regular) {
+    static ImFont *Get(FontFamily family, FontStyle style = FontStyle_Regular) {
         if (family == FontFamily::Main) {
             if (style == FontStyle_Regular) return Main;
             if (style == FontStyle_Bold) return MainBold;

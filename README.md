@@ -3,22 +3,59 @@
 FlowGrid is an immediate-mode interface for the [Faust](https://github.com/grame-cncm/faust) audio language.
 It is backed by a persistent (as in persistent data structures), fully-undoable store, supporting navigation to any point in the project history in constant time.
 
-My goal with FlowGrid is to create a framework for making artful/(self-)educational/useful interactive audiovisual programs.
+My goal with FlowGrid is to create a framework for making artful, educational, and useful interactive audiovisual programs.
 
 _Still in its early stages. Expect things to be broken!_
 
-## Application state architecture
+FlowGrid aims to be a fast, effective, and intuitive tool for creative real-time audiovisual generation and manipulation, facilitating a joyful, creative, and explorative flow state (half of FlowGrid's namesake).
+My ambition for the project is to develop a visual programming language for the creative generation and manipulation of media/data/network/other streams.
 
-FlowGrid uses a unidirectional data-flow architecture (like Redux).
-Each user action is encapsulated in a plain struct containing all necessary information needed to update the project state.
-Actions are grouped together into `std::variant` types composed in a nested domain hierarchy, with a variant type called `Action::Any` at the root.
-All issued actions are queued into a single concurrent queue, and each applied action overwrites the project store.
-Actions are grouped based on relative queue time and type, and are merged into "gestures" at commit time, with each gesture representing a single coherent, undoable action group.
-Every committed gesture is stored in a "history record" containing the gesture and a _logical snapshot_ of the full project state resulting from its application.
+The "Grid" half of FlowGrid refers to an ambition to use a (virtually infinite) nested grid of subgrids as the primary UX paradigm.
+This idea stemmed from considering how to maximize the expressive power of a single Push 2 controller (or any grid-like controller, such as many from Akai, equipped with an LED and/or paired with a screen).
+I haven't gotten to this aspect yet here, but I explored it in [a previous JUCE application](https://github.com/khiner/flowgrid_old) before starting fresh with this project with a new stack and development goals.
+
+_Note: Work here is paused to focus on a Vulkan Mesh Editor and a Rigid Body audio model ([MeshEditor](https://github.com/khiner/MeshEditor))._
+
+## Goals
+
+- **Be fast:**
+  - **Low latency:** Minimize the duration between the time the application receives an input signal, and the corresponding output device respond time (e.g., pixels on screen, audio output, file I/O).
+    Note that low latency applies to _all_ types of input, which currently include:
+      - Audio signals from any audio input device on your machine, at any natively-supported sample rate.
+      - Mouse/keyboard input.
+      - _TODOs:_ MIDI, most likely using [libremidi](https://github.com/celtera/libremidi) as the backend, targeting Push 2 first (see [Old-FlowGrid implementation](https://github.com/khiner/flowgrid_old/tree/main/src/push2)). USB (including writing to LED displays - see [Old-FlowGrid implementation](https://github.com/khiner/flowgrid_old/blob/main/src/usb/UsbCommunicator.h) but will rewrite from scratch since the API has likely changed and it wasn't rock-solid anyway). OSC (Open Sound Control). WebSockets.
+  - **Fast random access to application state history:**
+    FlowGrid uses [persistent data structures](https://github.com/arximboldi/lager) to store its state.
+    After each [action](#Application-state-architecture), FlowGrid creates a snapshot of the application store and adds it to the history (which will eventually be a full navigation tree), allowing for _constant-time_ navigation to _any point_ in the history.
+    In most applications, if a user e.g. just performed their 10th action and wants to go back to where they were after their first action, they would either manually undo 9 times, or if a random access interface is provided, the application would do this under the hood (in linear time, like rewinding a tape).
+    FlowGrid, on the other hand, provides navigating to _any point in the application history_ (almost always*) at _frame rate or faster_.
+      This opens up many potential creative applications that are not possible with other applications, like, say, muting the audio output device, and then issuing `[undo, redo]` actions at audio rate, for a makeshift square wave generator!
+
+    _\* Some kinds of state changes have higher effect latency, like changing an audio IO device._
+  - **Fast rebuild:** Keeping build times low is crucial, as full rebuilds are frequent.
+    Minimizing the duration between the edit time of a valid FlowGrid source-code file and the application start time after recompilation is crucial.
+    Making compilation snappy isn't just about saving the extra seconds waiting. It's about minimizing the feedback loop between ideation and execution, and making the _process_ of building more engaging.
+    _FlowGrid is currently not great in this department and I want to make recompile times faster._
+- **Be Effective:**
+  - **Be deterministic:** The state should, as much as possible, _fully specify_ the current application instance at any point in time. Closing and opening a project should continue all streams where they left off, including the `DrawData` stream ImGui uses to render its viewport(s).
+- **Be intuitive:**
+  - _TODO: Expand on this goal._
+
+
+## Application State Architecture
+
+FlowGrid uses a unidirectional data-flow architecture, similar to Redux.
+The architecture draws heavy inspiration from [Lager](https://github.com/arximboldi/lager), albeit with fewer features and dependencies, with [immer](https://github.com/arximboldi/immer/) being the sole exception.
+
+User actions are encapsulated in plain structs, containing all necessary information to update the project state.
+Actions are organized into `std::variant` types, arranged in a nested domain hierarchy.
+At the root of this structure is a variant type named `Action::Any`.
+All actions are enqueued into a single concurrent queue, with each action applied subsequently overwriting the project store.
+Actions are grouped by their relative queue time and type, merging into "gestures" at the time of commitment.
+Each gesture represents a coherent, undoable group of actions.
+Every committed gesture is recorded in a "history record," which includes the gesture itself and a _logical snapshot_ of the entire project state resulting from its application.
 If you're unfamiliar with persistent data structures, this is much less memory intensive than it sounds!
-Each snapshot only needs to track a relatively small amount of data representing its change to the underlying store, a concept referred to as "structural sharing".
-
-This architecture is largely inspired by [Lager](https://github.com/arximboldi/lager) but with fewer bells and whistles and none of its dependencies other than [immer](https://github.com/arximboldi/immer/).
+Each snapshot only needs to track a relatively small amount of data representing its changes to the underlying store, a concept referred to as "structural sharing".
 
 ## Application docs
 
@@ -45,6 +82,10 @@ Each type of FlowGrid project file is saved as plain JSON.
     In other words, each list of actions in an `.fga` file tells you, in application-domain semantics, what _happened_.
   - **Gesture compression:** Actions within each gesture are compressed down to a potentially smaller set of actions.
     This compression is done in a way that retains the same project state effects, while also keeping the same application-domain semantics.
+
+### Features
+
+TODO
 
 ## Clean/Build/Run
 

@@ -91,7 +91,7 @@ TODO
 
 This project uses LLVM IR to JIT-compile Faust code.
 To simplify, make things more predictable, and reduce bloat, we use the LLVM ecosystem as much as possible - `clang++/clang` to compile, and LLVM's `lld` for linking.
-Even if it's not strictly required, I generally aim to use the latest LLVM release when it's available on HomeBrew.
+Even if it's not strictly required, I generally aim to use the latest LLVM release available on HomeBrew.
 If the project does not build correctly for you, please make sure your `clang`, `lld`, and `clang-config` point to the newest available point-release of LLVM.
 If that doesn't work, try the latest release in the previous LLVM major version.
 
@@ -164,10 +164,8 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 
 ### C++ extensions
 
-For C++20 features only partially/experimentally supported in Clang 17:
-
 - [range-v3](https://github.com/ericniebler/range-v3)
-  - Only still needed since `std::ranges::to` was pushed to C++23 and isn't supported by clang yet.
+  - Only still needed since `std::ranges::concat` was pushed to C++26 and isn't supported by clang yet, (also `std::views::join_with`)
 
 ### Debugging
 
@@ -176,7 +174,7 @@ For C++20 features only partially/experimentally supported in Clang 17:
 ## Development
 
 I try and keep all dependencies up to date.
-LLVM version 17+ is required to build.
+LLVM 18 is required to build.
 
 ### Formatting
 

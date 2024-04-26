@@ -87,7 +87,41 @@ Each type of FlowGrid project file is saved as plain JSON.
 
 ### Features
 
-TODO
+* A fast from-scratch embedded text editor with the following features:
+  - tree-sitter syntax parsing and highlighting, with a full [Faust tree-sitter grammar](https://github.com/khiner/tree-sitter-faust) built by me with complete language support
+  - Hover to show tree-sitter syntax node and ancestors, integrated into application info pane
+  - Persistent buffer data structure, based on [ewig](https://github.com/arximboldi/ewig/blob/master/src/ewig/buffer.hpp), with variant-based actions fully integrated into application state & history
+  - Multiple cursors with character/word/line/page-based movement, selection, and deletion
+  - Indentation and commenting shortcuts
+  - Debug view showing editor state
+  - Find/select next occurrence
+  - Usual insert/delete/copy/paste/load/save capabilities
+  - Edit-recompile integration with Faust features (graph, audio, DSP parameter UI)
+* Extensive audio device configuration, supporting selection of any input device and output device, with _separate control over input/output device native configuration_, with automatic format/sample-rate conversion when necessary.
+  - This is a rare feature in DAWs, which usually provide a single application-level sample-rate conversion, and then automatically select native sample rates that match. This exemplifies the design philosophy of FlowGrid, to enable full control when possible, with solid defaults.
+  - In fact, each node in the audio graph (see below) can have its own sample rate, with automatic conversion into and out of the node!
+  - Also, you can add and connect multiple audio input/output devices, including duplicates with different configurations!
+* Comprehensive, fully-undoable style editing of layout and style
+  - ImGui state management is [fully](https://github.com/khiner/imgui/tree/docking) [reimplemented](https://github.com/khiner/flowgrid/blob/main/src/FlowGrid/Core/ImGuiSettings.h) to integrate with FlowGrid's persistent data store, so that e.g. undocking a window, changing the docking layout, changing style configuration, or anything affecting what you see in the UI is fully undoable!
+* Complete Faust graph visualization, navigation, and SVG export with comprehensive style editing
+  - FlowGrid includes a [complete reimplementation](https://github.com/khiner/flowgrid/blob/main/src/FlowGrid/Project/Audio/Faust/FaustGraph.cpp) of [Faust's SVG graph visualization](https://github.com/grame-cncm/faust/tree/master-dev/compiler/draw) to render in both SVG and ImGui.
+  It is deeply configurable, including adjustable fold complexity to control the number of boxes within a graph before folding into a sub-graph. It has a persistent/undoable navigation history and style editor, with a style preset designed to mimic the original Faust style exactly, with navigable SVG export.
+* Faust DSP ImGui parameter UI implementation
+  - Using ImGui's table layout, supports all Faust param UI [groupings](https://github.com/khiner/flowgrid/blob/1ef82897f819ad267537ad9221aedac4507dad4b/src/FlowGrid/Project/Audio/Faust/FaustParamGroup.cpp) and [widgets](https://github.com/khiner/flowgrid/blob/1ef82897f819ad267537ad9221aedac4507dad4b/src/FlowGrid/Project/Audio/Faust/FaustParam.cpp), including hover tooltip metadata and display style metadata (e.g. knob vs. slider or horizontal vs. vertical), with arbitrary group nesting.
+* Audio graph
+  - Matrix mixer for arbitrary audio graph node connections
+  - Optional level/pan and waveform/spectrum monitoring for each node.
+  - Add multiple device input/output nodes, multiple Faust nodes (each running in a separate Faust process and managed by its own set of DSP text editor/graph/params UI components)
+  - Waveform node with configurable waveform type, frequency and amplitude
+    - This is a custom DSP nodes separate from Faust, and is a proof-of-concept for integrating Faust with other custom C++ DSP, in addition to audio I/O.
+* Integrated hierarchical hover info panel
+* Extensive debugging capabilities and insight into application state
+  - Live histogram showing the update frequency of each state path, with gesture grouping.
+  - Detailed tree view of:
+    * All project gestures/actions
+    * Full project state (both the complete hierarchical state representation and action state)
+    * Live auto-expand/navigate/flash-highlight to changed state tree node
+* Much more!
 
 ## Clean/Build/Run
 

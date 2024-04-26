@@ -7,6 +7,8 @@ My goal with FlowGrid is to create a framework for making artful, educational, a
 
 _Still in its early stages. Expect things to be broken!_
 
+![](screenshots/main.png)
+
 FlowGrid aims to be a fast, effective, and intuitive tool for creative real-time audiovisual generation and manipulation, facilitating a joyful, creative, and explorative flow state (half of FlowGrid's namesake).
 My ambition for the project is to develop a visual programming language for the creative generation and manipulation of media/data/network/other streams.
 

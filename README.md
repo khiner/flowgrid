@@ -1,11 +1,23 @@
 # FlowGrid
 
-FlowGrid is an immediate-mode interface for the [Faust](https://github.com/grame-cncm/faust) audio language.
-It is backed by a persistent (as in persistent data structures), fully-undoable store, supporting navigation to any point in the project history in constant time.
+FlowGrid is an immediate-mode interface for [Faust](https://github.com/grame-cncm/faust) (functional audio language) programs.
+It's backed by a persistent (as in persistent data structures) supporting constant-time navigation to any point in project history.
 
-My goal with FlowGrid is to create a framework for making artful, educational, and useful interactive audiovisual programs.
+My goal with FlowGrid is to create a framework for patching together artful interactive audiovisual programs (modular, programmable, multimodal jam boxes) by freely connecting media/data streams together (with ML models implementing stream domain conversions) in an "infinitely" zoomable grid-organized node editor, with extensive I/O and controller support (especially grid-based MIDI controllers).
+This is a long-term passion project that started in 2022 (with a [previous approach](https://github.com/khiner/flowgrid_old) starting in 2019) that I hope to poke at for many years :) [Tim Exile's Flow Machine](https://youtu.be/hQbg-uHwcig) is the project's spiritual North Star 🌟
 
-_Still in its early stages. Expect things to be broken!_
+Still in its early stages, with no supported release yet - expect things to be broken!
+
+_Note: I'm still interested and committed to the project, but work is temporarily paused to focus on a [Vulkan-based 3D mesh/rigid-body-audio-model editor](https://github.com/khiner/MeshEditor)._
+
+Includes:
+* A from-scratch syntax aware embedded text editor with a language-complete [Faust tree-sitter grammar](https://github.com/khiner/tree-sitter-faust) for editing LLVM JIT-compiled Faust
+* A complete implementation of the Faust DSP UI spec, including layout and metadata
+* A highly configurable/monitorable audio graph editor and matrix mixer
+* Automatic, configurable resampling at any audio node
+* Any number of Faust nodes, each running separately running/controllable DSP
+* Any number of audio I/O nodes wrapping any native audio I/O format
+* [Much more!](#features)
 
 ![](screenshots/main.png)
 
@@ -14,9 +26,8 @@ My ambition for the project is to develop a visual programming language for the 
 
 The "Grid" half of FlowGrid refers to an ambition to use a (virtually infinite) nested grid of subgrids as the primary UX paradigm.
 This idea stemmed from considering how to maximize the expressive power of a single Push 2 controller (or any grid-like controller, such as many from Akai, equipped with an LED and/or paired with a screen).
-I haven't gotten to this aspect yet here, but I explored it in [a previous JUCE application](https://github.com/khiner/flowgrid_old) before starting fresh with this project with a new stack and development goals.
+I haven't gotten to this aspect yet here, but I explored it in [a previous approach using JUCE](https://github.com/khiner/flowgrid_old) before starting fresh with this project with a new stack and development goals.
 
-_Note: Work here is paused to focus on a Vulkan Mesh Editor and a Rigid Body audio model ([MeshEditor](https://github.com/khiner/MeshEditor))._
 
 ## Goals
 

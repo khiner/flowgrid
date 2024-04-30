@@ -1,14 +1,7 @@
 # FlowGrid
 
 FlowGrid is an immediate-mode interface for [Faust](https://github.com/grame-cncm/faust) (functional audio language) programs.
-It's backed by a persistent (as in persistent data structures) supporting constant-time navigation to any point in project history.
-
-My goal with FlowGrid is to create a framework for patching together artful interactive audiovisual programs (modular, programmable, multimodal jam boxes) by freely connecting media/data streams together (with ML models implementing stream domain conversions) in an "infinitely" zoomable grid-organized node editor, with extensive I/O and controller support (especially grid-based MIDI controllers).
-This is a long-term passion project that started in 2022 (with a [previous approach](https://github.com/khiner/flowgrid_old) starting in 2019) that I hope to poke at for many years :) [Tim Exile's Flow Machine](https://youtu.be/hQbg-uHwcig) is the project's spiritual North Star 🌟
-
-Still in its early stages, with no supported release yet - expect things to be broken!
-
-_Note: I'm still interested and committed to the project, but work is temporarily paused to focus on a [Vulkan-based 3D mesh/rigid-body-audio-model editor](https://github.com/khiner/MeshEditor)._
+The full project state is backed by a persistent (as in persistent data structures) store supporting constant-time navigation to any point in project history.
 
 Includes:
 * A from-scratch syntax aware embedded text editor with a language-complete [Faust tree-sitter grammar](https://github.com/khiner/tree-sitter-faust) for editing LLVM JIT-compiled Faust
@@ -21,39 +14,52 @@ Includes:
 
 ![](screenshots/FaustGraphLayoutAndSelectedCode.png)
 
-FlowGrid aims to be a fast, effective, and intuitive tool for creative real-time audiovisual generation and manipulation, facilitating a joyful, creative, and explorative flow state (half of FlowGrid's namesake).
-My ambition for the project is to develop a visual programming language for the creative generation and manipulation of media/data/network/other streams.
+Still in its early stages, with no supported release yet - expect things to be broken!
 
-The "Grid" half of FlowGrid refers to an ambition to use a (virtually infinite) nested grid of subgrids as the primary UX paradigm.
+_Note: I'm still interested and committed to the project, but work is temporarily paused to focus on a [Vulkan-based 3D mesh/rigid-body-audio-model editor](https://github.com/khiner/MeshEditor)._
+
+## Project goals
+
+FlowGrid aims to be a fast, effective, and fun tool for creative real-time audiovisual generation and manipulation.
+My goal with FlowGrid is to create a framework for patching together artful interactive audiovisual programs (modular, programmable, multimodal jam boxes) by freely connecting media/data streams together.
+Long-term, I aim for FlowGrid to be expressive and general enough to be considered a full-fledged audiovisual programming language for creatively generating, manipulating, and combining streams across many domains (media/data/network/...).
+This is a long-term passion project that started in 2022 (with a [previous approach](https://github.com/khiner/flowgrid_old) starting in 2019) that I hope to poke at for many years :) [Tim Exile's Flow Machine](https://youtu.be/hQbg-uHwcig) is the project's spiritual North Star 🌟
+
+The "Flow" half of FlowGrid reflects the user experience goal to fascilitate a state of joyful and explorative flow.
+The "Grid" half refers to an ambition to use, as the primary UX paradigm, an "infinitely" nested grid of subgrids, with each cell being a module accepting connections on all sides.
 This idea stemmed from considering how to maximize the expressive power of a single Push 2 controller (or any grid-like controller, such as many from Akai, equipped with an LED and/or paired with a screen).
 I haven't gotten to this aspect yet here, but I explored it in [a previous approach using JUCE](https://github.com/khiner/flowgrid_old) before starting fresh with this project with a new stack and development goals.
 
+## Architecture goals
 
-## Goals
+Early on in the development process, I am focusing on building a solid application architecutre to make feature development fast and fun.
 
-- **Be fast:**
-  - **Low latency:** Minimize the duration between the time the application receives an input signal, and the corresponding output device respond time (e.g., pixels on screen, audio output, file I/O).
-    Note that low latency applies to _all_ types of input, which currently include:
-      - Audio signals from any audio input device on your machine, at any natively-supported sample rate.
-      - Mouse/keyboard input.
-      - _TODOs:_ MIDI, most likely using [libremidi](https://github.com/celtera/libremidi) as the backend, targeting Push 2 first (see [Old-FlowGrid implementation](https://github.com/khiner/flowgrid_old/tree/main/src/push2)). USB (including writing to LED displays - see [Old-FlowGrid implementation](https://github.com/khiner/flowgrid_old/blob/main/src/usb/UsbCommunicator.h) but will rewrite from scratch since the API has likely changed and it wasn't rock-solid anyway). OSC (Open Sound Control). WebSockets.
-  - **Fast random access to application state history:**
-    FlowGrid uses [persistent data structures](https://github.com/arximboldi/lager) to store its state.
-    After each [action](#Application-state-architecture), FlowGrid creates a snapshot of the application store and adds it to the history (which will eventually be a full navigation tree), allowing for _constant-time_ navigation to _any point_ in the history.
-    In most applications, if a user e.g. just performed their 10th action and wants to go back to where they were after their first action, they would either manually undo 9 times, or if a random access interface is provided, the application would do this under the hood (in linear time, like rewinding a tape).
-    FlowGrid, on the other hand, provides navigating to _any point in the application history_ (almost always*) at _frame rate or faster_.
-      This opens up many potential creative applications that are not possible with other applications, like, say, muting the audio output device, and then issuing `[undo, redo]` actions at audio rate, for a makeshift square wave generator!
+Any robust application needs to get a lot right apart from just its features - project state data structure, low-latency state updates from actions & view updates from state, sane event system, serialization, undo/redo history, load/save, backup, debuggability, error management.
+More than anything, it's important to find ways to make it as easy as possible to add new feasures, ideally without needing to think about any of the above _at all_.
 
-    _\* Some kinds of state changes have higher effect latency, like changing an audio IO device._
-  - **Fast rebuild:** Keeping build times low is crucial, as full rebuilds are frequent.
-    Minimizing the duration between the edit time of a valid FlowGrid source-code file and the application start time after recompilation is crucial.
-    Making compilation snappy isn't just about saving the extra seconds waiting. It's about minimizing the feedback loop between ideation and execution, and making the _process_ of building more engaging.
-    _FlowGrid is currently not great in this department and I want to make recompile times faster._
-- **Be Effective:**
-  - **Be deterministic:** The state should, as much as possible, _fully specify_ the current application instance at any point in time. Closing and opening a project should continue all streams where they left off, including the `DrawData` stream ImGui uses to render its viewport(s).
-- **Be intuitive:**
-  - _TODO: Expand on this goal._
+Doing it the other way around - starting with features and _then_ eating the broccolli and trying to tie together all existing features into a legit application with the above meta-features - is very difficult and slow in my experience.
+A big part of this project is about exploring patterns for getting this right.
+I'd say overall, I've happy-ish with the direction here so far, but there is a lot I'd like to improve and explore.
 
+Towards this end, here are some (in-progress) development goals/thoughts:
+- **Determinism:** The state should, as much as possible, _fully specify_ the current application instance at any point in time. Closing and opening a project should continue all streams where they left off, including the `DrawData` stream ImGui uses to render its viewport(s).
+- **Low latency:** Minimize the duration between the time the application receives an input signal, and the corresponding output device respond time (e.g., pixels on screen, audio output, file I/O).
+  Note that low latency applies to _all_ types of input, which currently include:
+    - Audio signals from any audio input device on your machine, at any natively-supported sample rate.
+    - Mouse/keyboard input.
+    - _TODOs:_ MIDI, most likely using [libremidi](https://github.com/celtera/libremidi) as the backend, targeting Push 2 first (see [Old-FlowGrid implementation](https://github.com/khiner/flowgrid_old/tree/main/src/push2)). USB (including writing to LED displays - see [Old-FlowGrid implementation](https://github.com/khiner/flowgrid_old/blob/main/src/usb/UsbCommunicator.h) but will rewrite from scratch since the API has likely changed and it wasn't rock-solid anyway). OSC (Open Sound Control). WebSockets.
+- **Fast random access to application state history:**
+  FlowGrid uses [persistent data structures](https://github.com/arximboldi/lager) to store its state.
+  After each [action](#Application-state-architecture), FlowGrid creates a snapshot of the application store and adds it to the history (which will eventually be a full navigation tree), allowing for _constant-time_ navigation to _any point_ in the history.
+  In most applications, if a user e.g. just performed their 10th action and wants to go back to where they were after their first action, they would either manually undo 9 times, or if a random access interface is provided, the application would do this under the hood (in linear time, like rewinding a tape).
+  FlowGrid, on the other hand, provides navigating to _any point in the application history_ (almost always*) at _frame rate or faster_.
+    This opens up many potential creative applications that are not possible with other applications, like, say, muting the audio output device, and then issuing `[undo, redo]` actions at audio rate, for a makeshift square wave generator!
+
+  _\* Some kinds of state changes have higher effect latency, like changing an audio IO device._
+- **Fast rebuild:** Keeping build times low is crucial, as full rebuilds are frequent.
+  Minimizing the duration between the edit time of a valid FlowGrid source-code file and the application start time after recompilation is crucial.
+  Making compilation snappy isn't just about saving the extra seconds waiting. It's about minimizing the feedback loop between ideation and execution, and making the _process_ of building more engaging.
+  _FlowGrid is currently not great in this department and I want to make recompile times faster._
 
 ## Application State Architecture
 

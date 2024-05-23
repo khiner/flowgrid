@@ -67,7 +67,7 @@ private:
 
         // Replace char list copied from `PathBuilder::buildPath`.
         // The difference is this is only applied to the new label (leaf segment) rather than the full path.
-        string short_label = replaceCharList(label, {' ', '#', '*', ',', '?', '[', ']', '{', '}', '(', ')'}, '_');
+        std::string short_label = replaceCharList(label, {' ', '#', '*', ',', '?', '[', ']', '{', '}', '(', ')'}, '_');
         Container.Add(type, label, short_label, zone, min, max, init, step, zone != nullptr && fTooltip.contains(zone) ? fTooltip.at(zone).c_str() : nullptr, std::move(names_and_values));
     }
 

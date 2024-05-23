@@ -3,12 +3,12 @@
 #include "imgui_internal.h"
 #include "nlohmann/json.hpp"
 
-using std::string;
+using std::string, std::string_view;
 using namespace ImGui;
 using json = nlohmann::json;
 
 namespace FlowGrid {
-bool TreeNode(std::string_view label_view, const char *id, const char *value) {
+bool TreeNode(string_view label_view, const char *id, const char *value) {
     bool is_open = false;
     if (value == nullptr) {
         const auto label = string(label_view);
@@ -24,9 +24,9 @@ bool TreeNode(std::string_view label_view, const char *id, const char *value) {
     return is_open;
 }
 
-void JsonTree(std::string_view label, json &&value, const char *id) {
+void JsonTree(string_view label, json &&value, const char *id) {
     if (value.is_null()) {
-        TextUnformatted(label.empty() ? "(null)" : string(label).c_str());
+        TextUnformatted(label.empty() ? "(null)" : label.data());
     } else if (value.is_object()) {
         if (label.empty() || TreeNode(label, id)) {
             for (auto it : value.items()) {

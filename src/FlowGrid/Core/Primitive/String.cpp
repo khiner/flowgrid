@@ -2,6 +2,8 @@
 
 #include "imgui.h"
 
+using std::string, std::string_view;
+
 String::String(ComponentArgs &&args, string_view value) : Primitive(std::move(args), string(value)) {}
 String::String(ComponentArgs &&args, fs::path value) : Primitive(std::move(args), string(value)) {}
 
@@ -17,8 +19,7 @@ void String::Apply(const ActionType &action) const {
 using namespace ImGui;
 
 void String::Render() const {
-    const string value = Value;
-    TextUnformatted(value.c_str());
+    TextUnformatted(Value.c_str());
 }
 
 void String::Render(const std::vector<string> &options) const {

@@ -395,7 +395,7 @@ void AudioGraphNode::Render() const {
             "Inactive nodes are not processed by the audio graph, and thus do not contribute to CPU load."
         );
         SeparatorText("Buses");
-        for (const IO io : IO_All) {
+        for (IO io : IO_All) {
             Text("%s buses (%u)", StringHelper::Capitalize(to_string(io)).c_str(), BusCount(io));
             for (u32 bus = 0; bus < BusCount(io); bus++) {
                 const u32 channels = ChannelCount(io, bus);
@@ -410,7 +410,7 @@ void AudioGraphNode::Render() const {
             TextUnformatted("No connections");
         }
         SeparatorText("Internal nodes");
-        for (const IO io : IO_All) {
+        for (IO io : IO_All) {
             if (BusCount(io) > 0) {
                 const string io_label = StringHelper::Capitalize(to_string(io));
                 BulletText("%s", std::format("{} gainer: {}", io_label, bool(GetGainer(io))).c_str());

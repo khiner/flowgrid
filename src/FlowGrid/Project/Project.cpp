@@ -23,7 +23,7 @@ static SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
 // Project constants:
 static const fs::path InternalPath = ".flowgrid";
 // Order matters here, as the first extension is the default project extension.
-static const std::map<ProjectFormat, std::string> ExtensionByProjectFormat{
+static const std::map<ProjectFormat, std::string_view> ExtensionByProjectFormat{
     {ProjectFormat::ActionFormat, ".fla"},
     {ProjectFormat::StateFormat, ".fls"},
 };
@@ -31,17 +31,16 @@ static const auto ProjectFormatByExtension = ExtensionByProjectFormat | transfor
 static const auto AllProjectExtensions = ProjectFormatByExtension | keys;
 static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | join | to<std::string>();
 
-static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectFormat.at(ProjectFormat::StateFormat));
+static const fs::path EmptyProjectPath = InternalPath / ("empty" + string(ExtensionByProjectFormat.at(ProjectFormat::StateFormat)));
 // The default project is a user-created project that loads on app start, instead of the empty project.
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
-static const fs::path DefaultProjectPath = InternalPath / ("default" + ExtensionByProjectFormat.at(ProjectFormat::ActionFormat));
+static const fs::path DefaultProjectPath = InternalPath / ("default" + string(ExtensionByProjectFormat.at(ProjectFormat::ActionFormat)));
 
 static std::optional<fs::path> CurrentProjectPath;
 static bool ProjectHasChanges{false};
 
 std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
-    const string &ext = path.extension();
-    if (auto it = ProjectFormatByExtension.find(ext); it != ProjectFormatByExtension.end()) return it->second;
+    if (auto it = ProjectFormatByExtension.find(std::string(path.extension())); it != ProjectFormatByExtension.end()) return it->second;
     return {};
 }
 
@@ -572,8 +571,9 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
     }
 
     const auto history_change_counts = History.GetChangeCountById() | transform([](const auto &entry) { return std::pair(ById.at(entry.first)->Path, entry.second); }) | to<std::map>();
-    const std::set<StorePath> paths = keys(history_change_counts) | to<std::set>();
-    // , keys(gesture_change_counts)) | to<std::set>;
+    std::set<StorePath> paths;
+    paths.insert_range(keys(history_change_counts));
+    paths.insert_range(keys(gesture_change_counts));
 
     u32 i = 0;
     std::vector<ImU64> values(!gesture_change_counts.empty() ? paths.size() * 2 : paths.size());

@@ -8,7 +8,7 @@
 struct Flags : Primitive<int>, Actionable<Action::Primitive::Flags::Any>, MenuItemDrawable {
     struct Item {
         Item(const char *name_and_help);
-        string Name, Help;
+        std::string Name, Help;
     };
 
     // All text after an optional '?' character for each name will be interpreted as an item help string.

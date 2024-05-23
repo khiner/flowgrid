@@ -715,7 +715,7 @@ static void RenderConnectionsLabelFrame(InteractionFlags interaction_flags) {
 }
 
 // todo move more label logic into this method.
-static void RenderConnectionsLabel(IO io, const AudioGraphNode *node, const string &ellipsified_label, InteractionFlags interaction_flags) {
+static void RenderConnectionsLabel(IO io, const AudioGraphNode *node, string_view ellipsified_label, InteractionFlags interaction_flags) {
     const auto *graph = node->Graph;
     const bool is_active = node->IsActive;
     if (!is_active) BeginDisabled();
@@ -724,10 +724,10 @@ static void RenderConnectionsLabel(IO io, const AudioGraphNode *node, const stri
         ImPlot::AddTextVertical(
             GetWindowDrawList(),
             GetCursorScreenPos() + ImVec2{(GetItemRectSize().x - GetTextLineHeight()) / 2, GetItemRectSize().y - ImGui::GetStyle().FramePadding.y},
-            GetColorU32(ImGuiCol_Text), ellipsified_label.c_str()
+            GetColorU32(ImGuiCol_Text), ellipsified_label.data()
         );
     } else {
-        TextUnformatted(ellipsified_label.c_str());
+        TextUnformatted(ellipsified_label.data());
     }
     if (!is_active) EndDisabled();
 
@@ -747,8 +747,7 @@ void AudioGraph::Connections::Render() const {
     // Calculate max I/O label widths.
     IoVec max_label_w_no_padding{0, 0};
     for (const auto *node : graph.Nodes) {
-        const string label = graph.Nodes.GetChildLabel(node);
-        const float label_w = CalcTextSize(label.c_str()).x;
+        const float label_w = CalcTextSize(graph.Nodes.GetChildLabel(node)).x;
         if (node->CanConnectInput()) max_label_w_no_padding.x = std::max(max_label_w_no_padding.x, label_w);
         if (node->CanConnectOutput()) max_label_w_no_padding.y = std::max(max_label_w_no_padding.y, label_w);
     }
@@ -764,7 +763,7 @@ void AudioGraph::Connections::Render() const {
     BeginGroup();
 
     // I/O header frames + labels on the left/top, respectively.
-    static const string InputsLabel = "Inputs", OutputsLabel = "Outputs";
+    static const string_view InputsLabel{"Inputs"}, OutputsLabel{"Outputs"};
     const IoVec io_header_w_no_padding = ImVec2{CalcTextSize(InputsLabel).x, CalcTextSize(OutputsLabel).x};
     const IoVec io_header_w = io_header_w_no_padding + label_padding.x * 2;
     IoVec io_frame_w = GetContentRegionAvail() - (node_label_w + fhws);
@@ -776,7 +775,7 @@ void AudioGraph::Connections::Render() const {
         GetCursorScreenPos() + ImVec2{io_frame_w.x, fhws},
         GetColorU32(ImGuiCol_FrameBg)
     );
-    RenderText(GetCursorScreenPos() + ImVec2{(io_frame_w.x - io_header_w.x) / 2, 0} + label_padding, InputsLabel.c_str());
+    RenderText(GetCursorScreenPos() + ImVec2{(io_frame_w.x - io_header_w.x) / 2, 0} + label_padding, InputsLabel.data());
 
     SetCursorScreenPos({og_cursor_pos.x, grid_top_left.y});
     RenderFrame(
@@ -787,7 +786,7 @@ void AudioGraph::Connections::Render() const {
     ImPlot::AddTextVertical(
         GetWindowDrawList(),
         GetCursorScreenPos() + ImVec2{0, (io_frame_w.y - io_header_w.y) / 2 + io_header_w_no_padding.y} + ImVec2{label_padding.y, label_padding.x},
-        GetColorU32(ImGuiCol_Text), OutputsLabel.c_str()
+        GetColorU32(ImGuiCol_Text), OutputsLabel.data()
     );
 
     const float cell_size = style.CellSize * GetTextLineHeight();
@@ -802,7 +801,8 @@ void AudioGraph::Connections::Render() const {
 
         const string label = graph.Nodes.GetChildLabel(out_node);
         const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, std::format("{}:{}", label, to_string(IO_Out)).c_str());
-        const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.y);
+        string ellipsified_label{label};
+        Ellipsify(ellipsified_label, node_label_w_no_padding.y);
         RenderConnectionsLabel(IO_Out, out_node, ellipsified_label, label_interaction_flags);
         out_count++;
     }
@@ -815,8 +815,9 @@ void AudioGraph::Connections::Render() const {
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
         const string label = graph.Nodes.GetChildLabel(in_node);
         const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, std::format("{}:{}", label, to_string(IO_In)).c_str());
-        const string ellipsified_label = Ellipsify(label, node_label_w_no_padding.x);
-        SetCursorPos(GetCursorPos() + ImVec2{node_label_w.x - CalcTextSize(ellipsified_label.c_str()).x - label_padding.y, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
+        string ellipsified_label{label};
+        Ellipsify(ellipsified_label, node_label_w_no_padding.x);
+        SetCursorPos(GetCursorPos() + ImVec2{node_label_w.x - CalcTextSize(ellipsified_label).x - label_padding.y, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
         RenderConnectionsLabel(IO_In, in_node, ellipsified_label, label_interaction_flags);
 
         u32 out_i = 0;

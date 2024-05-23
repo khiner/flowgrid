@@ -23,7 +23,7 @@ float FaustParam::CalcWidth(bool include_label) const {
     const bool has_label = include_label && !Label.empty();
     const float frame_height = GetFrameHeight();
     const float inner_spacing = imgui_style.ItemInnerSpacing.x;
-    const float raw_label_width = CalcTextSize(Label.c_str()).x;
+    const float raw_label_width = CalcTextSize(Label).x;
     const float label_width = has_label ? raw_label_width : 0;
     const float label_width_with_spacing = has_label ? raw_label_width + inner_spacing : 0;
 
@@ -47,7 +47,7 @@ float FaustParam::CalcWidth(bool include_label) const {
         case Type_CheckButton: return frame_height + label_width_with_spacing;
         case Type_VBargraph:
         case Type_VSlider: return max(frame_height, label_width);
-        case Type_VRadioButtons: return max(std::ranges::max(names_and_values.names | std::views::transform(CalcRadioChoiceWidth)), label_width);
+        case Type_VRadioButtons: return max(std::ranges::max(names_and_values.names | transform(CalcRadioChoiceWidth)), label_width);
         case Type_Button: return raw_label_width + imgui_style.FramePadding.x * 2; // Button uses label width even if `include_label == false`.
         case Type_Knob: return max(Style.MinKnobItemSize * frame_height, label_width);
         default: return FaustParamBase::CalcWidth(include_label);

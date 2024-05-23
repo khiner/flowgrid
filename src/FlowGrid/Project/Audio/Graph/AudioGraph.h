@@ -140,11 +140,11 @@ private:
     void UpdateConnections();
     void Connect(ma_node *source, u32 source_output_bus, ma_node *destination, u32 destination_input_bus);
 
-    AudioGraphNode *FindByPathSegment(string_view path_segment) const {
+    AudioGraphNode *FindByPathSegment(std::string_view path_segment) const {
         auto node_it = std::find_if(Nodes.begin(), Nodes.end(), [path_segment](const auto *node) { return node->PathSegment == path_segment; });
         return node_it != Nodes.end() ? node_it->get() : nullptr;
     }
-    auto FindAllByPathSegment(string_view path_segment) const {
+    auto FindAllByPathSegment(std::string_view path_segment) const {
         return Nodes.View() | std::views::filter([path_segment](const auto &node) { return node->PathSegment == path_segment; });
     }
 

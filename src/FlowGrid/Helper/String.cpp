@@ -3,16 +3,14 @@
 using std::vector;
 
 namespace StringHelper {
-vector<string> Split(const string &text, const char *delims) {
+vector<string> Split(const string_view &text, const char *delims) {
     vector<string> tokens;
     size_t start = text.find_first_not_of(delims), end;
     while ((end = text.find_first_of(delims, start)) != string::npos) {
-        tokens.push_back(text.substr(start, end - start));
+        tokens.emplace_back(text.substr(start, end - start));
         start = text.find_first_not_of(delims, end);
     }
-    if (start != string::npos) {
-        tokens.push_back(text.substr(start));
-    }
+    if (start != string::npos) tokens.emplace_back(text.substr(start));
     return tokens;
 }
 

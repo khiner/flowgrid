@@ -9,7 +9,7 @@ using ImGuiColorEditFlags = int;
 
 struct UInt : Primitive<u32>, Actionable<Action::Primitive::UInt::Any> {
     UInt(ComponentArgs &&, u32 value = 0, u32 min = 0, u32 max = 100);
-    UInt(ComponentArgs &&, std::function<const string(u32)> get_name, u32 value = 0);
+    UInt(ComponentArgs &&, std::function<const std::string(u32)> get_name, u32 value = 0);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; };
@@ -27,7 +27,7 @@ struct UInt : Primitive<u32>, Actionable<Action::Primitive::UInt::Any> {
 
 private:
     void Render() const override;
-    string ValueName(u32 value) const;
+    std::string ValueName(u32 value) const;
 
-    const std::optional<std::function<const string(u32)>> GetName{};
+    const std::optional<std::function<const std::string(u32)>> GetName{};
 };

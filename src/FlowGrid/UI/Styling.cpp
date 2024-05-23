@@ -2,7 +2,7 @@
 
 #include "imgui_internal.h"
 
-using std::string;
+using std::string, std::string_view;
 using namespace ImGui;
 
 float CalcAlignedX(HJustify h_justify, float inner_w, float outer_w, bool is_label) {
@@ -16,12 +16,11 @@ float CalcAlignedY(VJustify v_justify, float inner_h, float outer_h) {
     return outer_h - inner_h;
 }
 
-ImVec2 CalcTextSize(const string &text) { return CalcTextSize(text.c_str()); }
+ImVec2 CalcTextSize(string_view text) { return CalcTextSize(text.data()); }
 
 // todo very inefficient
-string Ellipsify(string copy, float max_width) {
-    while (CalcTextSize(copy).x > max_width && copy.length() > 4) copy.replace(copy.end() - 4, copy.end(), "...");
-    return copy;
+void Ellipsify(string &str, float max_width) {
+    while (CalcTextSize(str).x > max_width && str.length() > 4) str.replace(str.end() - 4, str.end(), "...");
 }
 
 void FillRowItemBg(u32 color) {

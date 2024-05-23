@@ -49,9 +49,9 @@ struct Justify {
 float CalcAlignedX(HJustify h_justify, float inner_w, float outer_w, bool is_label = false); // todo better name than `is_label`
 float CalcAlignedY(VJustify v_justify, float inner_h, float outer_h);
 
-ImVec2 CalcTextSize(const std::string &);
+ImVec2 CalcTextSize(const std::string_view);
 
 // There's `RenderTextEllipsis` in `imgui_internal`, but it's way too complex and scary.
-std::string Ellipsify(std::string copy, float max_width);
+void Ellipsify(std::string &, float max_width);
 
 void FillRowItemBg(u32 color);

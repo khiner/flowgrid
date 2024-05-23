@@ -464,7 +464,7 @@ struct TextBufferImpl {
 
     string GetSyntaxTreeSExp() const { return Syntax->GetSExp(); }
 
-    const string &GetLanguageName() const { return Languages.Get(LanguageId).Name; }
+    string_view GetLanguageName() const { return Languages.Get(LanguageId).Name; }
 
     u32 GetColor(PaletteIndex index) const { return GetPalette()[u32(index)]; }
 
@@ -950,7 +950,7 @@ private:
     }
 
     // Returns a cursor containing the start/end positions of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
-    std::optional<Cursor> FindNextOccurrence(const string &text, LineChar start, bool case_sensitive) {
+    std::optional<Cursor> FindNextOccurrence(string_view text, LineChar start, bool case_sensitive) {
         if (text.empty()) return {};
 
         auto find_lci = Iter(start);
@@ -1228,7 +1228,7 @@ void TextBuffer::Apply(const ActionType &action) const {
                     .owner_id = Id,
                     .title = std::format("Save {} file", Impl->GetLanguageName()),
                     .filters = current_file_ext,
-                    .default_file_name = std::format("my_{}_program{}", StringHelper::Lowercase(Impl->GetLanguageName()), current_file_ext),
+                    .default_file_name = std::format("my_{}_program{}", Impl->GetLanguageName() | transform(::tolower) | to<string>(), current_file_ext),
                     .save_mode = true,
                 });
             },
@@ -1610,7 +1610,7 @@ void TextBuffer::Render() const {
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, Impl->LineCount(),
         Impl->Overwrite ? "Ovr" : "Ins",
         Impl->CanUndo() ? "*" : " ",
-        Impl->GetLanguageName().c_str(),
+        Impl->GetLanguageName().data(),
         editing_file.c_str()
     );
 

@@ -18,8 +18,8 @@ void Bool::IssueToggle() const { PrimitiveQ.QueueToggle(Id); }
 
 using namespace ImGui;
 
-void Bool::Render(string_view label) const {
-    if (bool value = Value; Checkbox(string(label).c_str(), &value)) IssueToggle();
+void Bool::Render(std::string_view label) const {
+    if (bool value = Value; Checkbox(label.data(), &value)) IssueToggle();
     HelpMarker();
 }
 

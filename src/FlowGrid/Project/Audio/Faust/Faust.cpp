@@ -5,6 +5,8 @@
 #include "Helper/File.h"
 #include "Project/FileDialog/FileDialog.h"
 
+using std::string, std::string_view;
+
 Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionableComponent(std::move(args)), FileDialog(file_dialog) {}
 
 void Faust::Apply(const ActionType &action) const {
@@ -153,12 +155,12 @@ void FaustDSP::DestroyDsp() {
 void FaustDSP::Init() {
     if (Editor.Empty()) return;
 
-    static const std::string libraries_path = fs::relative("../lib/faust/libraries");
+    static const string libraries_path = fs::relative("../lib/faust/libraries");
     std::vector<const char *> argv = {"-I", libraries_path.c_str()};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
     const int argc = argv.size();
 
-    const string code = Editor.GetText();
+    const auto code = Editor.GetText();
     static int num_inputs, num_outputs;
     Box = DSPToBoxes("FlowGrid", code, argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
 
@@ -194,7 +196,7 @@ void FaustDSP::Update() {
     Init();
 }
 
-static const string FaustDspPathSegment = "FaustDSP";
+static const string_view FaustDspPathSegment{"FaustDSP"};
 
 FaustDSPs::FaustDSPs(ArgsT &&args, const FileDialog &file_dialog)
     : Vector(std::move(args.Args), [&](auto &&child_args) {
@@ -224,7 +226,7 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(id, dsp);
     } else if (type == Added) {
         // Params
-        static const string ParamsPrefixSegment = "Params";
+        static const auto ParamsPrefixSegment{"Params"};
         Paramss.Refresh(); // todo Seems to be needed, but shouldn't be.
         if (auto params_it = std::find_if(Paramss.begin(), Paramss.end(), [id](auto *ui) { return ui->DspId == id; });
             params_it != Paramss.end()) {
@@ -237,7 +239,7 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         }
 
         // Boxes
-        static const string GraphPrefixSegment = "Graph";
+        static const auto GraphPrefixSegment{"Graph"};
         Graphs.Refresh(); // todo Seems to be needed, but shouldn't be.
         if (auto graph_it = std::find_if(Graphs.begin(), Graphs.end(), [id](auto *graph) { return graph->DspId == id; });
             graph_it != Graphs.end()) {

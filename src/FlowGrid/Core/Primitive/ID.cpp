@@ -4,7 +4,5 @@
 
 #include "imgui_internal.h"
 
-using std::string, std::string_view;
-
 ID GenerateId(ID parent_id, ID child_id) { return ImHashData(&child_id, sizeof(child_id), parent_id); }
-ID GenerateId(ID parent_id, string_view child_id) { return ImHashStr(string(child_id).c_str(), 0, parent_id); }
+ID GenerateId(ID parent_id, std::string_view child_id) { return ImHashStr(child_id.data(), 0, parent_id); }

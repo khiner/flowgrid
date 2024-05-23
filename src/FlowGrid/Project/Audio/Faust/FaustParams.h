@@ -27,7 +27,7 @@ struct FaustParams : Component, FaustParamsContainer {
 private:
     void Render() const override;
 
-    void Add(FaustParamType type, const char *label, string_view short_label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, NamesAndValues names_and_values = {}) override {
+    void Add(FaustParamType type, const char *label, std::string_view short_label, Real *zone = nullptr, Real min = 0, Real max = 0, Real init = 0, Real step = 0, const char *tooltip = nullptr, NamesAndValues names_and_values = {}) override {
         FaustParamGroup &active_group = Groups.empty() ? RootGroup : *Groups.top();
         if (zone == nullptr) { // Group
             AllParams.emplace_back(std::make_unique<FaustParamGroup>(ComponentArgs{&active_group, short_label, label}, Style, type, label));

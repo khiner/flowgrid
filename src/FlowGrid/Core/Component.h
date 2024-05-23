@@ -19,8 +19,6 @@ using json = nlohmann::json;
 namespace FlowGrid {}
 namespace fg = FlowGrid;
 
-using std::string, std::string_view;
-
 struct Store;
 struct PrimitiveActionQueuer;
 
@@ -33,11 +31,11 @@ struct Windows;
 struct Menu {
     using Item = std::variant<Menu, std::reference_wrapper<const MenuItemDrawable>, std::function<void()>>;
 
-    Menu(string_view label, std::vector<const Item> &&items);
+    Menu(std::string_view label, std::vector<const Item> &&items);
     explicit Menu(std::vector<const Item> &&);
     Menu(std::vector<const Item> &&items, const bool is_main);
 
-    const string Label; // If no label is provided, this is rendered as a top-level window menu bar.
+    const std::string Label; // If no label is provided, this is rendered as a top-level window menu bar.
     const std::vector<const Item> Items;
     const bool IsMain{false};
 
@@ -204,7 +202,7 @@ struct Component {
 
     // Wrappers around ImGui methods to avoid including `imgui.h` in this header.
     static void TreePop();
-    static void TextUnformatted(string_view);
+    static void TextUnformatted(std::string_view);
 
     // Helper to display a (?) mark which shows a tooltip when hovered. Similar to the one in `imgui_demo.cpp`.
     void HelpMarker(bool after = true) const;
@@ -220,9 +218,9 @@ struct Component {
     Component *Root; // The root (project) component.
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
-    const string PathSegment;
+    const std::string PathSegment;
     const StorePath Path;
-    const string Name, Help, ImGuiLabel;
+    const std::string Name, Help, ImGuiLabel;
     const ID Id;
 
     Menu WindowMenu{{}};
@@ -237,7 +235,7 @@ protected:
     void FlashUpdateRecencyBackground(std::optional<StorePath> relative_path = {}) const;
 
 private:
-    Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo, ImGuiWindowFlags, Menu &&);
+    Component(Component *parent, std::string_view path_segment, std::string_view path_prefix_segment, HelpInfo, ImGuiWindowFlags, Menu &&);
 };
 
 // Minimal/base debug component.

@@ -17,7 +17,7 @@ void TextEditor::Apply(const ActionType &action) const { Buffer.Apply(action); }
 bool TextEditor::CanApply(const ActionType &action) const { return Buffer.CanApply(action); }
 
 bool TextEditor::Empty() const { return Buffer.Empty(); }
-string TextEditor::GetText() const { return Buffer.GetText(); }
+std::string TextEditor::GetText() const { return Buffer.GetText(); }
 
 using namespace ImGui;
 

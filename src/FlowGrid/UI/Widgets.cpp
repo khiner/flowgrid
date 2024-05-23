@@ -7,7 +7,7 @@
 
 #include "NamesAndValues.h"
 
-using std::string;
+using std::string, std::string_view;
 using namespace ImGui;
 
 namespace FlowGrid {
@@ -67,7 +67,7 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
     return !(flags & ValueBarFlags_ReadOnly) && changed; // Read-only value bars never change.
 }
 
-float CalcRadioChoiceWidth(const string &choice_name) {
+float CalcRadioChoiceWidth(string_view choice_name) {
     return CalcTextSize(choice_name).x + GetStyle().ItemInnerSpacing.x + GetFrameHeight();
 }
 
@@ -87,13 +87,13 @@ bool RadioButtons(const char *label, float *value, const NamesAndValues &names_a
 
     bool changed = false;
     for (int i = 0; i < int(names_and_values.names.size()); i++) {
-        const string &choice_name = names_and_values.names[i];
+        const string_view choice_name = names_and_values.names[i];
         const double choice_value = names_and_values.values[i];
         const float choice_width = CalcRadioChoiceWidth(choice_name);
         if (!is_h) SetCursorPosX(GetCursorPosX() + CalcAlignedX(justify.h, choice_width, item_width));
         else SameLine(0, style.ItemInnerSpacing.x);
 
-        if (RadioButton(choice_name.c_str(), *value == choice_value)) {
+        if (RadioButton(choice_name.data(), *value == choice_value)) {
             *value = float(choice_value);
             changed = true;
         }

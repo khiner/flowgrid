@@ -82,7 +82,7 @@ struct FaustLogs : Component {
 
 private:
     void Render() const override;
-    void RenderErrorMessage(string_view error_message) const;
+    void RenderErrorMessage(std::string_view error_message) const;
 };
 
 class llvm_dsp_factory;

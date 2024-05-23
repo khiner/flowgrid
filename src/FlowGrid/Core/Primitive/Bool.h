@@ -20,7 +20,7 @@ struct Bool : Primitive<bool>, Actionable<Action::Primitive::Bool::Any>, MenuIte
 
     void IssueToggle() const;
 
-    void Render(string_view label) const;
+    void Render(std::string_view label) const;
 
 private:
     void Render() const override;

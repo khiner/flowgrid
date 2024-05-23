@@ -90,7 +90,7 @@ void FaustParamGroup::Render(float suggested_height, bool no_label) const {
             if (!is_h) TableNextRow(ImGuiTableRowFlags_None, row_min_height);
             TableNextColumn();
             TableSetBgColor(ImGuiTableBgTarget_RowBg0, GetColorU32(ImGuiCol_TitleBgActive, 0.1f));
-            const string child_label = child->Type == Type_Button || !is_h || !Style.HeaderTitles ? child->Label : "";
+            // const string child_label = child->Type == Type_Button || !is_h || !Style.HeaderTitles ? child->Label : "";
             child->Render(suggested_item_height);
         }
         EndTable();

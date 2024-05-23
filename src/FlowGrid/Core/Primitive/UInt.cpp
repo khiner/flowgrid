@@ -4,7 +4,7 @@
 
 UInt::UInt(ComponentArgs &&args, u32 value, u32 min, u32 max)
     : Primitive(std::move(args), value), Min(min), Max(max) {}
-UInt::UInt(ComponentArgs &&args, std::function<const string(u32)> get_name, u32 value)
+UInt::UInt(ComponentArgs &&args, std::function<const std::string(u32)> get_name, u32 value)
     : Primitive(std::move(args), value), Min(0), Max(100), GetName(std::move(get_name)) {}
 
 UInt::operator ImColor() const { return Value; }
@@ -18,7 +18,7 @@ void UInt::Apply(const ActionType &action) const {
     );
 }
 
-string UInt::ValueName(u32 value) const { return GetName ? (*GetName)(value) : std::to_string(value); }
+std::string UInt::ValueName(u32 value) const { return GetName ? (*GetName)(value) : std::to_string(value); }
 
 using namespace ImGui;
 

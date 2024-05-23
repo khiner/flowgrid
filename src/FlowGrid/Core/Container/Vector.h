@@ -73,7 +73,7 @@ template<typename ChildType> struct Vector : Container {
         );
     }
 
-    std::string GenerateNextPrefix(string_view path_segment) const {
+    std::string GenerateNextPrefix(std::string_view path_segment) const {
         std::vector<u32> existing_prefix_ids;
         for (const auto &child : Value) {
             const auto &[child_path_prefix, child_path_segment] = Split(child->Path.lexically_relative(Path));
@@ -91,11 +91,11 @@ template<typename ChildType> struct Vector : Container {
         return U32ToHex(prefix_id);
     }
 
-    void EmplaceBack(string_view path_segment) const {
+    void EmplaceBack(std::string_view path_segment) const {
         ChildPrefixes.PushBack(StorePath(GenerateNextPrefix(path_segment)) / path_segment);
     }
 
-    void EmplaceBack_(string_view path_segment, ChildInitializerFunction &&initializer = {}) {
+    void EmplaceBack_(std::string_view path_segment, ChildInitializerFunction &&initializer = {}) {
         auto child = Creator({this, path_segment, "", GenerateNextPrefix(path_segment)});
         if (initializer) initializer(child.get());
         const auto child_prefix = GetChildPrefix(child.get());

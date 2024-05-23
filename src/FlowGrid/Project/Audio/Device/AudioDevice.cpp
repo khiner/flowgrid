@@ -104,7 +104,7 @@ struct Context {
         for (u32 i = 0; i < CaptureDeviceCount; i++) DeviceInfos[IO_In].emplace_back(&CaptureDeviceInfos[i]);
         for (u32 i = 0; i < PlaybackDeviceCount; i++) DeviceInfos[IO_Out].emplace_back(&PlaybackDeviceInfos[i]);
 
-        for (const IO io : IO_All) {
+        for (IO io : IO_All) {
             NativeDataFormats[io].clear();
 
             ma_device_info device_info;

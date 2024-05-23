@@ -335,7 +335,7 @@ void Project::Render() const {
     MainMenu.Draw();
 
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
-    auto dockspace_id = DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+    auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;
     if (frame_count == 1) {
         auto audio_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);

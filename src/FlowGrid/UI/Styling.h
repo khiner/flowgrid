@@ -46,18 +46,6 @@ struct Justify {
     VJustify v;
 };
 
-struct TextStyle {
-    const u32 Color;
-    const Justify Justify{HJustify_Middle, VJustify_Middle};
-    const Padding Padding;
-    const FontStyle Font{FontStyle_Regular};
-};
-
-struct RectStyle {
-    const u32 FillColor, StrokeColor;
-    const float StrokeWidth{0}, CornerRadius{0};
-};
-
 float CalcAlignedX(HJustify h_justify, float inner_w, float outer_w, bool is_label = false); // todo better name than `is_label`
 float CalcAlignedY(VJustify v_justify, float inner_h, float outer_h);
 

@@ -1,7 +1,6 @@
 #include "FaustGraph.h"
 
-#include <range/v3/algorithm/contains.hpp>
-#include <range/v3/range/conversion.hpp>
+#include <ranges>
 #include <sstream>
 
 #include "faust/dsp/libfaust-box.h"
@@ -18,8 +17,8 @@
 #include "Project/Audio/AudioIO.h"
 #include "UI/InvisibleButton.h"
 
-using std::min, std::max;
-using std::pair;
+using std::min, std::max, std::pair;
+using std::ranges::to, std::views::take, std::views::take_while;
 
 static const string SvgFileExtension = ".svg";
 
@@ -41,6 +40,18 @@ ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientat
 bool IsLr(const FaustGraphStyle &style, GraphOrientation orientation) {
     return GlobalDirection(style, orientation) == ImGuiDir_Right;
 }
+
+struct RectStyle {
+    const u32 FillColor{0}, StrokeColor{0};
+    const float StrokeWidth{0}, CornerRadius{0};
+};
+
+struct TextStyle {
+    const u32 Color;
+    const Justify Justify{HJustify_Middle, VJustify_Middle};
+    const Padding Padding{};
+    const FontStyle Font{FontStyle_Regular};
+};
 
 // Device accepts unscaled positions/sizes.
 struct Device {
@@ -381,7 +392,7 @@ static bool isBoxInverter(Box box) {
         boxSeq(boxPar(boxInt(0), boxWire()), boxPrim2(sigSub)),
         boxSeq(boxPar(boxReal(0.0), boxWire()), boxPrim2(sigSub)),
     };
-    return ::ranges::contains(inverters, box);
+    return std::ranges::contains(inverters, box);
 }
 
 string PrintTree(Tree tree) {
@@ -590,13 +601,14 @@ struct Node {
         const string tree_name = GetTreeName(FaustTree);
         if (tree_name == "process") return tree_name + SvgFileExtension;
 
-        const string name_limited = std::views::take_while(tree_name, [](char c) { return std::isalnum(c); }) | std::views::take(16) | ranges::to<string>;
+        const string name_limited = take_while(tree_name, [](char c) { return std::isalnum(c); }) | take(16) | to<string>();
         return std::format("{}-{}{}", name_limited, Id, SvgFileExtension);
     }
 
     void WriteSvg(const fs::path &path) const {
         SVGDevice device(Context, path, SvgFileName(), Size);
-        device.Rect(*this, {.FillColor = Style.Colors[FlowGridGraphCol_Bg]}); // todo this should be done in both cases
+        // todo this should be done in both cases
+        device.Rect(*this, {.FillColor = Style.Colors[FlowGridGraphCol_Bg], .StrokeColor = Style.Colors[FlowGridGraphCol_Line]});
         Draw(device);
     }
 

@@ -32,9 +32,6 @@
 	path = lib/miniaudio
 	url = git@github.com:khiner/miniaudio.git
 	branch = dev
-[submodule "lib/date"]
-	path = lib/date
-	url = git@github.com:HowardHinnant/date.git
 [submodule "lib/tree-sitter"]
 	path = lib/tree-sitter
 	url = git@github.com:tree-sitter/tree-sitter.git

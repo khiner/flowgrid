@@ -63,7 +63,6 @@ include_directories(
     lib/faust/architecture
     lib/immer
     lib/concurrentqueue
-    lib/date/include/date
     ${TreeSitterDir}/lib/include
     ${TreeSitterDir}/lib/src
     ${TreeSitterGrammarsDir}/tree-sitter-cpp/src

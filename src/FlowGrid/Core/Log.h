@@ -2,12 +2,12 @@
 
 // Not used yet - placeholder for future use.
 
+#include <format>
 #include <map>
 #include <source_location>
 #include <string>
 #include <vector>
 
-#include "date.h"
 #include "nlohmann/json.hpp"
 
 #include "Helper/Time.h"
@@ -63,7 +63,7 @@ struct MessageMoment {
         return {
             {"Message", Message},
             {"Context", Context.ToJson()},
-            {"Time", date::format("%Y-%m-%d %T", Time)},
+            {"Time", std::format("{%Y-%m-%d %T}", Time)},
         };
     }
 };

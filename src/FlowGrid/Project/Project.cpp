@@ -551,7 +551,6 @@ void Project::WindowMenuItem() const {
 // [SECTION] Debug
 //-----------------------------------------------------------------------------
 
-#include "date.h"
 #include "implot.h"
 
 #include "UI/HelpMarker.h"
@@ -667,7 +666,7 @@ void ShowActions(const SavedActionMoments &actions) {
     for (u32 action_index = 0; action_index < actions.size(); action_index++) {
         const auto &[action, queue_time] = actions[action_index];
         if (TreeNodeEx(std::to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
-            BulletText("Queue time: %s", date::format("%Y-%m-%d %T", queue_time).c_str());
+            BulletText("Queue time: %s", std::format("{:%Y-%m-%d %T}", queue_time).c_str());
             SameLine();
             fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
             json data = json(action)[1];
@@ -729,7 +728,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                 // todo button to navitate to this history index.
                 if (TreeNodeEx(std::to_string(i).c_str(), i == history.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
                     const auto &[store_record, gesture] = history.RecordAt(i);
-                    BulletText("Gesture committed: %s\n", date::format("%Y-%m-%d %T", gesture.CommitTime).c_str());
+                    BulletText("Gesture committed: %s\n", std::format("{:%Y-%m-%d %T}", gesture.CommitTime).c_str());
                     if (TreeNode("Actions")) {
                         ShowActions(gesture.Actions);
                         TreePop();

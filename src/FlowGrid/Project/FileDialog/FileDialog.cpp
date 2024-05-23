@@ -1,6 +1,6 @@
 #include "FileDialog.h"
 
-#include <range/v3/range/conversion.hpp>
+#include <ranges>
 
 #include "ImGuiFileDialog.h"
 #include "imgui.h"
@@ -10,6 +10,8 @@
 #include "Helper/File.h"
 #include "UI/HelpMarker.h"
 #include "UI/Styling.h"
+
+using std::views::keys, std::ranges::to;
 
 void FileDialog::Apply(const ActionType &action) const {
     // `SelectedFilePath` mutations are non-stateful side effects.
@@ -190,7 +192,7 @@ void FileDialog::Demo::Render() const {
 
                 static int selected = 0;
                 const auto &selection = FileDialogImp.Dialog->GetSelection();
-                const auto selection_keys = selection | std::views::keys | ranges::to<std::vector>();
+                const auto selection_keys = selection | keys | to<std::vector>();
                 ImGuiListClipper clipper;
                 clipper.Begin(int(selection.size()), GetTextLineHeightWithSpacing());
                 while (clipper.Step()) {

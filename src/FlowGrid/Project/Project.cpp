@@ -3,8 +3,7 @@
 
 #include "imgui_internal.h"
 #include <format>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/join.hpp>
+#include <ranges>
 #include <set>
 
 #include "Application/ApplicationPreferences.h"
@@ -17,6 +16,8 @@
 
 using namespace FlowGrid;
 
+using std::ranges::to, std::views::join, std::views::keys, std::views::transform;
+
 static SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
 
 // Project constants:
@@ -26,9 +27,9 @@ static const std::map<ProjectFormat, std::string> ExtensionByProjectFormat{
     {ProjectFormat::ActionFormat, ".fla"},
     {ProjectFormat::StateFormat, ".fls"},
 };
-static const auto ProjectFormatByExtension = ExtensionByProjectFormat | std::views::transform([](const auto &p) { return std::pair(p.second, p.first); }) | ranges::to<std::map>();
-static const auto AllProjectExtensions = ProjectFormatByExtension | std::views::keys;
-static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | ranges::views::join(',') | ranges::to<std::string>;
+static const auto ProjectFormatByExtension = ExtensionByProjectFormat | transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();
+static const auto AllProjectExtensions = ProjectFormatByExtension | keys;
+static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | join | to<std::string>();
 
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + ExtensionByProjectFormat.at(ProjectFormat::StateFormat));
 // The default project is a user-created project that loads on app start, instead of the empty project.
@@ -554,11 +555,6 @@ void Project::WindowMenuItem() const {
 #include "date.h"
 #include "implot.h"
 
-#include <range/v3/view/concat.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
-#include <ranges>
-
 #include "UI/HelpMarker.h"
 #include "UI/JsonTree.h"
 
@@ -575,8 +571,9 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
         }
     }
 
-    const auto history_change_counts = History.GetChangeCountById() | std::views::transform([](const auto &entry) { return std::pair(ById.at(entry.first)->Path, entry.second); }) | ranges::to<std::map>;
-    const std::set<StorePath> paths = ranges::views::concat(ranges::views::keys(history_change_counts), ranges::views::keys(gesture_change_counts)) | ranges::to<std::set>;
+    const auto history_change_counts = History.GetChangeCountById() | transform([](const auto &entry) { return std::pair(ById.at(entry.first)->Path, entry.second); }) | to<std::map>();
+    const std::set<StorePath> paths = keys(history_change_counts) | to<std::set>();
+    // , keys(gesture_change_counts)) | to<std::set>;
 
     u32 i = 0;
     std::vector<ImU64> values(!gesture_change_counts.empty() ? paths.size() * 2 : paths.size());
@@ -593,7 +590,7 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
 
     // Remove leading '/' from paths to create labels.
     return {
-        paths | std::views::transform([](const string &path) { return path.substr(1); }) | ranges::to<std::vector>,
+        paths | transform([](const string &path) { return path.substr(1); }) | to<std::vector>(),
         values,
     };
 }
@@ -614,7 +611,7 @@ void Project::Debug::StorePathUpdateFrequency::Render() const {
 
         // todo add an axis flag to exclude non-integer ticks
         // todo add an axis flag to show last tick
-        const auto c_labels = labels | std::views::transform([](const std::string &label) { return label.c_str(); }) | ranges::to<std::vector>;
+        const auto c_labels = labels | transform([](const std::string &label) { return label.c_str(); }) | to<std::vector>();
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), c_labels.data(), false);
 
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};

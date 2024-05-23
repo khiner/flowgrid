@@ -1,10 +1,8 @@
 #include "FaustParamBase.h"
 
-#include "FaustParamsStyle.h"
-
-#include <range/v3/numeric/accumulate.hpp>
-
 #include <imgui.h>
+
+#include "FaustParamsStyle.h"
 
 using namespace ImGui;
 using namespace fg;

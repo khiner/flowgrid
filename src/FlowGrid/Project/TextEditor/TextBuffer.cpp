@@ -4,11 +4,6 @@
 #include <array>
 #include <filesystem>
 #include <map>
-#include <range/v3/numeric/accumulate.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/transform.hpp>
 #include <ranges>
 #include <set>
 #include <string>
@@ -31,9 +26,18 @@
 #include "SyntaxTree.h"
 #include "TextBufferPaletteId.h"
 
-using std::string, std::string_view,
-    std::views::filter, std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::subrange;
+using std::string, std::string_view;
+using std::views::filter, std::views::transform, std::views::join,
+    std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::find_if, std::ranges::subrange, std::ranges::fold_left, std::ranges::to;
 
+std::string join_with(auto &&v, string_view delimiter = "") {
+    std::ostringstream os;
+    for (auto it = std::ranges::begin(v); it != std::ranges::end(v); ++it) {
+        if (it != v.begin()) os << delimiter;
+        os << *it;
+    }
+    return os.str();
+}
 namespace fs = std::filesystem;
 
 struct SyntaxTree;
@@ -404,7 +408,7 @@ struct TextBufferImpl {
             Cursors = std::move(merged);
 
             // Update last added cursor index to be valid after sort/merge.
-            const auto it = std::ranges::find_if(*this, [&last_added_cursor_lc](const auto &c) { return c.LC() == last_added_cursor_lc; });
+            const auto it = find_if(*this, [&last_added_cursor_lc](const auto &c) { return c.LC() == last_added_cursor_lc; });
             LastAddedIndex = it != end() ? std::distance(begin(), it) : 0;
         }
 
@@ -610,12 +614,8 @@ struct TextBufferImpl {
 
     void Copy() {
         const string str = Cursors.AnyRanged() ?
-            Cursors |
-                // Using range-v3 here since clang's libc++ doesn't yet implement `join_with` (which is just `join` in range-v3).
-                ranges::views::filter([](const auto &c) { return c.IsRange(); }) |
-                ranges::views::transform([this](const auto &c) { return GetSelectedText(c); }) |
-                ranges::views::join('\n') | ranges::to<string> :
-            Text[GetCursorPosition().L] | ranges::to<string>;
+            join_with(Cursors | filter([](const auto &c) { return c.IsRange(); }) | transform([this](const auto &c) { return GetSelectedText(c); }), "\n") :
+            Text[GetCursorPosition().L] | to<string>();
         ImGui::SetClipboardText(str.c_str());
     }
 
@@ -857,7 +857,7 @@ private:
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(std::move(coords))}; }
     u32 ToByteIndex(LineChar lc) const {
         if (lc.L >= Text.size()) return EndByteIndex();
-        return ranges::accumulate(subrange(Text.begin(), Text.begin() + lc.L), 0u, [](u32 sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
+        return fold_left(subrange(Text.begin(), Text.begin() + lc.L), 0u, [](u32 sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
     }
 
     void MoveCharIndexAndColumn(const Line &line, u32 &ci, u32 &column) const {

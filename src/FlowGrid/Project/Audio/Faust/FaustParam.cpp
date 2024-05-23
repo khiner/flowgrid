@@ -1,18 +1,18 @@
 #include "FaustParam.h"
 
+#include <imgui.h>
+#include <ranges>
+
 #include "Core/Store/Store.h"
 #include "FaustParamsStyle.h"
 #include "UI/Widgets.h"
-
-#include <range/v3/numeric/accumulate.hpp>
-
-#include <imgui.h>
 
 using namespace ImGui;
 using namespace fg;
 
 using enum FaustParamType;
-using std::min, std::max;
+using std::min, std::max, std::accumulate;
+using std::views::transform, std::ranges::fold_left;
 
 FaustParam::FaustParam(ComponentArgs &&args, const FaustParamsStyle &style, const FaustParamType type, std::string_view label, Real *zone, Real min, Real max, Real init, Real step, const char *tooltip, NamesAndValues names_and_values)
     : FaustParamBase(style, type, label), Float(std::move(args), init), Zone(zone), Min(min), Max(max), Init(init), Step(step), Tooltip(tooltip), names_and_values(std::move(names_and_values)) {}
@@ -33,14 +33,14 @@ float FaustParam::CalcWidth(bool include_label) const {
         case Type_HBargraph: return Style.MinHorizontalItemWidth * frame_height + label_width_with_spacing;
         case Type_HRadioButtons: {
             return label_width_with_spacing +
-                ranges::accumulate(names_and_values.names | std::views::transform(CalcRadioChoiceWidth), 0.f) +
+                fold_left(names_and_values.names | transform(CalcRadioChoiceWidth), 0.f, std::plus()) +
                 inner_spacing * float(names_and_values.Size());
         }
         case Type_Menu: {
             return label_width_with_spacing +
                 std::ranges::max(
                        names_and_values.names |
-                       std::views::transform([](const string &choice_name) { return CalcTextSize(choice_name).x; })
+                       transform([](const auto &name) { return CalcTextSize(name).x; })
                 ) +
                 imgui_style.FramePadding.x * 2 + frame_height; // Extra frame for button
         }

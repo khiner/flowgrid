@@ -1,6 +1,6 @@
 #include "StoreHistory.h"
 
-#include <range/v3/range/conversion.hpp>
+#include <ranges>
 
 #include "immer/map_transient.hpp"
 #include "immer/vector.hpp"
@@ -9,6 +9,8 @@
 #include "Store.h"
 
 #include "Core/Component.h"
+
+using std::ranges::to;
 
 struct StoreHistory::Metrics {
     immer::map<ID, immer::vector<TimePoint>> CommitTimesById;
@@ -66,7 +68,7 @@ const Store &StoreHistory::CurrentStore() const { return _Records->Value[Index].
 std::map<ID, u32> StoreHistory::GetChangeCountById() const {
     return _Records->Value[Index].Metrics.CommitTimesById |
         std::views::transform([](const auto &entry) { return std::pair(entry.first, entry.second.size()); }) |
-        ranges::to<std::map<ID, u32>>;
+        to<std::map<ID, u32>>();
 }
 
 u32 StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesById.size(); }
@@ -82,7 +84,7 @@ StoreHistory::ReferenceRecord StoreHistory::RecordAt(u32 index) const {
 
 StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
     // All recorded gestures except the first, since the first record only holds the initial store with no gestures.
-    Gestures gestures = _Records->Value | std::views::drop(1) | std::views::transform([](const auto &record) { return record.Gesture; }) | ranges::to<std::vector>;
+    Gestures gestures = _Records->Value | std::views::drop(1) | std::views::transform([](const auto &record) { return record.Gesture; }) | to<std::vector>();
     return {std::move(gestures), Index};
 }
 

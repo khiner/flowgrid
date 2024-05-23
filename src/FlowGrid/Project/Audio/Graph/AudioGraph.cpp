@@ -1,6 +1,12 @@
 #include "AudioGraph.h"
 
-#include <range/v3/range/conversion.hpp>
+#include <ranges>
+
+#include "imgui.h"
+#include "implot.h"
+#include "implot_internal.h"
+#include "ma_channel_converter_node/ma_channel_converter_node.h"
+#include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
 #include "Core/Container/AdjacencyListAction.h"
 #include "Core/Primitive/String.h"
@@ -12,13 +18,9 @@
 #include "UI/InvisibleButton.h"
 #include "UI/Styling.h"
 
-#include "imgui.h"
-#include "implot.h"
-#include "implot_internal.h"
-#include "ma_channel_converter_node/ma_channel_converter_node.h"
-#include "ma_data_passthrough_node/ma_data_passthrough_node.h"
-
 #define ma_offset_ptr(p, offset) (((ma_uint8 *)(p)) + (offset))
+
+using std::views::transform, std::ranges::to;
 
 using namespace ImGui;
 
@@ -660,7 +662,7 @@ void AudioGraph::UpdateConnections() {
 
     // The graph does not keep itself in its `Nodes` list.
     // xxx This should be a `ranges::concat` instead of making a new vector, but I couldn't get it to work.
-    auto destination_nodes = Nodes.View() | std::views::transform([](const auto &node) { return node.get(); }) | ranges::to<std::vector>();
+    auto destination_nodes = Nodes.View() | transform([](const auto &node) { return node.get(); }) | to<std::vector>();
     destination_nodes.emplace_back(this);
 
     for (auto *source_node : Nodes) {

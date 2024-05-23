@@ -4,8 +4,6 @@
 
 #include "FaustParamsStyle.h"
 
-#include <range/v3/numeric/accumulate.hpp>
-
 #include <imgui.h>
 
 using namespace ImGui;

@@ -215,11 +215,6 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 - [ConcurrentQueue](https://github.com/cameron314/concurrentqueue): the main action queue
   - Actions are _processed_ synchronously on the UI thread, but any thread can submit actions to the queue.
 
-### C++ extensions
-
-- [range-v3](https://github.com/ericniebler/range-v3)
-  - Only still needed since `std::ranges::concat` was pushed to C++26 and isn't supported by clang yet, (also `std::views::join_with`)
-
 ### Debugging
 
 - [Tracy](https://github.com/wolfpld/tracy) for real-time profiling

@@ -1,6 +1,6 @@
 #include "Colors.h"
 
-#include <range/v3/range/conversion.hpp>
+#include <ranges>
 
 #include "imgui.h"
 #include "implot.h"
@@ -12,19 +12,21 @@
 
 using namespace ImGui;
 
+using std::views::transform, std::ranges::to;
+
 Colors::Colors(ArgsT &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
     : PrimitiveVector(std::move(args.Args)), ActionProducer(std::move(args.Q)), GetName(get_name), AllowAuto(allow_auto) {
-    PrimitiveVector::Set(std::views::iota(0, int(size)) | ranges::to<std::vector<u32>>);
+    PrimitiveVector::Set(std::views::iota(0u, u32(size)) | to<std::vector>());
 }
 
 u32 Colors::Float4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
 ImVec4 Colors::U32ToFloat4(u32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
 void Colors::Set(const std::vector<ImVec4> &values) const {
-    PrimitiveVector::Set(values | std::views::transform([](const auto &value) { return Float4ToU32(value); }) | ranges::to<std::vector>);
+    PrimitiveVector::Set(values | transform([](const auto &value) { return Float4ToU32(value); }) | to<std::vector>());
 }
 void Colors::Set(const std::vector<std::pair<size_t, ImVec4>> &entries) const {
-    PrimitiveVector::Set(entries | std::views::transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | ranges::to<std::vector>);
+    PrimitiveVector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | to<std::vector>());
 }
 
 void Colors::Render() const {

@@ -1,9 +1,10 @@
 #include "Enum.h"
 
+#include <ranges>
+
 #include "imgui.h"
 
-#include <__ranges/iota_view.h>
-#include <range/v3/range/conversion.hpp>
+using std::ranges::to;
 
 Enum::Enum(ComponentArgs &&args, std::vector<string> names, int value)
     : Primitive(std::move(args), value), Names(std::move(names)) {}
@@ -24,7 +25,7 @@ string Enum::OptionName(const int option) const { return GetName ? (*GetName)(op
 using namespace ImGui;
 
 void Enum::Render() const {
-    Render(std::views::iota(0, int(Names.size())) | ranges::to<std::vector>); // todo if I stick with this pattern, cache.
+    Render(std::views::iota(0, int(Names.size())) | to<std::vector>()); // todo if I stick with this pattern, cache.
 }
 void Enum::Render(const std::vector<int> &options) const {
     if (options.empty()) return;

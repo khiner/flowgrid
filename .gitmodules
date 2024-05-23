@@ -25,9 +25,6 @@
 	path = lib/implot
 	url = git@github.com:khiner/implot.git
 	branch = master
-[submodule "lib/range-v3"]
-	path = lib/range-v3
-	url = git@github.com:ericniebler/range-v3.git
 [submodule "lib/immer"]
 	path = lib/immer
 	url = git@github.com:arximboldi/immer.git

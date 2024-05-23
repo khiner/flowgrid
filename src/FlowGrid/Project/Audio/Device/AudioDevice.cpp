@@ -2,13 +2,12 @@
 
 #include <algorithm>
 #include <format>
-#include <range/v3/range/conversion.hpp>
 #include <ranges>
 
 #include "imgui.h"
 
-using std::string;
-using std::string_view;
+using std::string, std::string_view;
+using std::ranges::any_of, std::ranges::find_if;
 
 // Copied from `miniaudio.c::g_maStandardSampleRatePriorities`.
 const std::vector<u32> AudioDevice::PrioritizedSampleRates = {
@@ -52,14 +51,14 @@ struct Context {
 
     std::optional<DeviceDataFormat> FindFormatWithNativeSampleRate(IO type, u32 sample_rate) const {
         const auto &native_data_formats = NativeDataFormats[type];
-        auto it = std::ranges::find_if(native_data_formats, [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
+        auto it = find_if(native_data_formats, [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
         if (it != native_data_formats.end()) return *it;
 
         return {};
     }
 
     bool IsNativeSampleRate(IO type, u32 sample_rate) const {
-        return std::ranges::any_of(NativeDataFormats[type], [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
+        return any_of(NativeDataFormats[type], [sample_rate](const auto &df) { return df.SampleRate == sample_rate; });
     }
 
     DeviceDataFormat FindNativeFormatWithNearestSampleRate(IO type, u32 target) {

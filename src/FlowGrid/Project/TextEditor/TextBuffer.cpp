@@ -1,12 +1,8 @@
 #include "TextBuffer.h"
 
-#include <algorithm>
 #include <array>
-#include <filesystem>
-#include <map>
 #include <ranges>
 #include <set>
-#include <string>
 #include <vector>
 
 #include "imgui_internal.h"

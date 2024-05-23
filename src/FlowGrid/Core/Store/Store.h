@@ -1,3 +1,5 @@
+#pragma once
+
 #include "TypedStore.h"
 
 #include "Core/Action/Actionable.h"
@@ -14,6 +16,7 @@ struct Store : TypedStore<
                    immer::vector<bool>, immer::vector<s32>, immer::vector<u32>, immer::vector<float>, immer::vector<std::string>>,
                Actionable<Action::Store::Any> {
     bool CanApply(const ActionType &) const override { return true; }
+    void ApplyPatch(const Patch &) const;
     void Apply(const ActionType &action) const override {
         std::visit([this](const Action::Store::ApplyPatch &a) { ApplyPatch(a.patch); }, action);
     }
@@ -41,36 +44,6 @@ struct Store : TypedStore<
         if (Count<immer::vector<ValueType>>(vec_id)) {
             auto vec = Get<immer::vector<ValueType>>(vec_id);
             Set(vec_id, vec.take(vec.size() - 1));
-        }
-    }
-
-    void ApplyPatch(const Patch &patch) const {
-        for (const auto &[id, ops] : patch.Ops) {
-            for (const auto &op : ops) {
-                if (op.Op == PatchOpType::PopBack) {
-                    std::visit([&](auto &&v) { PopBack<std::decay_t<decltype(v)>>(id); }, *op.Old);
-                } else if (op.Op == PatchOpType::Remove) {
-                    std::visit([&](auto &&v) { Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
-                } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
-                    std::visit([&](auto &&v) { Set(id, std::move(v)); }, *op.Value);
-                } else if (op.Op == PatchOpType::PushBack) {
-                    std::visit([&](auto &&v) { PushBack(id, std::move(v)); }, *op.Value);
-                } else if (op.Op == PatchOpType::Set) {
-                    std::visit([&](auto &&v) { VectorSet(id, *op.Index, v); }, *op.Value);
-                } else {
-                    // `set` ops - currently, u32 is the only set value type.
-                    std::visit(
-                        Match{
-                            [&](u32 v) {
-                                if (op.Op == PatchOpType::Insert) Insert(id, v);
-                                else if (op.Op == PatchOpType::Erase) SetErase(id, v);
-                            },
-                            [](auto &&) {},
-                        },
-                        *op.Value
-                    );
-                }
-            }
         }
     }
 };

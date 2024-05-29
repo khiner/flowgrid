@@ -16,7 +16,7 @@ Includes:
 
 Still in its early stages, with no supported release yet - expect things to be broken!
 
-_Note: I'm still interested and committed to the project, but work is temporarily paused to focus on a [Vulkan-based 3D mesh/rigid-body-audio-model editor](https://github.com/khiner/MeshEditor)._
+_Note: I'm still interested and committed to this project, but work is temporarily paused to focus on other things._
 
 ## Project goals
 

@@ -14,6 +14,12 @@ set(TRACY_ENABLED off CACHE BOOL "Enable Tracy profiling" FORCE)
 
 add_subdirectory(lib)
 
+# Disable lib warnings
+target_compile_options(staticlib PRIVATE -w) # Faust (can't use alias target)
+target_compile_options(SDL3-shared PRIVATE -w)
+file(GLOB_RECURSE LIB_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/lib/*.c ${CMAKE_CURRENT_SOURCE_DIR}/lib/*.cpp)
+set_source_files_properties(${LIB_SOURCES} PROPERTIES COMPILE_FLAGS "-w")
+
 find_package(Freetype REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -60,8 +66,8 @@ include_directories(
     ${ImPlotDir}
     ${ImGuiFileDialogDir}
     ${MaDir}/extras/miniaudio_split
-    lib/faust/architecture
-    lib/immer
+    SYSTEM lib/faust/architecture
+    SYSTEM lib/immer
     lib/concurrentqueue
     ${TreeSitterDir}/lib/include
     ${TreeSitterDir}/lib/src

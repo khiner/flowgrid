@@ -8,7 +8,7 @@ Includes:
 * A complete implementation of the Faust DSP UI spec, including layout and metadata
 * A highly configurable/monitorable audio graph editor and matrix mixer
 * Automatic, configurable resampling at any audio node
-* Any number of Faust nodes, each running separately running/controllable DSP
+* Any number of (separately running/controllable) Faust DSP nodes
 * Any number of audio I/O nodes wrapping any native audio I/O format
 * [Much more!](#features)
 

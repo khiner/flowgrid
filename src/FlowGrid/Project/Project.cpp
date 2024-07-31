@@ -314,7 +314,7 @@ bool Project::CanApply(const ActionType &action) const {
 using namespace ImGui;
 
 static bool IsPressed(ImGuiKeyChord chord) {
-    return IsKeyChordPressed(chord, ImGuiKeyOwner_None, ImGuiInputFlags_Repeat);
+    return IsKeyChordPressed(chord, ImGuiInputFlags_Repeat);
 }
 
 std::optional<Project::ActionType> Project::ProduceKeyboardAction() const {

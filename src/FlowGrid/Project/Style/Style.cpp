@@ -75,7 +75,7 @@ void Style::ImGuiStyle::UpdateIfChanged(ImGuiContext *ctx) const {
     style.WindowBorderSize = WindowBorderSize;
     style.WindowMinSize = WindowMinSize;
     style.WindowTitleAlign = WindowTitleAlign;
-    style.WindowMenuButtonPosition = WindowMenuButtonPosition;
+    style.WindowMenuButtonPosition = ImGuiDir(int(WindowMenuButtonPosition));
     style.ChildRounding = ChildRounding;
     style.ChildBorderSize = ChildBorderSize;
     style.PopupRounding = PopupRounding;
@@ -97,7 +97,7 @@ void Style::ImGuiStyle::UpdateIfChanged(ImGuiContext *ctx) const {
     style.TabRounding = TabRounding;
     style.TabBorderSize = TabBorderSize;
     style.TabMinWidthForCloseButton = TabMinWidthForCloseButton;
-    style.ColorButtonPosition = ColorButtonPosition;
+    style.ColorButtonPosition = ImGuiDir(int(ColorButtonPosition));
     style.ButtonTextAlign = ButtonTextAlign;
     style.SelectableTextAlign = SelectableTextAlign;
     style.DisplayWindowPadding = DisplayWindowPadding;

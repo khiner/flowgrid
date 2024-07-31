@@ -32,7 +32,7 @@ enum GraphOrientation {
 };
 
 ImGuiDir GlobalDirection(const FaustGraphStyle &style, GraphOrientation orientation) {
-    ImGuiDir dir = style.Direction;
+    auto dir = ImGuiDir(int(style.Direction));
     return (dir == ImGuiDir_Right && orientation == GraphForward) || (dir == ImGuiDir_Left && orientation == GraphReverse) ?
         ImGuiDir_Right :
         ImGuiDir_Left;

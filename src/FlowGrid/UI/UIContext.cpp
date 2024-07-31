@@ -294,9 +294,6 @@ UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Se
         throw std::runtime_error(std::format("SDL_Init error: {}", SDL_GetError()));
     }
 
-    // Enable native IME.
-    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-
     const auto window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     Window = SDL_CreateWindow("FlowGrid", 1280, 720, window_flags);
     if (Window == nullptr) throw std::runtime_error(std::format("SDL_CreateWindow error: {}", SDL_GetError()));
@@ -307,7 +304,7 @@ UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Se
 
     // Create Window Surface
     VkSurfaceKHR surface;
-    if (SDL_Vulkan_CreateSurface(Window, g_Instance, g_Allocator, &surface) == 0) throw std::runtime_error("Failed to create Vulkan surface.\n");
+    if (SDL_Vulkan_CreateSurface(Window, g_Instance, g_Allocator, &surface)) throw std::runtime_error("Failed to create Vulkan surface.\n");
 
     // Create Framebuffers
     int w, h;

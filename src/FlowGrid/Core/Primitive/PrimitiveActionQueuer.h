@@ -9,13 +9,13 @@ struct PrimitiveActionQueuer {
     using ProducedActionType = Action::Combine<Action::Primitive::Any, Action::Vec2::Any>;
     using EnqueueFn = ActionProducer<ProducedActionType>::EnqueueFn;
 
-    PrimitiveActionQueuer(EnqueueFn enqueue) : Enqueue(enqueue) {}
+    PrimitiveActionQueuer(EnqueueFn q) : Q(q) {}
 
-    bool QueueToggle(ID id) { return Enqueue(Action::Primitive::Bool::Toggle{id}); }
-    bool QueueSet(ID id, u32 value) { return Enqueue(Action::Primitive::UInt::Set{id, value}); }
-    bool QueueSet(ID id, s32 value) { return Enqueue(Action::Primitive::Int::Set{id, value}); }
-    bool QueueSet(ID id, float value) { return Enqueue(Action::Primitive::Float::Set{id, value}); }
-    bool QueueSet(ID id, const std::string &value) { return Enqueue(Action::Primitive::String::Set{id, value}); }
+    bool QueueToggle(ID id) { return Q(Action::Primitive::Bool::Toggle{id}); }
+    bool QueueSet(ID id, u32 value) { return Q(Action::Primitive::UInt::Set{id, value}); }
+    bool QueueSet(ID id, s32 value) { return Q(Action::Primitive::Int::Set{id, value}); }
+    bool QueueSet(ID id, float value) { return Q(Action::Primitive::Float::Set{id, value}); }
+    bool QueueSet(ID id, const std::string &value) { return Q(Action::Primitive::String::Set{id, value}); }
 
-    EnqueueFn Enqueue;
+    EnqueueFn Q;
 };

@@ -37,7 +37,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 xy = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, X.Min, X.Max, X.Format, flags);
     Component::UpdateGesturing();
-    if (edited) PrimitiveQ.Enqueue(Action::Vec2::Set{Id, {xy.x, xy.y}});
+    if (edited) PrimitiveQ.Q(Action::Vec2::Set{Id, {xy.x, xy.y}});
     HelpMarker();
 }
 
@@ -70,7 +70,7 @@ void Vec2Linked::Apply(const ActionType &action) const {
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
     bool linked = Linked;
-    if (Checkbox(Linked.Name.c_str(), &linked)) PrimitiveQ.Enqueue(Action::Vec2::ToggleLinked{Id});
+    if (Checkbox(Linked.Name.c_str(), &linked)) PrimitiveQ.Q(Action::Vec2::ToggleLinked{Id});
     PopID();
 
     SameLine();
@@ -81,9 +81,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     if (edited) {
         if (Linked) {
             const float changed_value = xy.x != float(X) ? xy.x : xy.y;
-            PrimitiveQ.Enqueue(Action::Vec2::SetAll{Id, changed_value});
+            PrimitiveQ.Q(Action::Vec2::SetAll{Id, changed_value});
         } else {
-            PrimitiveQ.Enqueue(Action::Vec2::Set{Id, {xy.x, xy.y}});
+            PrimitiveQ.Q(Action::Vec2::Set{Id, {xy.x, xy.y}});
         }
     }
     HelpMarker();

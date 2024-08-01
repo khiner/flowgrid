@@ -9,7 +9,6 @@
 
 template<class...> constexpr bool always_false_v = false;
 
-/* Macros for defining actions */
 #define MergeType_NoMerge(ActionType) \
     inline std::variant<ActionType, bool> Merge(const ActionType &) const { return false; }
 #define MergeType_Merge(ActionType) \
@@ -23,7 +22,6 @@ template<class...> constexpr bool always_false_v = false;
 
 /**
 * Pass `is_savable = 1` to declare the action as savable (undoable, gesture history, saved in `.fga` projects).
-* Use `action.q()` to queue the action. _Note: `q` methods for all action types are defined in `Project.cpp`._
 * Merge types:
   - `NoMerge`: Cannot be merged with any other action.
   - `Merge`: Can be merged with any other action of the same type.
@@ -33,7 +31,6 @@ template<class...> constexpr bool always_false_v = false;
     struct ActionType {                                                         \
         inline static const Metadata _Meta{#ActionType, meta_str};              \
         static constexpr bool IsSaved = is_savable;                             \
-        void q() const;                                                         \
         static void MenuItem();                                                 \
         static fs::path GetPath() { return _TypePath / _Meta.PathLeaf; }        \
         static const std::string &GetName() { return _Meta.Name; }              \

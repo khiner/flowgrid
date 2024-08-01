@@ -326,62 +326,84 @@ struct TextBufferImpl {
         // and a non-empty column is always up-to-date with its latest `LineChar` value.
         std::optional<u32> StartColumn{}, EndColumn{};
         // Cleared every frame. Used to keep recently edited cursors visible.
-        // todo These should not be stored in history, since all cursors are marked as edited during an undo/redo.
         bool StartEdited{false}, EndEdited{false};
     };
 
-    struct Cursors {
-        auto begin() const { return Cursors.begin(); }
-        auto end() const { return Cursors.end(); }
-        auto begin() { return Cursors.begin(); }
-        auto end() { return Cursors.end(); }
-        auto cbegin() const { return Cursors.cbegin(); }
-        auto cend() const { return Cursors.cend(); }
+    struct CursorSnapshot {
+        LineChar Start, End;
+    };
+    struct CursorsSnapshot {
+        std::vector<CursorSnapshot> Cursors;
+        u32 LastAddedIndex{0};
+    };
 
-        Cursor &operator[](u32 i) { return Cursors[i]; }
-        const Cursor &operator[](u32 i) const { return Cursors[i]; }
-        const Cursor &front() const { return Cursors.front(); }
-        const Cursor &back() const { return Cursors.back(); }
-        Cursor &front() { return Cursors.front(); }
-        Cursor &back() { return Cursors.back(); }
-        auto size() const { return Cursors.size(); }
+    struct Cursors {
+        Cursors() : _Cursors{{}} {}
+        Cursors(const CursorsSnapshot &snapshot) {
+            _Cursors.reserve(snapshot.Cursors.size());
+            for (const auto &c : snapshot.Cursors) _Cursors.emplace_back(c.Start, c.End);
+            LastAddedIndex = snapshot.LastAddedIndex;
+        }
+
+        operator CursorsSnapshot() const {
+            CursorsSnapshot snapshot;
+            snapshot.Cursors.reserve(_Cursors.size());
+            for (const auto &c : _Cursors) snapshot.Cursors.emplace_back(c.GetStart(), c.GetEnd());
+            snapshot.LastAddedIndex = LastAddedIndex;
+            return snapshot;
+        }
+
+        auto begin() const { return _Cursors.begin(); }
+        auto end() const { return _Cursors.end(); }
+        auto begin() { return _Cursors.begin(); }
+        auto end() { return _Cursors.end(); }
+        auto cbegin() const { return _Cursors.cbegin(); }
+        auto cend() const { return _Cursors.cend(); }
+
+        Cursor &operator[](u32 i) { return _Cursors[i]; }
+        const Cursor &operator[](u32 i) const { return _Cursors[i]; }
+        const Cursor &front() const { return _Cursors.front(); }
+        const Cursor &back() const { return _Cursors.back(); }
+        Cursor &front() { return _Cursors.front(); }
+        Cursor &back() { return _Cursors.back(); }
+        auto size() const { return _Cursors.size(); }
 
         bool AnyRanged() const {
-            return any_of(Cursors, [](const auto &c) { return c.IsRange(); });
+            return any_of(_Cursors, [](const auto &c) { return c.IsRange(); });
         }
         bool AllRanged() const {
-            return all_of(Cursors, [](const auto &c) { return c.IsRange(); });
+            return all_of(_Cursors, [](const auto &c) { return c.IsRange(); });
         }
         bool AnyMultiline() const {
-            return any_of(Cursors, [](const auto &c) { return c.IsMultiline(); });
+            return any_of(_Cursors, [](const auto &c) { return c.IsMultiline(); });
         }
         bool AnyEdited() const {
-            return any_of(Cursors, [](const auto &c) { return c.IsEdited(); });
+            return any_of(_Cursors, [](const auto &c) { return c.IsEdited(); });
         }
 
         void Add(Cursor &&c) {
-            Cursors.emplace_back(std::move(c));
+            _Cursors.emplace_back(std::move(c));
             LastAddedIndex = size() - 1;
         }
         void Clear() {
-            Cursors.clear();
+            _Cursors.clear();
             LastAddedIndex = 0;
         }
 
         void MarkEdited() {
-            for (Cursor &c : Cursors) c.MarkEdited();
+            for (auto &c : _Cursors) c.MarkEdited();
         }
         void ClearEdited() {
-            for (Cursor &c : Cursors) c.ClearEdited();
+            for (auto &c : _Cursors) c.ClearEdited();
         }
-        Cursor &GetLastAdded() { return Cursors[LastAddedIndex]; }
+        Cursor &GetLastAdded() { return _Cursors[LastAddedIndex]; }
 
         void SortAndMerge() {
             if (size() <= 1) return;
 
             // Sort cursors.
             const auto last_added_cursor_lc = GetLastAdded().LC();
-            std::ranges::sort(Cursors, [](const auto &a, const auto &b) { return a.Min() < b.Min(); });
+            std::ranges::sort(_Cursors, [](const auto &a, const auto &b) { return a.Min() < b.Min(); });
 
             // Merge overlapping cursors.
             std::vector<Cursor> merged;
@@ -401,7 +423,7 @@ struct TextBufferImpl {
             }
 
             merged.push_back(current);
-            Cursors = std::move(merged);
+            _Cursors = std::move(merged);
 
             // Update last added cursor index to be valid after sort/merge.
             const auto it = find_if(*this, [&last_added_cursor_lc](const auto &c) { return c.LC() == last_added_cursor_lc; });
@@ -415,7 +437,7 @@ struct TextBufferImpl {
             if (!AnyEdited()) return {};
 
             Cursor edited_range;
-            for (auto &c : Cursors) {
+            for (auto &c : _Cursors) {
                 if (c.IsEdited()) {
                     edited_range = c;
                     break; // todo create a sensible cursor representing the combined range when multiple cursors are edited.
@@ -425,7 +447,7 @@ struct TextBufferImpl {
         }
 
     private:
-        std::vector<Cursor> Cursors{{{0, 0}}};
+        std::vector<Cursor> _Cursors;
         u32 LastAddedIndex{0};
     };
 
@@ -1122,7 +1144,7 @@ private:
 
     struct Snapshot {
         Lines Text;
-        struct Cursors Cursors, BeforeCursors;
+        CursorsSnapshot Cursors, BeforeCursors;
         // If immer flex vectors provided a diff mechanism like its map does,
         // we wouldn't need this, and we could compute diffs across any two arbitrary snapshots.
         std::vector<TextInputEdit> Edits;
@@ -1548,8 +1570,8 @@ void TextBufferImpl::Render(bool is_focused) {
         Cursors.ClearEdited();
         Cursors.SortAndMerge();
         // Move scroll to keep the edited cursor visible.
-        // Goal: Keep the _entirity_ of the edited cursor(s) visible at all times.
-        // So, vars like `end_in_view` mean, "is the end of the edited cursor in _fully_ in view?"
+        // Goal: Keep all edited cursor(s) visible at all times.
+        // So, vars like `end_in_view` mean, "is the end of the edited cursor _fully_ in view?"
         // We assume at least the end has been edited, since it's the _interactive_ end.
         const auto end = edited_cursor->GetEndCoords(*this);
         const bool end_in_view = end.L > first_visible_coords.L && end.L < (std::min(last_visible_coords.L, 1u) - 1) &&

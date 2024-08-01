@@ -1271,15 +1271,15 @@ bool TextBuffer::Empty() const { return Impl->Empty(); }
 static bool IsPressed(ImGuiKeyChord chord) {
     const auto window_id = ImGui::GetCurrentWindowRead()->ID;
     ImGui::SetKeyOwnersForKeyChord(chord, window_id); // Prevent app from handling this key press.
-    return ImGui::IsKeyChordPressed(chord, window_id, ImGuiInputFlags_Repeat);
+    return ImGui::IsKeyChordPressed(chord, ImGuiInputFlags_Repeat, window_id);
 }
 
 std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const {
     using namespace Action::TextBuffer;
 
     // history
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_Z)) return Undo{Id};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Redo{Id};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) return Undo{Id};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Z)) return Redo{Id};
     // no-select moves
     if (IsPressed(ImGuiKey_UpArrow)) return MoveCursorsLines{.component_id = Id, .amount = -1, .select = false};
     if (IsPressed(ImGuiKey_DownArrow)) return MoveCursorsLines{.component_id = Id, .amount = 1, .select = false};
@@ -1306,12 +1306,12 @@ std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const 
     if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_End)) return MoveCursorsBottom{.component_id = Id, .select = true};
     if (IsPressed(ImGuiMod_Shift | ImGuiKey_Home)) return MoveCursorsStartLine{.component_id = Id, .select = true};
     if (IsPressed(ImGuiMod_Shift | ImGuiKey_End)) return MoveCursorsEndLine{.component_id = Id, .select = true};
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_A)) return SelectAll{Id};
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_D)) return SelectNextOccurrence{Id};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_A)) return SelectAll{Id};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_D)) return SelectNextOccurrence{Id};
     // cut/copy/paste
-    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsPressed(ImGuiMod_Super | ImGuiKey_C)) return Copy{Id};
-    if (IsPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsPressed(ImGuiMod_Super | ImGuiKey_V)) return Paste{Id};
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_X) || IsPressed(ImGuiMod_Shift | ImGuiKey_Delete)) {
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsPressed(ImGuiMod_Ctrl | ImGuiKey_C)) return Copy{Id};
+    if (IsPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsPressed(ImGuiMod_Ctrl | ImGuiKey_V)) return Paste{Id};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_X) || IsPressed(ImGuiMod_Shift | ImGuiKey_Delete)) {
         if (Impl->ReadOnly) return Copy{Id};
         return Cut{Id};
     }
@@ -1362,13 +1362,10 @@ void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) 
     if (IsMouseDragging(MouseLeft)) Cursors.GetLastAdded().SetEnd(mouse_lc);
 
     const auto &io = GetIO();
-    const bool shift = io.KeyShift,
-               ctrl = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl,
-               alt = io.ConfigMacOSXBehaviors ? io.KeyCtrl : io.KeyAlt;
 
     const auto is_click = IsMouseClicked(MouseLeft);
-    if (shift && is_click) return Cursors.GetLastAdded().SetEnd(mouse_lc);
-    if (shift || alt) return;
+    if (io.KeyShift && is_click) return Cursors.GetLastAdded().SetEnd(mouse_lc);
+    if (io.KeyShift || io.KeyAlt) return;
 
     if (is_over_line_number) DestroyHoveredNode();
     else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc));
@@ -1378,15 +1375,15 @@ void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) 
     const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
         time - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
     if (is_triple_click) {
-        SetSelection(ClampedCursor({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)), ctrl);
+        SetSelection(ClampedCursor({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)), io.KeyCtrl);
         LastClickTime = -1.0f;
     } else if (is_double_click) {
-        SetSelection(ClampedCursor(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false)), ctrl);
+        SetSelection(ClampedCursor(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false)), io.KeyCtrl);
         LastClickTime = time;
         LastClickPos = mouse_pos;
     } else if (is_click) {
         auto cursor = is_over_line_number ? ClampedCursor({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)) : ClampedCursor(mouse_lc, mouse_lc);
-        SetSelection(std::move(cursor), ctrl);
+        SetSelection(std::move(cursor), io.KeyCtrl);
         LastClickTime = time;
         LastClickPos = mouse_pos;
     } else if (IsMouseReleased(MouseLeft)) {
@@ -1451,6 +1448,16 @@ void TextBufferImpl::Render(bool is_focused) {
 
         // Render cursors
         if (is_focused) {
+            {
+                // (Copied from ImGui::InputTextEx)
+                // Notify OS of text input position for advanced IME (-1 x offset so that Windows IME can cover our cursor. Bit of an extra nicety.)
+                auto &g = *GImGui;
+                g.PlatformImeData.WantVisible = true;
+                g.PlatformImeData.InputPos = {cursor_screen_pos.x - 1.0f, cursor_screen_pos.y - g.FontSize};
+                g.PlatformImeData.InputLineHeight = g.FontSize;
+                g.PlatformImeViewport = ImGui::GetCurrentWindowRead()->Viewport->ID;
+            }
+
             for (const auto &c : filter(Cursors, [li](const auto &c) { return c.Line() == li; })) {
                 const u32 ci = c.CharIndex(), column = GetColumn(line, ci);
                 const float width = !Overwrite || ci >= line.size() ? 1.f : (line[ci] == '\t' ? NumTabSpacesAtColumn(column) : 1) * char_advance.x;
@@ -1621,8 +1628,12 @@ void TextBuffer::Render() const {
         auto &io = GetIO();
         io.WantCaptureKeyboard = io.WantTextInput = true;
 
+        // (Copied from ImGui::InputTextEx)
+        // Process regular text input (before we check for Return because using some IME will effectively send a Return?)
+        // We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
+        const bool ignore_char_inputs = (io.KeyCtrl && !io.KeyAlt) || (io.ConfigMacOSXBehaviors && io.KeyCtrl);
         if (auto action = ProduceKeyboardAction()) Q(*action);
-        else if (!io.InputQueueCharacters.empty() && io.KeyCtrl == io.KeyAlt && !io.KeySuper) {
+        else if (!io.InputQueueCharacters.empty() && !ignore_char_inputs) {
             for (const auto ch : io.InputQueueCharacters) {
                 if (ch != 0 && (ch == '\n' || ch >= 32)) Q(Action::TextBuffer::EnterChar{.component_id = Id, .value = ch});
             }

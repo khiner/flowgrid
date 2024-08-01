@@ -314,19 +314,19 @@ bool Project::CanApply(const ActionType &action) const {
 using namespace ImGui;
 
 static bool IsPressed(ImGuiKeyChord chord) {
-    return IsKeyChordPressed(chord, ImGuiInputFlags_Repeat);
+    return IsKeyChordPressed(chord, ImGuiInputFlags_Repeat, ImGuiKeyOwner_NoOwner);
 }
 
 std::optional<Project::ActionType> Project::ProduceKeyboardAction() const {
     using namespace Action::Project;
 
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_N)) return OpenEmpty{};
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_O)) return ShowOpenDialog{};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_S)) return ShowSaveDialog{};
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_Z)) return Undo{};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_Z)) return Redo{};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Super | ImGuiKey_O)) return OpenDefault{};
-    if (IsPressed(ImGuiMod_Super | ImGuiKey_S)) return SaveCurrent{};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_N)) return OpenEmpty{};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_O)) return ShowOpenDialog{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_S)) return ShowSaveDialog{};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) return Undo{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Z)) return Redo{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_O)) return OpenDefault{};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_S)) return SaveCurrent{};
 
     return {};
 }

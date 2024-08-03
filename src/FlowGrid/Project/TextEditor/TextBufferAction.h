@@ -1,6 +1,10 @@
 #pragma once
 
 #include "Core/Action/DefineAction.h"
+#include "LineChar.h"
+
+Json(LineChar, L, C);
+Json(LineCharRange, Start, End);
 
 DefineActionType(
     TextBuffer,
@@ -12,6 +16,8 @@ DefineActionType(
     DefineUnsavedComponentAction(Undo, NoMerge, "");
     DefineUnsavedComponentAction(Redo, NoMerge, "");
 
+    DefineUnmergableComponentAction(SetCursor, LineChar lc; bool add;);
+    DefineUnmergableComponentAction(SetCursorRange, LineCharRange lcr; bool add;);
     DefineUnmergableComponentAction(MoveCursorsLines, int amount; bool select;);
     DefineUnmergableComponentAction(PageCursorsLines, bool up; bool select;);
     DefineUnmergableComponentAction(MoveCursorsChar, bool right; bool select; bool word;);
@@ -39,6 +45,8 @@ DefineActionType(
     ComponentActionJson(Open, file_path);
     ComponentActionJson(Save, file_path);
 
+    ComponentActionJson(SetCursor, lc, add);
+    ComponentActionJson(SetCursorRange, lcr, add);
     ComponentActionJson(MoveCursorsLines, amount, select);
     ComponentActionJson(PageCursorsLines, up, select);
     ComponentActionJson(MoveCursorsChar, right, select, word);
@@ -65,7 +73,7 @@ DefineActionType(
 
     using Any = ActionVariant<
         ShowOpenDialog, ShowSaveDialog, Save, Open, Set, Undo, Redo,
-        MoveCursorsLines, PageCursorsLines, MoveCursorsChar, MoveCursorsTop, MoveCursorsBottom, MoveCursorsStartLine, MoveCursorsEndLine,
+        SetCursor, SetCursorRange, MoveCursorsLines, PageCursorsLines, MoveCursorsChar, MoveCursorsTop, MoveCursorsBottom, MoveCursorsStartLine, MoveCursorsEndLine,
         SelectAll, SelectNextOccurrence, ToggleOverwrite, Copy, Cut, Paste, Delete, Backspace, DeleteCurrentLines, ChangeCurrentLinesIndentation,
         MoveCurrentLines, ToggleLineComment, EnterChar>;
 );

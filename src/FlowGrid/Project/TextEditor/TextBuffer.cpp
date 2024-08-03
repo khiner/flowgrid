@@ -19,6 +19,7 @@
 #include "UI/Fonts.h"
 
 #include "LanguageID.h"
+#include "LineChar.h"
 #include "SyntaxTree.h"
 #include "TextBufferPaletteId.h"
 
@@ -88,14 +89,14 @@ static float Distance(const ImVec2 &a, const ImVec2 &b) {
 }
 
 struct TextBufferImpl {
-    TextBufferImpl(std::string_view text, LanguageID language_id)
-        : Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
+    TextBufferImpl(ID id, std::string_view text, LanguageID language_id)
+        : Id(id), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         SetLanguage(language_id);
         SetText(string(text));
         Commit({});
     }
-    TextBufferImpl(const fs::path &file_path)
-        : Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
+    TextBufferImpl(ID id, const fs::path &file_path)
+        : Id(id), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         OpenFile(file_path);
         Commit({});
     }
@@ -178,17 +179,6 @@ struct TextBufferImpl {
         Coords operator+(const Coords &o) const { return {L + o.L, C + o.C}; }
     };
 
-    struct LineChar {
-        u32 L{0}, C{0};
-
-        auto operator<=>(const LineChar &o) const {
-            if (auto cmp = L <=> o.L; cmp != 0) return cmp;
-            return C <=> o.C;
-        }
-        bool operator==(const LineChar &) const = default;
-        bool operator!=(const LineChar &) const = default;
-    };
-
     using Line = immer::flex_vector<char>;
     using Lines = immer::flex_vector<Line>;
     using TransientLine = immer::flex_vector_transient<char>;
@@ -256,17 +246,11 @@ struct TextBufferImpl {
         }
     };
 
-    struct Cursor {
-        Cursor() = default;
+    struct Cursor : LineCharRange {
+        using LineCharRange::LineCharRange;
 
-        Cursor(LineChar lc) : Start(lc), End(lc) {}
-        Cursor(LineChar start, LineChar end) : Start(start), End(end) {}
+        Cursor(LineCharRange &&lcr) : LineCharRange(std::move(lcr)) {}
 
-        bool operator==(const Cursor &) const = default;
-        bool operator!=(const Cursor &) const = default;
-
-        LineChar GetStart() const { return Start; }
-        LineChar GetEnd() const { return End; }
         u32 GetStartColumn(const TextBufferImpl &editor) {
             if (!StartColumn) StartColumn = editor.GetColumn(Start);
             return *StartColumn;
@@ -277,17 +261,6 @@ struct TextBufferImpl {
         }
         Coords GetStartCoords(const TextBufferImpl &editor) { return {Start.L, GetStartColumn(editor)}; }
         Coords GetEndCoords(const TextBufferImpl &editor) { return {End.L, GetEndColumn(editor)}; }
-
-        u32 Line() const { return End.L; }
-        u32 CharIndex() const { return End.C; }
-        LineChar LC() const { return End; } // Be careful if this is a multiline cursor!
-
-        LineChar Min() const { return std::min(Start, End); }
-        LineChar Max() const { return std::max(Start, End); }
-
-        bool IsRange() const { return Start != End; }
-        bool IsMultiline() const { return Start.L != End.L; }
-        bool IsRightOf(LineChar lc) const { return End.L == lc.L && End.C > lc.C; }
 
         bool IsEdited() const { return StartEdited || EndEdited; }
         bool IsStartEdited() const { return StartEdited; }
@@ -316,24 +289,17 @@ struct TextBufferImpl {
         }
 
     private:
-        // `Start` and `End` are the the first and second coordinate _set in an interaction_.
-        // Use `Min()` and `Max()` for position ordering.
-        LineChar Start{}, End{Start};
-
         // A column is emptied when its respective `LineChar` is changed without the caller providing an explicit column.
         // A column is computed and set on demand when its `LineChar` is read.
         // Operationally, this means that if a column is never read, it is never computed,
         // and a non-empty column is always up-to-date with its latest `LineChar` value.
         std::optional<u32> StartColumn{}, EndColumn{};
         // Cleared every frame. Used to keep recently edited cursors visible.
-        bool StartEdited{false}, EndEdited{false};
+        bool StartEdited{true}, EndEdited{true};
     };
 
-    struct CursorSnapshot {
-        LineChar Start, End;
-    };
     struct CursorsSnapshot {
-        std::vector<CursorSnapshot> Cursors;
+        std::vector<LineCharRange> Cursors;
         u32 LastAddedIndex{0};
     };
 
@@ -348,7 +314,7 @@ struct TextBufferImpl {
         operator CursorsSnapshot() const {
             CursorsSnapshot snapshot;
             snapshot.Cursors.reserve(_Cursors.size());
-            for (const auto &c : _Cursors) snapshot.Cursors.emplace_back(c.GetStart(), c.GetEnd());
+            for (const auto &c : _Cursors) snapshot.Cursors.emplace_back(c.Start, c.End);
             snapshot.LastAddedIndex = LastAddedIndex;
             return snapshot;
         }
@@ -540,6 +506,12 @@ struct TextBufferImpl {
     void SetNumTabSpaces(u32 tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
     void SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(line_spacing, 1.f, 2.f); }
 
+    // If `add == true`, a new cursor is added and set.
+    // Otherwise, the cursors are _cleared_ and a new cursor is added and set.
+    void SetCursor(LineCharRange &&lcr, bool add = false) {
+        if (!add) Cursors.Clear();
+        Cursors.Add({std::move(lcr)});
+    }
     void MoveCursorsBottom(bool select = false) {
         for (auto &c : Cursors) c.Set(LineMaxLC(LineCount() - 1), !select);
     }
@@ -573,7 +545,7 @@ struct TextBufferImpl {
         // Track the cursor's column to return back to it after moving to a line long enough.
         // (This is the only place we worry about this.)
         const u32 new_end_column = c.GetEndColumn(*this);
-        const u32 new_end_li = std::clamp(int(c.GetEnd().L) + amount, 0, int(LineCount() - 1));
+        const u32 new_end_li = std::clamp(int(c.End.L) + amount, 0, int(LineCount() - 1));
         const LineChar new_end{
             new_end_li,
             std::min(GetCharIndex({new_end_li, new_end_column}), GetLineMaxCharIndex(new_end_li)),
@@ -581,7 +553,7 @@ struct TextBufferImpl {
         if (!select) return c.Set(new_end, true, new_end_column);
         if (!move_start) return c.Set(new_end, false, new_end_column);
         const u32 new_start_column = c.GetStartColumn(*this);
-        const u32 new_start_li = std::clamp(int(c.GetStart().L) + amount, 0, int(LineCount() - 1));
+        const u32 new_start_li = std::clamp(int(c.Start.L) + amount, 0, int(LineCount() - 1));
         const LineChar new_start{
             new_start_li,
             std::min(GetCharIndex({new_start_li, new_start_column}), GetLineMaxCharIndex(new_start_li)),
@@ -597,7 +569,7 @@ struct TextBufferImpl {
         }
     }
 
-    void SelectAll() { SetSelection({{0, 0}, EndLC()}, false); }
+    void SelectAll() { SetCursor({{0, 0}, EndLC()}, false); }
 
     void ToggleOverwrite() { Overwrite ^= true; } // todo use Bool prop
 
@@ -832,12 +804,11 @@ struct TextBufferImpl {
     void SelectNextOccurrence(bool case_sensitive = true) {
         const auto &c = Cursors.GetLastAdded();
         if (const auto match_range = FindNextOccurrence(GetSelectedText(c), c.Max(), case_sensitive)) {
-            SetSelection({match_range->GetStart(), match_range->GetEnd()}, true);
-            Cursors.SortAndMerge();
+            SetCursor({match_range->Start, match_range->End}, true);
         }
     }
 
-    void Render(bool is_focused);
+    std::optional<TextBuffer::ActionType> Render(bool is_focused);
     void DebugPanel();
 
     bool ReadOnly{false};
@@ -934,16 +905,9 @@ private:
         return column;
     }
 
-    Cursor ClampedCursor(LineChar start, LineChar end) {
+    LineCharRange ClampedRange(LineChar start, LineChar end) {
         const auto begin_lc = BeginLC(), end_lc = EndLC();
         return {std::clamp(start, begin_lc, end_lc), std::clamp(end, begin_lc, end_lc)};
-    }
-
-    // If `add == true`, a new cursor is added and set.
-    // Otherwise, the cursors are _cleared_ and a new cursor is added and set.
-    void SetSelection(Cursor &&cursor, bool add = false) {
-        if (!add) Cursors.Clear();
-        Cursors.Add(std::move(cursor));
     }
 
     LineChar FindWordBoundary(LineChar from, bool is_start = false) const {
@@ -1104,7 +1068,7 @@ private:
         c.Set(c.Min());
     }
 
-    void HandleMouseInputs(ImVec2 char_advance, float text_start_x);
+    std::optional<TextBuffer::ActionType> HandleMouseInputs(ImVec2 char_advance, float text_start_x);
 
     u32 NumTabSpacesAtColumn(u32 column) const { return NumTabSpaces - (column % NumTabSpaces); }
     u32 NextTabstop(u32 column) const { return ((column / NumTabSpaces) + 1) * NumTabSpaces; }
@@ -1125,6 +1089,7 @@ private:
         }
     }
 
+    ID Id;
     Lines Text{Line{}};
     Cursors Cursors;
     std::vector<TextInputEdit> Edits{};
@@ -1181,7 +1146,7 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
 
 TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
     : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
-      Impl(std::make_unique<TextBufferImpl>(file_path)) {}
+      Impl(std::make_unique<TextBufferImpl>(Id, file_path)) {}
 
 TextBuffer::~TextBuffer() {}
 
@@ -1198,6 +1163,8 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [this](const Undo &) { return Impl->CanUndo(); },
             [this](const Redo &) { return Impl->CanRedo(); },
 
+            [](const SetCursor &) { return true; },
+            [](const SetCursorRange &) { return true; },
             [](const MoveCursorsLines &) { return true; },
             [](const PageCursorsLines &) { return true; },
             [](const MoveCursorsChar &) { return true; },
@@ -1259,6 +1226,8 @@ void TextBuffer::Apply(const ActionType &action) const {
             [this](const Undo &) { Impl->Undo(); },
             [this](const Redo &) { Impl->Redo(); },
 
+            [this](const SetCursor &a) { Impl->SetCursor(LineCharRange{a.lc}, a.add); },
+            [this](const SetCursorRange &a) { Impl->SetCursor(LineCharRange{a.lcr}, a.add); },
             [this](const MoveCursorsLines &a) { Impl->MoveCursorsLines(a.amount, a.select); },
             [this](const PageCursorsLines &a) { Impl->PageCursorsLines(a.up, a.select); },
             [this](const MoveCursorsChar &a) { Impl->MoveCursorsChar(a.right, a.select, a.word); },
@@ -1362,32 +1331,32 @@ std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const 
 
 using namespace ImGui;
 
-void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) {
-    if (IsWindowHovered()) {
-        SetMouseCursor(ImGuiMouseCursor_TextInput);
-    } else {
-        DestroyHoveredNode();
-        return;
-    }
-
+std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) {
+    using namespace Action::TextBuffer;
     constexpr static ImGuiMouseButton MouseLeft = ImGuiMouseButton_Left, MouseMiddle = ImGuiMouseButton_Middle;
 
+    if (!IsWindowHovered()) {
+        DestroyHoveredNode();
+        return {};
+    }
+
+    SetMouseCursor(ImGuiMouseCursor_TextInput);
+
     if (IsMouseDown(MouseMiddle) && IsMouseDragging(MouseMiddle)) {
-        const auto new_scroll = ImVec2{GetScrollX(), GetScrollY()} - GetMouseDragDelta(MouseMiddle);
-        SetScrollX(new_scroll.x);
-        SetScrollY(new_scroll.y);
+        const auto scroll = ImVec2{GetScrollX(), GetScrollY()} - GetMouseDragDelta(MouseMiddle);
+        SetScrollX(scroll.x);
+        SetScrollY(scroll.y);
     }
 
     bool is_over_line_number = false;
     const auto mouse_pos = GetMousePos();
     const auto mouse_lc = ToLineChar(ScreenPosToCoords(mouse_pos, char_advance, text_start_x, &is_over_line_number));
-    if (IsMouseDragging(MouseLeft)) Cursors.GetLastAdded().SetEnd(mouse_lc);
-
     const auto &io = GetIO();
-
     const auto is_click = IsMouseClicked(MouseLeft);
-    if (io.KeyShift && is_click) return Cursors.GetLastAdded().SetEnd(mouse_lc);
-    if (io.KeyShift || io.KeyAlt) return;
+    if ((io.KeyShift && is_click) || IsMouseDragging(MouseLeft)) {
+        return SetCursorRange{Id, LineCharRange{Cursors.GetLastAdded().Start, mouse_lc}, false};
+    }
+    if (io.KeyShift || io.KeyAlt) return {};
 
     if (is_over_line_number) DestroyHoveredNode();
     else if (Syntax) CreateHoveredNode(ToByteIndex(mouse_lc));
@@ -1397,23 +1366,23 @@ void TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) 
     const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
         time - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
     if (is_triple_click) {
-        SetSelection(ClampedCursor({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)), io.KeyCtrl);
         LastClickTime = -1.0f;
+        return SetCursorRange{Id, ClampedRange({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)), io.KeyCtrl};
     } else if (is_double_click) {
-        SetSelection(ClampedCursor(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false)), io.KeyCtrl);
         LastClickTime = time;
         LastClickPos = mouse_pos;
+        return SetCursorRange{Id, ClampedRange(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false)), io.KeyCtrl};
     } else if (is_click) {
-        auto cursor = is_over_line_number ? ClampedCursor({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)) : ClampedCursor(mouse_lc, mouse_lc);
-        SetSelection(std::move(cursor), io.KeyCtrl);
         LastClickTime = time;
         LastClickPos = mouse_pos;
-    } else if (IsMouseReleased(MouseLeft)) {
-        Cursors.SortAndMerge();
+        auto lcr = is_over_line_number ? ClampedRange({mouse_lc.L, 0}, CheckedNextLineBegin(mouse_lc.L)) : ClampedRange(mouse_lc, mouse_lc);
+        return SetCursorRange{Id, std::move(lcr), io.KeyCtrl};
     }
+
+    return {};
 }
 
-void TextBufferImpl::Render(bool is_focused) {
+std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
     static constexpr float ScrollbarWidth = 14, LeftMargin = 10;
 
     const float font_size = GetFontSize();
@@ -1422,7 +1391,6 @@ void TextBufferImpl::Render(bool is_focused) {
     const ImVec2 char_advance = {font_width, font_height * LineSpacing};
     // Line-number column has room for the max line-num digits plus two spaces.
     const float text_start_x = LeftMargin + (ShowLineNumbers ? std::format("{}  ", std::max(0, int(Text.size()) - 1)).size() * font_width : 0);
-    HandleMouseInputs(char_advance, text_start_x);
 
     const ImVec2 scroll{GetScrollX(), GetScrollY()};
     const ImVec2 cursor_screen_pos = GetCursorScreenPos();
@@ -1430,9 +1398,35 @@ void TextBufferImpl::Render(bool is_focused) {
         GetWindowWidth() - (CurrentSpaceDims.x > ContentDims.x ? ScrollbarWidth : 0.0f),
         GetWindowHeight() - (CurrentSpaceDims.y > ContentDims.y ? ScrollbarWidth : 0.0f)
     };
-    const Coords first_visible_coords = {u32(scroll.y / char_advance.y), u32(std::max(scroll.x - text_start_x, 0.0f) / char_advance.x)};
-    const Coords last_visible_coords = {u32((ContentDims.y + scroll.y) / char_advance.y), u32((ContentDims.x + scroll.x - text_start_x) / char_advance.x)};
+    const Coords first_visible_coords{u32(scroll.y / char_advance.y), u32(std::max(scroll.x - text_start_x, 0.0f) / char_advance.x)};
+    const Coords last_visible_coords{u32((ContentDims.y + scroll.y) / char_advance.y), u32((ContentDims.x + scroll.x - text_start_x) / char_advance.x)};
     ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
+
+    if (auto edited_cursor = Cursors.GetEditedCursor(); edited_cursor) {
+        Cursors.ClearEdited();
+        Cursors.SortAndMerge();
+        // Move scroll to keep the edited cursor visible.
+        // Goal: Keep all edited cursor(s) visible at all times.
+        // So, vars like `end_in_view` mean, "is the end of the edited cursor _fully_ in view?"
+        // We assume at least the end has been edited, since it's the _interactive_ end.
+        const auto end = edited_cursor->GetEndCoords(*this);
+        const bool end_in_view = end.L > first_visible_coords.L && end.L < (std::min(last_visible_coords.L, 1u) - 1) &&
+            end.C >= first_visible_coords.C && end.C < last_visible_coords.C;
+        const bool target_start = edited_cursor->IsStartEdited() && end_in_view;
+        const auto target = target_start ? edited_cursor->GetStartCoords(*this) : end;
+        if (target.L <= first_visible_coords.L) {
+            SetScrollY(std::max((target.L - 0.5f) * char_advance.y, 0.f));
+        } else if (target.L >= last_visible_coords.L) {
+            SetScrollY(std::max((target.L + 1.5f) * char_advance.y - ContentDims.y, 0.f));
+        }
+        if (target.C <= first_visible_coords.C) {
+            SetScrollX(std::clamp(text_start_x + (target.C - 0.5f) * char_advance.x, 0.f, scroll.x));
+        } else if (target.C >= last_visible_coords.C) {
+            SetScrollX(std::max(text_start_x + (target.C + 1.5f) * char_advance.x - ContentDims.x, 0.f));
+        }
+    }
+
+    const auto mouse_action = HandleMouseInputs(char_advance, text_start_x);
 
     u32 max_column = 0;
     auto dl = GetWindowDrawList();
@@ -1515,7 +1509,7 @@ void TextBufferImpl::Render(bool is_focused) {
             } else {
                 if (seq_length == 1 && Cursors.size() == 1) {
                     if (const auto matching_brackets = FindMatchingBrackets(Cursors.front())) {
-                        if (matching_brackets->GetStart() == lc || matching_brackets->GetEnd() == lc) {
+                        if (matching_brackets->Start == lc || matching_brackets->End == lc) {
                             const ImVec2 start{glyph_pos + ImVec2{0, font_height + 1.0f}};
                             dl->AddRectFilled(start, start + ImVec2{char_advance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
                         }
@@ -1551,44 +1545,22 @@ void TextBufferImpl::Render(bool is_focused) {
         (Text.size() + std::min(ContentCoordDims.L - 1, u32(Text.size()))) * char_advance.y
     };
 
-    SetCursorPos({0, 0});
+    ImGui::SetCursorPos({0, 0});
 
     // Stack invisible items to push node hierarchy to ImGui stack.
     if (Syntax && HoveredNode) {
-        const auto before_cursor = GetCursorScreenPos();
+        const auto before_cursor = ImGui::GetCursorScreenPos();
         for (const auto &node : HoveredNode->Ancestry) {
             PushOverrideID(node.Id);
             InvisibleButton("", CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
-            SetCursorScreenPos(before_cursor);
+            ImGui::SetCursorScreenPos(before_cursor);
         }
         for (u32 i = 0; i < HoveredNode->Ancestry.size(); ++i) PopID();
     }
 
     Dummy(CurrentSpaceDims);
 
-    if (auto edited_cursor = Cursors.GetEditedCursor(); edited_cursor) {
-        Cursors.ClearEdited();
-        Cursors.SortAndMerge();
-        // Move scroll to keep the edited cursor visible.
-        // Goal: Keep all edited cursor(s) visible at all times.
-        // So, vars like `end_in_view` mean, "is the end of the edited cursor _fully_ in view?"
-        // We assume at least the end has been edited, since it's the _interactive_ end.
-        const auto end = edited_cursor->GetEndCoords(*this);
-        const bool end_in_view = end.L > first_visible_coords.L && end.L < (std::min(last_visible_coords.L, 1u) - 1) &&
-            end.C >= first_visible_coords.C && end.C < last_visible_coords.C;
-        const bool target_start = edited_cursor->IsStartEdited() && end_in_view;
-        const auto target = target_start ? edited_cursor->GetStartCoords(*this) : end;
-        if (target.L <= first_visible_coords.L) {
-            SetScrollY(std::max((target.L - 0.5f) * char_advance.y, 0.f));
-        } else if (target.L >= last_visible_coords.L) {
-            SetScrollY(std::max((target.L + 1.5f) * char_advance.y - ContentDims.y, 0.f));
-        }
-        if (target.C <= first_visible_coords.C) {
-            SetScrollX(std::clamp(text_start_x + (target.C - 0.5f) * char_advance.x, 0.f, scroll.x));
-        } else if (target.C >= last_visible_coords.C) {
-            SetScrollX(std::max(text_start_x + (target.C + 1.5f) * char_advance.x - ContentDims.x, 0.f));
-        }
-    }
+    return mouse_action;
 }
 
 static void DrawEdits(const std::vector<TextInputEdit> &edits) {
@@ -1602,7 +1574,7 @@ void TextBufferImpl::DebugPanel() {
     if (CollapsingHeader("Editor state")) {
         ImGui::Text("Cursor count: %lu", Cursors.size());
         for (const auto &c : Cursors) {
-            const auto &start = c.GetStart(), &end = c.GetEnd();
+            const auto &start = c.Start, &end = c.End;
             ImGui::Text("Start: {%d, %d}(%u), End: {%d, %d}(%u)", start.L, start.C, ToByteIndex(start), end.L, end.C, ToByteIndex(end));
         }
         if (CollapsingHeader("Line lengths")) {
@@ -1662,7 +1634,7 @@ void TextBuffer::Render() const {
             io.InputQueueCharacters.resize(0);
         }
     }
-    Impl->Render(is_focused);
+    if (auto action = Impl->Render(is_focused)) Q(*action);
     if (font_changed) Fonts::Pop();
 
     EndChild();

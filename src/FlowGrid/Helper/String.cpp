@@ -1,10 +1,8 @@
 #include "String.h"
 
-using std::vector;
-
 namespace StringHelper {
-vector<string> Split(const string_view &text, const char *delims) {
-    vector<string> tokens;
+std::vector<string> Split(const string_view &text, const char *delims) {
+    std::vector<string> tokens;
     size_t start = text.find_first_not_of(delims), end;
     while ((end = text.find_first_of(delims, start)) != string::npos) {
         tokens.emplace_back(text.substr(start, end - start));
@@ -15,8 +13,8 @@ vector<string> Split(const string_view &text, const char *delims) {
 }
 
 // Only matches first occurrence (assumes at most one match per match word).
-vector<std::pair<size_t, size_t>> FindRangesMatching(string_view str, const vector<string> &match_words) {
-    vector<std::pair<size_t, size_t>> matching_ranges;
+std::vector<std::pair<size_t, size_t>> FindRangesMatching(string_view str, const std::vector<string> &match_words) {
+    std::vector<std::pair<size_t, size_t>> matching_ranges;
     for (const auto &match_word : match_words) {
         const size_t pos = str.find(match_word);
         if (pos != string::npos) matching_ranges.emplace_back(pos, pos + match_word.size());
@@ -24,7 +22,7 @@ vector<std::pair<size_t, size_t>> FindRangesMatching(string_view str, const vect
     return matching_ranges;
 }
 
-string PascalToSentenceCase(string_view str, const vector<string> &skip_words, const vector<string> &all_caps_words) {
+string PascalToSentenceCase(string_view str, const std::vector<string> &skip_words, const std::vector<string> &all_caps_words) {
     const auto skip_ranges = FindRangesMatching(str, skip_words);
     const auto all_caps_ranges = FindRangesMatching(str, all_caps_words);
 

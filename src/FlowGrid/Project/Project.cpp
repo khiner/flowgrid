@@ -812,6 +812,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
         // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
+        // todo this should be an action option
         force_commit_gesture |=
             std::holds_alternative<Action::Primitive::Bool::Toggle>(action) ||
             std::holds_alternative<Action::Vec2::ToggleLinked>(action) ||

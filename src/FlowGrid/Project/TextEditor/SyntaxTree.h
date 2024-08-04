@@ -14,6 +14,7 @@
 #include "Core/HelpInfo.h"
 #include "Helper/Color.h"
 #include "LanguageID.h"
+#include "TextInputEdit.h"
 #include "UI/Fonts.h"
 
 using json = nlohmann::json;
@@ -373,32 +374,6 @@ struct SyntaxNodeAncestry {
     std::vector<SyntaxNode> Ancestry;
 };
 
-/**
-Holds the byte parts of `TSInputEdit` (not the points).
-TS API functions generally handle only having bytes populated.
-(E.g. see https://github.com/tree-sitter/tree-sitter/issues/445)
-`StartByte`: Start position of the text change.
-`OldEndByte`: End position of the original text before the change.
-  - For insertion, same as `start`.
-  - For replacement, where the replaced text ended.
-  - For deletion, where the deleted text ended.
-`NewEndByte`: End position of the new text after the change.
-  - For insertion or replacement, where the new text ends.
-  - For deletion, same as `start`.
-**/
-struct TextInputEdit {
-    u32 StartByte{0}, OldEndByte{0}, NewEndByte{0};
-    TextInputEdit Invert() const { return TextInputEdit{StartByte, NewEndByte, OldEndByte}; }
-    bool IsInsert() const { return StartByte == OldEndByte; }
-    bool IsDelete() const { return StartByte == NewEndByte; }
-
-    auto operator<=>(const TextInputEdit &o) const {
-        if (auto cmp = StartByte <=> o.StartByte; cmp != 0) return cmp;
-        if (auto cmp = OldEndByte <=> o.OldEndByte; cmp != 0) return cmp;
-        return NewEndByte <=> o.NewEndByte;
-    }
-};
-
 struct SyntaxTree {
     // todo take language
     SyntaxTree(TSInput input) : Input(input), Parser(ts_parser_new()) {}
@@ -409,7 +384,7 @@ struct SyntaxTree {
     }
 
     // Apply edits to the TS tree, re-parse, update highlight state.
-    void ApplyEdits(const std::vector<TextInputEdit> &edits) {
+    void ApplyEdits(const std::ranges::input_range auto &edits) {
         ChangedCaptureRanges.clear(); // For debugging
         if (edits.empty()) return;
 
@@ -494,7 +469,7 @@ private:
     Otherwise, the query is executed across the entire document and all capture transitions are added.
     TODO partial updating is not fully working yet.
     */
-    void UpdateCaptureIdTransitions(const std::vector<TextInputEdit> &edits, const TSTree *old_tree = nullptr) {
+    void UpdateCaptureIdTransitions(const std::ranges::input_range auto &edits, const TSTree *old_tree = nullptr) {
         if (edits.empty() || !Query || !Tree) return;
 
         auto transition_it = CaptureIdTransitions.begin();

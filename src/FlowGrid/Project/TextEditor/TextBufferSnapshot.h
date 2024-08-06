@@ -11,15 +11,16 @@
 using TextBufferLine = immer::flex_vector<char>;
 using TextBufferLines = immer::flex_vector<TextBufferLine>;
 
+struct CursorsSnapshot {
+    std::vector<LineCharRange> Cursors;
+    u32 LastAddedIndex{0};
+};
+
 struct TextBufferSnapshot {
     TextBufferLines Text;
-    std::vector<LineCharRange> Cursors, BeforeCursors;
-    u32 LastAddedIndex{0}, BeforeLastAddedIndex{0};
+    CursorsSnapshot Cursors, BeforeCursors;
 
     // If immer flex vectors provided a diff mechanism like its map does,
     // we wouldn't need this, and we could compute diffs across any two arbitrary snapshots.
     immer::vector<TextInputEdit> Edits;
-
-    bool operator==(const TextBufferSnapshot &) const = default;
-    bool operator!=(const TextBufferSnapshot &) const = default;
 };

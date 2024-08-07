@@ -1,9 +1,7 @@
 #pragma once
 
-#include <vector>
-
-#include "immer/vector.hpp"
 #include "immer/flex_vector.hpp"
+#include "immer/vector.hpp"
 
 #include "LineChar.h"
 #include "TextInputEdit.h"
@@ -12,8 +10,8 @@ using TextBufferLine = immer::flex_vector<char>;
 using TextBufferLines = immer::flex_vector<TextBufferLine>;
 
 struct CursorsSnapshot {
-    std::vector<LineCharRange> Cursors;
-    u32 LastAddedIndex{0};
+    immer::vector<LineCharRange> Cursors;
+    u32 LastAddedCursorIndex{0};
 };
 
 struct TextBufferSnapshot {

@@ -15,7 +15,7 @@ struct LineChar {
 
 struct LineCharRange {
     // `Start` and `End` are the the first and second coordinate _set in an interaction_.
-    // Use `Min()` and `Max()` for position ordering.
+    // Use `Min()` and `Max()` for positional ordering.
     LineChar Start, End{Start};
 
     LineCharRange() = default;
@@ -24,9 +24,12 @@ struct LineCharRange {
 
     bool operator==(const LineCharRange &) const = default;
     bool operator!=(const LineCharRange &) const = default;
+    auto operator<=>(const LineCharRange &o) const { return Min() <=> o.Min(); }
 
     LineChar Min() const { return std::min(Start, End); }
     LineChar Max() const { return std::max(Start, End); }
+
+    LineCharRange To(LineChar lc, bool extend = false) const { return {extend ? Start : lc, lc}; }
 
     u32 Line() const { return End.L; }
     u32 CharIndex() const { return End.C; }

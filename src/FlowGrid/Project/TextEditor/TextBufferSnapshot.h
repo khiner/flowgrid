@@ -18,7 +18,7 @@ struct TextBufferSnapshot {
     TextBufferLines Text;
     CursorsSnapshot Cursors, BeforeCursors;
 
-    // If immer flex vectors provided a diff mechanism like its map does,
-    // we wouldn't need this, and we could compute diffs across any two arbitrary snapshots.
+    // If immer vectors provided a diff mechanism like its map does,
+    // we could efficiently compute diffs across any two arbitrary text buffers, and we wouldn't need this.
     immer::vector<TextInputEdit> Edits;
 };

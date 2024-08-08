@@ -1,6 +1,6 @@
 #pragma once
 
-#include "immer/vector.hpp"
+#include "immer/flex_vector.hpp"
 
 #include "Container.h"
 #include "Core/Action/Actionable.h"
@@ -11,7 +11,7 @@ template<typename T> struct PrimitiveVector : Component, Actionable<typename Act
     // `Actionable` is templated on `Action::PrimitiveVector::Type<T>::type`, which is a dependent type (it depends on `T`),
     // and base class members that use dependent template types are not visible in subclasses at compile time.
     using typename Actionable<typename Action::PrimitiveVector<T>::Any>::ActionType;
-    using ContainerT = immer::vector<T>;
+    using ContainerT = immer::flex_vector<T>;
 
     void Apply(const ActionType &action) const override {
         std::visit(
@@ -44,6 +44,7 @@ template<typename T> struct PrimitiveVector : Component, Actionable<typename Act
     u32 Size() const { return Get().size(); }
 
     ContainerT Get() const;
+    void Set(ContainerT) const;
     void Set(const std::vector<T> &) const;
     void Set(size_t i, const T &) const;
     void Set(const std::vector<std::pair<size_t, T>> &values) const {

@@ -7,7 +7,7 @@
 // Naive `diff` method for `immer::vector`s.
 // Callbacks receive an index and a value (for `add` and `remove`) or two values (for `change`).
 template<typename T, typename Add, typename Remove, typename Change>
-void diff(const immer::vector<T> &before, const immer::vector<T> &after, Add add, Remove remove, Change change) {
+void diff(const immer::flex_vector<T> &before, const immer::flex_vector<T> &after, Add add, Remove remove, Change change) {
     size_t before_index = 0, after_index = 0;
     // Iterate over both vectors as long as both have elements remaining.
     while (before_index < before.size() && after_index < after.size()) {
@@ -80,7 +80,7 @@ void AddOps(const StoreMap<immer::set<u32>> &before, const StoreMap<immer::set<u
     );
 }
 
-template<typename T> void AddOps(const StoreMap<immer::vector<T>> &before, const StoreMap<immer::vector<T>> &after, PatchOps &ops) {
+template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, const StoreMap<immer::flex_vector<T>> &after, PatchOps &ops) {
     diff(
         before,
         after,
@@ -110,4 +110,4 @@ template<typename T> void AddOps(const StoreMap<immer::vector<T>> &before, const
 // Explicit instantiation for the default value types.
 template struct TypedStore<
     bool, u32, s32, float, std::string, IdPairs, immer::set<u32>,
-    immer::vector<bool>, immer::vector<s32>, immer::vector<u32>, immer::vector<float>, immer::vector<std::string>>;
+    immer::flex_vector<bool>, immer::flex_vector<s32>, immer::flex_vector<u32>, immer::flex_vector<float>, immer::flex_vector<std::string>>;

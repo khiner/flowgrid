@@ -429,10 +429,10 @@ struct TextBufferImpl {
     }
     void EditCursor(u32 i, LineChar lc, bool select = false) {
         Cursors = Cursors.set(i, Cursors[i].To(lc, select));
-        AssertCursorsSorted();
-        MergeCursors();
         StartEdited.insert(i);
         EndEdited.insert(i);
+        AssertCursorsSorted();
+        MergeCursors();
     }
 
     template<typename EditFunc>
@@ -1045,10 +1045,9 @@ private:
 
     ID Id;
     Lines Text{Line{}};
+    immer::vector<TextInputEdit> Edits{};
     immer::vector<Cursor> Cursors{{}};
     u32 LastAddedCursorIndex{0};
-
-    immer::vector<TextInputEdit> Edits{};
 
     TextBufferPaletteId PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};

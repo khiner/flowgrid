@@ -8,12 +8,12 @@
 // Specialized `ValueTypes`
 #include "IdPairs.h"
 
+#include "immer/flex_vector.hpp"
 #include "immer/set.hpp"
-#include "immer/vector.hpp"
 
 struct Store : TypedStore<
                    bool, u32, s32, float, std::string, IdPairs, immer::set<u32>,
-                   immer::vector<bool>, immer::vector<s32>, immer::vector<u32>, immer::vector<float>, immer::vector<std::string>>,
+                   immer::flex_vector<bool>, immer::flex_vector<s32>, immer::flex_vector<u32>, immer::flex_vector<float>, immer::flex_vector<std::string>>,
                Actionable<Action::Store::Any> {
     bool CanApply(const ActionType &) const override { return true; }
     void ApplyPatch(const Patch &) const;
@@ -32,17 +32,17 @@ struct Store : TypedStore<
 
     // Vector operations
     template<typename ValueType> void VectorSet(ID vec_id, size_t i, const ValueType &value) const {
-        if (Count<immer::vector<ValueType>>(vec_id)) {
-            Set(vec_id, Get<immer::vector<ValueType>>(vec_id).set(i, value));
+        if (Count<immer::flex_vector<ValueType>>(vec_id)) {
+            Set(vec_id, Get<immer::flex_vector<ValueType>>(vec_id).set(i, value));
         }
     }
     template<typename ValueType> void PushBack(ID vec_id, const ValueType &value) const {
-        if (!Count<immer::vector<ValueType>>(vec_id)) Set(vec_id, immer::vector<ValueType>{});
-        Set(vec_id, Get<immer::vector<ValueType>>(vec_id).push_back(value));
+        if (!Count<immer::flex_vector<ValueType>>(vec_id)) Set(vec_id, immer::flex_vector<ValueType>{});
+        Set(vec_id, Get<immer::flex_vector<ValueType>>(vec_id).push_back(value));
     }
     template<typename ValueType> void PopBack(ID vec_id) const {
-        if (Count<immer::vector<ValueType>>(vec_id)) {
-            auto vec = Get<immer::vector<ValueType>>(vec_id);
+        if (Count<immer::flex_vector<ValueType>>(vec_id)) {
+            auto vec = Get<immer::flex_vector<ValueType>>(vec_id);
             Set(vec_id, vec.take(vec.size() - 1));
         }
     }

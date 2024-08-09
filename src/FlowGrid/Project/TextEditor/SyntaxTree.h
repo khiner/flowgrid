@@ -390,7 +390,8 @@ struct SyntaxTree {
 
         if (Tree != nullptr) {
             for (const auto &edit : edits) {
-                const TSInputEdit ts_edit{.start_byte = edit.StartByte, .old_end_byte = edit.OldEndByte, .new_end_byte = edit.NewEndByte};
+                // We only use the byte-based edit fields.
+                const TSInputEdit ts_edit{edit.StartByte, edit.OldEndByte, edit.NewEndByte, {0, 0}, {0, 0}, {0, 0}};
                 ts_tree_edit(Tree, &ts_edit);
             }
         }

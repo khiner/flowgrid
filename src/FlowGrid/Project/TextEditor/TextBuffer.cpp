@@ -21,12 +21,16 @@
 #include "LanguageID.h"
 #include "SyntaxTree.h"
 #include "TextBufferPaletteId.h"
-#include "TextBufferSnapshot.h"
 
-using Snapshot = TextBufferSnapshot;
+namespace fs = std::filesystem;
+
+using Buffer = TextBuffer::Buffer;
 using Cursor = LineCharRange;
+using Line = TextBufferLine;
+using Lines = TextBufferLines;
+using TransientLine = immer::flex_vector_transient<char>;
+using TransientLines = immer::flex_vector_transient<Line>;
 
-using std::string, std::string_view;
 using std::views::filter, std::views::transform, std::views::join,
     std::ranges::reverse_view, std::ranges::any_of, std::ranges::all_of, std::ranges::find_if, std::ranges::subrange, std::ranges::fold_left, std::ranges::to;
 
@@ -38,10 +42,6 @@ std::string join_with(auto &&v, string_view delimiter = "") {
     }
     return os.str();
 }
-namespace fs = std::filesystem;
-
-struct SyntaxTree;
-struct SyntaxNodeInfo;
 
 enum class PaletteIndex {
     TextDefault,
@@ -62,7 +62,7 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
 
 // https://en.wikipedia.org/wiki/UTF-8
 // We assume that the char is a standalone character (<128) or a leading byte of an UTF-8 code sequence (non-10xxxxxx code)
-static u32 UTF8CharLength(char ch) {
+constexpr u32 UTF8CharLength(char ch) {
     if ((ch & 0xFE) == 0xFC) return 6;
     if ((ch & 0xFC) == 0xF8) return 5;
     if ((ch & 0xF8) == 0xF0) return 4;
@@ -71,37 +71,35 @@ static u32 UTF8CharLength(char ch) {
     return 1;
 }
 
-static bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
+constexpr bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
 
-static bool IsWordChar(char ch) {
+constexpr bool IsWordChar(char ch) {
     return UTF8CharLength(ch) > 1 || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
 }
 
-static char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && ch >= 'A' && ch <= 'Z') ? ch - 'A' + 'a' : ch; }
+constexpr char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && ch >= 'A' && ch <= 'Z') ? ch - 'A' + 'a' : ch; }
 
-static bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
+constexpr bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
     if (c2.size() + c2_offset < c1.size()) return false;
 
     const auto begin = c2.begin() + c2_offset;
     return std::ranges::equal(c1, subrange(begin, begin + c1.size()));
 }
 
-static float Distance(const ImVec2 &a, const ImVec2 &b) {
+constexpr float Distance(const ImVec2 &a, const ImVec2 &b) {
     const float x = a.x - b.x, y = a.y - b.y;
     return sqrt(x * x + y * y);
 }
 
 struct TextBufferImpl {
-    TextBufferImpl(ID id, std::string_view text, LanguageID language_id)
-        : Id(id), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
+    TextBufferImpl(ID id, TextBuffer::Buffer buffer, std::string_view text, LanguageID language_id)
+        : Id(id), B(std::move(buffer)), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         SetLanguage(language_id);
         SetText(string(text));
-        Commit({});
     }
-    TextBufferImpl(ID id, const fs::path &file_path)
-        : Id(id), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
+    TextBufferImpl(ID id, TextBuffer::Buffer buffer, const fs::path &file_path)
+        : Id(id), B(std::move(buffer)), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         OpenFile(file_path);
-        Commit({});
     }
 
     ~TextBufferImpl() = default;
@@ -182,11 +180,6 @@ struct TextBufferImpl {
         Coords operator+(const Coords &o) const { return {L + o.L, C + o.C}; }
     };
 
-    using Line = TextBufferLine;
-    using Lines = TextBufferLines;
-    using TransientLine = immer::flex_vector_transient<char>;
-    using TransientLines = immer::flex_vector_transient<Line>;
-
     struct LinesIter {
         LinesIter(const Lines &lines, LineChar lc, LineChar begin, LineChar end)
             : Text(lines), LC(std::move(lc)), Begin(std::move(begin)), End(std::move(end)) {}
@@ -250,37 +243,37 @@ struct TextBufferImpl {
     };
 
     bool AnyCursorsRanged() const {
-        return any_of(Cursors, [](const auto &c) { return c.IsRange(); });
+        return any_of(B.Cursors, [](const auto &c) { return c.IsRange(); });
     }
     bool AllCursorsRanged() const {
-        return all_of(Cursors, [](const auto &c) { return c.IsRange(); });
+        return all_of(B.Cursors, [](const auto &c) { return c.IsRange(); });
     }
     bool AnyCursorsMultiline() const {
-        return any_of(Cursors, [](const auto &c) { return c.IsMultiline(); });
+        return any_of(B.Cursors, [](const auto &c) { return c.IsMultiline(); });
     }
 
     void MarkCursorsEdited() {
-        for (u32 i = 0; i < Cursors.size(); ++i) {
+        for (u32 i = 0; i < B.Cursors.size(); ++i) {
             StartEdited.insert(i);
             EndEdited.insert(i);
         }
     }
 
-    const Cursor &LastAddedCursor() const { return Cursors[LastAddedCursorIndex]; }
+    const Cursor &LastAddedCursor() const { return B.Cursors[B.LastAddedCursorIndex]; }
 
     // Assumes cursors are sorted (on `Min()`).
     void MergeCursors() {
         ColumnsForCursorIndex.clear();
-        if (Cursors.size() <= 1) return;
+        if (B.Cursors.size() <= 1) return;
 
         const auto last_added_cursor_lc = LastAddedCursor().LC();
-        auto cursors_transient = Cursors.transient();
+        auto cursors_transient = B.Cursors.transient();
 
         // Merge overlapping cursors.
         immer::vector_transient<Cursor> merged;
-        auto current = Cursors.front();
-        for (size_t c = 1; c < Cursors.size(); ++c) {
-            const auto &next = Cursors[c];
+        auto current = B.Cursors.front();
+        for (size_t c = 1; c < B.Cursors.size(); ++c) {
+            const auto &next = B.Cursors[c];
             if (current.Max() >= next.Min()) {
                 // Overlap. Extend the current cursor to to include the next.
                 current = {std::min(current.Min(), next.Min()), std::max(current.Max(), next.Max())};
@@ -291,11 +284,11 @@ struct TextBufferImpl {
             }
         }
         merged.push_back(current);
-        Cursors = merged.persistent();
+        B.Cursors = merged.persistent();
 
         // Update last added cursor index to be valid after sort/merge.
-        const auto it = find_if(Cursors, [&last_added_cursor_lc](const auto &c) { return c.LC() == last_added_cursor_lc; });
-        LastAddedCursorIndex = it != Cursors.end() ? std::distance(Cursors.begin(), it) : 0;
+        const auto it = find_if(B.Cursors, [&last_added_cursor_lc](const auto &c) { return c.LC() == last_added_cursor_lc; });
+        B.LastAddedCursorIndex = it != B.Cursors.end() ? std::distance(B.Cursors.begin(), it) : 0;
     }
 
     // Returns the range of all edited cursor starts/ends since cursor edits were last cleared.
@@ -305,9 +298,9 @@ struct TextBufferImpl {
         if (StartEdited.empty() && EndEdited.empty()) return {};
 
         Cursor edited_range;
-        for (u32 i = 0; i < Cursors.size(); ++i) {
+        for (u32 i = 0; i < B.Cursors.size(); ++i) {
             if (StartEdited.contains(i) || EndEdited.contains(i)) {
-                edited_range = Cursors[i];
+                edited_range = B.Cursors[i];
                 break; // todo create a sensible cursor representing the combined range when multiple cursors are edited.
             }
         }
@@ -318,21 +311,20 @@ struct TextBufferImpl {
     // Cleared every frame. Used to keep recently edited cursors visible.
     std::unordered_set<u32> StartEdited{}, EndEdited{};
 
-    bool Empty() const { return Text.empty() || (Text.size() == 1 && Text[0].empty()); }
+    bool Empty() const { return B.Text.empty() || (B.Text.size() == 1 && B.Text[0].empty()); }
+    u32 LineCount() const { return B.Text.size(); }
+    const Line &GetLine(u32 li) const { return B.Text[li]; }
+    LineChar GetCursorPosition() const { return B.Cursors.back().LC(); }
+    LineChar CheckedNextLineBegin(u32 li) const { return li < B.Text.size() - 1 ? LineChar{li + 1, 0} : EndLC(); }
 
-    u32 LineCount() const { return Text.size(); }
-    const Line &GetLine(u32 li) const { return Text[li]; }
-    LineChar GetCursorPosition() const { return Cursors.back().LC(); }
-    LineChar CheckedNextLineBegin(u32 li) const { return li < Text.size() - 1 ? LineChar{li + 1, 0} : EndLC(); }
-
-    string GetText(LineChar start, LineChar end) const {
+    std::string GetText(LineChar start, LineChar end) const {
         if (end <= start) return "";
 
-        const u32 start_li = start.L, end_li = std::min(u32(Text.size()) - 1, end.L);
+        const u32 start_li = start.L, end_li = std::min(u32(B.Text.size()) - 1, end.L);
         const u32 start_ci = start.C, end_ci = end.C;
-        string result;
+        std::string result;
         for (u32 ci = start_ci, li = start_li; li < end_li || ci < end_ci;) {
-            if (const auto &line = Text[li]; ci < line.size()) {
+            if (const auto &line = B.Text[li]; ci < line.size()) {
                 result += line[ci++];
             } else {
                 ++li;
@@ -346,7 +338,7 @@ struct TextBufferImpl {
 
     std::string GetText() const { return GetText(BeginLC(), EndLC()); }
 
-    string GetSyntaxTreeSExp() const { return Syntax->GetSExp(); }
+    std::string GetSyntaxTreeSExp() const { return Syntax->GetSExp(); }
 
     string_view GetLanguageName() const { return Languages.Get(LanguageId).Name; }
 
@@ -361,7 +353,7 @@ struct TextBufferImpl {
         }
     }
 
-    void SetText(const string &text) {
+    void SetText(const std::string &text) {
         const u32 old_end_byte = EndByteIndex();
         TransientLines transient_lines{};
         TransientLine current_line{};
@@ -375,11 +367,11 @@ struct TextBufferImpl {
             }
         }
         transient_lines.push_back(current_line.persistent());
-        Text = transient_lines.persistent();
+        B.Text = transient_lines.persistent();
         History = {};
         HistoryIndex = -1;
 
-        Edits = Edits.push_back({0, old_end_byte, EndByteIndex()});
+        B.Edits = B.Edits.push_back({0, old_end_byte, EndByteIndex()});
     }
 
     void OpenFile(const fs::path &file_path) {
@@ -388,7 +380,7 @@ struct TextBufferImpl {
     }
 
     void SetFilePath(const fs::path &file_path) {
-        const string extension = file_path.extension();
+        const std::string extension = file_path.extension();
         SetLanguage(!extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None);
     }
 
@@ -399,36 +391,36 @@ struct TextBufferImpl {
 
         LanguageId = language_id;
         Syntax->SetLanguage(language_id);
-        Syntax->ApplyEdits(Edits);
-        Edits = {};
+        Syntax->ApplyEdits(B.Edits);
+        B.Edits = {};
     }
 
     void SetNumTabSpaces(u32 tab_size) { NumTabSpaces = std::clamp(tab_size, 1u, 8u); }
     void SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(line_spacing, 1.f, 2.f); }
 
     void AssertCursorsSorted() const {
-        for (u32 j = 1; j < Cursors.size(); ++j) assert(Cursors[j - 1] <= Cursors[j]);
+        for (u32 j = 1; j < B.Cursors.size(); ++j) assert(B.Cursors[j - 1] <= B.Cursors[j]);
     }
 
     // If `add == true`, a new cursor is added and set.
     // Otherwise, the cursors are _cleared_ and a new cursor is added and set.
     void SetCursor(Cursor c, bool add = false) {
-        if (!add) Cursors = {};
+        if (!add) B.Cursors = {};
         // Insert into sorted position.
-        LastAddedCursorIndex = std::distance(Cursors.begin(), std::ranges::upper_bound(Cursors, c));
-        Cursors = LastAddedCursorIndex < Cursors.size() ? Cursors.set(LastAddedCursorIndex, std::move(c)) : Cursors.push_back(std::move(c));
+        B.LastAddedCursorIndex = std::distance(B.Cursors.begin(), std::ranges::upper_bound(B.Cursors, c));
+        B.Cursors = B.LastAddedCursorIndex < B.Cursors.size() ? B.Cursors.set(B.LastAddedCursorIndex, std::move(c)) : B.Cursors.push_back(std::move(c));
         AssertCursorsSorted();
         MergeCursors();
     }
 
     void SetCursors(const immer::vector<Cursor> &cursors) {
-        Cursors = cursors;
+        B.Cursors = cursors;
         AssertCursorsSorted();
         MergeCursors();
         MarkCursorsEdited();
     }
     void EditCursor(u32 i, LineChar lc, bool select = false) {
-        Cursors = Cursors.set(i, Cursors[i].To(lc, select));
+        B.Cursors = B.Cursors.set(i, B.Cursors[i].To(lc, select));
         StartEdited.insert(i);
         EndEdited.insert(i);
         AssertCursorsSorted();
@@ -438,7 +430,7 @@ struct TextBufferImpl {
     template<typename EditFunc>
     void EditCursors(EditFunc f) {
         immer::vector_transient<Cursor> new_cursors;
-        for (const auto &c : Cursors) new_cursors.push_back(f(c));
+        for (const auto &c : B.Cursors) new_cursors.push_back(f(c));
         SetCursors(new_cursors.persistent());
     }
     template<typename EditFunc, typename FilterFunc>
@@ -452,7 +444,7 @@ struct TextBufferImpl {
 
     // todo create a function that takes a lambda to run on each cursor and update `Cursors`,
     //  using immer::vector::update https://sinusoid.es/immer/containers.html#vector
-    void MoveCursorsBottom(bool select = false) { EditCursors(LineMaxLC(LineCount() - 1), select); }
+    void MoveCursorsBottom(bool select = false) { EditCursors(LineMaxLC(B.Text.size() - 1), select); }
     void MoveCursorsTop(bool select = false) { EditCursors({0, 0}, select); }
 
     void MoveCursorsStartLine(bool select = false) {
@@ -471,12 +463,12 @@ struct TextBufferImpl {
         if (!move_start && !move_end) return;
 
         immer::vector_transient<Cursor> new_cursors;
-        for (u32 i = 0; i < Cursors.size(); ++i) {
-            const auto &c = Cursors[i];
+        for (u32 i = 0; i < B.Cursors.size(); ++i) {
+            const auto &c = B.Cursors[i];
             // Track the cursor's column to return back to it after moving to a line long enough.
             // (This is the only place we worry about this.)
             const auto [new_start_column, new_end_column] = GetColumns(c, i);
-            const u32 new_end_li = std::clamp(int(c.End.L) + amount, 0, int(LineCount() - 1));
+            const u32 new_end_li = std::clamp(int(c.End.L) + amount, 0, int(B.Text.size() - 1));
             const LineChar new_end{
                 new_end_li,
                 std::min(GetCharIndex({new_end_li, new_end_column}), GetLineMaxCharIndex(new_end_li)),
@@ -486,7 +478,7 @@ struct TextBufferImpl {
                 continue;
             }
 
-            const u32 new_start_li = std::clamp(int(c.Start.L) + amount, 0, int(LineCount() - 1));
+            const u32 new_start_li = std::clamp(int(c.Start.L) + amount, 0, int(B.Text.size() - 1));
             const LineChar new_start{
                 new_start_li,
                 std::min(GetCharIndex({new_start_li, new_start_column}), GetLineMaxCharIndex(new_start_li)),
@@ -522,56 +514,40 @@ struct TextBufferImpl {
     bool CanCopy() const { return AnyCursorsRanged(); }
     bool CanCut() const { return !ReadOnly && CanCopy(); }
     bool CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
+    bool CanToggleLineComment() const { return !ReadOnly && !Languages.Get(LanguageId).SingleLineComment.empty(); }
 
     void Undo() {
-        if (!CanUndo()) return;
-
-        const auto &current = History[HistoryIndex], &restore = History[--HistoryIndex];
-        Text = restore.Text;
-        Cursors = current.BeforeCursors.Cursors;
-        LastAddedCursorIndex = current.BeforeCursors.LastAddedCursorIndex;
+        const auto current = History[HistoryIndex], restore = History[--HistoryIndex];
         MarkCursorsEdited();
         Syntax->ApplyEdits(reverse_view(current.Edits) | transform([](const auto &edit) { return edit.Invert(); }));
-        Edits = {};
+        B = restore;
+        if (B.Edits.empty() && CanUndo()) Undo(); // Skip over cursor-only buffer changes.
+        B.Edits = {};
     }
     void Redo() {
-        if (!CanRedo()) return;
-
-        const auto restore = History[++HistoryIndex];
-        Text = restore.Text;
-        Cursors = restore.Cursors.Cursors;
-        LastAddedCursorIndex = restore.Cursors.LastAddedCursorIndex;
+        B = History[++HistoryIndex];
         MarkCursorsEdited();
-        Edits = restore.Edits;
-        Syntax->ApplyEdits(Edits);
-        Edits = {};
+        Syntax->ApplyEdits(B.Edits);
+        if (B.Edits.empty() && CanRedo()) Redo(); // Skip over cursor-only buffer changes.
+        B.Edits = {};
     }
 
     void Copy() {
-        const string str = AnyCursorsRanged() ?
-            join_with(Cursors | filter([](const auto &c) { return c.IsRange(); }) | transform([this](const auto &c) { return GetSelectedText(c); }), "\n") :
-            Text[GetCursorPosition().L] | to<string>();
+        const std::string str = AnyCursorsRanged() ?
+            join_with(B.Cursors | filter([](const auto &c) { return c.IsRange(); }) | transform([this](const auto &c) { return GetSelectedText(c); }), "\n") :
+            B.Text[GetCursorPosition().L] | to<std::string>();
         ImGui::SetClipboardText(str.c_str());
     }
 
     void Cut() {
-        if (!AnyCursorsRanged()) return;
-
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
         Copy();
-        for (int c = Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-        Commit(std::move(before_cursors));
+        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
     }
 
+    // todo store clipboard text manually in a `Lines` to avoid string conversion
     void Paste() {
-        // todo store clipboard text manually in a `Lines`?
-        const char *clip_text = ImGui::GetClipboardText();
-        if (*clip_text == '\0') return;
-
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
-
         TransientLines insert_text_lines_trans{};
-        const char *ptr = clip_text;
+        const char *ptr = ImGui::GetClipboardText();
         while (*ptr != '\0') {
             u32 str_length = 0;
             while (ptr[str_length] != '\n' && ptr[str_length] != '\0') ++str_length;
@@ -581,31 +557,29 @@ struct TextBufferImpl {
             ptr += str_length + 1;
         }
         const auto insert_text_lines = insert_text_lines_trans.persistent();
-        for (int c = Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-        if (Cursors.size() > 1 && insert_text_lines.size() == Cursors.size()) {
+        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
+        if (B.Cursors.size() > 1 && insert_text_lines.size() == B.Cursors.size()) {
             // Paste each line at the corresponding cursor.
-            for (int c = Cursors.size() - 1; c > -1; --c) InsertTextAtCursor({insert_text_lines[c]}, c);
+            for (int c = B.Cursors.size() - 1; c > -1; --c) InsertTextAtCursor({insert_text_lines[c]}, c);
         } else {
-            for (int c = Cursors.size() - 1; c > -1; --c) InsertTextAtCursor(insert_text_lines, c);
+            for (int c = B.Cursors.size() - 1; c > -1; --c) InsertTextAtCursor(insert_text_lines, c);
         }
-        Commit(std::move(before_cursors));
     }
 
     void EnterChar(ImWchar ch) {
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
-        for (int c = Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
+        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
 
         // Order is important here when typing '\n' in the same line with multiple cursors.
-        for (int i = Cursors.size() - 1; i > -1; --i) {
-            const auto &c = Cursors[i];
+        for (int i = B.Cursors.size() - 1; i > -1; --i) {
+            const auto &c = B.Cursors[i];
             TransientLine insert_line_trans{};
             if (ch == '\n') {
                 if (AutoIndent && c.CharIndex() != 0) {
                     // Match the indentation of the current or next line, whichever has more indentation.
                     // todo use tree-sitter fold queries
                     const u32 li = c.Line();
-                    const u32 indent_li = li < Text.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
-                    const auto &indent_line = Text[indent_li];
+                    const u32 indent_li = li < B.Text.size() - 1 && NumStartingSpaceColumns(li + 1) > NumStartingSpaceColumns(li) ? li + 1 : li;
+                    const auto &indent_line = B.Text[indent_li];
                     for (u32 i = 0; i < insert_line_trans.size() && isblank(indent_line[i]); ++i) insert_line_trans.push_back(indent_line[i]);
                 }
             } else {
@@ -616,12 +590,9 @@ struct TextBufferImpl {
             auto insert_line = insert_line_trans.persistent();
             InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, i);
         }
-
-        Commit(std::move(before_cursors));
     }
 
     void Backspace(bool is_word_mode = false) {
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
         if (!AnyCursorsRanged()) {
             MoveCursorsChar(false, true, is_word_mode);
             // Can't do backspace if any cursor is at {0,0}.
@@ -631,12 +602,10 @@ struct TextBufferImpl {
             }
             MergeCursors();
         }
-        for (int c = Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-        Commit(std::move(before_cursors));
+        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
     }
 
     void Delete(bool is_word_mode = false) {
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
         if (!AnyCursorsRanged()) {
             MoveCursorsChar(true, true, is_word_mode);
             // Can't do delete if any cursor is at the end of the last line.
@@ -646,15 +615,13 @@ struct TextBufferImpl {
             }
             MergeCursors();
         }
-        for (int c = Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-        Commit(std::move(before_cursors));
+        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
     }
 
     void MoveCurrentLines(bool up) {
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
         std::set<u32> affected_lines;
         u32 min_li = std::numeric_limits<u32>::max(), max_li = std::numeric_limits<u32>::min();
-        for (const auto &c : Cursors) {
+        for (const auto &c : B.Cursors) {
             for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
                 // Check if selection ends at line start.
                 if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
@@ -664,7 +631,7 @@ struct TextBufferImpl {
                 max_li = std::max(li, max_li);
             }
         }
-        if ((up && min_li == 0) || (!up && max_li == Text.size() - 1)) return; // Can't move up/down anymore.
+        if ((up && min_li == 0) || (!up && max_li == B.Text.size() - 1)) return; // Can't move up/down anymore.
 
         if (up) {
             for (const u32 li : affected_lines) SwapLines(li - 1, li);
@@ -672,33 +639,30 @@ struct TextBufferImpl {
             for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) SwapLines(*it, *it + 1);
         }
         MoveCursorsLines(up ? -1 : 1, true, true, true);
-
-        Commit(std::move(before_cursors));
     }
 
     void ToggleLineComment() {
-        const string &comment = Languages.Get(LanguageId).SingleLineComment;
+        const std::string &comment = Languages.Get(LanguageId).SingleLineComment;
         if (comment.empty()) return;
 
         static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), std::ranges::find_if_not(line, isblank)); };
 
         std::unordered_set<u32> affected_lines;
-        for (const auto &c : Cursors) {
+        for (const auto &c : B.Cursors) {
             for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
-                if (!(c.IsRange() && c.Max() == LineChar{li, 0}) && !Text[li].empty()) affected_lines.insert(li);
+                if (!(c.IsRange() && c.Max() == LineChar{li, 0}) && !B.Text[li].empty()) affected_lines.insert(li);
             }
         }
 
         const bool should_add_comment = any_of(affected_lines, [&](u32 li) {
-            return !Equals(comment, Text[li], FindFirstNonSpace(Text[li]));
+            return !Equals(comment, B.Text[li], FindFirstNonSpace(B.Text[li]));
         });
 
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
         for (u32 li : affected_lines) {
             if (should_add_comment) {
                 InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0});
             } else {
-                const auto &line = Text[li];
+                const auto &line = B.Text[li];
                 const u32 ci = FindFirstNonSpace(line);
                 u32 comment_ci = ci + comment.length();
                 if (comment_ci < line.size() && line[comment_ci] == ' ') ++comment_ci;
@@ -706,33 +670,29 @@ struct TextBufferImpl {
                 DeleteRange({li, ci}, {li, comment_ci});
             }
         }
-        Commit(std::move(before_cursors));
     }
 
     void DeleteCurrentLines() {
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
-        for (int c = Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
+        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
         MoveCursorsStartLine();
         MergeCursors();
 
-        for (const auto &c : reverse_view(Cursors)) {
+        for (const auto &c : reverse_view(B.Cursors)) {
             const u32 li = c.Line();
             DeleteRange(
-                li == Text.size() - 1 && li > 0 ? LineMaxLC(li - 1) : LineChar{li, 0},
+                li == B.Text.size() - 1 && li > 0 ? LineMaxLC(li - 1) : LineChar{li, 0},
                 CheckedNextLineBegin(li)
             );
         }
-        Commit(std::move(before_cursors));
     }
 
     void ChangeCurrentLinesIndentation(bool increase) {
-        CursorsSnapshot before_cursors{Cursors, LastAddedCursorIndex};
-        for (const auto &c : reverse_view(Cursors)) {
+        for (const auto &c : reverse_view(B.Cursors)) {
             for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
                 // Check if selection ends at line start.
                 if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
 
-                const auto &line = Text[li];
+                const auto &line = B.Text[li];
                 if (increase) {
                     if (!line.empty()) InsertText({{'\t'}}, {li, 0});
                 } else {
@@ -744,7 +704,6 @@ struct TextBufferImpl {
                 }
             }
         }
-        Commit(std::move(before_cursors));
     }
 
     void SelectNextOccurrence(bool case_sensitive = true) {
@@ -766,34 +725,23 @@ struct TextBufferImpl {
     bool ShortTabs{true};
     float LineSpacing{1};
 
-private:
-    // Commit a snapshot to the undo history and edit the tree (see `EditTree`).
-    void Commit(CursorsSnapshot &&before_cursors) {
-        if (Edits.empty()) return;
-
-        History = History.take(++HistoryIndex);
-        Snapshot snapshot{Text, {Cursors, LastAddedCursorIndex}, std::move(before_cursors), Edits};
-        History = History.push_back(std::move(snapshot));
-        Syntax->ApplyEdits(Edits);
-        Edits = {};
-    }
-
+    // private:
     std::string GetSelectedText(const Cursor &c) const { return GetText(c.Min(), c.Max()); }
 
     static LineChar BeginLC() { return {0, 0}; }
 
-    LineChar EndLC() const { return LineMaxLC(Text.size() - 1); }
+    LineChar EndLC() const { return LineMaxLC(B.Text.size() - 1); }
     u32 EndByteIndex() const { return ToByteIndex(EndLC()); }
 
-    LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {Text, std::move(lc), std::move(begin), std::move(end)}; }
+    LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {B.Text, std::move(lc), std::move(begin), std::move(end)}; }
     LinesIter Iter(LineChar lc = BeginLC()) const { return Iter(std::move(lc), BeginLC(), EndLC()); }
 
     LineChar LineMaxLC(u32 li) const { return {li, GetLineMaxCharIndex(li)}; }
-    Coords ToCoords(LineChar lc) const { return {lc.L, GetColumn(Text[lc.L], lc.C)}; }
+    Coords ToCoords(LineChar lc) const { return {lc.L, GetColumn(B.Text[lc.L], lc.C)}; }
     LineChar ToLineChar(Coords coords) const { return {coords.L, GetCharIndex(std::move(coords))}; }
     u32 ToByteIndex(LineChar lc) const {
-        if (lc.L >= Text.size()) return EndByteIndex();
-        return fold_left(subrange(Text.begin(), Text.begin() + lc.L), 0u, [](u32 sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
+        if (lc.L >= B.Text.size()) return EndByteIndex();
+        return fold_left(subrange(B.Text.begin(), B.Text.begin() + lc.L), 0u, [](u32 sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
     }
 
     void MoveCharIndexAndColumn(const Line &line, u32 &ci, u32 &column) const {
@@ -809,11 +757,11 @@ private:
         if (is_over_li != nullptr) *is_over_li = local.x < text_start_x;
 
         Coords coords{
-            std::min(u32(std::max(0.f, floor(local.y / char_advance.y))), u32(Text.size()) - 1),
+            std::min(u32(std::max(0.f, floor(local.y / char_advance.y))), u32(B.Text.size()) - 1),
             u32(std::max(0.f, floor((local.x - text_start_x + PosToCoordsColumnOffset * char_advance.x) / char_advance.x)))
         };
         // Check if the coord is in the middle of a tab character.
-        const auto &line = Text[std::min(coords.L, u32(Text.size()) - 1)];
+        const auto &line = B.Text[std::min(coords.L, u32(B.Text.size()) - 1)];
         const u32 ci = GetCharIndex(line, coords.C);
         if (ci < line.size() && line[ci] == '\t') coords.C = GetColumn(line, ci);
 
@@ -825,15 +773,15 @@ private:
         for (u32 column_i = 0; ci < line.size() && column_i < column;) MoveCharIndexAndColumn(line, ci, column_i);
         return ci;
     }
-    u32 GetCharIndex(Coords coords) const { return GetCharIndex(Text[coords.L], coords.C); }
-    u32 GetLineMaxCharIndex(u32 li) const { return Text[li].size(); }
+    u32 GetCharIndex(Coords coords) const { return GetCharIndex(B.Text[coords.L], coords.C); }
+    u32 GetLineMaxCharIndex(u32 li) const { return B.Text[li].size(); }
 
     u32 GetColumn(const Line &line, u32 ci) const {
         u32 column = 0;
         for (u32 ci_i = 0; ci_i < ci && ci_i < line.size();) MoveCharIndexAndColumn(line, ci_i, column);
         return column;
     }
-    u32 GetColumn(LineChar lc) const { return GetColumn(Text[lc.L], lc.C); }
+    u32 GetColumn(LineChar lc) const { return GetColumn(B.Text[lc.L], lc.C); }
 
     u32 GetFirstVisibleCharIndex(const Line &line, u32 first_visible_column) const {
         u32 ci = 0, column = 0;
@@ -858,9 +806,9 @@ private:
     }
 
     LineChar FindWordBoundary(LineChar from, bool is_start = false) const {
-        if (from.L >= Text.size()) return from;
+        if (from.L >= B.Text.size()) return from;
 
-        const auto &line = Text[from.L];
+        const auto &line = B.Text[from.L];
         u32 ci = from.C;
         if (ci >= line.size()) return from;
 
@@ -887,8 +835,8 @@ private:
             auto match_lci = find_lci;
             for (u32 i = 0; i < text.size(); ++i) {
                 const auto &match_lc = *match_lci;
-                if (match_lc.C == Text[match_lc.L].size()) {
-                    if (text[i] != '\n' || match_lc.L + 1 >= Text.size()) break;
+                if (match_lc.C == B.Text[match_lc.L].size()) {
+                    if (text[i] != '\n' || match_lc.L + 1 >= B.Text.size()) break;
                 } else if (ToLower(match_lci, case_sensitive) != ToLower(text[i], case_sensitive)) {
                     break;
                 }
@@ -910,7 +858,7 @@ private:
             CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
 
         const u32 li = c.Line();
-        const auto &line = Text[li];
+        const auto &line = B.Text[li];
         if (c.IsRange() || line.empty()) return {};
 
         u32 ci = c.CharIndex();
@@ -934,33 +882,33 @@ private:
     }
 
     u32 NumStartingSpaceColumns(u32 li) const {
-        const auto &line = Text[li];
+        const auto &line = B.Text[li];
         u32 column = 0;
         for (u32 ci = 0; ci < line.size() && isblank(line[ci]);) MoveCharIndexAndColumn(line, ci, column);
         return column;
     }
 
     void SwapLines(u32 li1, u32 li2) {
-        if (li1 == li2 || li1 >= Text.size() || li2 >= Text.size()) return;
+        if (li1 == li2 || li1 >= B.Text.size() || li2 >= B.Text.size()) return;
 
-        InsertText({Text[li2], {}}, {li1, 0}, false);
-        if (li2 + 1 < Text.size() - 1) DeleteRange({li2 + 1, 0}, {li2 + 2, 0}, false);
+        InsertText({B.Text[li2], {}}, {li1, 0}, false);
+        if (li2 + 1 < B.Text.size() - 1) DeleteRange({li2 + 1, 0}, {li2 + 2, 0}, false);
         // If the second line is the last line, we also need to delete the newline we just inserted.
-        else DeleteRange({li2, u32(Text[li2].size())}, EndLC(), false);
+        else DeleteRange({li2, u32(B.Text[li2].size())}, EndLC(), false);
     }
 
     // Returns insertion end.
     LineChar InsertText(Lines text, LineChar at, bool update_cursors = true) {
         if (text.empty()) return at;
 
-        if (at.L < Text.size()) {
-            auto ln1 = Text[at.L];
-            Text = Text.set(at.L, ln1.take(at.C) + text[0]);
-            Text = Text.take(at.L + 1) + text.drop(1) + Text.drop(at.L + 1);
-            auto ln2 = Text[at.L + text.size() - 1];
-            Text = Text.set(at.L + text.size() - 1, ln2 + ln1.drop(at.C));
+        if (at.L < B.Text.size()) {
+            auto ln1 = B.Text[at.L];
+            B.Text = B.Text.set(at.L, ln1.take(at.C) + text[0]);
+            B.Text = B.Text.take(at.L + 1) + text.drop(1) + B.Text.drop(at.L + 1);
+            auto ln2 = B.Text[at.L + text.size() - 1];
+            B.Text = B.Text.set(at.L + text.size() - 1, ln2 + ln1.drop(at.C));
         } else {
-            Text = Text + text;
+            B.Text = B.Text + text;
         }
 
         const u32 num_new_lines = text.size() - 1;
@@ -973,22 +921,22 @@ private:
 
         const u32 start_byte = ToByteIndex(at);
         const u32 text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](u32 sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
-        Edits = Edits.push_back({start_byte, start_byte, start_byte + text_byte_length});
+        B.Edits = B.Edits.push_back({start_byte, start_byte, start_byte + text_byte_length});
 
         return {at.L + num_new_lines, u32(text.size() == 1 ? at.C + text.front().size() : text.back().size())};
     }
 
     void InsertTextAtCursor(Lines text, u32 i) {
-        if (!text.empty()) EditCursor(i, InsertText(text, Cursors[i].Min()));
+        if (!text.empty()) EditCursor(i, InsertText(text, B.Cursors[i].Min()));
     }
 
     void DeleteRange(LineChar start, LineChar end, bool update_cursors = true, std::optional<Cursor> exclude_cursor = std::nullopt) {
         if (end <= start) return;
 
-        auto start_line = Text[start.L], end_line = Text[end.L];
+        auto start_line = B.Text[start.L], end_line = B.Text[end.L];
         const u32 start_byte = ToByteIndex(start), old_end_byte = ToByteIndex(end);
         if (start.L == end.L) {
-            Text = Text.set(start.L, start_line.erase(start.C, end.C));
+            B.Text = B.Text.set(start.L, start_line.erase(start.C, end.C));
 
             if (update_cursors) {
                 EditCursors(
@@ -998,9 +946,9 @@ private:
             }
         } else {
             end_line = end_line.drop(end.C);
-            Text = Text.set(end.L, end_line);
-            Text = Text.set(start.L, start_line.take(start.C) + end_line);
-            Text = Text.erase(start.L + 1, end.L + 1);
+            B.Text = B.Text.set(end.L, end_line);
+            B.Text = B.Text.set(start.L, start_line.take(start.C) + end_line);
+            B.Text = B.Text.erase(start.L + 1, end.L + 1);
 
             if (update_cursors) {
                 EditCursors(
@@ -1010,11 +958,11 @@ private:
             }
         }
 
-        Edits = Edits.push_back({start_byte, old_end_byte, start_byte});
+        B.Edits = B.Edits.push_back({start_byte, old_end_byte, start_byte});
     }
 
     void DeleteSelection(u32 i) {
-        auto c = Cursors[i];
+        auto c = B.Cursors[i];
         if (!c.IsRange()) return;
 
         // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
@@ -1044,10 +992,7 @@ private:
     }
 
     ID Id;
-    Lines Text{Line{}};
-    immer::vector<TextInputEdit> Edits{};
-    immer::vector<Cursor> Cursors{{}};
-    u32 LastAddedCursorIndex{0};
+    TextBuffer::Buffer B;
 
     TextBufferPaletteId PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
@@ -1063,7 +1008,7 @@ private:
     std::unique_ptr<SyntaxTree> Syntax;
 
     // The first history record is the initial state (after construction), and it's never removed from the history.
-    immer::vector<Snapshot> History;
+    immer::vector<Buffer> History;
     u32 HistoryIndex{0};
 };
 
@@ -1093,7 +1038,9 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
 
 TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
     : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
-      Impl(std::make_unique<TextBufferImpl>(Id, file_path)) {}
+      Impl(std::make_unique<TextBufferImpl>(Id, B, file_path)) {
+    Commit();
+}
 
 TextBuffer::~TextBuffer() {}
 
@@ -1133,7 +1080,7 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [this](const DeleteCurrentLines &) { return !Impl->ReadOnly; },
             [this](const ChangeCurrentLinesIndentation &) { return !Impl->ReadOnly; },
             [this](const MoveCurrentLines &) { return !Impl->ReadOnly; },
-            [this](const ToggleLineComment &) { return !Impl->ReadOnly; },
+            [this](const ToggleLineComment &) { return Impl->CanToggleLineComment(); },
             [this](const EnterChar &) { return !Impl->ReadOnly; },
         },
         action
@@ -1143,36 +1090,9 @@ bool TextBuffer::CanApply(const ActionType &action) const {
 void TextBuffer::Apply(const ActionType &action) const {
     using namespace Action::TextBuffer;
 
+    // Buffer actions
     std::visit(
         Match{
-            [this](const ShowOpenDialog &) {
-                FileDialog.Set({
-                    .owner_id = Id,
-                    .title = "Open file",
-                    .filters = ".*", // No filter for opens. Go nuts :)
-                    .save_mode = false,
-                    .max_num_selections = 1, // todo open multiple files
-                });
-            },
-            [this](const ShowSaveDialog &) {
-                const string current_file_ext = fs::path(LastOpenedFilePath).extension();
-                FileDialog.Set({
-                    .owner_id = Id,
-                    .title = std::format("Save {} file", Impl->GetLanguageName()),
-                    .filters = current_file_ext,
-                    .default_file_name = std::format("my_{}_program{}", Impl->GetLanguageName() | transform(::tolower) | to<string>(), current_file_ext),
-                    .save_mode = true,
-                });
-            },
-            [this](const Open &a) {
-                LastOpenedFilePath.Set(a.file_path);
-                Impl->OpenFile(a.file_path);
-            },
-            [this](const Save &a) { FileIO::write(a.file_path, Impl->GetText()); },
-
-            [this](const Undo &) { Impl->Undo(); },
-            [this](const Redo &) { Impl->Redo(); },
-
             [this](const SetCursor &a) { Impl->SetCursor(a.lc, a.add); },
             [this](const SetCursorRange &a) { Impl->SetCursor(a.lcr, a.add); },
             [this](const MoveCursorsLines &a) { Impl->MoveCursorsLines(a.amount, a.select); },
@@ -1198,12 +1118,59 @@ void TextBuffer::Apply(const ActionType &action) const {
             [this](const MoveCurrentLines &a) { Impl->MoveCurrentLines(a.up); },
             [this](const ToggleLineComment &) { Impl->ToggleLineComment(); },
             [this](const EnterChar &a) { Impl->EnterChar(a.value); },
+            [](auto &&) { /* Action does not affect buffer. */ }
+        },
+        action
+    );
+
+    // Non-buffer actions
+    std::visit(
+        Match{
+            [this](const ShowOpenDialog &) {
+                FileDialog.Set({
+                    .owner_id = Id,
+                    .title = "Open file",
+                    .filters = ".*", // No filter for opens. Go nuts :)
+                    .save_mode = false,
+                    .max_num_selections = 1, // todo open multiple files
+                });
+            },
+            [this](const ShowSaveDialog &) {
+                const string current_file_ext = fs::path(LastOpenedFilePath).extension();
+                FileDialog.Set({
+                    .owner_id = Id,
+                    .title = std::format("Save {} file", Impl->GetLanguageName()),
+                    .filters = current_file_ext,
+                    .default_file_name = std::format("my_{}_program{}", Impl->GetLanguageName() | transform(::tolower) | to<std::string>(), current_file_ext),
+                    .save_mode = true,
+                });
+            },
+            [this](const Open &a) {
+                LastOpenedFilePath.Set(a.file_path);
+                Impl->OpenFile(a.file_path);
+            },
+            [this](const Save &a) { FileIO::write(a.file_path, Impl->GetText()); },
+
+            [this](const Undo &) { Impl->Undo(); },
+            [this](const Redo &) { Impl->Redo(); },
+            [this](auto &&) { /* Action affects buffer. */ Commit(); }
         },
         action
     );
 }
 
-string TextBuffer::GetText() const { return Impl->GetText(); }
+void TextBuffer::Commit() const {
+    if (Impl->B.Edits.empty() && Impl->History[Impl->HistoryIndex].Edits.empty()) {
+        // Merge cursor-only edits.
+        Impl->History = Impl->History.set(Impl->HistoryIndex, Impl->B);
+    } else {
+        Impl->History = Impl->History.take(++Impl->HistoryIndex).push_back(Impl->B);
+        Impl->Syntax->ApplyEdits(Impl->B.Edits);
+        Impl->B.Edits = {};
+    }
+}
+
+std::string TextBuffer::GetText() const { return Impl->GetText(); }
 bool TextBuffer::Empty() const { return Impl->Empty(); }
 
 static bool IsPressed(ImGuiKeyChord chord) {
@@ -1337,7 +1304,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
     const float font_height = GetTextLineHeightWithSpacing();
     const ImVec2 char_advance = {font_width, font_height * LineSpacing};
     // Line-number column has room for the max line-num digits plus two spaces.
-    const float text_start_x = LeftMargin + (ShowLineNumbers ? std::format("{}  ", std::max(0, int(Text.size()) - 1)).size() * font_width : 0);
+    const float text_start_x = LeftMargin + (ShowLineNumbers ? std::format("{}  ", std::max(0, int(B.Text.size()) - 1)).size() * font_width : 0);
 
     const ImVec2 scroll{GetScrollX(), GetScrollY()};
     const ImVec2 cursor_screen_pos = GetCursorScreenPos();
@@ -1382,8 +1349,8 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
     auto dl = GetWindowDrawList();
     auto transition_it = Syntax->CaptureIdTransitions.begin();
     for (u32 li = first_visible_coords.L, byte_index = ToByteIndex({first_visible_coords.L, 0});
-         li <= last_visible_coords.L && li < Text.size(); ++li) {
-        const auto &line = Text[li];
+         li <= last_visible_coords.L && li < B.Text.size(); ++li) {
+        const auto &line = B.Text[li];
         const u32 line_max_column = GetLineMaxColumn(line, last_visible_coords.C);
         max_column = std::max(line_max_column, max_column);
 
@@ -1391,7 +1358,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
         const float text_screen_x = line_start_screen_pos.x + text_start_x;
         const Coords line_start_coord{li, 0}, line_end_coord{li, line_max_column};
         // Draw current line selection
-        for (const auto &c : Cursors) {
+        for (const auto &c : B.Cursors) {
             const auto selection_start = ToCoords(c.Min()), selection_end = ToCoords(c.Max());
             if (selection_start <= line_end_coord && selection_end > line_start_coord) {
                 const u32 start_col = selection_start > line_start_coord ? selection_start.C : 0;
@@ -1408,7 +1375,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
 
         if (ShowLineNumbers) {
             // Draw line number (right aligned).
-            const string line_num_str = std::format("{}  ", li);
+            const std::string line_num_str = std::format("{}  ", li);
             dl->AddText({text_screen_x - line_num_str.size() * font_width, line_start_screen_pos.y}, GetColor(PaletteIndex::LineNumber), line_num_str.c_str());
         }
 
@@ -1424,7 +1391,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
                 g.PlatformImeViewport = ImGui::GetCurrentWindowRead()->Viewport->ID;
             }
 
-            for (const auto &c : filter(Cursors, [li](const auto &c) { return c.Line() == li; })) {
+            for (const auto &c : filter(B.Cursors, [li](const auto &c) { return c.Line() == li; })) {
                 const u32 ci = c.CharIndex(), column = GetColumn(line, ci);
                 const float width = !Overwrite || ci >= line.size() ? 1.f : (line[ci] == '\t' ? NumTabSpacesAtColumn(column) : 1) * char_advance.x;
                 const ImVec2 pos{text_screen_x + column * char_advance.x, line_start_screen_pos.y};
@@ -1457,8 +1424,8 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
                     dl->AddCircleFilled(glyph_pos + ImVec2{font_width, font_size} * 0.5f, 1.5f, GetColor(PaletteIndex::ControlCharacter), 4);
                 }
             } else {
-                if (seq_length == 1 && Cursors.size() == 1) {
-                    if (const auto matching_brackets = FindMatchingBrackets(Cursors.front())) {
+                if (seq_length == 1 && B.Cursors.size() == 1) {
+                    if (const auto matching_brackets = FindMatchingBrackets(B.Cursors.front())) {
                         if (matching_brackets->Start == lc || matching_brackets->End == lc) {
                             const ImVec2 start{glyph_pos + ImVec2{0, font_height + 1.0f}};
                             dl->AddRectFilled(start, start + ImVec2{char_advance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
@@ -1492,7 +1459,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
 
     CurrentSpaceDims = {
         std::max((max_column + std::min(ContentCoordDims.C - 1, max_column)) * char_advance.x, CurrentSpaceDims.x),
-        (Text.size() + std::min(ContentCoordDims.L - 1, u32(Text.size()))) * char_advance.y
+        (B.Text.size() + std::min(ContentCoordDims.L - 1, u32(B.Text.size()))) * char_advance.y
     };
 
     ImGui::SetCursorPos({0, 0});
@@ -1522,13 +1489,13 @@ static void DrawEdits(const std::ranges::input_range auto &edits) {
 
 void TextBufferImpl::DebugPanel() {
     if (CollapsingHeader("Editor state")) {
-        ImGui::Text("Cursor count: %lu", Cursors.size());
-        for (const auto &c : Cursors) {
+        ImGui::Text("Cursor count: %lu", B.Cursors.size());
+        for (const auto &c : B.Cursors) {
             const auto &start = c.Start, &end = c.End;
             ImGui::Text("Start: {%d, %d}(%u), End: {%d, %d}(%u)", start.L, start.C, ToByteIndex(start), end.L, end.C, ToByteIndex(end));
         }
         if (CollapsingHeader("Line lengths")) {
-            for (u32 i = 0; i < Text.size(); i++) ImGui::Text("%u: %lu", i, Text[i].size());
+            for (u32 i = 0; i < B.Text.size(); i++) ImGui::Text("%u: %lu", i, B.Text[i].size());
         }
     }
     if (CollapsingHeader("History")) {
@@ -1543,7 +1510,7 @@ void TextBufferImpl::DebugPanel() {
 }
 
 void TextBuffer::Render() const {
-    static string PrevSelectedPath = "";
+    static std::string PrevSelectedPath = "";
     if (FileDialog.OwnerId == Id && PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         PrevSelectedPath = FileDialog.SelectedFilePath = "";
@@ -1552,9 +1519,9 @@ void TextBuffer::Render() const {
     }
 
     const auto cursor_coords = Impl->GetCursorPosition();
-    const string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
-    Text(
-        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, Impl->LineCount(),
+    const std::string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
+    ImGui::Text(
+        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, int(B.Text.size()),
         Impl->Overwrite ? "Ovr" : "Ins",
         Impl->CanUndo() ? "*" : " ",
         Impl->GetLanguageName().data(),
@@ -1576,7 +1543,7 @@ void TextBuffer::Render() const {
         // Process regular text input (before we check for Return because using some IME will effectively send a Return?)
         // We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
         const bool ignore_char_inputs = (io.KeyCtrl && !io.KeyAlt) || (io.ConfigMacOSXBehaviors && io.KeyCtrl);
-        if (auto action = ProduceKeyboardAction()) Q(*action);
+        if (auto action = ProduceKeyboardAction(); action && CanApply(*action)) Q(*action);
         else if (!io.InputQueueCharacters.empty() && !ignore_char_inputs) {
             for (const auto ch : io.InputQueueCharacters) {
                 if (ch != 0 && (ch == '\n' || ch >= 32)) Q(Action::TextBuffer::EnterChar{.component_id = Id, .value = ch});

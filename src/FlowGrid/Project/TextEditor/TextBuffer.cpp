@@ -1014,7 +1014,7 @@ private:
     }
 
     void DeleteSelection(u32 i) {
-        const auto &c = Cursors[i];
+        auto c = Cursors[i];
         if (!c.IsRange()) return;
 
         // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.

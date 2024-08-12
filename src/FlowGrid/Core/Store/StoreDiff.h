@@ -25,6 +25,21 @@ void diff(const immer::flex_vector<T> &before, const immer::flex_vector<T> &afte
     for (auto i = after_index; i < after.size(); ++i) add(i, after[i]);
 }
 
+// todo
+// This is the only diff that assumes it's comparing _consecutive_ entries in history.
+// It takes advantage of the fact that `TextBufferData` contains `Edits` representing the changes between each state.
+// If we wanted to compare two arbitrary `TextBufferData` instances, we'd either need generic diffing for `immer::flex_vector`,
+// or we'd need access to each `TextBufferData` between the two instances to accumulate the edits.
+void AddOps(const StoreMap<TextBufferData> &before, const StoreMap<TextBufferData> &after, PatchOps &ops) {
+    diff(
+        before,
+        after,
+        [&](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, "", std::nullopt); },
+        [&](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, ""); },
+        [&](const auto &o, const auto &n) { ops[o.first].emplace_back(PatchOpType::Replace, "", ""); }
+    );
+}
+
 template<typename ValueType>
 void AddOps(const StoreMap<ValueType> &before, const StoreMap<ValueType> &after, PatchOps &ops) {
     diff(
@@ -109,5 +124,5 @@ template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, 
 
 // Explicit instantiation for the default value types.
 template struct TypedStore<
-    bool, u32, s32, float, std::string, IdPairs, immer::set<u32>,
+    bool, u32, s32, float, std::string, IdPairs, TextBufferData, immer::set<u32>,
     immer::flex_vector<bool>, immer::flex_vector<s32>, immer::flex_vector<u32>, immer::flex_vector<float>, immer::flex_vector<std::string>>;

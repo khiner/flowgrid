@@ -22,9 +22,11 @@
 #include "SyntaxTree.h"
 #include "TextBufferPaletteId.h"
 
+#include "Core/Store/Store.h"
+
 namespace fs = std::filesystem;
 
-using Buffer = TextBuffer::Buffer;
+using Buffer = TextBufferData;
 using Cursor = LineCharRange;
 using Line = TextBufferLine;
 using Lines = TextBufferLines;
@@ -92,13 +94,13 @@ constexpr float Distance(const ImVec2 &a, const ImVec2 &b) {
 }
 
 struct TextBufferImpl {
-    TextBufferImpl(ID id, TextBuffer::Buffer buffer, std::string_view text, LanguageID language_id)
-        : Id(id), B(std::move(buffer)), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
+    TextBufferImpl(ID id, std::string_view text, LanguageID language_id)
+        : Id(id), B({}), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         SetLanguage(language_id);
         SetText(string(text));
     }
-    TextBufferImpl(ID id, TextBuffer::Buffer buffer, const fs::path &file_path)
-        : Id(id), B(std::move(buffer)), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
+    TextBufferImpl(ID id, const fs::path &file_path)
+        : Id(id), B({}), Syntax(std::make_unique<SyntaxTree>(TSInput{this, TSReadText, TSInputEncodingUTF8})) {
         OpenFile(file_path);
     }
 
@@ -518,9 +520,9 @@ struct TextBufferImpl {
 
     void Undo() {
         const auto current = History[HistoryIndex], restore = History[--HistoryIndex];
-        MarkCursorsEdited();
-        Syntax->ApplyEdits(reverse_view(current.Edits) | transform([](const auto &edit) { return edit.Invert(); }));
         B = restore;
+        Syntax->ApplyEdits(reverse_view(current.Edits) | transform([](const auto &edit) { return edit.Invert(); }));
+        MarkCursorsEdited();
         if (B.Edits.empty() && CanUndo()) Undo(); // Skip over cursor-only buffer changes.
         B.Edits = {};
     }
@@ -992,7 +994,7 @@ struct TextBufferImpl {
     }
 
     ID Id;
-    TextBuffer::Buffer B;
+    Buffer B;
 
     TextBufferPaletteId PaletteId{DefaultPaletteId};
     LanguageID LanguageId{LanguageID::None};
@@ -1038,7 +1040,7 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
 
 TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
     : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
-      Impl(std::make_unique<TextBufferImpl>(Id, B, file_path)) {
+      Impl(std::make_unique<TextBufferImpl>(Id, file_path)) {
     Commit();
 }
 
@@ -1160,6 +1162,7 @@ void TextBuffer::Apply(const ActionType &action) const {
 }
 
 void TextBuffer::Commit() const {
+    RootStore.Set(Id, Impl->B);
     if (Impl->B.Edits.empty() && Impl->History[Impl->HistoryIndex].Edits.empty()) {
         // Merge cursor-only edits.
         Impl->History = Impl->History.set(Impl->HistoryIndex, Impl->B);
@@ -1521,7 +1524,7 @@ void TextBuffer::Render() const {
     const auto cursor_coords = Impl->GetCursorPosition();
     const std::string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
     ImGui::Text(
-        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, int(B.Text.size()),
+        "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, int(Impl->B.Text.size()),
         Impl->Overwrite ? "Ovr" : "Ins",
         Impl->CanUndo() ? "*" : " ",
         Impl->GetLanguageName().data(),

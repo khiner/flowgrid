@@ -1,21 +1,14 @@
 #pragma once
 
-#include "immer/flex_vector.hpp"
-#include "immer/vector.hpp"
-
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Primitive/String.h"
-#include "LineChar.h"
 #include "Project/FileDialog/FileDialogData.h"
 #include "TextBufferAction.h"
-#include "TextInputEdit.h"
+#include "TextBufferData.h"
 
 struct TextBufferImpl;
 struct FileDialog;
-
-using TextBufferLine = immer::flex_vector<char>;
-using TextBufferLines = immer::flex_vector<TextBufferLine>;
 
 struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     using Line = TextBufferLine;
@@ -41,17 +34,6 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     fs::path _LastOpenedFilePath;
     Prop(String, LastOpenedFilePath, _LastOpenedFilePath);
     Prop_(DebugComponent, Debug, "Editor debug");
-
-    struct Buffer {
-        Lines Text{Line{}};
-        // If immer vectors provided a diff mechanism like its map does,
-        // we could efficiently compute diffs across any two arbitrary text buffers, and we wouldn't need this.
-        immer::vector<TextInputEdit> Edits{};
-        immer::vector<Cursor> Cursors{{}};
-        u32 LastAddedCursorIndex{0};
-    };
-
-    Buffer B;
 
 private:
     void Commit() const;

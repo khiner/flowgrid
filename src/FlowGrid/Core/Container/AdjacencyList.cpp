@@ -9,8 +9,8 @@
 
 IdPairs AdjacencyList::Get() const { return Exists() ? RootStore.Get<IdPairs>(Id) : IdPairs{}; }
 
+// Non-recursive DFS handling cycles.
 bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
-    // Non-recursive depth-first search that handles cycles.
     const auto id_pairs = Get();
     std::unordered_set<ID> visited;
     std::stack<ID> to_visit;
@@ -96,5 +96,5 @@ void AdjacencyList::SetJson(json &&j) const {
     for (IdPair id_pair : json::parse(std::string(std::move(j)))) Add(std::move(id_pair));
 }
 
-// Using a string representation so we can flatten the JSON without worrying about non-object collection values.
+// Using a string representation to flatten the JSON without worrying about non-object collection values.
 json AdjacencyList::ToJson() const { return json(Get()).dump(); }

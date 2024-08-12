@@ -7,12 +7,10 @@
 
 // Specialized `ValueTypes`
 #include "IdPairs.h"
-
-#include "immer/flex_vector.hpp"
-#include "immer/set.hpp"
+#include "Project/TextEditor/TextBufferData.h"
 
 struct Store : TypedStore<
-                   bool, u32, s32, float, std::string, IdPairs, immer::set<u32>,
+                   bool, u32, s32, float, std::string, IdPairs, TextBufferData, immer::set<u32>,
                    immer::flex_vector<bool>, immer::flex_vector<s32>, immer::flex_vector<u32>, immer::flex_vector<float>, immer::flex_vector<std::string>>,
                Actionable<Action::Store::Any> {
     bool CanApply(const ActionType &) const override { return true; }

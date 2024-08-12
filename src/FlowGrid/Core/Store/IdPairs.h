@@ -13,7 +13,7 @@ IdPair DeserializeIdPair(const std::string &);
 std::string SerializeIdPair(const IdPair &);
 
 struct IdPairHash {
-    // Common hash shift trick, found in e.g. https://en.cppreference.com/w/cpp/utility/hash
+    // Common hash shift trick: https://en.cppreference.com/w/cpp/utility/hash
     auto operator()(const IdPair &p) const noexcept { return std::hash<ID>()(p.first) ^ (std::hash<ID>()(p.second) << 1); }
 };
 

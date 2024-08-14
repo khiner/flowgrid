@@ -13,9 +13,6 @@ DefineActionType(
     DefineComponentAction(Open, "", fs::path file_path;);
     DefineUnsavedComponentAction(Save, NoMerge, "", fs::path file_path;);
 
-    DefineUnsavedComponentAction(Undo, NoMerge, "");
-    DefineUnsavedComponentAction(Redo, NoMerge, "");
-
     DefineUnmergableComponentAction(SetCursor, LineChar lc; bool add;);
     DefineUnmergableComponentAction(SetCursorRange, LineCharRange lcr; bool add;);
     DefineUnmergableComponentAction(MoveCursorsLines, int amount; bool select;);
@@ -72,7 +69,7 @@ DefineActionType(
     ComponentActionJson(EnterChar, value);
 
     using Any = ActionVariant<
-        ShowOpenDialog, ShowSaveDialog, Save, Open, Set, Undo, Redo,
+        ShowOpenDialog, ShowSaveDialog, Save, Open, Set,
         SetCursor, SetCursorRange, MoveCursorsLines, PageCursorsLines, MoveCursorsChar, MoveCursorsTop, MoveCursorsBottom, MoveCursorsStartLine, MoveCursorsEndLine,
         SelectAll, SelectNextOccurrence, ToggleOverwrite, Copy, Cut, Paste, Delete, Backspace, DeleteCurrentLines, ChangeCurrentLinesIndentation,
         MoveCurrentLines, ToggleLineComment, EnterChar>;

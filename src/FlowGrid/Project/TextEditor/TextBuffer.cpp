@@ -3,11 +3,9 @@
 #include <array>
 #include <ranges>
 #include <set>
-#include <vector>
 
 #include "imgui_internal.h"
 #include "immer/flex_vector_transient.hpp"
-#include "immer/vector.hpp"
 #include "immer/vector_transient.hpp"
 
 #include "Application/ApplicationPreferences.h"
@@ -370,8 +368,6 @@ struct TextBufferImpl {
         }
         transient_lines.push_back(current_line.persistent());
         B.Text = transient_lines.persistent();
-        History = {};
-        HistoryIndex = -1;
 
         B.Edits = B.Edits.push_back({0, old_end_byte, EndByteIndex()});
     }
@@ -444,8 +440,6 @@ struct TextBufferImpl {
         EditCursors([lc, select](const auto &c) { return c.To(lc, select); });
     }
 
-    // todo create a function that takes a lambda to run on each cursor and update `Cursors`,
-    //  using immer::vector::update https://sinusoid.es/immer/containers.html#vector
     void MoveCursorsBottom(bool select = false) { EditCursors(LineMaxLC(B.Text.size() - 1), select); }
     void MoveCursorsTop(bool select = false) { EditCursors({0, 0}, select); }
 
@@ -511,28 +505,10 @@ struct TextBufferImpl {
 
     void ToggleOverwrite() { Overwrite ^= true; } // todo use Bool prop
 
-    bool CanUndo() const { return !ReadOnly && HistoryIndex > 0; }
-    bool CanRedo() const { return !ReadOnly && History.size() > 1 && HistoryIndex < u32(History.size() - 1); }
     bool CanCopy() const { return AnyCursorsRanged(); }
     bool CanCut() const { return !ReadOnly && CanCopy(); }
     bool CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
     bool CanToggleLineComment() const { return !ReadOnly && !Languages.Get(LanguageId).SingleLineComment.empty(); }
-
-    void Undo() {
-        const auto current = History[HistoryIndex], restore = History[--HistoryIndex];
-        B = restore;
-        Syntax->ApplyEdits(reverse_view(current.Edits) | transform([](const auto &edit) { return edit.Invert(); }));
-        MarkCursorsEdited();
-        if (B.Edits.empty() && CanUndo()) Undo(); // Skip over cursor-only buffer changes.
-        B.Edits = {};
-    }
-    void Redo() {
-        B = History[++HistoryIndex];
-        MarkCursorsEdited();
-        Syntax->ApplyEdits(B.Edits);
-        if (B.Edits.empty() && CanRedo()) Redo(); // Skip over cursor-only buffer changes.
-        B.Edits = {};
-    }
 
     void Copy() {
         const std::string str = AnyCursorsRanged() ?
@@ -1008,10 +984,6 @@ struct TextBufferImpl {
     float LastClickTime{-1}; // ImGui time.
     std::unique_ptr<SyntaxNodeAncestry> HoveredNode{};
     std::unique_ptr<SyntaxTree> Syntax;
-
-    // The first history record is the initial state (after construction), and it's never removed from the history.
-    immer::vector<Buffer> History;
-    u32 HistoryIndex{0};
 };
 
 const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *bytes_read) {
@@ -1060,9 +1032,6 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [](const ShowSaveDialog &) { return true; },
             [](const Open &) { return true; },
             [](const Save &) { return true; },
-
-            [this](const Undo &) { return Impl->CanUndo(); },
-            [this](const Redo &) { return Impl->CanRedo(); },
 
             [](const SetCursor &) { return true; },
             [](const SetCursorRange &) { return true; },
@@ -1158,24 +1127,17 @@ void TextBuffer::Apply(const ActionType &action) const {
             },
             [this](const Save &a) { FileIO::write(a.file_path, Impl->GetText()); },
 
-            [this](const Undo &) { Impl->Undo(); },
-            [this](const Redo &) { Impl->Redo(); },
             [this](auto &&) { /* Action affects buffer. */ Commit(); }
         },
         action
     );
 }
 
+// todo: Need a way to merge cursor-only edits, and skip over cursor-only buffer changes when undoing/redoing.
 void TextBuffer::Commit() const {
     RootStore.Set(Id, Impl->B);
-    if (Impl->B.Edits.empty() && Impl->History[Impl->HistoryIndex].Edits.empty()) {
-        // Merge cursor-only edits.
-        Impl->History = Impl->History.set(Impl->HistoryIndex, Impl->B);
-    } else {
-        Impl->History = Impl->History.take(++Impl->HistoryIndex).push_back(Impl->B);
-        Impl->Syntax->ApplyEdits(Impl->B.Edits);
-        Impl->B.Edits = {};
-    }
+    Impl->Syntax->ApplyEdits(Impl->B.Edits);
+    Impl->B.Edits = {};
 }
 
 bool TextBuffer::Exists() const { return RootStore.Count<Buffer>(Id); }
@@ -1193,9 +1155,6 @@ static bool IsPressed(ImGuiKeyChord chord) {
 std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const {
     using namespace Action::TextBuffer;
 
-    // history
-    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) return Undo{Id};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Z)) return Redo{Id};
     // no-select moves
     if (IsPressed(ImGuiKey_UpArrow)) return MoveCursorsLines{.component_id = Id, .amount = -1, .select = false};
     if (IsPressed(ImGuiKey_DownArrow)) return MoveCursorsLines{.component_id = Id, .amount = 1, .select = false};
@@ -1491,13 +1450,6 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
     return mouse_action;
 }
 
-static void DrawEdits(const std::ranges::input_range auto &edits) {
-    Text("Edits: %lu", edits.size());
-    for (const auto &edit : edits) {
-        BulletText("Start: %d, Old end: %d, New end: %d", edit.StartByte, edit.OldEndByte, edit.NewEndByte);
-    }
-}
-
 void TextBufferImpl::DebugPanel() {
     if (CollapsingHeader("Editor state")) {
         ImGui::Text("Cursor count: %lu", B.Cursors.size());
@@ -1509,12 +1461,11 @@ void TextBufferImpl::DebugPanel() {
             for (u32 i = 0; i < B.Text.size(); i++) ImGui::Text("%u: %lu", i, B.Text[i].size());
         }
     }
-    if (CollapsingHeader("History")) {
-        ImGui::Text("Index: %u of %lu", HistoryIndex, History.size());
-        for (size_t i = 0; i < History.size(); i++) {
-            if (CollapsingHeader(std::to_string(i).c_str())) DrawEdits(History[i].Edits);
-        }
+    Text("Edits: %lu", B.Edits.size());
+    for (const auto &edit : B.Edits) {
+        BulletText("Start: %d, Old end: %d, New end: %d", edit.StartByte, edit.OldEndByte, edit.NewEndByte);
     }
+
     if (CollapsingHeader("Tree-Sitter")) {
         ImGui::Text("S-expression:\n%s", GetSyntaxTreeSExp().c_str());
     }
@@ -1539,7 +1490,7 @@ void TextBuffer::Render() const {
     ImGui::Text(
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, int(Impl->B.Text.size()),
         Impl->Overwrite ? "Ovr" : "Ins",
-        Impl->CanUndo() ? "*" : " ",
+        IsChanged() ? "*" : " ", // todo show if buffer is dirty
         Impl->GetLanguageName().data(),
         editing_file.c_str()
     );
@@ -1580,9 +1531,6 @@ void TextBuffer::RenderMenu() const {
 
     if (BeginMenu("Edit")) {
         MenuItem("Read-only mode", nullptr, &Impl->ReadOnly);
-        Separator();
-        if (MenuItem("Undo", "cmd+z", nullptr, Impl->CanUndo())) Impl->Undo();
-        if (MenuItem("Redo", "shift+cmd+z", nullptr, Impl->CanRedo())) Impl->Redo();
         Separator();
         if (MenuItem("Copy", "cmd+c", nullptr, Impl->CanCopy())) Impl->Copy();
         if (MenuItem("Cut", "cmd+x", nullptr, Impl->CanCut())) Impl->Cut();

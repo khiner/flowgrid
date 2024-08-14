@@ -21,9 +21,12 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
+    TextBufferData GetBuffer() const;
     std::string GetText() const;
+    bool Exists() const;
     bool Empty() const;
 
+    void Refresh() override;
     void Render() const override;
     void RenderMenu() const;
     void RenderDebug() const override;

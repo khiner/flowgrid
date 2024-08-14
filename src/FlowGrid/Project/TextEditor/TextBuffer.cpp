@@ -1041,10 +1041,15 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
 TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
     : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
       Impl(std::make_unique<TextBufferImpl>(Id, file_path)) {
+    FieldIds.insert(Id); // Acts as a `TextBufferData` field.
+    if (Exists()) Refresh();
     Commit();
 }
 
-TextBuffer::~TextBuffer() {}
+TextBuffer::~TextBuffer() {
+    Erase();
+    FieldIds.erase(Id);
+}
 
 bool TextBuffer::CanApply(const ActionType &action) const {
     using namespace Action::TextBuffer;
@@ -1173,7 +1178,10 @@ void TextBuffer::Commit() const {
     }
 }
 
+bool TextBuffer::Exists() const { return RootStore.Count<Buffer>(Id); }
+Buffer TextBuffer::GetBuffer() const { return RootStore.Get<Buffer>(Id); }
 std::string TextBuffer::GetText() const { return Impl->GetText(); }
+
 bool TextBuffer::Empty() const { return Impl->Empty(); }
 
 static bool IsPressed(ImGuiKeyChord chord) {
@@ -1510,6 +1518,11 @@ void TextBufferImpl::DebugPanel() {
     if (CollapsingHeader("Tree-Sitter")) {
         ImGui::Text("S-expression:\n%s", GetSyntaxTreeSExp().c_str());
     }
+}
+
+void TextBuffer::Refresh() {
+    Impl->B = RootStore.Get<Buffer>(Id);
+    if (IsChanged()) Impl->Syntax->ApplyEdits(Impl->B.Edits);
 }
 
 void TextBuffer::Render() const {

@@ -259,14 +259,12 @@ struct TextBufferImpl {
         }
     }
 
-    const Cursor &LastAddedCursor() const { return B.Cursors[B.LastAddedCursorIndex]; }
-
     // Assumes cursors are sorted (on `Min()`).
     void MergeCursors() {
         ColumnsForCursorIndex.clear();
         if (B.Cursors.size() <= 1) return;
 
-        const auto last_added_cursor_lc = LastAddedCursor().LC();
+        const auto last_added_cursor_lc = B.LastAddedCursor().LC();
         auto cursors_transient = B.Cursors.transient();
 
         // Merge overlapping cursors.
@@ -481,7 +479,9 @@ struct TextBufferImpl {
             };
             new_cursors.push_back({new_start, new_end});
         }
-        SetCursors(new_cursors.persistent());
+        B.Cursors = new_cursors.persistent();
+        AssertCursorsSorted();
+        MarkCursorsEdited();
     }
 
     void PageCursorsLines(bool up, bool select = false) {
@@ -685,7 +685,7 @@ struct TextBufferImpl {
     }
 
     void SelectNextOccurrence(bool case_sensitive = true) {
-        const auto &c = LastAddedCursor();
+        const auto &c = B.LastAddedCursor();
         if (const auto match_range = FindNextOccurrence(GetSelectedText(c), c.Max(), case_sensitive)) {
             SetCursor({match_range->Start, match_range->End}, true);
         }
@@ -722,12 +722,6 @@ struct TextBufferImpl {
         return fold_left(subrange(B.Text.begin(), B.Text.begin() + lc.L), 0u, [](u32 sum, const auto &line) { return sum + line.size() + 1; }) + lc.C;
     }
 
-    void MoveCharIndexAndColumn(const Line &line, u32 &ci, u32 &column) const {
-        const char ch = line[ci];
-        ci += UTF8CharLength(ch);
-        column = ch == '\t' ? NextTabstop(column) : column + 1;
-    }
-
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, ImVec2 char_advance, float text_start_x, bool *is_over_li = nullptr) const {
         static constexpr float PosToCoordsColumnOffset = 0.33;
 
@@ -744,6 +738,12 @@ struct TextBufferImpl {
         if (ci < line.size() && line[ci] == '\t') coords.C = GetColumn(line, ci);
 
         return {coords.L, GetLineMaxColumn(line, coords.C)};
+    }
+
+    void MoveCharIndexAndColumn(const Line &line, u32 &ci, u32 &column) const {
+        const char ch = line[ci];
+        ci += UTF8CharLength(ch);
+        column = ch == '\t' ? NextTabstop(column) : column + 1;
     }
 
     u32 GetCharIndex(const Line &line, u32 column) const {
@@ -1238,7 +1238,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(ImVec2 c
     const auto &io = GetIO();
     const auto is_click = IsMouseClicked(MouseLeft);
     if ((io.KeyShift && is_click) || IsMouseDragging(MouseLeft)) {
-        return SetCursorRange{Id, Cursor{LastAddedCursor().Start, mouse_lc}, false};
+        return SetCursorRange{Id, Cursor{B.LastAddedCursor().Start, mouse_lc}, false};
     }
     if (io.KeyShift || io.KeyAlt) return {};
 

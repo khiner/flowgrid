@@ -10,6 +10,8 @@ using TextBufferLine = immer::flex_vector<char>;
 using TextBufferLines = immer::flex_vector<TextBufferLine>;
 
 struct TextBufferData {
+    using Cursor = LineCharRange;
+
     TextBufferLines Text{TextBufferLine{}};
     // If immer vectors provided a diff mechanism like its map does,
     // we could efficiently compute diffs across any two arbitrary text buffers, and we wouldn't need this.
@@ -18,4 +20,6 @@ struct TextBufferData {
     u32 LastAddedCursorIndex{0};
 
     bool operator==(const TextBufferData &) const = default;
+
+    const Cursor &LastAddedCursor() const { return Cursors[LastAddedCursorIndex]; }
 };

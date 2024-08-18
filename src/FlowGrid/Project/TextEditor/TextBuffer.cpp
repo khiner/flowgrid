@@ -2,7 +2,6 @@
 
 #include <array>
 #include <ranges>
-#include <set>
 
 #include "imgui_internal.h"
 #include "immer/flex_vector_transient.hpp"
@@ -32,7 +31,7 @@ using Coords = TextBufferCoords;
 using TransientLine = immer::flex_vector_transient<char>;
 using TransientLines = immer::flex_vector_transient<Line>;
 
-using std::views::filter, std::views::transform, std::views::join, std::ranges::reverse_view, std::ranges::any_of, std::ranges::find_if, std::ranges::subrange, std::ranges::to;
+using std::views::filter, std::views::transform, std::views::join, std::ranges::any_of, std::ranges::subrange, std::ranges::to;
 
 TextBufferStyle GTextBufferStyle{};
 
@@ -52,21 +51,6 @@ enum class PaletteIndex {
 };
 
 const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *bytes_read);
-
-constexpr bool IsUTFSequence(char c) { return (c & 0xC0) == 0x80; }
-
-constexpr bool IsWordChar(char ch) {
-    return UTF8CharLength(ch) > 1 || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_';
-}
-
-constexpr char ToLower(char ch, bool case_sensitive) { return (!case_sensitive && ch >= 'A' && ch <= 'Z') ? ch - 'A' + 'a' : ch; }
-
-constexpr bool Equals(const auto &c1, const auto &c2, std::size_t c2_offset = 0) {
-    if (c2.size() + c2_offset < c1.size()) return false;
-
-    const auto begin = c2.begin() + c2_offset;
-    return std::ranges::equal(c1, subrange(begin, begin + c1.size()));
-}
 
 struct TextBufferImpl {
     TextBufferImpl(ID id, std::string_view text, LanguageID language_id)
@@ -139,107 +123,8 @@ struct TextBufferImpl {
         0x40000000, // Current line edge
     }};
 
-    struct LinesIter {
-        LinesIter(const Lines &lines, LineChar lc, LineChar begin, LineChar end)
-            : Text(lines), LC(std::move(lc)), Begin(std::move(begin)), End(std::move(end)) {}
-        LinesIter(const LinesIter &) = default; // Needed since we have an assignment operator.
-
-        LinesIter &operator=(const LinesIter &o) {
-            LC = o.LC;
-            Begin = o.Begin;
-            End = o.End;
-            return *this;
-        }
-
-        operator char() const {
-            const auto &line = Text[LC.L];
-            return LC.C < line.size() ? line[LC.C] : '\0';
-        }
-
-        LineChar operator*() const { return LC; }
-
-        LinesIter &operator++() {
-            MoveRight();
-            return *this;
-        }
-        LinesIter &operator--() {
-            MoveLeft();
-            return *this;
-        }
-
-        bool operator==(const LinesIter &o) const { return LC == o.LC; }
-        bool operator!=(const LinesIter &o) const { return LC != o.LC; }
-
-        bool IsBegin() const { return LC == Begin; }
-        bool IsEnd() const { return LC == End; }
-        void Reset() { LC = Begin; }
-
-    private:
-        const Lines &Text;
-        LineChar LC, Begin, End;
-
-        void MoveRight() {
-            if (LC == End) return;
-
-            if (LC.C == Text[LC.L].size()) {
-                ++LC.L;
-                LC.C = 0;
-            } else {
-                LC.C = std::min(LC.C + UTF8CharLength(Text[LC.L][LC.C]), u32(Text[LC.L].size()));
-            }
-        }
-
-        void MoveLeft() {
-            if (LC == Begin) return;
-
-            if (LC.C == 0) {
-                --LC.L;
-                LC.C = Text[LC.L].size();
-            } else {
-                do { --LC.C; } while (LC.C > 0 && IsUTFSequence(Text[LC.L][LC.C]));
-            }
-        }
-    };
-
-    void MarkCursorsEdited() {
-        for (u32 i = 0; i < B.Cursors.size(); ++i) {
-            StartEdited.insert(i);
-            EndEdited.insert(i);
-        }
-    }
-
-    // Assumes cursors are sorted (on `Min()`).
-    void MergeCursors() {
-        ColumnsForCursorIndex.clear();
-        if (B.Cursors.size() <= 1) return;
-
-        const auto last_added_cursor_lc = B.LastAddedCursor().LC();
-
-        // Merge overlapping cursors.
-        immer::vector_transient<Cursor> merged;
-        auto current = B.Cursors.front();
-        for (size_t c = 1; c < B.Cursors.size(); ++c) {
-            const auto &next = B.Cursors[c];
-            if (current.Max() >= next.Min()) {
-                // Overlap. Extend the current cursor to to include the next.
-                current = {std::min(current.Min(), next.Min()), std::max(current.Max(), next.Max())};
-            } else {
-                // No overlap. Finalize the current cursor and start a new merge.
-                merged.push_back(current);
-                current = next;
-            }
-        }
-        merged.push_back(current);
-        B.Cursors = merged.persistent();
-
-        // Update last added cursor index to be valid after sort/merge.
-        const auto it = find_if(B.Cursors, [&last_added_cursor_lc](const auto &c) { return c.LC() == last_added_cursor_lc; });
-        B.LastAddedCursorIndex = it != B.Cursors.end() ? std::distance(B.Cursors.begin(), it) : 0;
-    }
-
     // Returns the range of all edited cursor starts/ends since cursor edits were last cleared.
     // Used for updating the scroll range.
-    // todo need to update the approach here after switching to persistent undo.
     std::optional<Cursor> GetEditedCursor() const {
         if (StartEdited.empty() && EndEdited.empty()) return {};
 
@@ -253,7 +138,6 @@ struct TextBufferImpl {
         return edited_range;
     }
 
-    std::unordered_map<u32, std::pair<u32, u32>> ColumnsForCursorIndex{};
     // Cleared every frame. Used to keep recently edited cursors visible.
     std::unordered_set<u32> StartEdited{}, EndEdited{};
 
@@ -293,113 +177,6 @@ struct TextBufferImpl {
         B.Edits = {};
     }
 
-    void SetLineSpacing(float line_spacing) { LineSpacing = std::clamp(line_spacing, 1.f, 2.f); }
-
-    // If `add == true`, a new cursor is added and set.
-    // Otherwise, the cursors are _cleared_ and a new cursor is added and set.
-    void SetCursor(Cursor c, bool add = false) {
-        if (!add) B.Cursors = {};
-        // Insert into sorted position.
-        B.LastAddedCursorIndex = std::distance(B.Cursors.begin(), std::ranges::upper_bound(B.Cursors, c));
-        B.Cursors = B.LastAddedCursorIndex < B.Cursors.size() ? B.Cursors.set(B.LastAddedCursorIndex, std::move(c)) : B.Cursors.push_back(std::move(c));
-        B.AssertCursorsSorted();
-        MergeCursors();
-    }
-
-    void SetCursors(const immer::vector<Cursor> &cursors) {
-        B.Cursors = cursors;
-        B.AssertCursorsSorted();
-        MergeCursors();
-        MarkCursorsEdited();
-    }
-    void EditCursor(u32 i, LineChar lc, bool select = false) {
-        B.Cursors = B.Cursors.set(i, B.Cursors[i].To(lc, select));
-        StartEdited.insert(i);
-        EndEdited.insert(i);
-        B.AssertCursorsSorted();
-        MergeCursors();
-    }
-
-    template<typename EditFunc>
-    void EditCursors(EditFunc f) {
-        immer::vector_transient<Cursor> new_cursors;
-        for (const auto &c : B.Cursors) new_cursors.push_back(f(c));
-        SetCursors(new_cursors.persistent());
-    }
-    template<typename EditFunc, typename FilterFunc>
-    void EditCursors(EditFunc f, FilterFunc filter) {
-        EditCursors([f, filter](const auto &c) { return filter(c) ? f(c) : c; });
-    }
-
-    void EditCursors(LineChar lc, bool select = false) {
-        EditCursors([lc, select](const auto &c) { return c.To(lc, select); });
-    }
-
-    void MoveCursorsBottom(bool select = false) { EditCursors(B.LineMaxLC(B.Text.size() - 1), select); }
-    void MoveCursorsTop(bool select = false) { EditCursors({0, 0}, select); }
-
-    void MoveCursorsStartLine(bool select = false) {
-        EditCursors([select](const auto &c) { return c.To({c.Line(), 0}, select); });
-    }
-    void MoveCursorsEndLine(bool select = false) {
-        EditCursors([this, select](const auto &c) { return c.To(B.LineMaxLC(c.Line()), select); });
-    }
-
-    std::pair<u32, u32> GetColumns(const Cursor &c, u32 i) {
-        if (!ColumnsForCursorIndex.contains(i)) ColumnsForCursorIndex[i] = {B.GetColumn(c.Start), B.GetColumn(c.End)};
-        return ColumnsForCursorIndex.at(i);
-    }
-
-    void MoveCursorsLines(int amount = 1, bool select = false, bool move_start = false, bool move_end = true) {
-        if (!move_start && !move_end) return;
-
-        immer::vector_transient<Cursor> new_cursors;
-        for (u32 i = 0; i < B.Cursors.size(); ++i) {
-            const auto &c = B.Cursors[i];
-            // Track the cursor's column to return back to it after moving to a line long enough.
-            // (This is the only place we worry about this.)
-            const auto [new_start_column, new_end_column] = GetColumns(c, i);
-            const u32 new_end_li = std::clamp(int(c.End.L) + amount, 0, int(B.Text.size() - 1));
-            const LineChar new_end{
-                new_end_li,
-                std::min(B.GetCharIndex({new_end_li, new_end_column}), B.GetLineMaxCharIndex(new_end_li)),
-            };
-            if (!select || !move_start) {
-                new_cursors.push_back(c.To(new_end, select));
-                continue;
-            }
-
-            const u32 new_start_li = std::clamp(int(c.Start.L) + amount, 0, int(B.Text.size() - 1));
-            const LineChar new_start{
-                new_start_li,
-                std::min(B.GetCharIndex({new_start_li, new_start_column}), B.GetLineMaxCharIndex(new_start_li)),
-            };
-            new_cursors.push_back({new_start, new_end});
-        }
-        B.Cursors = new_cursors.persistent();
-        B.AssertCursorsSorted();
-        MarkCursorsEdited();
-    }
-
-    void PageCursorsLines(bool up, bool select = false) {
-        MoveCursorsLines((ContentCoordDims.L - 2) * (up ? -1 : 1), select);
-    }
-
-    void MoveCursorsChar(bool right = true, bool select = false, bool is_word_mode = false) {
-        const bool any_selections = B.AnyCursorsRanged();
-        EditCursors([this, right, select, is_word_mode, any_selections](const auto &c) {
-            if (any_selections && !select && !is_word_mode) return c.To(right ? c.Max() : c.Min());
-            if (auto lci = Iter(c.LC()); (!right && !lci.IsBegin()) || (right && !lci.IsEnd())) {
-                if (right) ++lci;
-                else --lci;
-                return c.To(is_word_mode ? FindWordBoundary(*lci, !right) : *lci, select);
-            }
-            return c;
-        });
-    }
-
-    void SelectAll() { SetCursor({{0, 0}, B.EndLC()}, false); }
-
     void ToggleOverwrite() { Overwrite ^= true; } // todo use Bool prop
 
     bool CanCopy() const { return B.AnyCursorsRanged(); }
@@ -414,7 +191,7 @@ struct TextBufferImpl {
 
     void Cut() {
         Copy();
-        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
+        for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.DeleteSelection(c);
     }
 
     // todo store clipboard text manually in a `Lines` to avoid string conversion
@@ -430,157 +207,12 @@ struct TextBufferImpl {
             ptr += str_length + 1;
         }
         const auto insert_text_lines = insert_text_lines_trans.persistent();
-        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
+        for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.DeleteSelection(c);
         if (B.Cursors.size() > 1 && insert_text_lines.size() == B.Cursors.size()) {
             // Paste each line at the corresponding cursor.
-            for (int c = B.Cursors.size() - 1; c > -1; --c) InsertTextAtCursor({insert_text_lines[c]}, c);
+            for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.InsertTextAtCursor({insert_text_lines[c]}, c);
         } else {
-            for (int c = B.Cursors.size() - 1; c > -1; --c) InsertTextAtCursor(insert_text_lines, c);
-        }
-    }
-
-    void EnterChar(ImWchar ch) {
-        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-
-        // Order is important here when typing '\n' in the same line with multiple cursors.
-        for (int i = B.Cursors.size() - 1; i > -1; --i) {
-            const auto &c = B.Cursors[i];
-            TransientLine insert_line_trans{};
-            if (ch == '\n') {
-                if (AutoIndent && c.CharIndex() != 0) {
-                    // Match the indentation of the current or next line, whichever has more indentation.
-                    // todo use tree-sitter fold queries
-                    const u32 li = c.Line();
-                    const u32 indent_li = li < B.Text.size() - 1 && B.NumStartingSpaceColumns(li + 1) > B.NumStartingSpaceColumns(li) ? li + 1 : li;
-                    const auto &indent_line = B.Text[indent_li];
-                    for (u32 i = 0; i < insert_line_trans.size() && isblank(indent_line[i]); ++i) insert_line_trans.push_back(indent_line[i]);
-                }
-            } else {
-                char buf[5];
-                ImTextCharToUtf8(buf, ch);
-                for (u32 i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line_trans.push_back(buf[i]);
-            }
-            auto insert_line = insert_line_trans.persistent();
-            InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, i);
-        }
-    }
-
-    void Backspace(bool is_word_mode = false) {
-        if (!B.AnyCursorsRanged()) {
-            MoveCursorsChar(false, true, is_word_mode);
-            // Can't do backspace if any cursor is at {0,0}.
-            if (!B.AllCursorsRanged()) {
-                if (B.AnyCursorsRanged()) MoveCursorsChar(true); // Restore cursors.
-                return;
-            }
-            MergeCursors();
-        }
-        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-    }
-
-    void Delete(bool is_word_mode = false) {
-        if (!B.AnyCursorsRanged()) {
-            MoveCursorsChar(true, true, is_word_mode);
-            // Can't do delete if any cursor is at the end of the last line.
-            if (!B.AllCursorsRanged()) {
-                if (B.AnyCursorsRanged()) MoveCursorsChar(false); // Restore cursors.
-                return;
-            }
-            MergeCursors();
-        }
-        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-    }
-
-    void MoveCurrentLines(bool up) {
-        std::set<u32> affected_lines;
-        u32 min_li = std::numeric_limits<u32>::max(), max_li = std::numeric_limits<u32>::min();
-        for (const auto &c : B.Cursors) {
-            for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
-                // Check if selection ends at line start.
-                if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
-
-                affected_lines.insert(li);
-                min_li = std::min(li, min_li);
-                max_li = std::max(li, max_li);
-            }
-        }
-        if ((up && min_li == 0) || (!up && max_li == B.Text.size() - 1)) return; // Can't move up/down anymore.
-
-        if (up) {
-            for (const u32 li : affected_lines) SwapLines(li - 1, li);
-        } else {
-            for (auto it = affected_lines.rbegin(); it != affected_lines.rend(); ++it) SwapLines(*it, *it + 1);
-        }
-        MoveCursorsLines(up ? -1 : 1, true, true, true);
-    }
-
-    void ToggleLineComment() {
-        const std::string &comment = Languages.Get(LanguageId).SingleLineComment;
-        if (comment.empty()) return;
-
-        static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), std::ranges::find_if_not(line, isblank)); };
-
-        std::unordered_set<u32> affected_lines;
-        for (const auto &c : B.Cursors) {
-            for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
-                if (!(c.IsRange() && c.Max() == LineChar{li, 0}) && !B.Text[li].empty()) affected_lines.insert(li);
-            }
-        }
-
-        const bool should_add_comment = any_of(affected_lines, [&](u32 li) {
-            return !Equals(comment, B.Text[li], FindFirstNonSpace(B.Text[li]));
-        });
-
-        for (u32 li : affected_lines) {
-            if (should_add_comment) {
-                InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0});
-            } else {
-                const auto &line = B.Text[li];
-                const u32 ci = FindFirstNonSpace(line);
-                u32 comment_ci = ci + comment.length();
-                if (comment_ci < line.size() && line[comment_ci] == ' ') ++comment_ci;
-
-                DeleteRange({{li, ci}, {li, comment_ci}});
-            }
-        }
-    }
-
-    void DeleteCurrentLines() {
-        for (int c = B.Cursors.size() - 1; c > -1; --c) DeleteSelection(c);
-        MoveCursorsStartLine();
-        MergeCursors();
-
-        for (const auto &c : reverse_view(B.Cursors)) {
-            const u32 li = c.Line();
-            DeleteRange({li == B.Text.size() - 1 && li > 0 ? B.LineMaxLC(li - 1) : LineChar{li, 0}, B.CheckedNextLineBegin(li)}
-            );
-        }
-    }
-
-    void ChangeCurrentLinesIndentation(bool increase) {
-        for (const auto &c : reverse_view(B.Cursors)) {
-            for (u32 li = c.Min().L; li <= c.Max().L; ++li) {
-                // Check if selection ends at line start.
-                if (c.IsRange() && c.Max() == LineChar{li, 0}) continue;
-
-                const auto &line = B.Text[li];
-                if (increase) {
-                    if (!line.empty()) InsertText({{'\t'}}, {li, 0});
-                } else {
-                    auto ci = int(B.GetCharIndex(line, GTextBufferStyle.NumTabSpaces)) - 1;
-                    while (ci > -1 && isblank(line[ci])) --ci;
-                    if (const bool only_space_chars_found = ci == -1; only_space_chars_found) {
-                        DeleteRange({{li, 0}, {li, B.GetCharIndex(line, GTextBufferStyle.NumTabSpaces)}});
-                    }
-                }
-            }
-        }
-    }
-
-    void SelectNextOccurrence(bool case_sensitive = true) {
-        const auto &c = B.LastAddedCursor();
-        if (const auto match_range = FindNextOccurrence(B.GetText(c), c.Max(), case_sensitive)) {
-            SetCursor({match_range->Start, match_range->End}, true);
+            for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.InsertTextAtCursor(insert_text_lines, c);
         }
     }
 
@@ -598,9 +230,6 @@ struct TextBufferImpl {
 
     // private:
 
-    LinesIter Iter(LineChar lc, LineChar begin, LineChar end) const { return {B.Text, std::move(lc), std::move(begin), std::move(end)}; }
-    LinesIter Iter(LineChar lc) const { return Iter(std::move(lc), B.BeginLC(), B.EndLC()); }
-
     Coords ScreenPosToCoords(const ImVec2 &screen_pos, ImVec2 char_advance, float text_start_x, bool *is_over_li = nullptr) const {
         static constexpr float PosToCoordsColumnOffset = 0.33;
 
@@ -617,165 +246,6 @@ struct TextBufferImpl {
         if (ci < line.size() && line[ci] == '\t') coords.C = B.GetColumn(line, ci);
 
         return {coords.L, B.GetLineMaxColumn(line, coords.C)};
-    }
-
-    LineChar FindWordBoundary(LineChar from, bool is_start = false) const {
-        if (from.L >= B.Text.size()) return from;
-
-        const auto &line = B.Text[from.L];
-        u32 ci = from.C;
-        if (ci >= line.size()) return from;
-
-        const char init_char = line[ci];
-        const bool init_is_word_char = IsWordChar(init_char), init_is_space = isspace(init_char);
-        for (; is_start ? ci > 0 : ci < line.size(); is_start ? --ci : ++ci) {
-            if (ci == line.size() ||
-                (init_is_space && !isspace(line[ci])) ||
-                (init_is_word_char && !IsWordChar(line[ci])) ||
-                (!init_is_word_char && !init_is_space && init_char != line[ci])) {
-                if (is_start) ++ci; // Undo one left step before returning line/char.
-                break;
-            }
-        }
-        return {from.L, ci};
-    }
-
-    // Returns a cursor containing the start/end positions of the next occurrence of `text` at or after `start`, or `std::nullopt` if not found.
-    std::optional<Cursor> FindNextOccurrence(std::string_view text, LineChar start, bool case_sensitive) const {
-        if (text.empty()) return {};
-
-        auto find_lci = Iter(start);
-        do {
-            auto match_lci = find_lci;
-            for (u32 i = 0; i < text.size(); ++i) {
-                const auto &match_lc = *match_lci;
-                if (match_lc.C == B.Text[match_lc.L].size()) {
-                    if (text[i] != '\n' || match_lc.L + 1 >= B.Text.size()) break;
-                } else if (ToLower(match_lci, case_sensitive) != ToLower(text[i], case_sensitive)) {
-                    break;
-                }
-
-                ++match_lci;
-                if (i == text.size() - 1) return Cursor{*find_lci, *match_lci};
-            }
-
-            ++find_lci;
-            if (find_lci.IsEnd()) find_lci.Reset();
-        } while (*find_lci != start);
-
-        return {};
-    }
-
-    std::optional<Cursor> FindMatchingBrackets(const Cursor &c) const {
-        static const std::unordered_map<char, char>
-            OpenToCloseChar{{'{', '}'}, {'(', ')'}, {'[', ']'}},
-            CloseToOpenChar{{'}', '{'}, {')', '('}, {']', '['}};
-
-        const u32 li = c.Line();
-        const auto &line = B.Text[li];
-        if (c.IsRange() || line.empty()) return {};
-
-        u32 ci = c.CharIndex();
-        // Considered on bracket if cursor is to the left or right of it.
-        if (ci > 0 && (CloseToOpenChar.contains(line[ci - 1]) || OpenToCloseChar.contains(line[ci - 1]))) --ci;
-
-        const char ch = line[ci];
-        const bool is_close_char = CloseToOpenChar.contains(ch), is_open_char = OpenToCloseChar.contains(ch);
-        if (!is_close_char && !is_open_char) return {};
-
-        const LineChar lc{li, ci};
-        const char other_ch = is_close_char ? CloseToOpenChar.at(ch) : OpenToCloseChar.at(ch);
-        u32 match_count = 0;
-        for (auto lci = Iter(lc); is_close_char ? !lci.IsBegin() : !lci.IsEnd(); is_close_char ? --lci : ++lci) {
-            const char ch_inner = lci;
-            if (ch_inner == ch) ++match_count;
-            else if (ch_inner == other_ch && (match_count == 0 || --match_count == 0)) return Cursor{lc, *lci};
-        }
-
-        return {};
-    }
-
-    void SwapLines(u32 li1, u32 li2) {
-        if (li1 == li2 || li1 >= B.Text.size() || li2 >= B.Text.size()) return;
-
-        InsertText({B.Text[li2], {}}, {li1, 0}, false);
-        if (li2 + 1 < B.Text.size() - 1) DeleteRange({{li2 + 1, 0}, {li2 + 2, 0}}, false);
-        // If the second line is the last line, we also need to delete the newline we just inserted.
-        else DeleteRange({{li2, u32(B.Text[li2].size())}, B.EndLC()}, false);
-    }
-
-    // Returns insertion end.
-    LineChar InsertText(Lines text, LineChar at, bool update_cursors = true) {
-        if (text.empty()) return at;
-
-        if (at.L < B.Text.size()) {
-            auto ln1 = B.Text[at.L];
-            B.Text = B.Text.set(at.L, ln1.take(at.C) + text[0]);
-            B.Text = B.Text.take(at.L + 1) + text.drop(1) + B.Text.drop(at.L + 1);
-            auto ln2 = B.Text[at.L + text.size() - 1];
-            B.Text = B.Text.set(at.L + text.size() - 1, ln2 + ln1.drop(at.C));
-        } else {
-            B.Text = B.Text + text;
-        }
-
-        const u32 num_new_lines = text.size() - 1;
-        if (update_cursors) {
-            EditCursors(
-                [num_new_lines](const auto &c) { return c.To({c.Line() + num_new_lines, c.CharIndex()}); },
-                [at](const auto &c) { return c.Line() > at.L; }
-            );
-        }
-
-        const u32 start_byte = B.ToByteIndex(at);
-        const u32 text_byte_length = std::accumulate(text.begin(), text.end(), 0, [](u32 sum, const auto &line) { return sum + line.size(); }) + text.size() - 1;
-        B.Edits = B.Edits.push_back({start_byte, start_byte, start_byte + text_byte_length});
-
-        return {at.L + num_new_lines, u32(text.size() == 1 ? at.C + text.front().size() : text.back().size())};
-    }
-
-    void InsertTextAtCursor(Lines text, u32 i) {
-        if (!text.empty()) EditCursor(i, InsertText(text, B.Cursors[i].Min()));
-    }
-
-    void DeleteRange(LineCharRange lcr, bool update_cursors = true, std::optional<Cursor> exclude_cursor = std::nullopt) {
-        const auto start = lcr.Min(), end = lcr.Max();
-        if (end <= start) return;
-
-        auto start_line = B.Text[start.L], end_line = B.Text[end.L];
-        const u32 start_byte = B.ToByteIndex(start), old_end_byte = B.ToByteIndex(end);
-        if (start.L == end.L) {
-            B.Text = B.Text.set(start.L, start_line.erase(start.C, end.C));
-
-            if (update_cursors) {
-                EditCursors(
-                    [start, end](const auto &c) { return c.To({c.Line(), u32(c.CharIndex() - (end.C - start.C))}); },
-                    [start](const auto &c) { return !c.IsRange() && c.IsRightOf(start); }
-                );
-            }
-        } else {
-            end_line = end_line.drop(end.C);
-            B.Text = B.Text.set(end.L, end_line)
-                         .set(start.L, start_line.take(start.C) + end_line)
-                         .erase(start.L + 1, end.L + 1);
-
-            if (update_cursors) {
-                EditCursors(
-                    [start, end](const auto &c) { return c.To({c.Line() - (end.L - start.L), c.CharIndex()}); },
-                    [end, exclude_cursor](const auto &c) { return (!exclude_cursor || c != *exclude_cursor) && c.Line() >= end.L; }
-                );
-            }
-        }
-
-        B.Edits = B.Edits.push_back({start_byte, old_end_byte, start_byte});
-    }
-
-    void DeleteSelection(u32 i) {
-        auto c = B.Cursors[i];
-        if (!c.IsRange()) return;
-
-        // Exclude the cursor whose selection is currently being deleted from having its position changed in `DeleteRange`.
-        DeleteRange(c, true, c);
-        EditCursor(i, c.Min());
     }
 
     std::optional<TextBuffer::ActionType> HandleMouseInputs(ImVec2 char_advance, float text_start_x);
@@ -894,17 +364,17 @@ void TextBuffer::Apply(const ActionType &action) const {
     // Buffer actions
     std::visit(
         Match{
-            [this](const SetCursor &a) { Impl->SetCursor(a.lc, a.add); },
-            [this](const SetCursorRange &a) { Impl->SetCursor(a.lcr, a.add); },
-            [this](const MoveCursorsLines &a) { Impl->MoveCursorsLines(a.amount, a.select); },
-            [this](const PageCursorsLines &a) { Impl->PageCursorsLines(a.up, a.select); },
-            [this](const MoveCursorsChar &a) { Impl->MoveCursorsChar(a.right, a.select, a.word); },
-            [this](const MoveCursorsTop &a) { Impl->MoveCursorsTop(a.select); },
-            [this](const MoveCursorsBottom &a) { Impl->MoveCursorsBottom(a.select); },
-            [this](const MoveCursorsStartLine &a) { Impl->MoveCursorsStartLine(a.select); },
-            [this](const MoveCursorsEndLine &a) { Impl->MoveCursorsEndLine(a.select); },
-            [this](const SelectAll &) { Impl->SelectAll(); },
-            [this](const SelectNextOccurrence &) { Impl->SelectNextOccurrence(); },
+            [this](const SetCursor &a) { Impl->B = Impl->B.SetCursor(a.lc, a.add); },
+            [this](const SetCursorRange &a) { Impl->B = Impl->B.SetCursor(a.lcr, a.add); },
+            [this](const MoveCursorsLines &a) { Impl->B = Impl->B.MoveCursorsLines(a.amount, a.select); },
+            [this](const PageCursorsLines &a) { Impl->B = Impl->B.MoveCursorsLines((Impl->ContentCoordDims.L - 2) * (a.up ? -1 : 1), a.select); },
+            [this](const MoveCursorsChar &a) { Impl->B = Impl->B.MoveCursorsChar(a.right, a.select, a.word); },
+            [this](const MoveCursorsTop &a) { Impl->B = Impl->B.MoveCursorsTop(a.select); },
+            [this](const MoveCursorsBottom &a) { Impl->B = Impl->B.MoveCursorsBottom(a.select); },
+            [this](const MoveCursorsStartLine &a) { Impl->B = Impl->B.MoveCursorsStartLine(a.select); },
+            [this](const MoveCursorsEndLine &a) { Impl->B = Impl->B.MoveCursorsEndLine(a.select); },
+            [this](const SelectAll &) { Impl->B = Impl->B.SelectAll(); },
+            [this](const SelectNextOccurrence &) { Impl->B = Impl->B.SelectNextOccurrence(); },
 
             [this](const Set &a) { Impl->B = Impl->B.SetText(a.value); },
             [this](const ToggleOverwrite &) { Impl->ToggleOverwrite(); },
@@ -912,13 +382,13 @@ void TextBuffer::Apply(const ActionType &action) const {
             [this](const Copy &) { Impl->Copy(); },
             [this](const Cut &) { Impl->Cut(); },
             [this](const Paste &) { Impl->Paste(); },
-            [this](const Delete &a) { Impl->Delete(a.word); },
-            [this](const Backspace &a) { Impl->Backspace(a.word); },
-            [this](const DeleteCurrentLines &) { Impl->DeleteCurrentLines(); },
-            [this](const ChangeCurrentLinesIndentation &a) { Impl->ChangeCurrentLinesIndentation(a.increase); },
-            [this](const MoveCurrentLines &a) { Impl->MoveCurrentLines(a.up); },
-            [this](const ToggleLineComment &) { Impl->ToggleLineComment(); },
-            [this](const EnterChar &a) { Impl->EnterChar(a.value); },
+            [this](const Delete &a) { Impl->B = Impl->B.Delete(a.word); },
+            [this](const Backspace &a) { Impl->B = Impl->B.Backspace(a.word); },
+            [this](const DeleteCurrentLines &) { Impl->B = Impl->B.DeleteCurrentLines(); },
+            [this](const ChangeCurrentLinesIndentation &a) { Impl->B = Impl->B.ChangeCurrentLinesIndentation(a.increase); },
+            [this](const MoveCurrentLines &a) { Impl->B = Impl->B.MoveCurrentLines(a.up); },
+            [this](const ToggleLineComment &) { Impl->B = Impl->B.ToggleLineComment(Languages.Get(Impl->LanguageId).SingleLineComment); },
+            [this](const EnterChar &a) { Impl->B = Impl->B.EnterChar(a.value, Impl->AutoIndent); },
             [](auto &&) { /* Action does not affect buffer. */ }
         },
         action
@@ -1084,7 +554,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(ImVec2 c
     } else if (is_double_click) {
         LastClickTime = time;
         LastClickPos = mouse_pos;
-        return SetCursorRange{Id, B.Clamped(FindWordBoundary(mouse_lc, true), FindWordBoundary(mouse_lc, false)), io.KeyCtrl};
+        return SetCursorRange{Id, B.Clamped(B.FindWordBoundary(mouse_lc, true), B.FindWordBoundary(mouse_lc, false)), io.KeyCtrl};
     } else if (is_click) {
         LastClickTime = time;
         LastClickPos = mouse_pos;
@@ -1223,7 +693,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(bool is_focused) {
                 }
             } else {
                 if (seq_length == 1 && B.Cursors.size() == 1) {
-                    if (const auto matching_brackets = FindMatchingBrackets(B.Cursors.front())) {
+                    if (const auto matching_brackets = B.FindMatchingBrackets(B.Cursors.front())) {
                         if (matching_brackets->Start == lc || matching_brackets->End == lc) {
                             const ImVec2 start{glyph_pos + ImVec2{0, font_height + 1.0f}};
                             dl->AddRectFilled(start, start + ImVec2{char_advance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
@@ -1301,7 +771,14 @@ void TextBufferImpl::DebugPanel() {
 
 void TextBuffer::Refresh() {
     Impl->B = RootStore.Get<Buffer>(Id);
-    if (IsChanged()) Impl->Syntax->ApplyEdits(Impl->B.Edits);
+    if (IsChanged()) {
+        Impl->Syntax->ApplyEdits(Impl->B.Edits);
+        // todo only mark changed cursors. need a way to compare with previous.
+        for (u32 i = 0; i < Impl->B.Cursors.size(); ++i) {
+            Impl->StartEdited.insert(i);
+            Impl->EndEdited.insert(i);
+        }
+    }
 }
 
 void TextBuffer::Render() const {
@@ -1364,7 +841,7 @@ void TextBuffer::RenderMenu() const {
         if (MenuItem("Cut", "cmd+x", nullptr, Impl->CanCut())) Impl->Cut();
         if (MenuItem("Paste", "cmd+v", nullptr, Impl->CanPaste())) Impl->Paste();
         Separator();
-        if (MenuItem("Select all", nullptr, nullptr)) Impl->SelectAll();
+        if (MenuItem("Select all", nullptr, nullptr)) Impl->B = Impl->B.SelectAll();
         EndMenu();
     }
 

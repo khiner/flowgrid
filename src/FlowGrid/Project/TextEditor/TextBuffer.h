@@ -39,7 +39,7 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     Prop_(DebugComponent, Debug, "Editor debug");
 
 private:
-    void Commit() const;
+    void Commit(TextBufferData) const;
 
     std::unique_ptr<TextBufferImpl> Impl;
 

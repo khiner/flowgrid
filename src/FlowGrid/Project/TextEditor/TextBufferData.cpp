@@ -345,14 +345,14 @@ TextBufferData TextBufferData::MoveCursorsChar(bool right, bool select, bool is_
 TextBufferData TextBufferData::SwapLines(u32 li1, u32 li2) const {
     if (li1 == li2 || li1 >= Text.size() || li2 >= Text.size()) return *this;
 
-    auto [b, _] = InsertText({Text[li2], {}}, {li1, 0}, false);
+    auto [b, _] = Insert({Text[li2], {}}, {li1, 0}, false);
     // If the second line is the last line, we also need to delete the newline we just inserted.
     auto range = li2 + 1 < b.Text.size() ? LineCharRange{{li2 + 1, 0}, {li2 + 2, 0}} : LineCharRange{{li2, u32(b.Text[li2].size())}, b.EndLC()};
     return b.DeleteRange(range, false);
 }
 
 // Returns insertion end.
-std::pair<TextBufferData, LineChar> TextBufferData::InsertText(Lines text, LineChar at, bool update_cursors) const {
+std::pair<TextBufferData, LineChar> TextBufferData::Insert(Lines text, LineChar at, bool update_cursors) const {
     if (text.empty()) return {*this, at};
 
     auto t = Text;
@@ -381,6 +381,18 @@ std::pair<TextBufferData, LineChar> TextBufferData::InsertText(Lines text, LineC
     b.Edits = b.Edits.push_back({start_byte, start_byte, start_byte + text_byte_length});
 
     return {b, {at.L + num_new_lines, u32(text.size() == 1 ? at.C + text.front().size() : text.back().size())}};
+}
+
+TextBufferData TextBufferData::Paste(Lines lines) const {
+    auto b = *this;
+    for (int c = b.Cursors.size() - 1; c > -1; --c) b = b.DeleteSelection(c);
+    if (b.Cursors.size() > 1 && lines.size() == b.Cursors.size()) {
+        // Paste each line at the corresponding cursor.
+        for (int c = b.Cursors.size() - 1; c > -1; --c) b = b.InsertAtCursor({lines[c]}, c);
+    } else {
+        for (int c = b.Cursors.size() - 1; c > -1; --c) b = b.InsertAtCursor(lines, c);
+    }
+    return b;
 }
 
 TextBufferData TextBufferData::DeleteRange(LineCharRange lcr, bool update_cursors, std::optional<Cursor> exclude_cursor) const {
@@ -426,6 +438,12 @@ TextBufferData TextBufferData::DeleteSelection(u32 i) const {
     return DeleteRange(c, true, c).EditCursor(i, c.Min());
 }
 
+TextBufferData TextBufferData::DeleteSelections() const {
+    auto b = *this;
+    for (int c = b.Cursors.size() - 1; c > -1; --c) b = b.DeleteSelection(c);
+    return b;
+}
+
 TextBufferData TextBufferData::EnterChar(ImWchar ch, bool auto_indent) const {
     auto b = *this;
     for (int c = Cursors.size() - 1; c > -1; --c) b = b.DeleteSelection(c);
@@ -449,7 +467,7 @@ TextBufferData TextBufferData::EnterChar(ImWchar ch, bool auto_indent) const {
             for (u32 i = 0; i < 5 && buf[i] != '\0'; ++i) insert_line_trans.push_back(buf[i]);
         }
         auto insert_line = insert_line_trans.persistent();
-        b = b.InsertTextAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, i);
+        b = b.InsertAtCursor(ch == '\n' ? Lines{{}, insert_line} : Lines{insert_line}, i);
     }
 
     return b;
@@ -526,7 +544,7 @@ TextBufferData TextBufferData::ToggleLineComment(const std::string &comment) con
     auto b = *this;
     for (u32 li : affected_lines) {
         if (should_add_comment) {
-            b = b.InsertText({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0}).first;
+            b = b.Insert({Line{comment.begin(), comment.end()} + Line{' '}}, {li, 0}).first;
         } else {
             const auto &line = b.Text[li];
             const u32 ci = FindFirstNonSpace(line);
@@ -560,7 +578,7 @@ TextBufferData TextBufferData::ChangeCurrentLinesIndentation(bool increase) cons
 
             const auto &line = b.Text[li];
             if (increase) {
-                if (!line.empty()) b = b.InsertText({{'\t'}}, {li, 0}).first;
+                if (!line.empty()) b = b.Insert({{'\t'}}, {li, 0}).first;
             } else {
                 auto ci = int(b.GetCharIndex(line, GTextBufferStyle.NumTabSpaces)) - 1;
                 while (ci > -1 && isblank(line[ci])) --ci;

@@ -128,14 +128,14 @@ struct TextBufferImpl {
     std::optional<Cursor> GetEditedCursor() const {
         if (StartEdited.empty() && EndEdited.empty()) return {};
 
-        Cursor edited_range;
+        Cursor edited;
         for (u32 i = 0; i < B.Cursors.size(); ++i) {
             if (StartEdited.contains(i) || EndEdited.contains(i)) {
-                edited_range = B.Cursors[i];
+                edited = B.Cursors[i];
                 break; // todo create a sensible cursor representing the combined range when multiple cursors are edited.
             }
         }
-        return edited_range;
+        return edited;
     }
 
     // Cleared every frame. Used to keep recently edited cursors visible.
@@ -144,7 +144,6 @@ struct TextBufferImpl {
     std::string GetSyntaxTreeSExp() const { return Syntax->GetSExp(); }
 
     std::string_view GetLanguageName() const { return Languages.Get(LanguageId).Name; }
-
     u32 GetColor(PaletteIndex index) const { return GetPalette()[u32(index)]; }
 
     const PaletteT &GetPalette() const {
@@ -179,41 +178,26 @@ struct TextBufferImpl {
 
     void ToggleOverwrite() { Overwrite ^= true; } // todo use Bool prop
 
-    bool CanCopy() const { return B.AnyCursorsRanged(); }
-    bool CanCut() const { return !ReadOnly && CanCopy(); }
-    bool CanPaste() const { return !ReadOnly && ImGui::GetClipboardText() != nullptr; }
     bool CanToggleLineComment() const { return !ReadOnly && !Languages.Get(LanguageId).SingleLineComment.empty(); }
 
-    void Copy() {
-        const std::string str = B.GetSelectedText();
+    void Copy() const {
+        const auto str = B.GetSelectedText();
         ImGui::SetClipboardText(str.c_str());
     }
 
-    void Cut() {
-        Copy();
-        for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.DeleteSelection(c);
-    }
-
     // todo store clipboard text manually in a `Lines` to avoid string conversion
-    void Paste() {
-        TransientLines insert_text_lines_trans{};
+    static Lines GetClipboardText() {
+        TransientLines text{};
         const char *ptr = ImGui::GetClipboardText();
         while (*ptr != '\0') {
             u32 str_length = 0;
             while (ptr[str_length] != '\n' && ptr[str_length] != '\0') ++str_length;
-            insert_text_lines_trans.push_back({ptr, ptr + str_length});
-            // Special case: Last pasted char is a newline.
-            if (*(ptr + str_length) == '\n' && *(ptr + str_length + 1) == '\0') insert_text_lines_trans.push_back({});
+            text.push_back({ptr, ptr + str_length});
+            // Special case: Last char is a newline.
+            if (*(ptr + str_length) == '\n' && *(ptr + str_length + 1) == '\0') text.push_back({});
             ptr += str_length + 1;
         }
-        const auto insert_text_lines = insert_text_lines_trans.persistent();
-        for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.DeleteSelection(c);
-        if (B.Cursors.size() > 1 && insert_text_lines.size() == B.Cursors.size()) {
-            // Paste each line at the corresponding cursor.
-            for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.InsertTextAtCursor({insert_text_lines[c]}, c);
-        } else {
-            for (int c = B.Cursors.size() - 1; c > -1; --c) B = B.InsertTextAtCursor(insert_text_lines, c);
-        }
+        return text.persistent();
     }
 
     std::optional<TextBuffer::ActionType> Render(bool is_focused);
@@ -343,9 +327,9 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [](const Set &) { return true; },
             [](const ToggleOverwrite &) { return true; },
 
-            [this](const Copy &) { return Impl->CanCopy(); },
-            [this](const Cut &) { return Impl->CanCut(); },
-            [this](const Paste &) { return Impl->CanPaste(); },
+            [this](const Copy &) { return Impl->B.AnyCursorsRanged(); },
+            [this](const Cut &) { return !Impl->ReadOnly && Impl->B.AnyCursorsRanged(); },
+            [this](const Paste &) { return !Impl->ReadOnly && ImGui::GetClipboardText() != nullptr; },
             [this](const Delete &) { return !Impl->ReadOnly; },
             [this](const Backspace &) { return !Impl->ReadOnly; },
             [this](const DeleteCurrentLines &) { return !Impl->ReadOnly; },
@@ -380,8 +364,11 @@ void TextBuffer::Apply(const ActionType &action) const {
             [this](const ToggleOverwrite &) { Impl->ToggleOverwrite(); },
 
             [this](const Copy &) { Impl->Copy(); },
-            [this](const Cut &) { Impl->Cut(); },
-            [this](const Paste &) { Impl->Paste(); },
+            [this](const Cut &) {
+                Impl->Copy();
+                Impl->B = Impl->B.DeleteSelections();
+            },
+            [this](const Paste &) { Impl->B = Impl->B.Paste(Impl->GetClipboardText()); },
             [this](const Delete &a) { Impl->B = Impl->B.Delete(a.word); },
             [this](const Backspace &a) { Impl->B = Impl->B.Backspace(a.word); },
             [this](const DeleteCurrentLines &) { Impl->B = Impl->B.DeleteCurrentLines(); },
@@ -407,7 +394,7 @@ void TextBuffer::Apply(const ActionType &action) const {
                 });
             },
             [this](const ShowSaveDialog &) {
-                const string current_file_ext = fs::path(LastOpenedFilePath).extension();
+                const std::string current_file_ext = fs::path(LastOpenedFilePath).extension();
                 FileDialog.Set({
                     .owner_id = Id,
                     .title = std::format("Save {} file", Impl->GetLanguageName()),
@@ -510,8 +497,8 @@ std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const 
 using namespace ImGui;
 
 constexpr float Distance(const ImVec2 &a, const ImVec2 &b) {
-    const float x = a.x - b.x, y = a.y - b.y;
-    return sqrt(x * x + y * y);
+    const auto diff = a - b;
+    return sqrt(diff.x * diff.x + diff.y * diff.y);
 }
 
 std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(ImVec2 char_advance, float text_start_x) {
@@ -837,9 +824,9 @@ void TextBuffer::RenderMenu() const {
     if (BeginMenu("Edit")) {
         MenuItem("Read-only mode", nullptr, &Impl->ReadOnly);
         Separator();
-        if (MenuItem("Copy", "cmd+c", nullptr, Impl->CanCopy())) Impl->Copy();
-        if (MenuItem("Cut", "cmd+x", nullptr, Impl->CanCut())) Impl->Cut();
-        if (MenuItem("Paste", "cmd+v", nullptr, Impl->CanPaste())) Impl->Paste();
+        if (const auto a = Action::TextBuffer::Copy{Id}; MenuItem("Copy", "cmd+c", nullptr, CanApply(a))) Q(a);
+        if (const auto a = Action::TextBuffer::Cut{Id}; MenuItem("Cut", "cmd+x", nullptr, CanApply(a))) Q(a);
+        if (const auto a = Action::TextBuffer::Paste{Id}; MenuItem("Paste", "cmd+v", nullptr, CanApply(a))) Q(a);
         Separator();
         if (MenuItem("Select all", nullptr, nullptr)) Impl->B = Impl->B.SelectAll();
         EndMenu();

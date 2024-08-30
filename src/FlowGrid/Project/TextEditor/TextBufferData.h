@@ -191,16 +191,18 @@ struct TextBufferData {
     TextBufferData SwapLines(u32 li1, u32 li2) const;
 
     // Returns insertion end.
-    std::pair<TextBufferData, LineChar> InsertText(Lines text, LineChar at, bool update_cursors = true) const;
+    std::pair<TextBufferData, LineChar> Insert(Lines text, LineChar at, bool update_cursors = true) const;
+    TextBufferData Paste(Lines) const;
 
-    TextBufferData InsertTextAtCursor(Lines text, u32 i) const {
+    TextBufferData InsertAtCursor(Lines text, u32 i) const {
         if (text.empty()) return *this;
-        const auto [b, insertion_end] = InsertText(text, Cursors[i].Min());
+        const auto [b, insertion_end] = Insert(text, Cursors[i].Min());
         return b.EditCursor(i, insertion_end);
     }
 
     TextBufferData DeleteRange(LineCharRange lcr, bool update_cursors = true, std::optional<Cursor> exclude_cursor = std::nullopt) const;
     TextBufferData DeleteSelection(u32 i) const;
+    TextBufferData DeleteSelections() const;
 
     TextBufferData EnterChar(ImWchar, bool auto_indent = true) const;
     TextBufferData Backspace(bool is_word_mode = false) const;

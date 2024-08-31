@@ -282,9 +282,9 @@ TextBufferData TextBufferData::SetCursor(Cursor c, bool add) const {
     b.Cursors = b.LastAddedCursorIndex < b.Cursors.size() ? b.Cursors.set(b.LastAddedCursorIndex, std::move(c)) : b.Cursors.push_back(std::move(c));
     return b.MergeCursors();
 }
-TextBufferData TextBufferData::SetCursors(const immer::vector<Cursor> &cursors) const {
+TextBufferData TextBufferData::SetCursors(TextBufferCursors cursors) const {
     auto b = *this;
-    b.Cursors = cursors;
+    b.Cursors = std::move(cursors);
     b = b.MergeCursors();
     return b;
 }

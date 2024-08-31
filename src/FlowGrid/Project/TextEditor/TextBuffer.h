@@ -62,7 +62,7 @@ private:
 
     // Returns the range of all edited cursor starts/ends since cursor edits were last cleared.
     // Used for updating the scroll range.
-    std::optional<Cursor> GetEditedCursor(const TextBufferData &) const;
+    std::optional<Cursor> GetEditedCursor(TextBufferCursors) const;
 
     u32 GetColor(PaletteIndex) const;
     void SetFilePath(const fs::path &) const;

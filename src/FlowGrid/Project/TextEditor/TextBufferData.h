@@ -10,6 +10,8 @@
 
 using TextBufferLine = immer::flex_vector<char>;
 using TextBufferLines = immer::flex_vector<TextBufferLine>;
+using TextBufferCursor = LineCharRange;
+using TextBufferCursors = immer::vector<TextBufferCursor>;
 
 using ImWchar = unsigned short;
 
@@ -43,16 +45,16 @@ constexpr u32 UTF8CharLength(char ch) {
 }
 
 struct TextBufferData {
-    using Cursor = LineCharRange;
     using Line = TextBufferLine;
     using Lines = TextBufferLines;
+    using Cursor = TextBufferCursor;
     using Coords = TextBufferCoords;
 
     TextBufferLines Text{Line{}};
     // If immer vectors provided a diff mechanism like its map does,
     // we could efficiently compute diffs across any two arbitrary text buffers, and we wouldn't need this.
     immer::vector<TextInputEdit> Edits{};
-    immer::vector<LineCharRange> Cursors{{}};
+    TextBufferCursors Cursors{{}};
     u32 LastAddedCursorIndex{0};
     // Start/End column for each cursor index, for tracking max column during cursor up/down movement.
     // todo bring back this functionality. I think this can be simplified by and moved back to `TextBuffer`, using a reactive approach.
@@ -157,7 +159,7 @@ struct TextBufferData {
     // If `add == true`, a new cursor is added and set.
     // Otherwise, the cursors are _cleared_ and a new cursor is added and set.
     TextBufferData SetCursor(Cursor, bool add = false) const;
-    TextBufferData SetCursors(const immer::vector<Cursor> &) const;
+    TextBufferData SetCursors(TextBufferCursors) const;
     TextBufferData EditCursor(u32 i, LineChar, bool select = false) const;
     template<typename EditFunc> TextBufferData EditCursors(EditFunc f) const {
         immer::vector_transient<Cursor> new_cursors;

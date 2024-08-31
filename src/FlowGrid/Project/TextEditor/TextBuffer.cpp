@@ -350,13 +350,13 @@ std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const 
 
 // Returns the range of all edited cursor starts/ends since cursor edits were last cleared.
 // Used for updating the scroll range.
-std::optional<Cursor> TextBuffer::GetEditedCursor(const TextBufferData &b) const {
+std::optional<Cursor> TextBuffer::GetEditedCursor(TextBufferCursors cursors) const {
     if (State->StartEdited.empty() && State->EndEdited.empty()) return {};
 
     Cursor edited;
-    for (u32 i = 0; i < b.Cursors.size(); ++i) {
+    for (u32 i = 0; i < cursors.size(); ++i) {
         if (State->StartEdited.contains(i) || State->EndEdited.contains(i)) {
-            edited = b.Cursors[i];
+            edited = cursors[i];
             break; // todo create a sensible cursor representing the combined range when multiple cursors are edited.
         }
     }
@@ -478,7 +478,7 @@ std::optional<TextBuffer::ActionType> TextBuffer::Render(const TextBufferData &b
     const Coords last_visible_coords{u32((State->ContentDims.y + scroll.y) / char_advance.y), u32((State->ContentDims.x + scroll.x - text_start_x) / char_advance.x)};
     State->ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
 
-    if (auto edited_cursor = GetEditedCursor(b); edited_cursor) {
+    if (auto edited_cursor = GetEditedCursor(b.Cursors); edited_cursor) {
         State->StartEdited.clear();
         State->EndEdited.clear();
 

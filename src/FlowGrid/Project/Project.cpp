@@ -75,8 +75,9 @@ Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProduce
 
 Project::~Project() = default;
 
-void Project::RefreshChanged(const Patch &patch, bool add_to_gesture) {
-    MarkAllChanged(patch);
+void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) {
+    MarkAllChanged(std::move(patch));
+
     static std::unordered_set<ChangeListener *> affected_listeners;
 
     // Find listeners to notify.
@@ -125,7 +126,7 @@ Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops
     return nullptr;
 }
 
-void Project::MarkAllChanged(const Patch &patch) {
+void Project::MarkAllChanged(Patch &&patch) {
     const auto change_time = Clock::now();
     ClearChanged();
 
@@ -167,8 +168,7 @@ void Project::SetHistoryIndex(u32 index) const {
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
-    const auto patch = RootStore.CheckedSet(History.CurrentStore(), Id);
-    RefreshChanged(patch);
+    RefreshChanged(RootStore.CheckedSet(History.CurrentStore(), Id));
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
@@ -247,8 +247,6 @@ void Project::Apply(const ActionType &action) const {
             },
             // History-changing actions:
             [this](const Action::Project::Undo &) {
-                if (History.Empty()) return;
-
                 // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
                 // If we're at the end of the stack, we want to commit the active gesture and add it to the stack.
                 // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
@@ -824,8 +822,8 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
         std::visit(
             Match{
                 [this, &store = RootStore, &queue_time](const Action::Saved &a) {
-                    if (const auto patch = store.CheckedCommit(Id); !patch.Empty()) {
-                        RefreshChanged(patch, true);
+                    if (auto patch = store.CheckedCommit(Id); !patch.Empty()) {
+                        RefreshChanged(std::move(patch), true);
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;
                     }

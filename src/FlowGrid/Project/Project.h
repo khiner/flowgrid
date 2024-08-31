@@ -46,7 +46,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
 
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
     // This is always called immediately after a store commit.
-    static void RefreshChanged(const Patch &, bool add_to_gesture = false);
+    static void RefreshChanged(Patch &&, bool add_to_gesture = false);
 
     inline static void ClearChanged() noexcept {
         ChangedPaths.clear();
@@ -57,7 +57,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
     // Find and mark fields that are made stale with the provided patch.
     // If `Refresh()` is called on every field marked in `ChangedIds`, the component tree will be fully refreshed.
     // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
-    static void MarkAllChanged(const Patch &);
+    static void MarkAllChanged(Patch &&);
 
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
     static Component *FindChanged(ID component_id, const std::vector<PatchOp> &ops);

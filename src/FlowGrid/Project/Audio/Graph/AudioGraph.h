@@ -15,10 +15,10 @@ struct ma_node_graph;
 struct InputDeviceNode;
 struct OutputDeviceNode;
 
-inline const std::string InputDeviceNodeTypeId = "Input";
-inline const std::string OutputDeviceNodeTypeId = "Output";
-inline const std::string WaveformNodeTypeId = "Waveform";
-inline const std::string FaustNodeTypeId = "Faust";
+inline const std::string
+    InputDeviceNodeTypeId = "Input",
+    OutputDeviceNodeTypeId = "Output",
+    WaveformNodeTypeId = "Waveform", FaustNodeTypeId = "Faust";
 
 struct AudioGraph
     : AudioGraphNode,
@@ -141,7 +141,7 @@ private:
     void Connect(ma_node *source, u32 source_output_bus, ma_node *destination, u32 destination_input_bus);
 
     AudioGraphNode *FindByPathSegment(std::string_view path_segment) const {
-        auto node_it = std::find_if(Nodes.begin(), Nodes.end(), [path_segment](const auto *node) { return node->PathSegment == path_segment; });
+        auto node_it = std::ranges::find_if(Nodes.View(), [path_segment](const auto &node) { return node->PathSegment == path_segment; });
         return node_it != Nodes.end() ? node_it->get() : nullptr;
     }
     auto FindAllByPathSegment(std::string_view path_segment) const {

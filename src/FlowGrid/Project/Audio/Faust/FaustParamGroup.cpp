@@ -11,9 +11,10 @@ using namespace fg;
 
 using enum FaustParamType;
 using std::min, std::max;
+using std::ranges::any_of, std::views::transform;
 
 static auto Params(const FaustParamGroup &group) {
-    return group.Children | std::views::transform([](const auto *child) { return dynamic_cast<const FaustParamBase *>(child); });
+    return group.Children | transform([](const auto *child) { return dynamic_cast<const FaustParamBase *>(child); });
 }
 
 void FaustParamGroup::Render(float suggested_height, bool no_label) const {
@@ -47,7 +48,7 @@ void FaustParamGroup::Render(float suggested_height, bool no_label) const {
     if (is_h) {
         const bool include_labels = !Style.HeaderTitles;
         suggested_item_height = std::ranges::max(
-            Params(*this) | std::views::transform([include_labels](const auto *child) {
+            Params(*this) | transform([include_labels](const auto *child) {
                 return child->CalcHeight() + (include_labels ? child->CalcLabelHeight() : 0);
             })
         );
@@ -64,8 +65,7 @@ void FaustParamGroup::Render(float suggested_height, bool no_label) const {
             const bool allow_fixed_width_params =
                 policy != ParamsWidthSizingPolicy_Balanced &&
                 (policy == ParamsWidthSizingPolicy_StretchFlexibleOnly ||
-                 (policy == ParamsWidthSizingPolicy_StretchToFill &&
-                  std::ranges::any_of(Params(*this), [](const auto *child) { return child->IsWidthExpandable(); })));
+                 (policy == ParamsWidthSizingPolicy_StretchToFill && any_of(Params(*this), [](const auto *child) { return child->IsWidthExpandable(); })));
             for (const auto *child : Params(*this)) {
                 ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None;
                 if (allow_fixed_width_params && !child->IsWidthExpandable()) flags |= ImGuiTableColumnFlags_WidthFixed;

@@ -7,7 +7,8 @@
 
 #include "immer/flex_vector_transient.hpp"
 
-using std::ranges::any_of, std::ranges::all_of, std::ranges::find_if, std::ranges::fold_left, std::ranges::subrange, std::views::filter, std::views::transform, std::ranges::reverse_view, std::ranges::to;
+using std::ranges::any_of, std::ranges::all_of, std::ranges::find_if, std::ranges::find_if_not, std::ranges::fold_left, std::ranges::subrange,
+    std::views::filter, std::views::transform, std::ranges::reverse_view, std::ranges::to;
 
 using TransientLine = immer::flex_vector_transient<char>;
 using TransientLines = immer::flex_vector_transient<TextBufferLine>;
@@ -528,7 +529,7 @@ TextBufferData TextBufferData::MoveCurrentLines(bool up) const {
 TextBufferData TextBufferData::ToggleLineComment(const std::string &comment) const {
     if (comment.empty()) return *this;
 
-    static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), std::ranges::find_if_not(line, isblank)); };
+    static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), find_if_not(line, isblank)); };
 
     std::unordered_set<u32> affected_lines;
     for (const auto &c : Cursors) {

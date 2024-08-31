@@ -3,13 +3,16 @@
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/String.h"
 #include "Project/FileDialog/FileDialogData.h"
+
 #include "TextBufferAction.h"
 #include "TextBufferData.h"
+#include "TextBufferPalette.h"
 
-struct TextBufferImpl;
+struct TextBufferState;
 struct FileDialog;
 
 struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
@@ -49,6 +52,7 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     Prop(Bool, ShowChangedCaptureRanges, false);
     Prop(Bool, ShortTabs, true);
     Prop(Float, LineSpacing, 1);
+    Prop(Enum, PaletteId, {"Dark", "Light", "Mariana", "RetroBlue"}, int(TextBufferPaletteId::Dark));
 
 private:
     void Commit(TextBufferData) const;
@@ -56,7 +60,17 @@ private:
     std::optional<TextBuffer::ActionType> Render(const TextBufferData &, bool is_focused) const;
     std::optional<TextBuffer::ActionType> HandleMouseInputs(const TextBufferData &, ImVec2 char_advance, float text_start_x) const;
 
-    std::unique_ptr<TextBufferImpl> Impl;
+    // Returns the range of all edited cursor starts/ends since cursor edits were last cleared.
+    // Used for updating the scroll range.
+    std::optional<Cursor> GetEditedCursor(const TextBufferData &) const;
+
+    u32 GetColor(PaletteIndex) const;
+    void SetFilePath(const fs::path &) const;
+
+    void CreateHoveredNode(u32 byte_index) const;
+    void DestroyHoveredNode() const;
+
+    std::unique_ptr<TextBufferState> State; // PIMPL for rendering state.
 
     ActionMenuItem<ActionType>
         ShowOpenDialogMenuItem{*this, Action::TextBuffer::ShowOpenDialog{Id}},

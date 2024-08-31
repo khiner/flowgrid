@@ -401,14 +401,21 @@ struct SyntaxTree {
         UpdateCaptureIdTransitions(edits, nullptr);
     }
 
+    const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
+    std::string_view GetLanguageName() const { return GetLanguage().Name; }
+
     void SetLanguage(LanguageID language_id) {
-        if (language_id != LanguageID::None && !Preferences.TreeSitterConfigPath.empty()) {
+        if (LanguageId == language_id) return;
+
+        LanguageId = language_id;
+
+        if (LanguageId != LanguageID::None && !Preferences.TreeSitterConfigPath.empty()) {
             const auto config_json = json::parse(FileIO::read(Preferences.TreeSitterConfigPath));
             Config = config_json.get<TSConfig>();
-        } else if (language_id == LanguageID::None) {
+        } else if (LanguageId == LanguageID::None) {
             Config = {};
         }
-        const auto &language = Languages.Get(language_id);
+        const auto &language = GetLanguage();
         ts_parser_set_language(Parser, language.TsLanguage);
         Query = language.GetQuery();
         const u32 capture_count = ts_query_capture_count(Query);
@@ -459,6 +466,7 @@ struct SyntaxTree {
     std::unordered_map<u32, TextEditorCharStyle> StyleByCaptureId{};
     ByteTransitions<u32> CaptureIdTransitions{NoneCaptureId};
     std::set<ByteRange> ChangedCaptureRanges{}; // For debugging.
+    LanguageID LanguageId{LanguageID::None};
 
 private:
     /**

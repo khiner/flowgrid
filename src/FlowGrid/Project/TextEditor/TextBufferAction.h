@@ -26,7 +26,6 @@ DefineActionType(
     DefineUnmergableComponentAction(SelectNextOccurrence);
 
     DefineComponentAction(Set, "", std::string value;);
-    DefineComponentAction(ToggleOverwrite, "");
 
     DefineUnsavedComponentAction(Copy, NoMerge, "");
     DefineUnmergableComponentAction(Cut);
@@ -55,7 +54,6 @@ DefineActionType(
     ComponentActionJson(SelectNextOccurrence);
 
     ComponentActionJson(Set, value);
-    ComponentActionJson(ToggleOverwrite);
 
     ComponentActionJson(Copy);
     ComponentActionJson(Cut);
@@ -71,6 +69,6 @@ DefineActionType(
     using Any = ActionVariant<
         ShowOpenDialog, ShowSaveDialog, Save, Open, Set,
         SetCursor, SetCursorRange, MoveCursorsLines, PageCursorsLines, MoveCursorsChar, MoveCursorsTop, MoveCursorsBottom, MoveCursorsStartLine, MoveCursorsEndLine,
-        SelectAll, SelectNextOccurrence, ToggleOverwrite, Copy, Cut, Paste, Delete, Backspace, DeleteCurrentLines, ChangeCurrentLinesIndentation,
+        SelectAll, SelectNextOccurrence, Copy, Cut, Paste, Delete, Backspace, DeleteCurrentLines, ChangeCurrentLinesIndentation,
         MoveCurrentLines, ToggleLineComment, EnterChar>;
 );

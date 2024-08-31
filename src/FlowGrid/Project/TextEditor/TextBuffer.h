@@ -2,6 +2,8 @@
 
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionableComponent.h"
+#include "Core/Primitive/Bool.h"
+#include "Core/Primitive/Float.h"
 #include "Core/Primitive/String.h"
 #include "Project/FileDialog/FileDialogData.h"
 #include "TextBufferAction.h"
@@ -38,8 +40,21 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     Prop(String, LastOpenedFilePath, _LastOpenedFilePath);
     Prop_(DebugComponent, Debug, "Editor debug");
 
+    Prop(Bool, ReadOnly, false);
+    Prop(Bool, Overwrite, false);
+    Prop(Bool, AutoIndent, true);
+    Prop(Bool, ShowWhitespaces, true);
+    Prop(Bool, ShowLineNumbers, true);
+    Prop(Bool, ShowStyleTransitionPoints, false);
+    Prop(Bool, ShowChangedCaptureRanges, false);
+    Prop(Bool, ShortTabs, true);
+    Prop(Float, LineSpacing, 1);
+
 private:
     void Commit(TextBufferData) const;
+
+    std::optional<TextBuffer::ActionType> Render(const TextBufferData &, bool is_focused) const;
+    std::optional<TextBuffer::ActionType> HandleMouseInputs(const TextBufferData &, ImVec2 char_advance, float text_start_x) const;
 
     std::unique_ptr<TextBufferImpl> Impl;
 

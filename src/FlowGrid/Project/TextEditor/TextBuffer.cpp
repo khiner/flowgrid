@@ -50,70 +50,75 @@ enum class PaletteIndex {
     Max
 };
 
+using PaletteT = std::array<u32, u32(PaletteIndex::Max)>;
+
+inline static const PaletteT DarkPalette = {{
+    0xffe4dfdc, // Default
+    0xff342c28, // Background
+    0xffe0e0e0, // Cursor
+    0x80a06020, // Selection
+    0x800020ff, // Error
+    0x15ffffff, // ControlCharacter
+    0x40f08000, // Breakpoint
+    0xff94837a, // Line number
+    0x40000000, // Current line fill
+    0x40808080, // Current line fill (inactive)
+    0x40a0a0a0, // Current line edge
+}};
+
+inline static const PaletteT MarianaPalette = {{
+    0xffffffff, // Default
+    0xff413830, // Background
+    0xffe0e0e0, // Cursor
+    0x80655a4e, // Selection
+    0x80665fec, // Error
+    0x30ffffff, // ControlCharacter
+    0x40f08000, // Breakpoint
+    0xb0ffffff, // Line number
+    0x80655a4e, // Current line fill
+    0x30655a4e, // Current line fill (inactive)
+    0xb0655a4e, // Current line edge
+}};
+
+inline static const PaletteT LightPalette = {{
+    0xff404040, // Default
+    0xffffffff, // Background
+    0xff000000, // Cursor
+    0x40600000, // Selection
+    0xa00010ff, // Error
+    0x90909090, // ControlCharacter
+    0x80f08000, // Breakpoint
+    0xff505000, // Line number
+    0x40000000, // Current line fill
+    0x40808080, // Current line fill (inactive)
+    0x40000000, // Current line edge
+}};
+
+inline static const PaletteT RetroBluePalette = {{
+    0xff00ffff, // Default
+    0xff800000, // Background
+    0xff0080ff, // Cursor
+    0x80ffff00, // Selection
+    0xa00000ff, // Error
+    0x80ff8000, // Breakpoint
+    0xff808000, // Line number
+    0x40000000, // Current line fill
+    0x40808080, // Current line fill (inactive)
+    0x40000000, // Current line edge
+}};
+
+inline static const std::unordered_map<TextBufferPaletteId, const PaletteT &> Palettes = {
+    {TextBufferPaletteId::Dark, DarkPalette},
+    {TextBufferPaletteId::Light, LightPalette},
+    {TextBufferPaletteId::Mariana, MarianaPalette},
+    {TextBufferPaletteId::RetroBlue, RetroBluePalette},
+};
+
 const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *bytes_read);
 
 struct TextBufferImpl {
-    TextBufferImpl(TextBuffer *buffer, ID id) : Id(id), Syntax(std::make_unique<SyntaxTree>(TSInput{buffer, TSReadText, TSInputEncodingUTF8})) {}
-
+    TextBufferImpl(TextBuffer *buffer) : Syntax(std::make_unique<SyntaxTree>(TSInput{buffer, TSReadText, TSInputEncodingUTF8})) {}
     ~TextBufferImpl() = default;
-
-    using PaletteT = std::array<u32, u32(PaletteIndex::Max)>;
-    inline static const TextBufferPaletteId DefaultPaletteId{TextBufferPaletteId::Dark};
-
-    inline static const PaletteT DarkPalette = {{
-        0xffe4dfdc, // Default
-        0xff342c28, // Background
-        0xffe0e0e0, // Cursor
-        0x80a06020, // Selection
-        0x800020ff, // Error
-        0x15ffffff, // ControlCharacter
-        0x40f08000, // Breakpoint
-        0xff94837a, // Line number
-        0x40000000, // Current line fill
-        0x40808080, // Current line fill (inactive)
-        0x40a0a0a0, // Current line edge
-    }};
-
-    inline static const PaletteT MarianaPalette = {{
-        0xffffffff, // Default
-        0xff413830, // Background
-        0xffe0e0e0, // Cursor
-        0x80655a4e, // Selection
-        0x80665fec, // Error
-        0x30ffffff, // ControlCharacter
-        0x40f08000, // Breakpoint
-        0xb0ffffff, // Line number
-        0x80655a4e, // Current line fill
-        0x30655a4e, // Current line fill (inactive)
-        0xb0655a4e, // Current line edge
-    }};
-
-    inline static const PaletteT LightPalette = {{
-        0xff404040, // Default
-        0xffffffff, // Background
-        0xff000000, // Cursor
-        0x40600000, // Selection
-        0xa00010ff, // Error
-        0x90909090, // ControlCharacter
-        0x80f08000, // Breakpoint
-        0xff505000, // Line number
-        0x40000000, // Current line fill
-        0x40808080, // Current line fill (inactive)
-        0x40000000, // Current line edge
-    }};
-
-    inline static const PaletteT RetroBluePalette = {{
-        0xff00ffff, // Default
-        0xff800000, // Background
-        0xff0080ff, // Cursor
-        0x80ffff00, // Selection
-        0xa00000ff, // Error
-        0x80ff8000, // Breakpoint
-        0xff808000, // Line number
-        0x40000000, // Current line fill
-        0x40808080, // Current line fill (inactive)
-        0x40000000, // Current line edge
-    }};
 
     // Returns the range of all edited cursor starts/ends since cursor edits were last cleared.
     // Used for updating the scroll range.
@@ -133,26 +138,13 @@ struct TextBufferImpl {
     // Cleared every frame. Used to keep recently edited cursors visible.
     std::unordered_set<u32> StartEdited{}, EndEdited{};
 
-    std::string GetSyntaxTreeSExp() const { return Syntax->GetSExp(); }
-
     std::string_view GetLanguageName() const { return Languages.Get(LanguageId).Name; }
-    u32 GetColor(PaletteIndex index) const { return GetPalette()[u32(index)]; }
-
-    const PaletteT &GetPalette() const {
-        switch (PaletteId) {
-            case TextBufferPaletteId::Dark: return DarkPalette;
-            case TextBufferPaletteId::Light: return LightPalette;
-            case TextBufferPaletteId::Mariana: return MarianaPalette;
-            case TextBufferPaletteId::RetroBlue: return RetroBluePalette;
-        }
-    }
+    u32 GetColor(PaletteIndex index) const { return Palettes.at(PaletteId)[u32(index)]; }
 
     void SetFilePath(const fs::path &file_path) {
         const std::string extension = file_path.extension();
         SetLanguage(!extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None);
     }
-
-    void SetPalette(TextBufferPaletteId palette_id) { PaletteId = palette_id; }
 
     void SetLanguage(LanguageID language_id) {
         if (LanguageId == language_id) return;
@@ -162,56 +154,6 @@ struct TextBufferImpl {
         // Syntax->ApplyEdits(B.Edits);
         // B.Edits = {};
     }
-
-    void ToggleOverwrite() { Overwrite ^= true; } // todo use Bool prop
-
-    // todo store clipboard text manually in a `Lines` to avoid string conversion
-    static Lines GetClipboardText() {
-        TransientLines text{};
-        const char *ptr = ImGui::GetClipboardText();
-        while (*ptr != '\0') {
-            u32 str_length = 0;
-            while (ptr[str_length] != '\n' && ptr[str_length] != '\0') ++str_length;
-            text.push_back({ptr, ptr + str_length});
-            // Special case: Last char is a newline.
-            if (*(ptr + str_length) == '\n' && *(ptr + str_length + 1) == '\0') text.push_back({});
-            ptr += str_length + 1;
-        }
-        return text.persistent();
-    }
-
-    std::optional<TextBuffer::ActionType> Render(TextBufferData, bool is_focused);
-
-    bool ReadOnly{false};
-    bool Overwrite{false};
-    bool AutoIndent{true};
-    bool ShowWhitespaces{true};
-    bool ShowLineNumbers{true};
-    bool ShowStyleTransitionPoints{false}, ShowChangedCaptureRanges{false};
-    bool ShortTabs{true};
-    float LineSpacing{1};
-
-    // private:
-
-    Coords ScreenPosToCoords(TextBufferData b, const ImVec2 &screen_pos, ImVec2 char_advance, float text_start_x, bool *is_over_li = nullptr) const {
-        static constexpr float PosToCoordsColumnOffset = 0.33;
-
-        const auto local = screen_pos + ImVec2{3, 0} - ImGui::GetCursorScreenPos();
-        if (is_over_li != nullptr) *is_over_li = local.x < text_start_x;
-
-        Coords coords{
-            std::min(u32(std::max(0.f, floor(local.y / char_advance.y))), u32(b.Text.size()) - 1),
-            u32(std::max(0.f, floor((local.x - text_start_x + PosToCoordsColumnOffset * char_advance.x) / char_advance.x)))
-        };
-        // Check if the coord is in the middle of a tab character.
-        const auto &line = b.Text[std::min(coords.L, u32(b.Text.size()) - 1)];
-        const u32 ci = b.GetCharIndex(line, coords.C);
-        if (ci < line.size() && line[ci] == '\t') coords.C = b.GetColumn(line, ci);
-
-        return {coords.L, b.GetLineMaxColumn(line, coords.C)};
-    }
-
-    std::optional<TextBuffer::ActionType> HandleMouseInputs(TextBufferData b, ImVec2 char_advance, float text_start_x);
 
     void CreateHoveredNode(u32 byte_index) {
         DestroyHoveredNode();
@@ -229,9 +171,7 @@ struct TextBufferImpl {
         }
     }
 
-    ID Id;
-
-    TextBufferPaletteId PaletteId{DefaultPaletteId};
+    TextBufferPaletteId PaletteId{TextBufferPaletteId::Dark};
     LanguageID LanguageId{LanguageID::None};
 
     ImVec2 ContentDims{0, 0}; // Pixel width/height of current content area.
@@ -270,7 +210,7 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
 
 TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
     : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
-      Impl(std::make_unique<TextBufferImpl>(this, Id)) {
+      Impl(std::make_unique<TextBufferImpl>(this)) {
     Impl->SetFilePath(file_path);
     FieldIds.insert(Id); // Acts as a `TextBufferData` field.
     // if (Exists()) Refresh();
@@ -305,21 +245,34 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [](const SelectNextOccurrence &) { return true; },
 
             [](const Set &) { return true; },
-            [](const ToggleOverwrite &) { return true; },
 
             [this](const Copy &) { return GetBuffer().AnyCursorsRanged(); },
-            [this](const Cut &) { return !Impl->ReadOnly && GetBuffer().AnyCursorsRanged(); },
-            [this](const Paste &) { return !Impl->ReadOnly && ImGui::GetClipboardText() != nullptr; },
-            [this](const Delete &) { return !Impl->ReadOnly; },
-            [this](const Backspace &) { return !Impl->ReadOnly; },
-            [this](const DeleteCurrentLines &) { return !Impl->ReadOnly; },
-            [this](const ChangeCurrentLinesIndentation &) { return !Impl->ReadOnly; },
-            [this](const MoveCurrentLines &) { return !Impl->ReadOnly; },
-            [this](const ToggleLineComment &) { return !Impl->ReadOnly && !Languages.Get(Impl->LanguageId).SingleLineComment.empty(); },
-            [this](const EnterChar &) { return !Impl->ReadOnly; },
+            [this](const Cut &) { return !ReadOnly && GetBuffer().AnyCursorsRanged(); },
+            [this](const Paste &) { return !ReadOnly && ImGui::GetClipboardText() != nullptr; },
+            [this](const Delete &) { return !ReadOnly; },
+            [this](const Backspace &) { return !ReadOnly; },
+            [this](const DeleteCurrentLines &) { return !ReadOnly; },
+            [this](const ChangeCurrentLinesIndentation &) { return !ReadOnly; },
+            [this](const MoveCurrentLines &) { return !ReadOnly; },
+            [this](const ToggleLineComment &) { return !ReadOnly && !Languages.Get(Impl->LanguageId).SingleLineComment.empty(); },
+            [this](const EnterChar &) { return !ReadOnly; },
         },
         action
     );
+}
+
+static Lines GetClipboardLines() {
+    TransientLines text{};
+    const char *ptr = ImGui::GetClipboardText();
+    while (*ptr != '\0') {
+        u32 str_length = 0;
+        while (ptr[str_length] != '\n' && ptr[str_length] != '\0') ++str_length;
+        text.push_back({ptr, ptr + str_length});
+        // Special case: Last char is a newline.
+        if (*(ptr + str_length) == '\n' && *(ptr + str_length + 1) == '\0') text.push_back({});
+        ptr += str_length + 1;
+    }
+    return text.persistent();
 }
 
 void TextBuffer::Apply(const ActionType &action) const {
@@ -340,7 +293,6 @@ void TextBuffer::Apply(const ActionType &action) const {
             [this](const SelectAll &) { Commit(GetBuffer().SelectAll()); },
             [this](const SelectNextOccurrence &) { Commit(GetBuffer().SelectNextOccurrence()); },
             [this](const Set &a) { Commit(GetBuffer().SetText(a.value)); },
-            [this](const ToggleOverwrite &) { Impl->ToggleOverwrite(); },
             [this](const Copy &) {
                 const auto str = GetBuffer().GetSelectedText();
                 ImGui::SetClipboardText(str.c_str());
@@ -350,14 +302,14 @@ void TextBuffer::Apply(const ActionType &action) const {
                 ImGui::SetClipboardText(str.c_str());
                 Commit(GetBuffer().DeleteSelections());
             },
-            [this](const Paste &) { Commit(GetBuffer().Paste(Impl->GetClipboardText())); },
+            [this](const Paste &) { Commit(GetBuffer().Paste(GetClipboardLines())); },
             [this](const Delete &a) { Commit(GetBuffer().Delete(a.word)); },
             [this](const Backspace &a) { Commit(GetBuffer().Backspace(a.word)); },
             [this](const DeleteCurrentLines &) { Commit(GetBuffer().DeleteCurrentLines()); },
             [this](const ChangeCurrentLinesIndentation &a) { Commit(GetBuffer().ChangeCurrentLinesIndentation(a.increase)); },
             [this](const MoveCurrentLines &a) { Commit(GetBuffer().MoveCurrentLines(a.up)); },
             [this](const ToggleLineComment &) { Commit(GetBuffer().ToggleLineComment(Languages.Get(Impl->LanguageId).SingleLineComment)); },
-            [this](const EnterChar &a) { Commit(GetBuffer().EnterChar(a.value, Impl->AutoIndent)); },
+            [this](const EnterChar &a) { Commit(GetBuffer().EnterChar(a.value, AutoIndent)); },
             [this](const Open &a) {
                 LastOpenedFilePath.Set(a.file_path);
                 Impl->SetFilePath(a.file_path);
@@ -442,11 +394,9 @@ std::optional<TextBuffer::ActionType> TextBuffer::ProduceKeyboardAction() const 
     if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Insert) || IsPressed(ImGuiMod_Ctrl | ImGuiKey_C)) return Copy{Id};
     if (IsPressed(ImGuiMod_Shift | ImGuiKey_Insert) || IsPressed(ImGuiMod_Ctrl | ImGuiKey_V)) return Paste{Id};
     if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_X) || IsPressed(ImGuiMod_Shift | ImGuiKey_Delete)) {
-        if (Impl->ReadOnly) return Copy{Id};
+        if (ReadOnly) return Copy{Id};
         return Cut{Id};
     }
-    // todo readonly toggle
-    if (IsPressed(ImGuiKey_Insert)) return ToggleOverwrite{Id};
     // edits
     if (IsPressed(ImGuiKey_Delete)) return Delete{.component_id = Id, .word = false};
     if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Delete)) return Delete{.component_id = Id, .word = true};
@@ -475,12 +425,13 @@ constexpr float Distance(const ImVec2 &a, const ImVec2 &b) {
     return sqrt(diff.x * diff.x + diff.y * diff.y);
 }
 
-std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(TextBufferData b, ImVec2 char_advance, float text_start_x) {
+std::optional<TextBuffer::ActionType> TextBuffer::HandleMouseInputs(const TextBufferData &b, ImVec2 char_advance, float text_start_x) const {
     using namespace Action::TextBuffer;
+
     constexpr static ImGuiMouseButton MouseLeft = ImGuiMouseButton_Left, MouseMiddle = ImGuiMouseButton_Middle;
 
     if (!IsWindowHovered()) {
-        DestroyHoveredNode();
+        Impl->DestroyHoveredNode();
         return {};
     }
 
@@ -492,9 +443,22 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(TextBuff
         SetScrollY(scroll.y);
     }
 
-    bool is_over_line_number = false;
+    static constexpr float PosToCoordsColumnOffset = 0.33;
     const auto mouse_pos = GetMousePos();
-    const auto mouse_lc = b.ToLineChar(ScreenPosToCoords(b, mouse_pos, char_advance, text_start_x, &is_over_line_number));
+    const auto local_pos = mouse_pos + ImVec2{3, 0} - ImGui::GetCursorScreenPos();
+    const bool is_over_line_number = local_pos.x < text_start_x;
+
+    Coords coords{
+        std::min(u32(std::max(0.f, floor(local_pos.y / char_advance.y))), u32(b.Text.size()) - 1),
+        u32(std::max(0.f, floor((local_pos.x - text_start_x + PosToCoordsColumnOffset * char_advance.x) / char_advance.x)))
+    };
+    // Check if the coord is in the middle of a tab character.
+    const auto &line = b.Text[std::min(coords.L, u32(b.Text.size()) - 1)];
+    const u32 ci = b.GetCharIndex(line, coords.C);
+    if (ci < line.size() && line[ci] == '\t') coords.C = b.GetColumn(line, ci);
+
+    const auto mouse_lc = b.ToLineChar({coords.L, b.GetLineMaxColumn(line, coords.C)});
+
     const auto &io = GetIO();
     const auto is_click = IsMouseClicked(MouseLeft);
     if ((io.KeyShift && is_click) || IsMouseDragging(MouseLeft)) {
@@ -502,23 +466,23 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(TextBuff
     }
     if (io.KeyShift || io.KeyAlt) return {};
 
-    if (is_over_line_number) DestroyHoveredNode();
-    else if (Syntax) CreateHoveredNode(b.ToByteIndex(mouse_lc));
+    if (is_over_line_number) Impl->DestroyHoveredNode();
+    else if (Impl->Syntax) Impl->CreateHoveredNode(b.ToByteIndex(mouse_lc));
 
     const float time = GetTime();
     const bool is_double_click = IsMouseDoubleClicked(MouseLeft);
-    const bool is_triple_click = is_click && !is_double_click && LastClickTime != -1.0f &&
-        time - LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, LastClickPos) < 0.01f;
+    const bool is_triple_click = is_click && !is_double_click && Impl->LastClickTime != -1.0f &&
+        time - Impl->LastClickTime < io.MouseDoubleClickTime && Distance(io.MousePos, Impl->LastClickPos) < 0.01f;
     if (is_triple_click) {
-        LastClickTime = -1.0f;
+        Impl->LastClickTime = -1.0f;
         return SetCursorRange{Id, b.Clamped({mouse_lc.L, 0}, b.CheckedNextLineBegin(mouse_lc.L)), io.KeyCtrl};
     } else if (is_double_click) {
-        LastClickTime = time;
-        LastClickPos = mouse_pos;
+        Impl->LastClickTime = time;
+        Impl->LastClickPos = mouse_pos;
         return SetCursorRange{Id, b.Clamped(b.FindWordBoundary(mouse_lc, true), b.FindWordBoundary(mouse_lc, false)), io.KeyCtrl};
     } else if (is_click) {
-        LastClickTime = time;
-        LastClickPos = mouse_pos;
+        Impl->LastClickTime = time;
+        Impl->LastClickPos = mouse_pos;
         auto lcr = is_over_line_number ? b.Clamped({mouse_lc.L, 0}, b.CheckedNextLineBegin(mouse_lc.L)) : b.Clamped(mouse_lc, mouse_lc);
         return SetCursorRange{Id, std::move(lcr), io.KeyCtrl};
     }
@@ -526,7 +490,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::HandleMouseInputs(TextBuff
     return {};
 }
 
-std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, bool is_focused) {
+std::optional<TextBuffer::ActionType> TextBuffer::Render(const TextBufferData &b, bool is_focused) const {
     static constexpr float ScrollbarWidth = 14, LeftMargin = 10;
 
     const float font_size = GetFontSize();
@@ -538,17 +502,17 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
 
     const ImVec2 scroll{GetScrollX(), GetScrollY()};
     const ImVec2 cursor_screen_pos = GetCursorScreenPos();
-    ContentDims = {
-        GetWindowWidth() - (CurrentSpaceDims.x > ContentDims.x ? ScrollbarWidth : 0.0f),
-        GetWindowHeight() - (CurrentSpaceDims.y > ContentDims.y ? ScrollbarWidth : 0.0f)
+    Impl->ContentDims = {
+        GetWindowWidth() - (Impl->CurrentSpaceDims.x > Impl->ContentDims.x ? ScrollbarWidth : 0.0f),
+        GetWindowHeight() - (Impl->CurrentSpaceDims.y > Impl->ContentDims.y ? ScrollbarWidth : 0.0f)
     };
     const Coords first_visible_coords{u32(scroll.y / char_advance.y), u32(std::max(scroll.x - text_start_x, 0.0f) / char_advance.x)};
-    const Coords last_visible_coords{u32((ContentDims.y + scroll.y) / char_advance.y), u32((ContentDims.x + scroll.x - text_start_x) / char_advance.x)};
-    ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
+    const Coords last_visible_coords{u32((Impl->ContentDims.y + scroll.y) / char_advance.y), u32((Impl->ContentDims.x + scroll.x - text_start_x) / char_advance.x)};
+    Impl->ContentCoordDims = last_visible_coords - first_visible_coords + Coords{1, 1};
 
-    if (auto edited_cursor = GetEditedCursor(b); edited_cursor) {
-        StartEdited.clear();
-        EndEdited.clear();
+    if (auto edited_cursor = Impl->GetEditedCursor(b); edited_cursor) {
+        Impl->StartEdited.clear();
+        Impl->EndEdited.clear();
 
         // Move scroll to keep the edited cursor visible.
         // Goal: Keep all edited cursor(s) visible at all times.
@@ -564,12 +528,12 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
         if (target.L <= first_visible_coords.L) {
             SetScrollY(std::max((target.L - 0.5f) * char_advance.y, 0.f));
         } else if (target.L >= last_visible_coords.L) {
-            SetScrollY(std::max((target.L + 1.5f) * char_advance.y - ContentDims.y, 0.f));
+            SetScrollY(std::max((target.L + 1.5f) * char_advance.y - Impl->ContentDims.y, 0.f));
         }
         if (target.C <= first_visible_coords.C) {
             SetScrollX(std::clamp(text_start_x + (target.C - 0.5f) * char_advance.x, 0.f, scroll.x));
         } else if (target.C >= last_visible_coords.C) {
-            SetScrollX(std::max(text_start_x + (target.C + 1.5f) * char_advance.x - ContentDims.x, 0.f));
+            SetScrollX(std::max(text_start_x + (target.C + 1.5f) * char_advance.x - Impl->ContentDims.x, 0.f));
         }
     }
 
@@ -577,7 +541,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
 
     u32 max_column = 0;
     auto dl = GetWindowDrawList();
-    auto transition_it = Syntax->CaptureIdTransitions.begin();
+    auto transition_it = Impl->Syntax->CaptureIdTransitions.begin();
     for (u32 li = first_visible_coords.L, byte_index = b.ToByteIndex({first_visible_coords.L, 0});
          li <= last_visible_coords.L && li < b.Text.size(); ++li) {
         const auto &line = b.Text[li];
@@ -598,7 +562,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
                 if (start_col < end_col) {
                     const ImVec2 rect_start{text_screen_x + start_col * char_advance.x, line_start_screen_pos.y};
                     const ImVec2 rect_end = rect_start + ImVec2{(end_col - start_col) * char_advance.x, char_advance.y};
-                    dl->AddRectFilled(rect_start, rect_end, GetColor(PaletteIndex::Selection));
+                    dl->AddRectFilled(rect_start, rect_end, Impl->GetColor(PaletteIndex::Selection));
                 }
             }
         }
@@ -606,7 +570,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
         if (ShowLineNumbers) {
             // Draw line number (right aligned).
             const std::string line_num_str = std::format("{}  ", li);
-            dl->AddText({text_screen_x - line_num_str.size() * font_width, line_start_screen_pos.y}, GetColor(PaletteIndex::LineNumber), line_num_str.c_str());
+            dl->AddText({text_screen_x - line_num_str.size() * font_width, line_start_screen_pos.y}, Impl->GetColor(PaletteIndex::LineNumber), line_num_str.c_str());
         }
 
         // Render cursors
@@ -625,7 +589,7 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
                 const u32 ci = c.CharIndex(), column = b.GetColumn(line, ci);
                 const float width = !Overwrite || ci >= line.size() ? 1.f : (line[ci] == '\t' ? GTextBufferStyle.NumTabSpacesAtColumn(column) : 1) * char_advance.x;
                 const ImVec2 pos{text_screen_x + column * char_advance.x, line_start_screen_pos.y};
-                dl->AddRectFilled(pos, pos + ImVec2{width, char_advance.y}, GetColor(PaletteIndex::Cursor));
+                dl->AddRectFilled(pos, pos + ImVec2{width, char_advance.y}, Impl->GetColor(PaletteIndex::Cursor));
             }
         }
 
@@ -643,37 +607,37 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
                     const float gap = font_size * (ShortTabs ? 0.16f : 0.2f);
                     const ImVec2 p1{glyph_pos + ImVec2{char_advance.x * 0.3f, font_height * 0.5f}};
                     const ImVec2 p2{glyph_pos.x + char_advance.x * (ShortTabs ? (GTextBufferStyle.NumTabSpacesAtColumn(column) - 0.3f) : 1.f), p1.y};
-                    const u32 color = GetColor(PaletteIndex::ControlCharacter);
+                    const u32 color = Impl->GetColor(PaletteIndex::ControlCharacter);
                     dl->AddLine(p1, p2, color);
                     dl->AddLine(p2, {p2.x - gap, p1.y - gap}, color);
                     dl->AddLine(p2, {p2.x - gap, p1.y + gap}, color);
                 }
             } else if (ch == ' ') {
                 if (ShowWhitespaces) {
-                    dl->AddCircleFilled(glyph_pos + ImVec2{font_width, font_size} * 0.5f, 1.5f, GetColor(PaletteIndex::ControlCharacter), 4);
+                    dl->AddCircleFilled(glyph_pos + ImVec2{font_width, font_size} * 0.5f, 1.5f, Impl->GetColor(PaletteIndex::ControlCharacter), 4);
                 }
             } else {
                 if (seq_length == 1 && b.Cursors.size() == 1) {
                     if (const auto matching_brackets = b.FindMatchingBrackets(b.Cursors.front())) {
                         if (matching_brackets->Start == lc || matching_brackets->End == lc) {
                             const ImVec2 start{glyph_pos + ImVec2{0, font_height + 1.0f}};
-                            dl->AddRectFilled(start, start + ImVec2{char_advance.x, 1.0f}, GetColor(PaletteIndex::Cursor));
+                            dl->AddRectFilled(start, start + ImVec2{char_advance.x, 1.0f}, Impl->GetColor(PaletteIndex::Cursor));
                         }
                     }
                 }
                 // Render the current character.
-                const auto &char_style = Syntax->StyleByCaptureId.at(*transition_it);
+                const auto &char_style = Impl->Syntax->StyleByCaptureId.at(*transition_it);
                 const bool font_changed = Fonts::Push(FontFamily::Monospace, char_style.Font);
                 const char *seq_begin = &line[ci];
                 dl->AddText(glyph_pos, char_style.Color, seq_begin, seq_begin + seq_length);
                 if (font_changed) Fonts::Pop();
             }
             if (ShowStyleTransitionPoints && !transition_it.IsEnd() && transition_it.ByteIndex == byte_index) {
-                const auto color = SetAlpha(Syntax->StyleByCaptureId.at(*transition_it).Color, 40);
+                const auto color = SetAlpha(Impl->Syntax->StyleByCaptureId.at(*transition_it).Color, 40);
                 dl->AddRectFilled(glyph_pos, glyph_pos + char_advance, color);
             }
             if (ShowChangedCaptureRanges) {
-                for (const auto &range : Syntax->ChangedCaptureRanges) {
+                for (const auto &range : Impl->Syntax->ChangedCaptureRanges) {
                     if (byte_index >= range.Start && byte_index < range.End) {
                         dl->AddRectFilled(glyph_pos, glyph_pos + char_advance, Col32(255, 255, 255, 20));
                     }
@@ -686,25 +650,25 @@ std::optional<TextBuffer::ActionType> TextBufferImpl::Render(TextBufferData b, b
         byte_index = line_start_byte_index + line.size() + 1; // + 1 for the newline character.
     }
 
-    CurrentSpaceDims = {
-        std::max((max_column + std::min(ContentCoordDims.C - 1, max_column)) * char_advance.x, CurrentSpaceDims.x),
-        (b.Text.size() + std::min(ContentCoordDims.L - 1, u32(b.Text.size()))) * char_advance.y
+    Impl->CurrentSpaceDims = {
+        std::max((max_column + std::min(Impl->ContentCoordDims.C - 1, max_column)) * char_advance.x, Impl->CurrentSpaceDims.x),
+        (b.Text.size() + std::min(Impl->ContentCoordDims.L - 1, u32(b.Text.size()))) * char_advance.y
     };
 
     ImGui::SetCursorPos({0, 0});
 
     // Stack invisible items to push node hierarchy to ImGui stack.
-    if (Syntax && HoveredNode) {
+    if (Impl->Syntax && Impl->HoveredNode) {
         const auto before_cursor = ImGui::GetCursorScreenPos();
-        for (const auto &node : HoveredNode->Ancestry) {
+        for (const auto &node : Impl->HoveredNode->Ancestry) {
             PushOverrideID(node.Id);
-            InvisibleButton("", CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
+            InvisibleButton("", Impl->CurrentSpaceDims, ImGuiButtonFlags_AllowOverlap);
             ImGui::SetCursorScreenPos(before_cursor);
         }
-        for (u32 i = 0; i < HoveredNode->Ancestry.size(); ++i) PopID();
+        for (u32 i = 0; i < Impl->HoveredNode->Ancestry.size(); ++i) PopID();
     }
 
-    Dummy(CurrentSpaceDims);
+    Dummy(Impl->CurrentSpaceDims);
 
     return mouse_action;
 }
@@ -735,7 +699,7 @@ void TextBuffer::Render() const {
     const std::string editing_file = LastOpenedFilePath ? string(fs::path(LastOpenedFilePath).filename()) : "No file";
     ImGui::Text(
         "%6d/%-6d %6d lines  | %s | %s | %s | %s", cursor_coords.L + 1, cursor_coords.C + 1, int(b.Text.size()),
-        Impl->Overwrite ? "Ovr" : "Ins",
+        Overwrite ? "Ovr" : "Ins",
         IsChanged() ? "*" : " ", // todo show if buffer is dirty
         Impl->GetLanguageName().data(),
         editing_file.c_str()
@@ -756,15 +720,17 @@ void TextBuffer::Render() const {
         // Process regular text input (before we check for Return because using some IME will effectively send a Return?)
         // We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
         const bool ignore_char_inputs = (io.KeyCtrl && !io.KeyAlt) || (io.ConfigMacOSXBehaviors && io.KeyCtrl);
-        if (auto action = ProduceKeyboardAction(); action && CanApply(*action)) Q(*action);
-        else if (!io.InputQueueCharacters.empty() && !ignore_char_inputs) {
+        if (auto action = ProduceKeyboardAction(); action && CanApply(*action)) {
+            Q(*action);
+        } else if (!io.InputQueueCharacters.empty() && !ignore_char_inputs && !ReadOnly) {
             for (const auto ch : io.InputQueueCharacters) {
                 if (ch != 0 && (ch == '\n' || ch >= 32)) Q(Action::TextBuffer::EnterChar{.component_id = Id, .value = ch});
             }
             io.InputQueueCharacters.resize(0);
         }
     }
-    if (auto action = Impl->Render(b, is_focused)) Q(*action);
+
+    if (auto action = Render(b, is_focused)) Q(*action);
     if (font_changed) Fonts::Pop();
 
     EndChild();
@@ -776,8 +742,6 @@ void TextBuffer::RenderMenu() const {
     FileMenu.Draw();
 
     if (BeginMenu("Edit")) {
-        MenuItem("Read-only mode", nullptr, &Impl->ReadOnly);
-        Separator();
         if (const auto a = Action::TextBuffer::Copy{Id}; MenuItem("Copy", "cmd+c", nullptr, CanApply(a))) Q(a);
         if (const auto a = Action::TextBuffer::Cut{Id}; MenuItem("Cut", "cmd+x", nullptr, CanApply(a))) Q(a);
         if (const auto a = Action::TextBuffer::Paste{Id}; MenuItem("Paste", "cmd+v", nullptr, CanApply(a))) Q(a);
@@ -785,17 +749,24 @@ void TextBuffer::RenderMenu() const {
         if (MenuItem("Select all", nullptr, nullptr)) Q(Action::TextBuffer::SelectAll{Id});
         EndMenu();
     }
-
+    if (BeginMenu("Config")) {
+        ReadOnly.MenuItem();
+        AutoIndent.MenuItem();
+        EndMenu();
+    }
     if (BeginMenu("View")) {
         if (BeginMenu("Palette")) {
-            if (MenuItem("Mariana palette")) Impl->SetPalette(TextBufferPaletteId::Mariana);
-            if (MenuItem("Dark palette")) Impl->SetPalette(TextBufferPaletteId::Dark);
-            if (MenuItem("Light palette")) Impl->SetPalette(TextBufferPaletteId::Light);
-            if (MenuItem("Retro blue palette")) Impl->SetPalette(TextBufferPaletteId::RetroBlue);
+            if (MenuItem("Mariana palette")) Impl->PaletteId = TextBufferPaletteId::Mariana;
+            if (MenuItem("Dark palette")) Impl->PaletteId = TextBufferPaletteId::Dark;
+            if (MenuItem("Light palette")) Impl->PaletteId = TextBufferPaletteId::Light;
+            if (MenuItem("Retro blue palette")) Impl->PaletteId = TextBufferPaletteId::RetroBlue;
             EndMenu();
         }
-        MenuItem("Show style transition points", nullptr, &Impl->ShowStyleTransitionPoints);
-        MenuItem("Show changed capture ranges", nullptr, &Impl->ShowChangedCaptureRanges);
+        ShowWhitespaces.MenuItem();
+        ShowLineNumbers.MenuItem();
+        ShortTabs.MenuItem();
+        ShowStyleTransitionPoints.MenuItem();
+        ShowChangedCaptureRanges.MenuItem();
         gWindows.ToggleDebugMenuItem(Debug);
         EndMenu();
     }
@@ -819,6 +790,6 @@ void TextBuffer::RenderDebug() const {
     }
 
     if (CollapsingHeader("Tree-Sitter")) {
-        ImGui::Text("S-expression:\n%s", Impl->GetSyntaxTreeSExp().c_str());
+        ImGui::Text("S-expression:\n%s", Impl->Syntax->GetSExp().c_str());
     }
 }

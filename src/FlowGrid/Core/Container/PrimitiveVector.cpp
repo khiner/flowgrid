@@ -11,7 +11,6 @@ template<typename T> void PrimitiveVector<T>::Erase() const { RootStore.Erase<Co
 template<typename T> void PrimitiveVector<T>::Clear() const { RootStore.Clear<ContainerT>(Id); }
 
 template<typename T> PrimitiveVector<T>::ContainerT PrimitiveVector<T>::Get() const {
-    if (!Exists()) return {};
     return RootStore.Get<ContainerT>(Id);
 }
 

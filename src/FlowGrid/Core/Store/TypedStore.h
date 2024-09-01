@@ -34,7 +34,7 @@ template<typename... ValueTypes> struct TypedStore {
     // Create a patch comparing the provided stores.
     static Patch CreatePatch(const TypedStore &, const TypedStore &, ID base_component_id);
 
-    template<typename ValueType> const ValueType &Get(ID id) const { return GetTransientMap<ValueType>().at(id); }
+    template<typename ValueType> const ValueType &Get(ID id) const { return GetTransientMap<ValueType>()[id]; }
     template<typename ValueType> size_t Count(ID id) const { return GetTransientMap<ValueType>().count(id); }
 
     template<typename ValueType> void Set(ID id, const ValueType &value) const { GetTransientMap<ValueType>().set(id, value); }

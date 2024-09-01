@@ -11,12 +11,10 @@ template<typename T> void PrimitiveSet<T>::Erase() const { RootStore.Erase<Conta
 template<typename T> void PrimitiveSet<T>::Clear() const { RootStore.Clear<ContainerT>(Id); }
 
 template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const {
-    if (!Exists()) return {};
     return RootStore.Get<ContainerT>(Id);
 }
 
 template<typename T> void PrimitiveSet<T>::Insert(const T &value) const {
-    if (!Exists()) RootStore.Set<ContainerT>(Id, {});
     RootStore.Set(Id, Get().insert(value));
 }
 template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const { RootStore.SetErase(Id, value); }

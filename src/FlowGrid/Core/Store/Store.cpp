@@ -29,3 +29,21 @@ void Store::ApplyPatch(const Patch &patch) const {
         }
     }
 }
+
+template<typename ValueType> void Store::Insert(ID set_id, const ValueType &value) const {
+    Set(set_id, Get<immer::set<ValueType>>(set_id).insert(value));
+}
+template<typename ValueType> void Store::SetErase(ID set_id, const ValueType &value) const {
+    if (Count<immer::set<ValueType>>(set_id)) Set(set_id, Get<immer::set<ValueType>>(set_id).erase(value));
+}
+
+template<typename ValueType> void Store::VectorSet(ID vec_id, size_t i, const ValueType &value) const {
+    Set(vec_id, Get<immer::flex_vector<ValueType>>(vec_id).set(i, value));
+}
+template<typename ValueType> void Store::PushBack(ID vec_id, const ValueType &value) const {
+    Set(vec_id, Get<immer::flex_vector<ValueType>>(vec_id).push_back(value));
+}
+template<typename ValueType> void Store::PopBack(ID vec_id) const {
+    auto vec = Get<immer::flex_vector<ValueType>>(vec_id);
+    Set(vec_id, vec.take(vec.size() - 1));
+}

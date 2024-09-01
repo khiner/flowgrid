@@ -20,28 +20,11 @@ struct Store : TypedStore<
     }
 
     // Set operations
-    template<typename ValueType> void Insert(ID set_id, const ValueType &value) const {
-        if (!Count<immer::set<ValueType>>(set_id)) Set(set_id, immer::set<ValueType>{});
-        Set(set_id, Get<immer::set<ValueType>>(set_id).insert(value));
-    }
-    template<typename ValueType> void SetErase(ID set_id, const ValueType &value) const {
-        if (Count<immer::set<ValueType>>(set_id)) Set(set_id, Get<immer::set<ValueType>>(set_id).erase(value));
-    }
+    template<typename ValueType> void Insert(ID set_id, const ValueType &) const;
+    template<typename ValueType> void SetErase(ID set_id, const ValueType &) const;
 
     // Vector operations
-    template<typename ValueType> void VectorSet(ID vec_id, size_t i, const ValueType &value) const {
-        if (Count<immer::flex_vector<ValueType>>(vec_id)) {
-            Set(vec_id, Get<immer::flex_vector<ValueType>>(vec_id).set(i, value));
-        }
-    }
-    template<typename ValueType> void PushBack(ID vec_id, const ValueType &value) const {
-        if (!Count<immer::flex_vector<ValueType>>(vec_id)) Set(vec_id, immer::flex_vector<ValueType>{});
-        Set(vec_id, Get<immer::flex_vector<ValueType>>(vec_id).push_back(value));
-    }
-    template<typename ValueType> void PopBack(ID vec_id) const {
-        if (Count<immer::flex_vector<ValueType>>(vec_id)) {
-            auto vec = Get<immer::flex_vector<ValueType>>(vec_id);
-            Set(vec_id, vec.take(vec.size() - 1));
-        }
-    }
+    template<typename ValueType> void VectorSet(ID vec_id, size_t i, const ValueType &) const;
+    template<typename ValueType> void PushBack(ID vec_id, const ValueType &) const;
+    template<typename ValueType> void PopBack(ID vec_id) const;
 };

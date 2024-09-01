@@ -7,7 +7,7 @@
 
 #include "Core/Store/Store.h"
 
-IdPairs AdjacencyList::Get() const { return Exists() ? RootStore.Get<IdPairs>(Id) : IdPairs{}; }
+IdPairs AdjacencyList::Get() const { return RootStore.Get<IdPairs>(Id); }
 
 // Non-recursive DFS handling cycles.
 bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
@@ -34,16 +34,13 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 bool AdjacencyList::Exists() const { return RootStore.Count<IdPairs>(Id); }
 
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
-    return Exists() && RootStore.Get<IdPairs>(Id).count({source, destination}) > 0;
+    return RootStore.Get<IdPairs>(Id).count({source, destination}) > 0;
 }
 void AdjacencyList::Disconnect(ID source, ID destination) const {
-    if (Exists()) RootStore.Set(Id, RootStore.Get<IdPairs>(Id).erase({source, destination}));
+    RootStore.Set(Id, RootStore.Get<IdPairs>(Id).erase({source, destination}));
 }
 void AdjacencyList::Add(IdPair &&id_pair) const {
-    if (!IsConnected(id_pair.first, id_pair.second)) {
-        if (!Exists()) RootStore.Set<IdPairs>(Id, {});
-        RootStore.Set(Id, RootStore.Get<IdPairs>(Id).insert(std::move(id_pair)));
-    }
+    RootStore.Set(Id, RootStore.Get<IdPairs>(Id).insert(std::move(id_pair)));
 }
 void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
 void AdjacencyList::ToggleConnection(ID source, ID destination) const {

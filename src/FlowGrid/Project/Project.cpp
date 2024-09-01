@@ -188,49 +188,45 @@ json Project::GetProjectJson(const ProjectFormat format) const {
     }
 }
 
-// Note: If/when we support arbitrary json actions, we'll need to check primitive/container types.
-//   Maybe with a separate `Find` for each type?
-//   Could also have each primitive accept an `Action::Primitive::Any`,
-//   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
-void Project::ApplyPrimitiveAction(const Action::Primitive::Any &action) const {
-    const auto *prim = ById.at(action.GetComponentId());
-    std::visit(
-        Match{
-            [&prim](const Bool::ActionType &a) { static_cast<const Bool *>(prim)->Apply(a); },
-            [&prim](const Int::ActionType &a) { static_cast<const Int *>(prim)->Apply(a); },
-            [&prim](const UInt::ActionType &a) { static_cast<const UInt *>(prim)->Apply(a); },
-            [&prim](const Float::ActionType &a) { static_cast<const Float *>(prim)->Apply(a); },
-            [&prim](const Enum::ActionType &a) { static_cast<const Enum *>(prim)->Apply(a); },
-            [&prim](const Flags::ActionType &a) { static_cast<const Flags *>(prim)->Apply(a); },
-            [&prim](const String::ActionType &a) { static_cast<const String *>(prim)->Apply(a); },
-        },
-        action
-    );
-}
-
-void Project::ApplyContainerAction(const Action::Container::Any &action) const {
-    const auto *container = ById.at(action.GetComponentId());
-    std::visit(
-        Match{
-            [&container](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(container)->Apply(a); },
-            [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
-            [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
-            [&container](const PrimitiveSet<u32>::ActionType &a) { static_cast<const PrimitiveSet<u32> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(container)->Apply(a); },
-            [&container](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(container)->Apply(a); },
-        },
-        action
-    );
-}
-
 void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            [this](const Action::Primitive::Any &a) { ApplyPrimitiveAction(a); },
-            [this](const Action::Container::Any &a) { ApplyContainerAction(a); },
+            [](const Action::Primitive::Any &a) {
+                // Note: If/when we support arbitrary json actions, we'll need to check primitive/container types.
+                //   Maybe with a separate `Find` for each type?
+                //   Could also have each primitive accept an `Action::Primitive::Any`,
+                //   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
+                const auto *prim = ById.at(a.GetComponentId());
+                std::visit(
+                    Match{
+                        [&prim](const Bool::ActionType &a) { static_cast<const Bool *>(prim)->Apply(a); },
+                        [&prim](const Int::ActionType &a) { static_cast<const Int *>(prim)->Apply(a); },
+                        [&prim](const UInt::ActionType &a) { static_cast<const UInt *>(prim)->Apply(a); },
+                        [&prim](const Float::ActionType &a) { static_cast<const Float *>(prim)->Apply(a); },
+                        [&prim](const Enum::ActionType &a) { static_cast<const Enum *>(prim)->Apply(a); },
+                        [&prim](const Flags::ActionType &a) { static_cast<const Flags *>(prim)->Apply(a); },
+                        [&prim](const String::ActionType &a) { static_cast<const String *>(prim)->Apply(a); },
+                    },
+                    a
+                );
+            },
+            [](const Action::Container::Any &a) {
+                const auto *container = ById.at(a.GetComponentId());
+                std::visit(
+                    Match{
+                        [&container](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(container)->Apply(a); },
+                        [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
+                        [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
+                        [&container](const PrimitiveSet<u32>::ActionType &a) { static_cast<const PrimitiveSet<u32> *>(container)->Apply(a); },
+                        [&container](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(container)->Apply(a); },
+                        [&container](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(container)->Apply(a); },
+                        [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
+                        [&container](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(container)->Apply(a); },
+                        [&container](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(container)->Apply(a); },
+                    },
+                    a
+                );
+            },
             [](const Action::TextBuffer::Any &a) {
                 const auto *buffer = ById.at(a.GetComponentId());
                 static_cast<const TextBuffer *>(buffer)->Apply(a);

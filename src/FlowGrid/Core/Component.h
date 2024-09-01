@@ -27,6 +27,8 @@ struct Style;
 struct FlowGridStyle;
 struct Windows;
 
+template<typename T> struct ActionQueue;
+
 struct Menu {
     using Item = std::variant<Menu, std::reference_wrapper<const MenuItemDrawable>, std::function<void()>>;
 

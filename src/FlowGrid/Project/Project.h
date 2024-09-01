@@ -13,9 +13,6 @@
 #include "ProjectSettings.h"
 #include "Style/Style.h"
 
-#include "Core/Container/ContainerAction.h"
-#include "Core/Primitive/PrimitiveAction.h"
-
 enum ProjectFormat {
     StateFormat,
     ActionFormat
@@ -233,9 +230,6 @@ protected:
 
 private:
     std::optional<ActionType> ProduceKeyboardAction() const;
-
-    void ApplyPrimitiveAction(const Action::Primitive::Any &) const;
-    void ApplyContainerAction(const Action::Container::Any &) const;
 
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;

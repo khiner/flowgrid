@@ -1,20 +1,24 @@
 #pragma once
 
-#include "blockingconcurrentqueue.h"
+#include <memory>
 
 #include "Core/Action/ActionMoment.h"
 
+// Forward declaration of BlockingConcurrentQueue
+namespace moodycamel {
+struct ConcurrentQueueDefaultTraits;
+template<typename T, typename Traits> class BlockingConcurrentQueue;
+} // namespace moodycamel
+
 template<typename ActionType> struct ActionQueue {
-    bool Enqueue(ActionMoment<ActionType> &&action_moment) {
-        return Queue.enqueue(std::move(action_moment));
-    }
-    bool Enqueue(ActionType &&action) {
-        return Queue.enqueue({std::move(action), Clock::now()});
-    }
-    bool TryDequeue(ActionMoment<ActionType> &action_moment) {
-        return Queue.try_dequeue(action_moment);
-    }
+    ActionQueue();
+    ~ActionQueue();
+
+    bool Enqueue(ActionMoment<ActionType> &&);
+    bool Enqueue(ActionType &&);
+    bool TryDequeue(ActionMoment<ActionType> &);
 
 private:
-    moodycamel::BlockingConcurrentQueue<ActionMoment<ActionType>> Queue{};
+    using QueueType = moodycamel::BlockingConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;
+    std::unique_ptr<QueueType> Queue;
 };

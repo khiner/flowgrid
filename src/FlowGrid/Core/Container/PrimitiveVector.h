@@ -58,10 +58,7 @@ template<typename T> struct PrimitiveVector : Component, Actionable<typename Act
     bool Exists() const; // Check if exists in store.
     void Erase() const override;
 
-    size_t IndexOf(const T &value) const {
-        auto vec = Get();
-        return std::find(vec.begin(), vec.end(), value) - vec.begin();
-    }
+    size_t IndexOf(const T &) const;
     bool Contains(const T &value) const { return IndexOf(value) != Size(); }
     void Erase(size_t i) const;
 };

@@ -28,10 +28,7 @@ int main() {
     Store store{};
     ActionQueue<Action::Any> queue{};
     ActionProducer<Action::Any>::EnqueueFn q = [&queue](auto &&a) -> bool { return queue.Enqueue(std::move(a)); };
-    ActionProducer<PrimitiveActionQueuer::ProducedActionType>::EnqueueFn primitive_q = [&queue](auto &&action) -> bool {
-        return std::visit([&queue](auto &&a) -> bool { return queue.Enqueue(std::move(a)); }, std::move(action));
-    };
-    PrimitiveActionQueuer primitive_queuer{primitive_q};
+    PrimitiveActionQueuer primitive_queuer{[&q](auto &&action) -> bool { return std::visit(q, std::move(action)); }};
     Project project{store, primitive_queuer, q};
 
     const UIContext ui{project.ImGuiSettings, project.Style}; // Initialize ImGui and other UI state.

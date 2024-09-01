@@ -3,7 +3,6 @@
 #include <imgui.h>
 #include <ranges>
 
-#include "Core/Store/Store.h"
 #include "FaustParamsStyle.h"
 #include "UI/Widgets.h"
 

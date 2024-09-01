@@ -42,6 +42,11 @@ template<typename T> void PrimitiveVector<T>::Erase(size_t i) const {
     Set(Get().erase(i));
 }
 
+template<typename T> size_t PrimitiveVector<T>::IndexOf(const T &value) const {
+    auto vec = Get();
+    return std::ranges::find(vec, value) - vec.begin();
+}
+
 template<typename T> void PrimitiveVector<T>::SetJson(json &&j) const {
     immer::flex_vector_transient<T> val{};
     for (const auto &v : json::parse(std::string(std::move(j)))) val.push_back(v);

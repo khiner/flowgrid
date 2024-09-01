@@ -642,14 +642,14 @@ std::optional<TextBuffer::ActionType> TextBuffer::Render(const TextBufferData &b
 }
 
 void TextBuffer::Refresh() {
-    if (IsChanged()) {
-        const auto b = GetBuffer();
-        State->Syntax->ApplyEdits(b.Edits);
-        // todo only mark changed cursors. need a way to compare with previous.
-        for (u32 i = 0; i < b.Cursors.size(); ++i) {
-            State->StartEdited.insert(i);
-            State->EndEdited.insert(i);
-        }
+    if (!IsChanged()) return;
+
+    const auto b = GetBuffer();
+    State->Syntax->ApplyEdits(b.Edits);
+    // todo only mark changed cursors. need a way to compare with previous.
+    for (u32 i = 0; i < b.Cursors.size(); ++i) {
+        State->StartEdited.insert(i);
+        State->EndEdited.insert(i);
     }
 }
 

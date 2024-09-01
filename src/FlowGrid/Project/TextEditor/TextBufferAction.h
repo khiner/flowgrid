@@ -13,17 +13,17 @@ DefineActionType(
     DefineComponentAction(Open, "", fs::path file_path;);
     DefineUnsavedComponentAction(Save, NoMerge, "", fs::path file_path;);
 
-    DefineUnmergableComponentAction(SetCursor, LineChar lc; bool add;);
-    DefineUnmergableComponentAction(SetCursorRange, LineCharRange lcr; bool add;);
-    DefineUnmergableComponentAction(MoveCursorsLines, int amount; bool select;);
-    DefineUnmergableComponentAction(PageCursorsLines, bool up; bool select;);
-    DefineUnmergableComponentAction(MoveCursorsChar, bool right; bool select; bool word;);
-    DefineUnmergableComponentAction(MoveCursorsTop, bool select;);
-    DefineUnmergableComponentAction(MoveCursorsBottom, bool select;);
-    DefineUnmergableComponentAction(MoveCursorsStartLine, bool select;);
-    DefineUnmergableComponentAction(MoveCursorsEndLine, bool select;);
-    DefineUnmergableComponentAction(SelectAll);
-    DefineUnmergableComponentAction(SelectNextOccurrence);
+    DefineUnsavedComponentAction(SetCursor, Merge, "", LineChar lc; bool add;);
+    DefineUnsavedComponentAction(SetCursorRange, Merge, "", LineCharRange lcr; bool add;);
+    DefineUnsavedComponentAction(MoveCursorsLines, Merge, "", int amount; bool select;);
+    DefineUnsavedComponentAction(PageCursorsLines, Merge, "", bool up; bool select;);
+    DefineUnsavedComponentAction(MoveCursorsChar, Merge, "", bool right; bool select; bool word;);
+    DefineUnsavedComponentAction(MoveCursorsTop, Merge, "", bool select;);
+    DefineUnsavedComponentAction(MoveCursorsBottom, Merge, "", bool select;);
+    DefineUnsavedComponentAction(MoveCursorsStartLine, Merge, "", bool select;);
+    DefineUnsavedComponentAction(MoveCursorsEndLine, Merge, "", bool select;);
+    DefineUnsavedComponentAction(SelectAll, Merge, "");
+    DefineUnsavedComponentAction(SelectNextOccurrence, Merge, "");
 
     DefineComponentAction(Set, "", std::string value;);
 

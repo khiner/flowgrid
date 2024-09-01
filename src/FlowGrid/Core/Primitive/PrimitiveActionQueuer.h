@@ -5,10 +5,12 @@
 #include "PrimitiveAction.h"
 
 struct PrimitiveActionQueuer {
-    using ProducedActionType = Action::Combine<Action::Primitive::Any, Action::Vec2::Any>;
-    using EnqueueFn = ActionProducer<ProducedActionType>::EnqueueFn;
+    using EnqueueFn = ActionProducer<Action::Combine<Action::Primitive::Any, Action::Vec2::Any>>::EnqueueFn;
 
     PrimitiveActionQueuer(EnqueueFn q) : Q(std::move(q)) {}
 
+    void operator()(auto &&action) const { Q(std::move(action)); }
+
+private:
     EnqueueFn Q;
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "ActionableComponent.h"
 #include "Core/Container/PrimitiveSet.h"
 #include "WindowsAction.h"

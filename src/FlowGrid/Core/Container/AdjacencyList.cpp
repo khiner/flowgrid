@@ -43,10 +43,7 @@ void AdjacencyList::Add(IdPair &&id_pair) const {
     RootStore.Set(Id, RootStore.Get<IdPairs>(Id).insert(std::move(id_pair)));
 }
 void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
-void AdjacencyList::ToggleConnection(ID source, ID destination) const {
-    if (IsConnected(source, destination)) Disconnect(source, destination);
-    else Connect(source, destination);
-}
+
 void AdjacencyList::DisconnectOutput(ID id) const {
     for (const auto &[source_id, destination_id] : Get()) {
         if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);

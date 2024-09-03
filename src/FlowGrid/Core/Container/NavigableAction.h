@@ -9,12 +9,14 @@ template<typename T> struct Navigable {
 
 DefineTemplatedActionType(
     Navigable, UInt, u32,
+    DefineUnmergableComponentAction(Clear);
     DefineUnmergableComponentAction(Push, u32 value;);
     DefineComponentAction(MoveTo, "", u32 index;);
 
-    using Any = ActionVariant<Push, MoveTo>;
+    using Any = ActionVariant<Clear, Push, MoveTo>;
 );
 
+ComponentActionJson(Navigable<u32>::Clear);
 ComponentActionJson(Navigable<u32>::Push, value);
 ComponentActionJson(Navigable<u32>::MoveTo, index);
 } // namespace Action

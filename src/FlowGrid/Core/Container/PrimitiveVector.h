@@ -3,24 +3,9 @@
 #include "immer/flex_vector.hpp"
 
 #include "Container.h"
-#include "Core/Action/Actionable.h"
-#include "PrimitiveVectorAction.h"
 
-template<typename T> struct PrimitiveVector : Component, Actionable<typename Action::PrimitiveVector<T>::Any> {
-    // `ActionType` is a type alias in `Actionable`, but it is not accessible here.
-    // `Actionable` is templated on `Action::PrimitiveVector::Type<T>::type`, which is a dependent type (it depends on `T`),
-    // and base class members that use dependent template types are not visible in subclasses at compile time.
-    using typename Actionable<typename Action::PrimitiveVector<T>::Any>::ActionType;
+template<typename T> struct PrimitiveVector : Component {
     using ContainerT = immer::flex_vector<T>;
-
-    void Apply(const ActionType &action) const override {
-        std::visit(
-            Match{
-                [this](const Action::PrimitiveVector<T>::Set &a) { Set(a.i, a.value); },
-            },
-            action
-        );
-    }
 
     PrimitiveVector(ComponentArgs &&args) : Component(std::move(args)) {
         FieldIds.insert(Id);
@@ -30,8 +15,6 @@ template<typename T> struct PrimitiveVector : Component, Actionable<typename Act
         Erase();
         FieldIds.erase(Id);
     }
-
-    bool CanApply(const ActionType &) const override { return true; }
 
     void Refresh() override {} // Not cached.
     void RenderValueTree(bool annotate, bool auto_select) const override;

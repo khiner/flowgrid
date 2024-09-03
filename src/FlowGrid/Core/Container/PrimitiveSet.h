@@ -1,15 +1,10 @@
 #pragma once
 
-#include <set>
-
 #include "immer/set.hpp"
 
-#include "Core/Action/Actionable.h"
 #include "Core/Component.h"
-#include "PrimitiveSetAction.h"
 
-template<typename T> struct PrimitiveSet : Component, Actionable<typename Action::PrimitiveSet<T>::Any> {
-    using typename Actionable<typename Action::PrimitiveSet<T>::Any>::ActionType;
+template<typename T> struct PrimitiveSet : Component {
     using ContainerT = immer::set<T>;
 
     PrimitiveSet(ComponentArgs &&args) : Component(std::move(args)) {
@@ -20,16 +15,6 @@ template<typename T> struct PrimitiveSet : Component, Actionable<typename Action
         Erase();
         FieldIds.erase(Id);
     }
-    void Apply(const ActionType &action) const override {
-        std::visit(
-            Match{
-                [this](const Action::PrimitiveSet<T>::Insert &a) { Insert(a.value); },
-                [this](const Action::PrimitiveSet<T>::Erase &a) { Erase_(a.value); },
-            },
-            action
-        );
-    }
-    bool CanApply(const ActionType &) const override { return true; }
 
     void Refresh() override {} // Not cached.
     void RenderValueTree(bool annotate, bool auto_select) const override;

@@ -1241,13 +1241,13 @@ void FaustGraph::SaveBoxSvg(const fs::path &dir_path) const {
 
 void FaustGraph::SetBox(Box box) {
     IsTreePureRouting.clear();
-    NodeNavigationHistory.Clear_();
+    NodeNavigationHistory.IssueClear();
     RootNode.reset();
     if (box) {
         RootNode = std::make_unique<GroupNode>(*this, NodeType_Decorate, box, Tree2NodeInner(box));
         NodeByImGuiId.clear();
         RootNode->GenerateIds(Id);
-        NodeNavigationHistory.Push_(RootNode->ImGuiId);
+        NodeNavigationHistory.IssuePush(RootNode->ImGuiId);
     }
 }
 
@@ -1266,7 +1266,7 @@ void FaustGraph::Render() const {
 
     {
         // Nav menu
-        const bool can_move_top = NodeNavigationHistory.GetCursor() != 0;
+        const bool can_move_top = NodeNavigationHistory.Cursor != 0u;
         if (!can_move_top) BeginDisabled();
         if (Button("Top")) NodeNavigationHistory.IssueMoveTo(0);
         if (!can_move_top) EndDisabled();

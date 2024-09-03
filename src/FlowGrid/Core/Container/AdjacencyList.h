@@ -1,32 +1,22 @@
 #pragma once
 
 #include "AdjacencyListAction.h"
-#include "Core/Action/ActionableProducer.h"
+#include "Core/Action/ActionProducer.h"
 #include "Core/Component.h"
 #include "Core/ProducerComponentArgs.h"
 #include "Core/Store/IdPairs.h"
 
-struct AdjacencyList : Component, ActionableProducer<Action::AdjacencyList::Any> {
+struct AdjacencyList : Component, ActionProducer<Action::AdjacencyList::Any> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
     using Edge = IdPair; // Source, destination
 
-    AdjacencyList(ArgsT &&args) : Component(std::move(args.Args)), ActionableProducer(std::move(args.Q)) {
+    AdjacencyList(ArgsT &&args) : Component(std::move(args.Args)), ActionProducer(std::move(args.Q)) {
         FieldIds.insert(Id);
     }
     ~AdjacencyList() {
         Erase();
         FieldIds.erase(Id);
     }
-
-    void Apply(const ActionType &action) const override {
-        std::visit(
-            Match{
-                [this](const Action::AdjacencyList::ToggleConnection &a) { ToggleConnection(a.source, a.destination); },
-            },
-            action
-        );
-    }
-    bool CanApply(const ActionType &) const override { return true; }
 
     void SetJson(json &&) const override;
     json ToJson() const override;
@@ -42,7 +32,6 @@ struct AdjacencyList : Component, ActionableProducer<Action::AdjacencyList::Any>
     void Add(IdPair &&) const;
     void Connect(ID source, ID destination) const;
     void Disconnect(ID source, ID destination) const;
-    void ToggleConnection(ID source, ID destination) const;
     void DisconnectOutput(ID id) const;
 
     u32 SourceCount(ID destination) const;

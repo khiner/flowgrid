@@ -1,22 +1,17 @@
 #pragma once
 
-#include "Core/Action/Actionable.h"
 #include "Core/Component.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Float.h"
-#include "Vec2Action.h"
 
 struct ImVec2;
 
-struct Vec2 : Component, Actionable<Action::Vec2::Any> {
+struct Vec2 : Component {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
     ~Vec2() = default;
 
     operator ImVec2() const;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; };
 
     void SetX(float x) const { X.Set(x); }
     void SetY(float y) const { Y.Set(y); }
@@ -39,9 +34,6 @@ struct Vec2Linked : Vec2 {
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt = nullptr);
     ~Vec2Linked() = default;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; };
 
     void SetLinked(bool linked) const { Linked.Set(linked); }
 

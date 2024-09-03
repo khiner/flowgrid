@@ -199,19 +199,71 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Primitive::Enum::Set &a) { RootStore.Set(a.component_id, a.value); },
             [this](const Action::Primitive::Flags::Set &a) { RootStore.Set(a.component_id, a.value); },
             [this](const Action::Primitive::String::Set &a) { RootStore.Set(a.component_id, a.value); },
-            [](const Action::Container::Any &a) {
+            [this](const Action::Container::Any &a) {
                 const auto *container = ById.at(a.GetComponentId());
                 std::visit(
                     Match{
-                        [&container](const AdjacencyList::ActionType &a) { static_cast<const AdjacencyList *>(container)->Apply(a); },
-                        [&container](const Navigable<u32>::ActionType &a) { static_cast<const Navigable<u32> *>(container)->Apply(a); },
-                        [&container](const Vec2::ActionType &a) { static_cast<const Vec2 *>(container)->Apply(a); },
-                        [&container](const PrimitiveSet<u32>::ActionType &a) { static_cast<const PrimitiveSet<u32> *>(container)->Apply(a); },
-                        [&container](const PrimitiveVector<bool>::ActionType &a) { static_cast<const PrimitiveVector<bool> *>(container)->Apply(a); },
-                        [&container](const PrimitiveVector<int>::ActionType &a) { static_cast<const PrimitiveVector<int> *>(container)->Apply(a); },
-                        [&container](const PrimitiveVector<u32>::ActionType &a) { static_cast<const PrimitiveVector<u32> *>(container)->Apply(a); },
-                        [&container](const PrimitiveVector<float>::ActionType &a) { static_cast<const PrimitiveVector<float> *>(container)->Apply(a); },
-                        [&container](const PrimitiveVector<std::string>::ActionType &a) { static_cast<const PrimitiveVector<std::string> *>(container)->Apply(a); },
+                        [&container](const Action::AdjacencyList::ToggleConnection &a) {
+                            const auto *al = static_cast<const AdjacencyList *>(container);
+                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
+                            else al->Connect(a.source, a.destination);
+                        },
+                        [this, &container](const Action::Vec2::Set &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(container);
+                            RootStore.Set(vec2->X.Id, a.value.first);
+                            RootStore.Set(vec2->Y.Id, a.value.second);
+                        },
+                        [this, &container](const Action::Vec2::SetX &a) { RootStore.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
+                        [this, &container](const Action::Vec2::SetY &a) { RootStore.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
+                        [this, &container](const Action::Vec2::SetAll &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(container);
+                            RootStore.Set(vec2->X.Id, a.value);
+                            RootStore.Set(vec2->Y.Id, a.value);
+                        },
+                        [this, &container](const Action::Vec2::ToggleLinked &) {
+                            const auto *vec2 = static_cast<const Vec2Linked *>(container);
+                            RootStore.Set(vec2->Linked.Id, !RootStore.Get<bool>(vec2->Linked.Id));
+                            const float x = RootStore.Get<float>(vec2->X.Id);
+                            const float y = RootStore.Get<float>(vec2->Y.Id);
+                            if (x < y) RootStore.Set(vec2->Y.Id, x);
+                            else if (y < x) RootStore.Set(vec2->X.Id, y);
+                        },
+                        [this](const Action::PrimitiveVector<bool>::Set &a) {
+                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value));
+                        },
+                        [this](const Action::PrimitiveVector<int>::Set &a) {
+                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<int>>(a.component_id).set(a.i, a.value));
+                        },
+                        [this](const Action::PrimitiveVector<u32>::Set &a) {
+                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<u32>>(a.component_id).set(a.i, a.value));
+                        },
+                        [this](const Action::PrimitiveVector<float>::Set &a) {
+                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value));
+                        },
+                        [this](const Action::PrimitiveVector<std::string>::Set &a) {
+                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<std::string>>(a.component_id).set(a.i, a.value));
+                        },
+                        [this](const Action::PrimitiveSet<u32>::Insert &a) {
+                            RootStore.Set(a.component_id, RootStore.Get<immer::set<u32>>(a.component_id).insert(a.value));
+                        },
+                        [this](const Action::PrimitiveSet<u32>::Erase &a) { RootStore.SetErase(a.component_id, a.value); },
+                        [this, &container](const Action::Navigable<u32>::Clear &) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            RootStore.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
+                            RootStore.Set(nav->Cursor.Id, 0);
+                        },
+                        [this, &container](const Action::Navigable<u32>::Push &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            const auto vec = RootStore.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
+                            RootStore.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
+                            RootStore.Set<u32>(nav->Cursor.Id, vec.size() - 1);
+                        },
+
+                        [this, &container](const Action::Navigable<u32>::MoveTo &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            auto cursor = u32(std::clamp(int(a.index), 0, int(RootStore.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
+                            RootStore.Set(nav->Cursor.Id, std::move(cursor));
+                        },
                     },
                     a
                 );

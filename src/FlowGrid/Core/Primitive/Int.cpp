@@ -5,15 +5,6 @@
 Int::Int(ComponentArgs &&args, int value, int min, int max)
     : Primitive(std::move(args), value), Min(min), Max(max) {}
 
-void Int::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Primitive::Int::Set &a) { Set(a.value); },
-        },
-        action
-    );
-}
-
 using namespace ImGui;
 
 void Int::Render() const {

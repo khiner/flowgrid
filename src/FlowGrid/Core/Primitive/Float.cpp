@@ -5,15 +5,6 @@
 Float::Float(ComponentArgs &&args, float value, float min, float max, const char *fmt, ImGuiSliderFlags flags, float drag_speed)
     : Primitive(std::move(args), value), Min(min), Max(max), DragSpeed(drag_speed), Format(fmt), Flags(flags) {}
 
-void Float::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Primitive::Float::Set &a) { Set(a.value); },
-        },
-        action
-    );
-}
-
 using namespace ImGui;
 
 void Float::Render() const {

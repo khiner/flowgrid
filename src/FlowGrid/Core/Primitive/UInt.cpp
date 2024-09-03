@@ -9,15 +9,6 @@ UInt::UInt(ComponentArgs &&args, std::function<const std::string(u32)> get_name,
 
 UInt::operator ImColor() const { return Value; }
 
-void UInt::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Primitive::UInt::Set &a) { Set(a.value); },
-        },
-        action
-    );
-}
-
 std::string UInt::ValueName(u32 value) const { return GetName ? (*GetName)(value) : std::to_string(value); }
 
 using namespace ImGui;

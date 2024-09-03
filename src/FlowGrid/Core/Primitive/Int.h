@@ -1,14 +1,9 @@
 #pragma once
 
-#include "Core/Action/Actionable.h"
-#include "IntAction.h"
 #include "Primitive.h"
 
-struct Int : Primitive<int>, Actionable<Action::Primitive::Int::Any> {
+struct Int : Primitive<int> {
     Int(ComponentArgs &&, int value = 0, int min = 0, int max = 100);
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; };
 
     operator bool() const { return Value != 0; }
     operator char() const { return Value; };

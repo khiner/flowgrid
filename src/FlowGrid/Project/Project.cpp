@@ -191,25 +191,14 @@ json Project::GetProjectJson(const ProjectFormat format) const {
 void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            [](const Action::Primitive::Any &a) {
-                // Note: If/when we support arbitrary json actions, we'll need to check primitive/container types.
-                //   Maybe with a separate `Find` for each type?
-                //   Could also have each primitive accept an `Action::Primitive::Any`,
-                //   and do the best it can to convert it to something meaningful (e.g. convert string set to an int set).
-                const auto *prim = ById.at(a.GetComponentId());
-                std::visit(
-                    Match{
-                        [&prim](const Bool::ActionType &a) { static_cast<const Bool *>(prim)->Apply(a); },
-                        [&prim](const Int::ActionType &a) { static_cast<const Int *>(prim)->Apply(a); },
-                        [&prim](const UInt::ActionType &a) { static_cast<const UInt *>(prim)->Apply(a); },
-                        [&prim](const Float::ActionType &a) { static_cast<const Float *>(prim)->Apply(a); },
-                        [&prim](const Enum::ActionType &a) { static_cast<const Enum *>(prim)->Apply(a); },
-                        [&prim](const Flags::ActionType &a) { static_cast<const Flags *>(prim)->Apply(a); },
-                        [&prim](const String::ActionType &a) { static_cast<const String *>(prim)->Apply(a); },
-                    },
-                    a
-                );
-            },
+            // Primitives
+            [this](const Action::Primitive::Bool::Toggle &a) { RootStore.Set(a.component_id, !RootStore.Get<bool>(a.component_id)); },
+            [this](const Action::Primitive::Int::Set &a) { RootStore.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::UInt::Set &a) { RootStore.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Float::Set &a) { RootStore.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Enum::Set &a) { RootStore.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Flags::Set &a) { RootStore.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::String::Set &a) { RootStore.Set(a.component_id, a.value); },
             [](const Action::Container::Any &a) {
                 const auto *container = ById.at(a.GetComponentId());
                 std::visit(

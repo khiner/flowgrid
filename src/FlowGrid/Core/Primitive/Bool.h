@@ -1,14 +1,9 @@
 #pragma once
 
-#include "BoolAction.h"
-#include "Core/Action/Actionable.h"
 #include "Primitive.h"
 
-struct Bool : Primitive<bool>, Actionable<Action::Primitive::Bool::Any>, MenuItemDrawable {
+struct Bool : Primitive<bool>, MenuItemDrawable {
     using Primitive::Primitive;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; };
 
     bool CheckedDraw() const; // Unlike `Draw`, this returns `true` if the value was toggled during the draw.
     void MenuItem() const override;

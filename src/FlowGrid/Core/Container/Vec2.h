@@ -8,8 +8,6 @@
 
 struct ImVec2;
 
-// todo next up: Use `Float`/`Bool`, to avoid manual path construction.
-//   (towards IDs instead of paths in store)
 struct Vec2 : Component, Actionable<Action::Vec2::Any> {
     // `fmt` defaults to ImGui slider default, which is "%.3f"
     Vec2(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);

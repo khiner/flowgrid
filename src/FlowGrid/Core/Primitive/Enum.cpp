@@ -11,15 +11,6 @@ Enum::Enum(ComponentArgs &&args, std::vector<std::string> names, int value)
 Enum::Enum(ComponentArgs &&args, std::function<std::string(int)> get_name, int value)
     : Primitive(std::move(args), value), Names({}), GetName(std::move(get_name)) {}
 
-void Enum::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Primitive::Enum::Set &a) { Set(a.value); },
-        },
-        action
-    );
-}
-
 std::string Enum::OptionName(const int option) const { return GetName ? (*GetName)(option) : Names[option]; }
 
 using namespace ImGui;

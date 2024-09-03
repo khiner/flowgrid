@@ -5,15 +5,6 @@
 #include "PrimitiveActionQueuer.h"
 #include "UI/HelpMarker.h"
 
-void Bool::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Primitive::Bool::Toggle &) { Set(!Get()); },
-        },
-        action
-    );
-}
-
 void Bool::IssueToggle() const { PrimitiveQ(Action::Primitive::Bool::Toggle{Id}); }
 
 using namespace ImGui;

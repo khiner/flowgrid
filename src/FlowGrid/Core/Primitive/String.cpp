@@ -7,15 +7,6 @@ using std::string, std::string_view;
 String::String(ComponentArgs &&args, string_view value) : Primitive(std::move(args), string(value)) {}
 String::String(ComponentArgs &&args, fs::path value) : Primitive(std::move(args), string(value)) {}
 
-void String::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Primitive::String::Set &a) { Set(a.value); },
-        },
-        action
-    );
-}
-
 using namespace ImGui;
 
 void String::Render() const {

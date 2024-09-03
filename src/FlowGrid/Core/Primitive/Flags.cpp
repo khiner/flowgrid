@@ -13,15 +13,6 @@ Flags::Item::Item(const char *name_and_help) {
     Help = meta.Help;
 }
 
-void Flags::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Primitive::Flags::Set &a) { Set(a.value); },
-        },
-        action
-    );
-}
-
 using namespace ImGui;
 
 void Flags::Render() const {

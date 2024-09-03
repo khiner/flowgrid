@@ -1,15 +1,10 @@
 #pragma once
 
-#include "Core/Action/Actionable.h"
-#include "EnumAction.h"
 #include "Primitive.h"
 
-struct Enum : Primitive<int>, Actionable<Action::Primitive::Enum::Any>, MenuItemDrawable {
+struct Enum : Primitive<int>, MenuItemDrawable {
     Enum(ComponentArgs &&, std::vector<std::string> names, int value = 0);
     Enum(ComponentArgs &&, std::function<std::string(int)> get_name, int value = 0);
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; };
 
     void Render(const std::vector<int> &options) const;
     void MenuItem() const override;

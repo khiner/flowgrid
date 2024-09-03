@@ -8,7 +8,6 @@
 #include "Core/Component.h"
 #include "PrimitiveSetAction.h"
 
-// todo unite with `Primitive` after moving `PrimitiveVector` to this pattern
 template<typename T> struct PrimitiveSet : Component, Actionable<typename Action::PrimitiveSet<T>::Any> {
     using typename Actionable<typename Action::PrimitiveSet<T>::Any>::ActionType;
     using ContainerT = immer::set<T>;

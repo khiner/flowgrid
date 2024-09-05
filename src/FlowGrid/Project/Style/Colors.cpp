@@ -25,8 +25,8 @@ ImVec4 Colors::U32ToFloat4(u32 value) { return value == AutoColor ? IMPLOT_AUTO_
 void Colors::Set(const std::vector<ImVec4> &values) const {
     PrimitiveVector::Set(values | transform([](const auto &value) { return Float4ToU32(value); }) | to<std::vector>());
 }
-void Colors::Set(const std::vector<std::pair<size_t, ImVec4>> &entries) const {
-    PrimitiveVector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | to<std::vector>());
+void Colors::Set(const std::unordered_map<size_t, ImVec4> &entries) const {
+    PrimitiveVector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | to<std::unordered_map>());
 }
 
 void Colors::Render() const {

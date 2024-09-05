@@ -23,7 +23,7 @@ struct Colors : PrimitiveVector<u32>, ActionProducer<Action::PrimitiveVector<u32
     static constexpr u32 AutoColor = 0X00010101;
 
     void Set(const std::vector<ImVec4> &) const;
-    void Set(const std::vector<std::pair<size_t, ImVec4>> &) const;
+    void Set(const std::unordered_map<size_t, ImVec4> &) const;
 
     void RenderValueTree(bool annotate, bool auto_select) const override;
 

@@ -13,7 +13,7 @@ template<typename T> void PrimitiveSet<T>::Clear() const { S.Clear<ContainerT>(I
 template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const { return S.Get<ContainerT>(Id); }
 
 template<typename T> void PrimitiveSet<T>::Insert(const T &value) const { S.Set(Id, Get().insert(value)); }
-template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const { S.Set(Id, S.Get<immer::set<T>>(Id).erase(value)); }
+template<typename T> void PrimitiveSet<T>::Erase(const T &value) const { S.Set(Id, Get().erase(value)); }
 
 template<typename T> void PrimitiveSet<T>::SetJson(json &&j) const {
     immer::set_transient<T> val{};

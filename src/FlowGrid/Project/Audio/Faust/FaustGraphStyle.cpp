@@ -3,7 +3,7 @@
 #include "imgui.h"
 
 FaustGraphStyle::FaustGraphStyle(ArgsT &&args) : ActionableComponent(std::move(args)) {
-    ColorsDark();
+    Colors.Set(ColorsDark);
     LayoutFlowGrid();
 }
 
@@ -12,10 +12,10 @@ void FaustGraphStyle::Apply(const ActionType &action) const {
         Match{
             [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
                 switch (a.id) {
-                    case 0: return ColorsDark();
-                    case 1: return ColorsLight();
-                    case 2: return ColorsClassic();
-                    case 3: return ColorsFaust();
+                    case 0: return Colors.Set(ColorsDark);
+                    case 1: return Colors.Set(ColorsLight);
+                    case 2: return Colors.Set(ColorsClassic);
+                    case 3: return Colors.Set(ColorsFaust);
                 }
             },
             [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
@@ -49,82 +49,66 @@ const char *FaustGraphStyle::GetColorName(FlowGridGraphCol idx) {
     }
 }
 
-void FaustGraphStyle::ColorsDark() const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {0.06, 0.06, 0.06, 0.94}},
-            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
-            {FlowGridGraphCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
-            {FlowGridGraphCol_Line, {0.61, 0.61, 0.61, 1}},
-            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
-            {FlowGridGraphCol_Inverter, {1, 1, 1, 1}},
-            {FlowGridGraphCol_OrientationMark, {1, 1, 1, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        }
-    );
-}
-void FaustGraphStyle::ColorsClassic() const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {0, 0, 0, 0.85}},
-            {FlowGridGraphCol_Text, {0.9, 0.9, 0.9, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
-            {FlowGridGraphCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
-            {FlowGridGraphCol_Line, {1, 1, 1, 1}},
-            {FlowGridGraphCol_Link, {0.35, 0.4, 0.61, 0.62}},
-            {FlowGridGraphCol_Inverter, {0.9, 0.9, 0.9, 1}},
-            {FlowGridGraphCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        }
-    );
-}
-void FaustGraphStyle::ColorsLight() const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {0.94, 0.94, 0.94, 1}},
-            {FlowGridGraphCol_Text, {0, 0, 0, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0, 0, 0, 0.3}},
-            {FlowGridGraphCol_GroupStroke, {0, 0, 0, 0.3}},
-            {FlowGridGraphCol_Line, {0.39, 0.39, 0.39, 1}},
-            {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
-            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
-            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        }
-    );
-}
-void FaustGraphStyle::ColorsFaust() const {
-    Colors.Set(
-        {
-            {FlowGridGraphCol_Bg, {1, 1, 1, 1}},
-            {FlowGridGraphCol_Text, {1, 1, 1, 1}},
-            {FlowGridGraphCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
-            {FlowGridGraphCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
-            {FlowGridGraphCol_Line, {0, 0, 0, 1}},
-            {FlowGridGraphCol_Link, {0, 0.2, 0.4, 1}},
-            {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
-            {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
-            // Box fills
-            {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
-            {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
-            {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
-            {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
-        }
-    );
-}
+std::unordered_map<size_t, ImVec4> FaustGraphStyle::ColorsDark = {
+    {FlowGridGraphCol_Bg, {0.06, 0.06, 0.06, 0.94}},
+    {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+    {FlowGridGraphCol_DecorateStroke, {0.43, 0.43, 0.5, 0.5}},
+    {FlowGridGraphCol_GroupStroke, {0.43, 0.43, 0.5, 0.5}},
+    {FlowGridGraphCol_Line, {0.61, 0.61, 0.61, 1}},
+    {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+    {FlowGridGraphCol_Inverter, {1, 1, 1, 1}},
+    {FlowGridGraphCol_OrientationMark, {1, 1, 1, 1}},
+    // Box fills
+    {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+    {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+    {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+    {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+};
+std::unordered_map<size_t, ImVec4> FaustGraphStyle::ColorsClassic = {
+    {FlowGridGraphCol_Bg, {0, 0, 0, 0.85}},
+    {FlowGridGraphCol_Text, {0.9, 0.9, 0.9, 1}},
+    {FlowGridGraphCol_DecorateStroke, {0.5, 0.5, 0.5, 0.5}},
+    {FlowGridGraphCol_GroupStroke, {0.5, 0.5, 0.5, 0.5}},
+    {FlowGridGraphCol_Line, {1, 1, 1, 1}},
+    {FlowGridGraphCol_Link, {0.35, 0.4, 0.61, 0.62}},
+    {FlowGridGraphCol_Inverter, {0.9, 0.9, 0.9, 1}},
+    {FlowGridGraphCol_OrientationMark, {0.9, 0.9, 0.9, 1}},
+    // Box fills
+    {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+    {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+    {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+    {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+};
+std::unordered_map<size_t, ImVec4> FaustGraphStyle::ColorsLight = {
+    {FlowGridGraphCol_Bg, {0.94, 0.94, 0.94, 1}},
+    {FlowGridGraphCol_Text, {0, 0, 0, 1}},
+    {FlowGridGraphCol_DecorateStroke, {0, 0, 0, 0.3}},
+    {FlowGridGraphCol_GroupStroke, {0, 0, 0, 0.3}},
+    {FlowGridGraphCol_Line, {0.39, 0.39, 0.39, 1}},
+    {FlowGridGraphCol_Link, {0.26, 0.59, 0.98, 0.4}},
+    {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+    {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
+    // Box fills
+    {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+    {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+    {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+    {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+};
+std::unordered_map<size_t, ImVec4> FaustGraphStyle::ColorsFaust = {
+    {FlowGridGraphCol_Bg, {1, 1, 1, 1}},
+    {FlowGridGraphCol_Text, {1, 1, 1, 1}},
+    {FlowGridGraphCol_DecorateStroke, {0.2, 0.2, 0.2, 1}},
+    {FlowGridGraphCol_GroupStroke, {0.2, 0.2, 0.2, 1}},
+    {FlowGridGraphCol_Line, {0, 0, 0, 1}},
+    {FlowGridGraphCol_Link, {0, 0.2, 0.4, 1}},
+    {FlowGridGraphCol_Inverter, {0, 0, 0, 1}},
+    {FlowGridGraphCol_OrientationMark, {0, 0, 0, 1}},
+    // Box fills
+    {FlowGridGraphCol_Normal, {0.29, 0.44, 0.63, 1}},
+    {FlowGridGraphCol_Ui, {0.28, 0.47, 0.51, 1}},
+    {FlowGridGraphCol_Slot, {0.28, 0.58, 0.37, 1}},
+    {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
+};
 
 void FaustGraphStyle::LayoutFlowGrid() const {
     SequentialConnectionZigzag.Set(false);

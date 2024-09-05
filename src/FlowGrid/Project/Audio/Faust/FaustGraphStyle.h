@@ -84,12 +84,9 @@ struct FaustGraphStyle : ActionableComponent<Action::Faust::GraphStyle::Any, Act
 
     ProducerProp(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
-    void ColorsDark() const;
-    void ColorsClassic() const;
-    void ColorsLight() const;
-    void ColorsFaust() const; // Color Faust graphs the same way Faust does when it renders to SVG.
-
-    static const char *GetColorName(FlowGridGraphCol idx);
+    static const char *GetColorName(FlowGridGraphCol);
+    // `ColorsFaust` Matches Faust SVG rendering.
+    static std::unordered_map<size_t, ImVec4> ColorsDark, ColorsClassic, ColorsLight, ColorsFaust;
 
 private:
     void Render() const override;

@@ -16,7 +16,7 @@ bool Windows::IsVisible(ID component_id) const { return VisibleComponents.Contai
 
 void Windows::ToggleVisible(ID component_id) const {
     if (!VisibleComponents.Contains(component_id)) VisibleComponents.Insert(component_id);
-    else VisibleComponents.Erase_(component_id);
+    else VisibleComponents.Erase(component_id);
 }
 
 void Windows::Apply(const ActionType &action) const {

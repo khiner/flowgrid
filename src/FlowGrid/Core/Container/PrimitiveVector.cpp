@@ -10,21 +10,15 @@ template<typename T> bool PrimitiveVector<T>::Exists() const { return S.Count<Co
 template<typename T> void PrimitiveVector<T>::Erase() const { S.Erase<ContainerT>(Id); }
 template<typename T> void PrimitiveVector<T>::Clear() const { S.Clear<ContainerT>(Id); }
 
-template<typename T> PrimitiveVector<T>::ContainerT PrimitiveVector<T>::Get() const {
-    return S.Get<ContainerT>(Id);
-}
-
-template<typename T> void PrimitiveVector<T>::Set(PrimitiveVector<T>::ContainerT value) const {
-    S.Set(Id, std::move(value));
-}
+template<typename T> PrimitiveVector<T>::ContainerT PrimitiveVector<T>::Get() const { return S.Get<ContainerT>(Id); }
 
 template<typename T> void PrimitiveVector<T>::Set(const std::vector<T> &value) const {
     immer::flex_vector_transient<T> val{};
     for (const auto &v : value) val.push_back(v);
-    Set(val.persistent());
+    S.Set(Id, val.persistent());
 }
 
-template<typename T> void PrimitiveVector<T>::Set(size_t i, const T &value) const { Set(Get().set(i, value)); }
+template<typename T> void PrimitiveVector<T>::Set(size_t i, const T &value) const { S.Set(Id, Get().set(i, value)); }
 template<typename T> void PrimitiveVector<T>::PushBack(const T &value) const { S.Set(Id, S.Get<ContainerT>(Id).push_back(value)); }
 template<typename T> void PrimitiveVector<T>::PopBack() const {
     const auto v = S.Get<ContainerT>(Id);
@@ -32,10 +26,10 @@ template<typename T> void PrimitiveVector<T>::PopBack() const {
 }
 
 template<typename T> void PrimitiveVector<T>::Resize(size_t size) const {
-    Set(Get().take(size));
+    S.Set(Id, Get().take(size));
     while (Size() < size) PushBack(T{});
 }
-template<typename T> void PrimitiveVector<T>::Erase(size_t i) const { Set(Get().erase(i)); }
+template<typename T> void PrimitiveVector<T>::Erase(size_t i) const { S.Set(Id, Get().erase(i)); }
 
 template<typename T> size_t PrimitiveVector<T>::IndexOf(const T &value) const {
     auto vec = Get();
@@ -45,7 +39,7 @@ template<typename T> size_t PrimitiveVector<T>::IndexOf(const T &value) const {
 template<typename T> void PrimitiveVector<T>::SetJson(json &&j) const {
     immer::flex_vector_transient<T> val{};
     for (const auto &v : json::parse(std::string(std::move(j)))) val.push_back(v);
-    Set(val.persistent());
+    S.Set(Id, val.persistent());
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.

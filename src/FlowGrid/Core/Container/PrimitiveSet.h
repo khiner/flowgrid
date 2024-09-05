@@ -26,7 +26,7 @@ template<typename T> struct PrimitiveSet : Component {
     bool Empty() const { return Get().empty(); }
 
     void Insert(const T &) const;
-    void Erase_(const T &) const;
+    void Erase(const T &) const;
     void Clear() const;
 
     ContainerT Get() const;

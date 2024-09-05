@@ -34,14 +34,11 @@ using FlowGridCol = int;
 struct FlowGridStyle : ActionProducerComponent<Action::Combine<Action::Style::Any, Colors::ProducedActionType>> {
     FlowGridStyle(ArgsT &&);
 
+    static std::unordered_map<size_t, ImVec4> ColorsDark, ColorsLight, ColorsClassic;
+    static const char *GetColorName(FlowGridCol idx);
+
     Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
     ProducerProp(Colors, Colors, FlowGridCol_COUNT, GetColorName);
-
-    void ColorsDark() const;
-    void ColorsLight() const;
-    void ColorsClassic() const;
-
-    static const char *GetColorName(FlowGridCol idx);
 
 protected:
     void Render() const override;
@@ -58,9 +55,8 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
         ImGuiStyle(ArgsT &&);
         ~ImGuiStyle();
 
+        static std::vector<ImVec4> ColorsDark, ColorsLight, ColorsClassic;
         inline static bool IsChanged{false};
-
-        static std::vector<ImVec4> ColorPresetBuffer;
 
         struct ImGuiColors : Colors {
             ImGuiColors(ArgsT &&);
@@ -68,9 +64,6 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
 
         void OnComponentChanged() override { IsChanged = true; }
         void UpdateIfChanged(ImGuiContext *ctx) const;
-        void ColorsDark() const;
-        void ColorsLight() const;
-        void ColorsClassic() const;
 
         // See `ImGui::ImGuiStyle` for field descriptions.
         // Initial values copied from `ImGui::ImGuiStyle()` default constructor.
@@ -148,6 +141,7 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
         inline static bool IsChanged{false};
 
         static std::vector<ImVec4> ColorPresetBuffer;
+        static std::vector<ImVec4> ColorsAuto, ColorsDark, ColorsLight, ColorsClassic;
 
         struct ImPlotColors : Colors {
             ImPlotColors(ArgsT &&);
@@ -155,10 +149,6 @@ struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedAc
 
         void OnComponentChanged() override { IsChanged = true; }
         void UpdateIfChanged(ImPlotContext *ctx) const;
-        void ColorsAuto() const;
-        void ColorsDark() const;
-        void ColorsLight() const;
-        void ColorsClassic() const;
 
         // See `ImPlotStyle` for field descriptions.
         // Initial values copied from `ImPlotStyle()` default constructor.

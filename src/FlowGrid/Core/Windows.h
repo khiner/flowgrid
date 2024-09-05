@@ -2,22 +2,19 @@
 
 #include <set>
 
-#include "ActionableComponent.h"
+#include "Core/ActionProducerComponent.h"
 #include "Core/Container/Set.h"
 #include "WindowsAction.h"
 
-struct Windows : ActionableComponent<Action::Windows::Any> {
-    using ActionableComponent::ActionableComponent;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; }
+struct Windows : ActionProducerComponent<Action::Windows::Any> {
+    using ActionProducerComponent::ActionProducerComponent;
 
     void SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &);
 
     bool IsWindow(ID component_id) const;
     bool IsVisible(ID component_id) const;
 
-    void ToggleMenuItem(const Component &) const;
+    void ToggleVisible(ID component_id) const;
     void ToggleDebugMenuItem(const Component &) const;
 
     Prop(Set<ID>, VisibleComponents);
@@ -27,6 +24,4 @@ protected:
 
 private:
     std::set<ID> WindowComponentIds;
-
-    void ToggleVisible(ID component_id) const;
 };

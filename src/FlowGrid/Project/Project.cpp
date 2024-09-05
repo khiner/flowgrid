@@ -337,7 +337,19 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             [this](const Audio::ActionType &a) { Audio.Apply(a); },
             [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
-            [this](const Windows::ActionType &a) { Windows.Apply(a); },
+            [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
+            [this](const Action::Windows::ToggleDebug &a) {
+                const bool toggling_on = !Windows.VisibleComponents.Contains(a.component_id);
+                Windows.ToggleVisible(a.component_id);
+                if (!toggling_on) return;
+
+                auto *debug_component = static_cast<DebugComponent *>(ById.at(a.component_id));
+                if (auto *window = debug_component->FindDockWindow()) {
+                    auto docknode_id = window->DockId;
+                    auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
+                    debug_component->Dock(debug_node_id);
+                }
+            },
             [this](const Action::Style::SetImGuiColorPreset &a) {
                 // todo enum types instead of raw int keys
                 switch (a.id) {
@@ -396,7 +408,7 @@ bool Project::CanApply(const ActionType &action) const {
             [](const Action::Store::ApplyPatch &) { return true; },
             [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
             [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
-            [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
+            [](const Action::Windows::Any &) { return true; },
             [](const Action::Style::Any &) { return true; },
         },
         action
@@ -607,7 +619,11 @@ void Project::Open(const fs::path &file_path) const {
 }
 
 void Project::WindowMenuItem() const {
-    const auto &item = [this](const Component &c) { return Windows.ToggleMenuItem(c); };
+    const auto &item = [this](const Component &c) {
+        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, Windows.IsVisible(c.Id))) {
+            Q(Action::Windows::ToggleVisible{c.Id});
+        }
+    };
     if (BeginMenu("Windows")) {
         if (BeginMenu("Audio")) {
             item(Audio.Graph);

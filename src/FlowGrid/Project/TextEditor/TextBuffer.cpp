@@ -174,7 +174,7 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [](const SelectAll &) { return true; },
             [](const SelectNextOccurrence &) { return true; },
 
-            [](const Set &) { return true; },
+            [](const SetText &) { return true; },
 
             [this](const Copy &) { return GetBuffer().AnyCursorsRanged(); },
             [this](const Cut &) { return !ReadOnly && GetBuffer().AnyCursorsRanged(); },
@@ -222,7 +222,7 @@ void TextBuffer::Apply(const ActionType &action) const {
             [this](const MoveCursorsEndLine &a) { Commit(GetBuffer().MoveCursorsEndLine(a.select)); },
             [this](const SelectAll &) { Commit(GetBuffer().SelectAll()); },
             [this](const SelectNextOccurrence &) { Commit(GetBuffer().SelectNextOccurrence()); },
-            [this](const Set &a) { Commit(GetBuffer().SetText(a.value)); },
+            [this](const SetText &a) { Commit(GetBuffer().SetText(a.value)); },
             [this](const Copy &) {
                 const auto str = GetBuffer().GetSelectedText();
                 ImGui::SetClipboardText(str.c_str());

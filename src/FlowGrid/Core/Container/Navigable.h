@@ -2,7 +2,7 @@
 
 #include "Container.h"
 #include "Core/Action/ActionProducer.h"
-#include "Core/Container/PrimitiveVector.h"
+#include "Core/Container/Vector.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/ProducerComponentArgs.h"
 #include "NavigableAction.h"
@@ -36,6 +36,6 @@ template<typename T> struct Navigable : Container, ActionProducer<typename Actio
         Component::RenderValueTree(annotate, auto_select);
     }
 
-    Prop(PrimitiveVector<T>, Value);
+    Prop(Vector<T>, Value);
     Prop(UInt, Cursor);
 };

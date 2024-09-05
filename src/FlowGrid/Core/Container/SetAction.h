@@ -3,18 +3,18 @@
 #include "Core/Action/DefineAction.h"
 
 namespace Action {
-template<typename T> struct PrimitiveSet {
-    static_assert(always_false_v<T>, "There is no `PrimitiveSet` action type for this type.");
+template<typename T> struct Set {
+    static_assert(always_false_v<T>, "There is no `Set` action type for this type.");
 };
 
 DefineTemplatedActionType(
-    PrimitiveSet, UInt, u32,
+    Set, UInt, u32,
     DefineComponentAction(Insert, "", u32 value;);
     DefineComponentAction(Erase, "", u32 value;);
 
     using Any = ActionVariant<Insert, Erase>;
 );
 
-ComponentActionJson(PrimitiveSet<u32>::Insert, value);
-ComponentActionJson(PrimitiveSet<u32>::Erase, value);
+ComponentActionJson(Set<u32>::Insert, value);
+ComponentActionJson(Set<u32>::Erase, value);
 } // namespace Action

@@ -11,7 +11,7 @@
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionProducerComponent.h"
 #include "Core/ActionableComponent.h"
-#include "Core/Container/Vector.h"
+#include "Core/Container/ComponentVector.h"
 #include "Project/TextEditor/TextEditor.h"
 
 struct FileDialog;
@@ -35,7 +35,7 @@ Audio.Faust.FaustDsp.Code -> Audio.Faust.FaustDsp
 ```
 **/
 
-struct FaustParamss : Vector<FaustParams> {
+struct FaustParamss : ComponentVector<FaustParams> {
     FaustParamss(ComponentArgs &&, const FaustParamsStyle &);
 
     FaustParams *FindUi(ID dsp_id) const;
@@ -47,7 +47,7 @@ protected:
 };
 
 struct FaustGraphs
-    : Vector<FaustGraph>,
+    : ComponentVector<FaustGraph>,
       ActionableProducer<Action::Faust::Graph::Any, FaustGraph::ProducedActionType>,
       Component::ChangeListener {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
@@ -130,7 +130,7 @@ private:
 };
 
 struct FaustDSPs
-    : Vector<FaustDSP>,
+    : ComponentVector<FaustDSP>,
       ActionableProducer<Action::Faust::DSP::Any, FaustDspProducedActionType> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 

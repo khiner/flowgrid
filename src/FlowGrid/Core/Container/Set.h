@@ -4,14 +4,14 @@
 
 #include "Core/Component.h"
 
-template<typename T> struct PrimitiveSet : Component {
+template<typename T> struct Set : Component {
     using ContainerT = immer::set<T>;
 
-    PrimitiveSet(ComponentArgs &&args) : Component(std::move(args)) {
+    Set(ComponentArgs &&args) : Component(std::move(args)) {
         FieldIds.insert(Id);
         Refresh();
     }
-    ~PrimitiveSet() {
+    ~Set() {
         Erase();
         FieldIds.erase(Id);
     }

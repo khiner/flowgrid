@@ -4,11 +4,10 @@
 #include "AudioGraphNode.h"
 #include "Core/Action/ActionableProducer.h"
 #include "Core/Container/AdjacencyList.h"
+#include "Core/Container/ComponentVector.h"
 #include "Core/ProducerComponentArgs.h"
 #include "Project/Audio/Device/DeviceDataFormat.h"
 #include "Project/Audio/Faust/FaustDSPListener.h"
-
-#include "Core/Container/Vector.h"
 
 struct ma_node_graph;
 
@@ -111,7 +110,7 @@ struct AudioGraph
         std::unique_ptr<ma_channel_converter_node> Converter;
     };
 
-    Prop(Vector<AudioGraphNode>, Nodes, CreateAudioGraphNode);
+    Prop(ComponentVector<AudioGraphNode>, Nodes, CreateAudioGraphNode);
     ProducerProp_(Connections, Connections, "Audio connections");
 
     // We initialize with a sample rate of zero, which is the default sample rate. (See `GetDefaultSampleRate` for details.)

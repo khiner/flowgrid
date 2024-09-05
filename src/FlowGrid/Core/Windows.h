@@ -3,7 +3,7 @@
 #include <set>
 
 #include "ActionableComponent.h"
-#include "Core/Container/PrimitiveSet.h"
+#include "Core/Container/Set.h"
 #include "WindowsAction.h"
 
 struct Windows : ActionableComponent<Action::Windows::Any> {
@@ -20,7 +20,7 @@ struct Windows : ActionableComponent<Action::Windows::Any> {
     void ToggleMenuItem(const Component &) const;
     void ToggleDebugMenuItem(const Component &) const;
 
-    Prop(PrimitiveSet<ID>, VisibleComponents);
+    Prop(Set<ID>, VisibleComponents);
 
 protected:
     void Render() const override;

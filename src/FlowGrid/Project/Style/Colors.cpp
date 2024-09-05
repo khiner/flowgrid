@@ -15,18 +15,18 @@ using namespace ImGui;
 using std::views::transform, std::ranges::to;
 
 Colors::Colors(ArgsT &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
-    : PrimitiveVector(std::move(args.Args)), ActionProducer(std::move(args.Q)), GetName(get_name), AllowAuto(allow_auto) {
-    PrimitiveVector::Set(std::views::iota(0u, u32(size)) | to<std::vector>());
+    : Vector(std::move(args.Args)), ActionProducer(std::move(args.Q)), GetName(get_name), AllowAuto(allow_auto) {
+    Vector::Set(std::views::iota(0u, u32(size)) | to<std::vector>());
 }
 
 u32 Colors::Float4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
 ImVec4 Colors::U32ToFloat4(u32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
 void Colors::Set(const std::vector<ImVec4> &values) const {
-    PrimitiveVector::Set(values | transform([](const auto &value) { return Float4ToU32(value); }) | to<std::vector>());
+    Vector::Set(values | transform([](const auto &value) { return Float4ToU32(value); }) | to<std::vector>());
 }
 void Colors::Set(const std::unordered_map<size_t, ImVec4> &entries) const {
-    PrimitiveVector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | to<std::unordered_map>());
+    Vector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | to<std::unordered_map>());
 }
 
 void Colors::Render() const {
@@ -60,7 +60,7 @@ void Colors::Render() const {
             // todo use auto for FG colors (link to ImGui colors)
             if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) Q(Action::PrimitiveVector<u32>::Set{Id, i, is_auto ? mapped_value : AutoColor});
+                if (Button("Auto")) Q(Action::Vector<u32>::Set{Id, i, is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
@@ -76,7 +76,7 @@ void Colors::Render() const {
 
             PopID();
 
-            if (changed) Q(Action::PrimitiveVector<u32>::Set{Id, i, ColorConvertFloat4ToU32(value)});
+            if (changed) Q(Action::Vector<u32>::Set{Id, i, ColorConvertFloat4ToU32(value)});
         }
     }
     if (AllowAuto) {

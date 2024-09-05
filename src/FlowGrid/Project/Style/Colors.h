@@ -1,15 +1,15 @@
 #pragma once
 
 #include "Core/Action/ActionProducer.h"
-#include "Core/Container/PrimitiveVector.h"
-#include "Core/Container/PrimitiveVectorAction.h"
+#include "Core/Container/Vector.h"
+#include "Core/Container/VectorAction.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/ProducerComponentArgs.h"
 
 struct ImVec4;
 
-struct Colors : PrimitiveVector<u32>, ActionProducer<Action::PrimitiveVector<u32>::Any> {
-    using typename ActionProducer<typename Action::PrimitiveVector<u32>::Any>::ProducedActionType;
+struct Colors : Vector<u32>, ActionProducer<Action::Vector<u32>::Any> {
+    using typename ActionProducer<typename Action::Vector<u32>::Any>::ProducedActionType;
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
     Colors(ArgsT &&, u32 size, std::function<const char *(int)> get_name, const bool allow_auto = false);

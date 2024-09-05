@@ -25,7 +25,7 @@ DefineActionType(
     DefineUnsavedComponentAction(SelectAll, Merge, "");
     DefineUnsavedComponentAction(SelectNextOccurrence, Merge, "");
 
-    DefineComponentAction(Set, "", std::string value;);
+    DefineComponentAction(SetText, "", std::string value;);
 
     DefineUnsavedComponentAction(Copy, NoMerge, "");
     DefineUnmergableComponentAction(Cut);
@@ -53,7 +53,7 @@ DefineActionType(
     ComponentActionJson(SelectAll);
     ComponentActionJson(SelectNextOccurrence);
 
-    ComponentActionJson(Set, value);
+    ComponentActionJson(SetText, value);
 
     ComponentActionJson(Copy);
     ComponentActionJson(Cut);
@@ -67,7 +67,7 @@ DefineActionType(
     ComponentActionJson(EnterChar, value);
 
     using Any = ActionVariant<
-        ShowOpenDialog, ShowSaveDialog, Save, Open, Set,
+        ShowOpenDialog, ShowSaveDialog, Save, Open, SetText,
         SetCursor, SetCursorRange, MoveCursorsLines, PageCursorsLines, MoveCursorsChar, MoveCursorsTop, MoveCursorsBottom, MoveCursorsStartLine, MoveCursorsEndLine,
         SelectAll, SelectNextOccurrence, Copy, Cut, Paste, Delete, Backspace, DeleteCurrentLines, ChangeCurrentLinesIndentation,
         MoveCurrentLines, ToggleLineComment, EnterChar>;

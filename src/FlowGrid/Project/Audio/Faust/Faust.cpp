@@ -35,7 +35,7 @@ void Faust::Render() const {
 }
 
 FaustParamss::FaustParamss(ComponentArgs &&args, const FaustParamsStyle &style)
-    : Vector(std::move(args), [](auto &&child_args) {
+    : ComponentVector(std::move(args), [](auto &&child_args) {
           const auto *uis = static_cast<const FaustParamss *>(child_args.Parent);
           return std::make_unique<FaustParams>(std::move(child_args), uis->Style);
       }),
@@ -52,7 +52,7 @@ FaustParams *FaustParamss::FindUi(ID dsp_id) const {
 static std::unordered_set<FaustGraphs *> AllInstances{};
 
 FaustGraphs::FaustGraphs(ArgsT &&args, const ::FileDialog &file_dialog, const FaustGraphStyle &style, const FaustGraphSettings &settings)
-    : Vector(
+    : ComponentVector(
           std::move(args.Args),
           Menu({
               Menu("File", {ShowSaveSvgDialogMenuItem}),
@@ -199,7 +199,7 @@ void FaustDSP::Update() {
 static const string_view FaustDspPathSegment{"FaustDSP"};
 
 FaustDSPs::FaustDSPs(ArgsT &&args, const FileDialog &file_dialog)
-    : Vector(std::move(args.Args), [&](auto &&child_args) {
+    : ComponentVector(std::move(args.Args), [&](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
           return std::make_unique<FaustDSP>(
               FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container, file_dialog

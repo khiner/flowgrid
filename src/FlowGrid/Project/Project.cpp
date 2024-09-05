@@ -233,13 +233,13 @@ void Project::Apply(const ActionType &action) const {
                             if (x < y) S.Set(vec2->Y.Id, x);
                             else if (y < x) S.Set(vec2->X.Id, y);
                         },
-                        [this](const Action::PrimitiveVector<bool>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::PrimitiveVector<int>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::PrimitiveVector<u32>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::PrimitiveVector<float>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::PrimitiveVector<std::string>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::PrimitiveSet<u32>::Insert &a) { ApplySetInsert(S, a); },
-                        [this](const Action::PrimitiveSet<u32>::Erase &a) { ApplySetErase(S, a); },
+                        [this](const Action::Vector<bool>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<int>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<u32>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<float>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<std::string>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Set<u32>::Insert &a) { ApplySetInsert(S, a); },
+                        [this](const Action::Set<u32>::Erase &a) { ApplySetErase(S, a); },
                         [this, &container](const Action::Navigable<u32>::Clear &) {
                             const auto *nav = static_cast<const Navigable<u32> *>(container);
                             S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
@@ -363,7 +363,7 @@ bool Project::CanApply(const ActionType &action) const {
             [](const Action::Project::OpenEmpty &) { return true; },
             [](const Action::Project::Open &) { return true; },
 
-            [this](const Action::Store::ApplyPatch &a) { return true; },
+            [](const Action::Store::ApplyPatch &a) { return true; },
             [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
             [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
             [this](const Windows::ActionType &a) { return Windows.CanApply(a); },

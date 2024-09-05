@@ -25,8 +25,11 @@ template<typename T> void PrimitiveVector<T>::Set(const std::vector<T> &value) c
 }
 
 template<typename T> void PrimitiveVector<T>::Set(size_t i, const T &value) const { Set(Get().set(i, value)); }
-template<typename T> void PrimitiveVector<T>::PushBack(const T &value) const { S.PushBack(Id, value); }
-template<typename T> void PrimitiveVector<T>::PopBack() const { S.PopBack<T>(Id); }
+template<typename T> void PrimitiveVector<T>::PushBack(const T &value) const { S.Set(Id, S.Get<ContainerT>(Id).push_back(value)); }
+template<typename T> void PrimitiveVector<T>::PopBack() const {
+    const auto v = S.Get<ContainerT>(Id);
+    S.Set(Id, v.take(v.size() - 1));
+}
 
 template<typename T> void PrimitiveVector<T>::Resize(size_t size) const {
     Set(Get().take(size));

@@ -10,14 +10,10 @@ template<typename T> bool PrimitiveSet<T>::Exists() const { return S.Count<Conta
 template<typename T> void PrimitiveSet<T>::Erase() const { S.Erase<ContainerT>(Id); }
 template<typename T> void PrimitiveSet<T>::Clear() const { S.Clear<ContainerT>(Id); }
 
-template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const {
-    return S.Get<ContainerT>(Id);
-}
+template<typename T> PrimitiveSet<T>::ContainerT PrimitiveSet<T>::Get() const { return S.Get<ContainerT>(Id); }
 
-template<typename T> void PrimitiveSet<T>::Insert(const T &value) const {
-    S.Set(Id, Get().insert(value));
-}
-template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const { S.SetErase(Id, value); }
+template<typename T> void PrimitiveSet<T>::Insert(const T &value) const { S.Set(Id, Get().insert(value)); }
+template<typename T> void PrimitiveSet<T>::Erase_(const T &value) const { S.Set(Id, S.Get<immer::set<T>>(Id).erase(value)); }
 
 template<typename T> void PrimitiveSet<T>::SetJson(json &&j) const {
     immer::set_transient<T> val{};

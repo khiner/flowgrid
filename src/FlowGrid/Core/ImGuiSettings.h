@@ -84,8 +84,6 @@ struct ImGuiSettings : Component {
 
     inline static bool IsChanged{false};
 
-    // Create a patch resulting from applying the current ImGui context.
-    Patch CreatePatch(ImGuiContext *);
 
     // `Update(ctx)` is basically `imgui_context.settings = this`.
     // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members

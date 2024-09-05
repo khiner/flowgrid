@@ -2,6 +2,7 @@
 #include "Project.h"
 
 #include "imgui_internal.h"
+
 #include <format>
 #include <ranges>
 #include <set>
@@ -291,7 +292,41 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
             [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
 
-            [this](const Store::ActionType &a) { S.Apply(a); },
+            [this](const Action::Store::ApplyPatch &a) {
+                for (const auto &[id, ops] : a.patch.Ops) {
+                    for (const auto &op : ops) {
+                        if (op.Op == PatchOpType::PopBack) {
+                            std::visit(
+                                [&](auto &&v) {
+                                    const auto vec = S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id);
+                                    S.Set(id, vec.take(vec.size() - 1));
+                                },
+                                *op.Old
+                            );
+                        } else if (op.Op == PatchOpType::Remove) {
+                            std::visit([&](auto &&v) { S.Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
+                        } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
+                            std::visit([&](auto &&v) { S.Set(id, std::move(v)); }, *op.Value);
+                        } else if (op.Op == PatchOpType::PushBack) {
+                            std::visit([&](auto &&v) { S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).push_back(std::move(v))); }, *op.Value);
+                        } else if (op.Op == PatchOpType::Set) {
+                            std::visit([&](auto &&v) { S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).set(*op.Index, std::move(v))); }, *op.Value);
+                        } else {
+                            // `set` ops - currently, u32 is the only set value type.
+                            std::visit(
+                                Match{
+                                    [&](u32 v) {
+                                        if (op.Op == PatchOpType::Insert) S.Set(id, S.Get<immer::set<decltype(v)>>(id).insert(v));
+                                        else if (op.Op == PatchOpType::Erase) S.Set(id, S.Get<immer::set<decltype(v)>>(id).erase(v));
+                                    },
+                                    [](auto &&) {},
+                                },
+                                *op.Value
+                            );
+                        }
+                    }
+                }
+            },
             [this](const Action::Project::ShowOpenDialog &) {
                 FileDialog.Set({
                     .owner_id = Id,
@@ -328,7 +363,7 @@ bool Project::CanApply(const ActionType &action) const {
             [](const Action::Project::OpenEmpty &) { return true; },
             [](const Action::Project::Open &) { return true; },
 
-            [this](const Store::ActionType &a) { return S.CanApply(a); },
+            [this](const Action::Store::ApplyPatch &a) { return true; },
             [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
             [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
             [this](const Windows::ActionType &a) { return Windows.CanApply(a); },

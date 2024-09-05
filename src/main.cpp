@@ -1,4 +1,4 @@
-#include "imgui.h"
+#include "imgui_internal.h"
 
 #include "FlowGrid/Core/Primitive/PrimitiveActionQueuer.h"
 #include "FlowGrid/Core/Store/Store.h"
@@ -9,13 +9,26 @@
 
 FileDialogImpl FileDialogImp;
 
+Patch CreatePatch(Project &project) {
+    auto *ctx = ImGui::GetCurrentContext();
+    auto &settings = project.ImGuiSettings;
+    settings.Nodes.Set(ctx->DockContext.NodesSettings);
+    settings.Windows.Set(ctx->SettingsWindows);
+    settings.Tables.Set(ctx->SettingsTables);
+
+    auto patch = settings.S.CreatePatchAndResetTransient(settings.Id);
+    settings.Tables.Refresh(); // xxx tables may have been modified.
+
+    return patch;
+}
+
 bool Tick(Project &project, const UIContext &ui) {
     static auto &io = ImGui::GetIO();
 
     const bool running = ui.Tick(project);
     if (running && io.WantSaveIniSettings) {
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        if (auto patch = project.ImGuiSettings.CreatePatch(ImGui::GetCurrentContext()); !patch.Empty()) {
+        if (auto patch = CreatePatch(project); !patch.Empty()) {
             project.Q(Action::Store::ApplyPatch{std::move(patch)});
         }
         io.WantSaveIniSettings = false;

@@ -4,8 +4,6 @@
 
 #include "imgui_internal.h"
 
-#include "Core/Store/Store.h"
-
 using namespace ImGui;
 
 constexpr u32 PackImVec2ih(const ImVec2ih &unpacked) { return (u32(unpacked.x) << 16) + u32(unpacked.y); }
@@ -218,17 +216,6 @@ void TableSettings::Update(ImGuiContext *) const {
             table->DisplayOrderToIndex[table->Columns[column_n].DisplayOrder] = ImGuiTableColumnIdx(column_n);
         }
     }
-}
-
-Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) {
-    Nodes.Set(ctx->DockContext.NodesSettings);
-    Windows.Set(ctx->SettingsWindows);
-    Tables.Set(ctx->SettingsTables);
-
-    auto patch = S.CreatePatchAndResetTransient(Id);
-    Tables.Refresh(); // xxx tables may have been modified.
-
-    return patch;
 }
 
 void ImGuiSettings::UpdateIfChanged(ImGuiContext *ctx) const {

@@ -6,9 +6,8 @@
 #include "immer/vector.hpp"
 #include "immer/vector_transient.hpp"
 
-#include "Store.h"
-
 #include "Core/Component.h"
+#include "Store.h"
 
 using std::ranges::to, std::views::drop, std::views::transform;
 

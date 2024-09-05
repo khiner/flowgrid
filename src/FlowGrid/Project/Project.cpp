@@ -188,6 +188,10 @@ json Project::GetProjectJson(const ProjectFormat format) const {
     }
 }
 
+void ApplyVectorSet(Store &s, const auto &a) { s.Set(a.component_id, s.Get<immer::flex_vector<decltype(a.value)>>(a.component_id).set(a.i, a.value)); }
+void ApplySetInsert(Store &s, const auto &a) { s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).insert(a.value)); }
+void ApplySetErase(Store &s, const auto &a) { s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).erase(a.value)); }
+
 void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
@@ -228,13 +232,13 @@ void Project::Apply(const ActionType &action) const {
                             if (x < y) S.Set(vec2->Y.Id, x);
                             else if (y < x) S.Set(vec2->X.Id, y);
                         },
-                        [this](const Action::PrimitiveVector<bool>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value)); },
-                        [this](const Action::PrimitiveVector<int>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<int>>(a.component_id).set(a.i, a.value)); },
-                        [this](const Action::PrimitiveVector<u32>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<u32>>(a.component_id).set(a.i, a.value)); },
-                        [this](const Action::PrimitiveVector<float>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value)); },
-                        [this](const Action::PrimitiveVector<std::string>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<std::string>>(a.component_id).set(a.i, a.value)); },
-                        [this](const Action::PrimitiveSet<u32>::Insert &a) { S.Set(a.component_id, S.Get<immer::set<u32>>(a.component_id).insert(a.value)); },
-                        [this](const Action::PrimitiveSet<u32>::Erase &a) { S.SetErase(a.component_id, a.value); },
+                        [this](const Action::PrimitiveVector<bool>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::PrimitiveVector<int>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::PrimitiveVector<u32>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::PrimitiveVector<float>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::PrimitiveVector<std::string>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::PrimitiveSet<u32>::Insert &a) { ApplySetInsert(S, a); },
+                        [this](const Action::PrimitiveSet<u32>::Erase &a) { ApplySetErase(S, a); },
                         [this, &container](const Action::Navigable<u32>::Clear &) {
                             const auto *nav = static_cast<const Navigable<u32> *>(container);
                             S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});

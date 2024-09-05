@@ -5,6 +5,7 @@
 /*
 Visit a variant with lambdas, using the "overloaded pattern" described
 [here](https://en.cppreference.com/w/cpp/utility/variant/visit).
+
 The formatting that works with clang-format is:
 ```
 std::visit(

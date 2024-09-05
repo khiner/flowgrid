@@ -34,7 +34,7 @@ template<typename ValueType> void Store::Insert(ID set_id, const ValueType &valu
     Set(set_id, Get<immer::set<ValueType>>(set_id).insert(value));
 }
 template<typename ValueType> void Store::SetErase(ID set_id, const ValueType &value) const {
-    if (Count<immer::set<ValueType>>(set_id)) Set(set_id, Get<immer::set<ValueType>>(set_id).erase(value));
+    Set(set_id, Get<immer::set<ValueType>>(set_id).erase(value));
 }
 
 template<typename ValueType> void Store::VectorSet(ID vec_id, size_t i, const ValueType &value) const {

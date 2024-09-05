@@ -1,16 +1,12 @@
 #pragma once
 
-#include "Core/Action/ActionableProducer.h"
-#include "Core/Primitive/String.h"
-#include "Core/ProducerComponentArgs.h"
+#include "Core/ActionProducerComponent.h"
 #include "TextBuffer.h"
 
-struct TextEditor : ActionableComponent<Action::TextBuffer::Any> {
+// Will hold multiple text buffers.
+struct TextEditor : ActionProducerComponent<Action::TextBuffer::Any> {
     TextEditor(ArgsT &&, const FileDialog &, const fs::path &);
     ~TextEditor();
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override;
 
     void RenderDebug() const override;
 

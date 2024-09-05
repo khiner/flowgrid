@@ -1,18 +1,13 @@
 #pragma once
 
+#include "Core/ActionProducerComponent.h"
 #include "FileDialogAction.h"
 #include "FileDialogData.h"
 
-#include "Core/ActionableComponent.h"
-
 using ImGuiFileDialogFlags = int;
 
-// `FileDialog` is a window, but it's managed by ImGuiFileDialog, so we don't use a `Window` type.
-struct FileDialog : ActionableComponent<Action::FileDialog::Any> {
-    using ActionableComponent::ActionableComponent;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override;
+struct FileDialog : ActionProducerComponent<Action::FileDialog::Any> {
+    using ActionProducerComponent::ActionProducerComponent;
 
     void Set(const FileDialogData &) const;
 

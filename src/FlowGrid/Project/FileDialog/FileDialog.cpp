@@ -7,33 +7,9 @@
 
 #include "FileDialogDataJson.h"
 #include "FileDialogImpl.h"
-#include "Helper/File.h"
 #include "UI/HelpMarker.h"
-#include "UI/Styling.h"
 
-using std::string;
 using std::views::keys, std::ranges::to;
-
-void FileDialog::Apply(const ActionType &action) const {
-    // `SelectedFilePath` mutations are non-stateful side effects.
-    std::visit(
-        Match{
-            [this](const Action::FileDialog::Open &a) { Set(json::parse(a.dialog_json)); },
-            [](const Action::FileDialog::Select &a) { SelectedFilePath = a.file_path; },
-        },
-        action
-    );
-}
-
-bool FileDialog::CanApply(const ActionType &action) const {
-    return std::visit(
-        Match{
-            [](const Action::FileDialog::Open &) { return !Visible; },
-            [](const Action::FileDialog::Select &) { return true; }, // File dialog `Visible` is set to false _before_ the select action is issued.
-        },
-        action
-    );
-}
 
 void FileDialog::Set(const FileDialogData &data) const {
     OwnerId = data.owner_id;
@@ -65,7 +41,7 @@ bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *h
 void FileDialog::Render() const {
     if (!Visible) return FileDialogImp.Dialog->Close();
 
-    static const string DialogKey{"FileDialog"};
+    static const std::string DialogKey{"FileDialog"};
     // `OpenDialog` is a no-op if it's already open, so it's safe to call every frame.
 
     ImGuiFileDialogFlags flags = Flags;
@@ -120,9 +96,9 @@ void FileDialog::Demo::Render() const {
         Unindent();
     }
 
-    static const string ChooseFileOpen = ICON_IGFD_FOLDER_OPEN " Choose a file";
-    static const string ChooseFileSave = ICON_IGFD_SAVE " Choose a file";
-    static string FilePathName; // Keep track of the last chosen file. There's an option below to open this path.
+    static const std::string ChooseFileOpen = ICON_IGFD_FOLDER_OPEN " Choose a file";
+    static const std::string ChooseFileSave = ICON_IGFD_SAVE " Choose a file";
+    static std::string FilePathName; // Keep track of the last chosen file. There's an option below to open this path.
 
     Text("Singleton access:");
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
@@ -170,8 +146,8 @@ void FileDialog::Demo::Render() const {
     // }
 
     FilePathName = FileDialogImp.Dialog->GetFilePathName();
-    static const string file_path = FileDialogImp.Dialog->GetCurrentPath();
-    static const string user_data = FileDialogImp.Dialog->GetUserDatas() ? string((const char *)FileDialogImp.Dialog->GetUserDatas()) : "";
+    static const std::string file_path = FileDialogImp.Dialog->GetCurrentPath();
+    static const std::string user_data = FileDialogImp.Dialog->GetUserDatas() ? std::string((const char *)FileDialogImp.Dialog->GetUserDatas()) : "";
 
     Separator();
 

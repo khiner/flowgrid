@@ -11,6 +11,7 @@
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
+#include "FileDialog/FileDialogDataJson.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/Time.h"
@@ -336,7 +337,9 @@ void Project::Apply(const ActionType &action) const {
             },
             [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             [this](const Audio::ActionType &a) { Audio.Apply(a); },
-            [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
+            [this](const Action::FileDialog::Open &a) { FileDialog.Set(json::parse(a.dialog_json)); },
+            // `SelectedFilePath` mutations are non-stateful side effects.
+            [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
             [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
             [this](const Action::Windows::ToggleDebug &a) {
                 const bool toggling_on = !Windows.VisibleComponents.Contains(a.component_id);
@@ -407,7 +410,8 @@ bool Project::CanApply(const ActionType &action) const {
 
             [](const Action::Store::ApplyPatch &) { return true; },
             [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
-            [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
+            [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
+            [](const Action::FileDialog::Select &) { return true; }, // File dialog `Visible` is set to false _before_ the select action is issued.
             [](const Action::Windows::Any &) { return true; },
             [](const Action::Style::Any &) { return true; },
         },

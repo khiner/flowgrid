@@ -225,7 +225,7 @@ Patch ImGuiSettings::CreatePatch(ImGuiContext *ctx) {
     Windows.Set(ctx->SettingsWindows);
     Tables.Set(ctx->SettingsTables);
 
-    auto patch = RootStore.CreatePatchAndResetTransient(Id);
+    auto patch = S.CreatePatchAndResetTransient(Id);
     Tables.Refresh(); // xxx tables may have been modified.
 
     return patch;

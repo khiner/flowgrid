@@ -273,13 +273,13 @@ void TextBuffer::Apply(const ActionType &action) const {
 
 // todo: Need a way to merge cursor-only edits, and skip over cursor-only buffer changes when undoing/redoing.
 void TextBuffer::Commit(TextBufferData b) const {
-    RootStore.Set(Id, b);
+    S.Set(Id, b);
     State->Syntax->ApplyEdits(b.Edits);
     // b.Edits = {};
 }
 
-bool TextBuffer::Exists() const { return RootStore.Count<Buffer>(Id); }
-Buffer TextBuffer::GetBuffer() const { return RootStore.Get<Buffer>(Id); }
+bool TextBuffer::Exists() const { return S.Count<Buffer>(Id); }
+Buffer TextBuffer::GetBuffer() const { return S.Get<Buffer>(Id); }
 std::string TextBuffer::GetText() const { return GetBuffer().GetText(); }
 bool TextBuffer::Empty() const { return GetBuffer().Empty(); }
 

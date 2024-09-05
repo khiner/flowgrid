@@ -168,7 +168,7 @@ void Project::SetHistoryIndex(u32 index) const {
     // If we're mid-gesture, revert the current gesture before navigating to the new index.
     ActiveGestureActions.clear();
     History.SetIndex(index);
-    RefreshChanged(RootStore.CheckedSet(History.CurrentStore(), Id));
+    RefreshChanged(S.CheckedSet(History.CurrentStore(), Id));
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
@@ -192,13 +192,13 @@ void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
             // Primitives
-            [this](const Action::Primitive::Bool::Toggle &a) { RootStore.Set(a.component_id, !RootStore.Get<bool>(a.component_id)); },
-            [this](const Action::Primitive::Int::Set &a) { RootStore.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::UInt::Set &a) { RootStore.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Float::Set &a) { RootStore.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Enum::Set &a) { RootStore.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Flags::Set &a) { RootStore.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::String::Set &a) { RootStore.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Bool::Toggle &a) { S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
+            [this](const Action::Primitive::Int::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::UInt::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Float::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Enum::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Flags::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::String::Set &a) { S.Set(a.component_id, a.value); },
             [this](const Action::Container::Any &a) {
                 const auto *container = ById.at(a.GetComponentId());
                 std::visit(
@@ -210,59 +210,47 @@ void Project::Apply(const ActionType &action) const {
                         },
                         [this, &container](const Action::Vec2::Set &a) {
                             const auto *vec2 = static_cast<const Vec2 *>(container);
-                            RootStore.Set(vec2->X.Id, a.value.first);
-                            RootStore.Set(vec2->Y.Id, a.value.second);
+                            S.Set(vec2->X.Id, a.value.first);
+                            S.Set(vec2->Y.Id, a.value.second);
                         },
-                        [this, &container](const Action::Vec2::SetX &a) { RootStore.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
-                        [this, &container](const Action::Vec2::SetY &a) { RootStore.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
+                        [this, &container](const Action::Vec2::SetX &a) { S.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
+                        [this, &container](const Action::Vec2::SetY &a) { S.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
                         [this, &container](const Action::Vec2::SetAll &a) {
                             const auto *vec2 = static_cast<const Vec2 *>(container);
-                            RootStore.Set(vec2->X.Id, a.value);
-                            RootStore.Set(vec2->Y.Id, a.value);
+                            S.Set(vec2->X.Id, a.value);
+                            S.Set(vec2->Y.Id, a.value);
                         },
                         [this, &container](const Action::Vec2::ToggleLinked &) {
                             const auto *vec2 = static_cast<const Vec2Linked *>(container);
-                            RootStore.Set(vec2->Linked.Id, !RootStore.Get<bool>(vec2->Linked.Id));
-                            const float x = RootStore.Get<float>(vec2->X.Id);
-                            const float y = RootStore.Get<float>(vec2->Y.Id);
-                            if (x < y) RootStore.Set(vec2->Y.Id, x);
-                            else if (y < x) RootStore.Set(vec2->X.Id, y);
+                            S.Set(vec2->Linked.Id, !S.Get<bool>(vec2->Linked.Id));
+                            const float x = S.Get<float>(vec2->X.Id);
+                            const float y = S.Get<float>(vec2->Y.Id);
+                            if (x < y) S.Set(vec2->Y.Id, x);
+                            else if (y < x) S.Set(vec2->X.Id, y);
                         },
-                        [this](const Action::PrimitiveVector<bool>::Set &a) {
-                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value));
-                        },
-                        [this](const Action::PrimitiveVector<int>::Set &a) {
-                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<int>>(a.component_id).set(a.i, a.value));
-                        },
-                        [this](const Action::PrimitiveVector<u32>::Set &a) {
-                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<u32>>(a.component_id).set(a.i, a.value));
-                        },
-                        [this](const Action::PrimitiveVector<float>::Set &a) {
-                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value));
-                        },
-                        [this](const Action::PrimitiveVector<std::string>::Set &a) {
-                            RootStore.Set(a.component_id, RootStore.Get<immer::flex_vector<std::string>>(a.component_id).set(a.i, a.value));
-                        },
-                        [this](const Action::PrimitiveSet<u32>::Insert &a) {
-                            RootStore.Set(a.component_id, RootStore.Get<immer::set<u32>>(a.component_id).insert(a.value));
-                        },
-                        [this](const Action::PrimitiveSet<u32>::Erase &a) { RootStore.SetErase(a.component_id, a.value); },
+                        [this](const Action::PrimitiveVector<bool>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value)); },
+                        [this](const Action::PrimitiveVector<int>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<int>>(a.component_id).set(a.i, a.value)); },
+                        [this](const Action::PrimitiveVector<u32>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<u32>>(a.component_id).set(a.i, a.value)); },
+                        [this](const Action::PrimitiveVector<float>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<bool>>(a.component_id).set(a.i, a.value)); },
+                        [this](const Action::PrimitiveVector<std::string>::Set &a) { S.Set(a.component_id, S.Get<immer::flex_vector<std::string>>(a.component_id).set(a.i, a.value)); },
+                        [this](const Action::PrimitiveSet<u32>::Insert &a) { S.Set(a.component_id, S.Get<immer::set<u32>>(a.component_id).insert(a.value)); },
+                        [this](const Action::PrimitiveSet<u32>::Erase &a) { S.SetErase(a.component_id, a.value); },
                         [this, &container](const Action::Navigable<u32>::Clear &) {
                             const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            RootStore.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
-                            RootStore.Set(nav->Cursor.Id, 0);
+                            S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
+                            S.Set(nav->Cursor.Id, 0);
                         },
                         [this, &container](const Action::Navigable<u32>::Push &a) {
                             const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            const auto vec = RootStore.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
-                            RootStore.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
-                            RootStore.Set<u32>(nav->Cursor.Id, vec.size() - 1);
+                            const auto vec = S.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
+                            S.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
+                            S.Set<u32>(nav->Cursor.Id, vec.size() - 1);
                         },
 
                         [this, &container](const Action::Navigable<u32>::MoveTo &a) {
                             const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            auto cursor = u32(std::clamp(int(a.index), 0, int(RootStore.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
-                            RootStore.Set(nav->Cursor.Id, std::move(cursor));
+                            auto cursor = u32(std::clamp(int(a.index), 0, int(S.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
+                            S.Set(nav->Cursor.Id, std::move(cursor));
                         },
                     },
                     a
@@ -299,7 +287,7 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
             [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
 
-            [this](const Store::ActionType &a) { RootStore.Apply(a); },
+            [this](const Store::ActionType &a) { S.Apply(a); },
             [this](const Action::Project::ShowOpenDialog &) {
                 FileDialog.Set({
                     .owner_id = Id,
@@ -336,7 +324,7 @@ bool Project::CanApply(const ActionType &action) const {
             [](const Action::Project::OpenEmpty &) { return true; },
             [](const Action::Project::Open &) { return true; },
 
-            [this](const Store::ActionType &a) { return RootStore.CanApply(a); },
+            [this](const Store::ActionType &a) { return S.CanApply(a); },
             [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
             [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
             [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
@@ -510,10 +498,10 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     // Now, every flattened JSON pointer is 1:1 with an instance path.
     SetJson(std::move(j));
 
-    // We could do `RefreshChanged(RootStore.CheckedCommit(Id))`, and only refresh the changed components,
+    // We could do `RefreshChanged(S.CheckedCommit(Id))`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
     // that have already been accounted for above.
-    RootStore.Commit();
+    S.Commit();
     ClearChanged();
     LatestChangedPaths.clear();
     RefreshAll();
@@ -538,7 +526,7 @@ void Project::Open(const fs::path &file_path) const {
         for (auto &gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
-                RefreshChanged(RootStore.CheckedCommit(Id));
+                RefreshChanged(S.CheckedCommit(Id));
             }
             History.AddGesture(std::move(gesture), Id);
         }
@@ -858,7 +846,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
 
         std::visit(
             Match{
-                [this, &store = RootStore, &queue_time](const Action::Saved &a) {
+                [this, &store = S, &queue_time](const Action::Saved &a) {
                     if (auto patch = store.CheckedCommit(Id); !patch.Empty()) {
                         RefreshChanged(std::move(patch), true);
                         ActiveGestureActions.emplace_back(a, queue_time);

@@ -19,14 +19,14 @@ Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
 Component::Component(Store &store, PrimitiveActionQueuer &primitive_q, const Windows &windows, const fg::Style &style)
-    : RootStore(store), PrimitiveQ(primitive_q), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
+    : S(store), PrimitiveQ(primitive_q), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IDs::ByPath.emplace(Path, Id);
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo info, ImGuiWindowFlags flags, Menu &&menu)
-    : RootStore(parent->RootStore),
+    : S(parent->S),
       PrimitiveQ(parent->PrimitiveQ),
       gWindows(parent->gWindows),
       gStyle(parent->gStyle),

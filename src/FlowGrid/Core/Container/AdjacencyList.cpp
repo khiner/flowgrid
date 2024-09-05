@@ -7,7 +7,7 @@
 
 #include "Core/Store/Store.h"
 
-IdPairs AdjacencyList::Get() const { return RootStore.Get<IdPairs>(Id); }
+IdPairs AdjacencyList::Get() const { return S.Get<IdPairs>(Id); }
 
 // Non-recursive DFS handling cycles.
 bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
@@ -31,16 +31,16 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     return false;
 }
 
-bool AdjacencyList::Exists() const { return RootStore.Count<IdPairs>(Id); }
+bool AdjacencyList::Exists() const { return S.Count<IdPairs>(Id); }
 
 bool AdjacencyList::IsConnected(ID source, ID destination) const {
-    return RootStore.Get<IdPairs>(Id).count({source, destination}) > 0;
+    return S.Get<IdPairs>(Id).count({source, destination}) > 0;
 }
 void AdjacencyList::Disconnect(ID source, ID destination) const {
-    RootStore.Set(Id, RootStore.Get<IdPairs>(Id).erase({source, destination}));
+    S.Set(Id, S.Get<IdPairs>(Id).erase({source, destination}));
 }
 void AdjacencyList::Add(IdPair &&id_pair) const {
-    RootStore.Set(Id, RootStore.Get<IdPairs>(Id).insert(std::move(id_pair)));
+    S.Set(Id, S.Get<IdPairs>(Id).insert(std::move(id_pair)));
 }
 void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
 
@@ -57,7 +57,7 @@ u32 AdjacencyList::DestinationCount(ID source) const {
     return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
-void AdjacencyList::Erase() const { RootStore.Erase<IdPairs>(Id); }
+void AdjacencyList::Erase() const { S.Erase<IdPairs>(Id); }
 
 using namespace ImGui;
 

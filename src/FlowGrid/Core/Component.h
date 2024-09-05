@@ -214,7 +214,7 @@ struct Component {
 
     // todo next up: instead of using a reference to the root store, provide a function to get the root store.
     //   then, instead of modifying the root store during store commits, create a new store and replace it (more value-oriented).
-    Store &RootStore; // Reference to the store at the root of this component's tree.
+    Store &S; // Reference to the store at the root of this component's tree.
     PrimitiveActionQueuer &PrimitiveQ;
     const Windows &gWindows;
     const fg::Style &gStyle;

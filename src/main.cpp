@@ -23,7 +23,7 @@ Patch CreatePatch(Project &project) {
 }
 
 bool Tick(Project &project, const UIContext &ui) {
-    static auto &io = ImGui::GetIO();
+    auto &io = ImGui::GetIO();
 
     const bool running = ui.Tick(project);
     if (running && io.WantSaveIniSettings) {

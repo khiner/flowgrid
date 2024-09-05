@@ -338,7 +338,37 @@ void Project::Apply(const ActionType &action) const {
             [this](const Audio::ActionType &a) { Audio.Apply(a); },
             [this](const FileDialog::ActionType &a) { FileDialog.Apply(a); },
             [this](const Windows::ActionType &a) { Windows.Apply(a); },
-            [this](const fg::Style::ActionType &a) { Style.Apply(a); },
+            [this](const Action::Style::SetImGuiColorPreset &a) {
+                // todo enum types instead of raw int keys
+                switch (a.id) {
+                    case 0: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsDark);
+                    case 1: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsLight);
+                    case 2: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsClassic);
+                }
+            },
+            [this](const Action::Style::SetImPlotColorPreset &a) {
+                switch (a.id) {
+                    case 0:
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsAuto);
+                        return Style.ImPlot.MinorAlpha.Set(0.25f);
+                    case 1:
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsDark);
+                        return Style.ImPlot.MinorAlpha.Set(0.25f);
+                    case 2:
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsLight);
+                        return Style.ImPlot.MinorAlpha.Set(1);
+                    case 3:
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsClassic);
+                        return Style.ImPlot.MinorAlpha.Set(0.5f);
+                }
+            },
+            [this](const Action::Style::SetFlowGridColorPreset &a) {
+                switch (a.id) {
+                    case 0: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsDark);
+                    case 1: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsLight);
+                    case 2: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
+                }
+            },
         },
         action
     );
@@ -363,11 +393,11 @@ bool Project::CanApply(const ActionType &action) const {
             [](const Action::Project::OpenEmpty &) { return true; },
             [](const Action::Project::Open &) { return true; },
 
-            [](const Action::Store::ApplyPatch &a) { return true; },
+            [](const Action::Store::ApplyPatch &) { return true; },
             [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
             [this](const FileDialog::ActionType &a) { return FileDialog.CanApply(a); },
             [this](const Windows::ActionType &a) { return Windows.CanApply(a); },
-            [this](const fg::Style::ActionType &a) { return Style.CanApply(a); },
+            [](const Action::Style::Any &) { return true; },
         },
         action
     );

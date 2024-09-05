@@ -17,53 +17,12 @@ std::vector<ImVec4> Style::ImPlotStyle::ColorsLight(ImPlotCol_COUNT);
 std::vector<ImVec4> Style::ImPlotStyle::ColorsDark(ImPlotCol_COUNT);
 std::vector<ImVec4> Style::ImPlotStyle::ColorsClassic(ImPlotCol_COUNT);
 
-void Style::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            // todo enum types instead of raw int keys
-            [this](const Action::Style::SetImGuiColorPreset &a) {
-                switch (a.id) {
-                    case 0: return ImGui.Colors.Set(ImGuiStyle::ColorsDark);
-                    case 1: return ImGui.Colors.Set(ImGuiStyle::ColorsLight);
-                    case 2: return ImGui.Colors.Set(ImGuiStyle::ColorsClassic);
-                }
-            },
-            [this](const Action::Style::SetImPlotColorPreset &a) {
-                switch (a.id) {
-                    case 0:
-                        ImPlot.Colors.Set(ImPlotStyle::ColorsAuto);
-                        return ImPlot.MinorAlpha.Set(0.25f);
-                    case 1:
-                        ImPlot.Colors.Set(ImPlotStyle::ColorsDark);
-                        return ImPlot.MinorAlpha.Set(0.25f);
-                    case 2:
-                        ImPlot.Colors.Set(ImPlotStyle::ColorsLight);
-                        return ImPlot.MinorAlpha.Set(1);
-                    case 3:
-                        ImPlot.Colors.Set(ImPlotStyle::ColorsClassic);
-                        return ImPlot.MinorAlpha.Set(0.5f);
-                }
-            },
-            [this](const Action::Style::SetFlowGridColorPreset &a) {
-                switch (a.id) {
-                    case 0: return FlowGrid.Colors.Set(FlowGridStyle::ColorsDark);
-                    case 1: return FlowGrid.Colors.Set(FlowGridStyle::ColorsLight);
-                    case 2: return FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
-                }
-            },
-        },
-        action
-    );
-}
-
-bool Style::CanApply(const ActionType &) const { return true; }
-
 Style::ImGuiStyle::ImGuiStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
     for (const auto *child : Children) child->RegisterChangeListener(this);
 
-    ImGui::StyleColorsDark(&ColorsDark[0]);
-    ImGui::StyleColorsLight(&ColorsLight[0]);
-    ImGui::StyleColorsClassic(&ColorsClassic[0]);
+    ImGui::StyleColorsDark(ColorsDark.data());
+    ImGui::StyleColorsLight(ColorsLight.data());
+    ImGui::StyleColorsClassic(ColorsClassic.data());
     Colors.Set(ColorsDark);
 }
 Style::ImGuiStyle::~ImGuiStyle() {
@@ -73,10 +32,10 @@ Style::ImGuiStyle::~ImGuiStyle() {
 Style::ImPlotStyle::ImPlotStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
     for (const auto *child : Children) child->RegisterChangeListener(this);
 
-    ImPlot::StyleColorsAuto(&ColorsAuto[0]);
-    ImPlot::StyleColorsDark(&ColorsDark[0]);
-    ImPlot::StyleColorsLight(&ColorsLight[0]);
-    ImPlot::StyleColorsClassic(&ColorsClassic[0]);
+    ImPlot::StyleColorsAuto(ColorsAuto.data());
+    ImPlot::StyleColorsDark(ColorsDark.data());
+    ImPlot::StyleColorsLight(ColorsLight.data());
+    ImPlot::StyleColorsClassic(ColorsClassic.data());
     Colors.Set(ColorsAuto);
 }
 Style::ImPlotStyle::~ImPlotStyle() {

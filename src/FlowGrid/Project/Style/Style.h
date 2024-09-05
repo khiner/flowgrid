@@ -2,7 +2,6 @@
 
 #include "Colors.h"
 #include "Core/ActionProducerComponent.h"
-#include "Core/ActionableComponent.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
@@ -45,11 +44,8 @@ protected:
 };
 
 namespace FlowGrid {
-struct Style : ActionableComponent<Action::Style::Any, FlowGridStyle::ProducedActionType> {
-    using ActionableComponent::ActionableComponent;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override;
+struct Style : ActionProducerComponent<FlowGridStyle::ProducedActionType> {
+    using ActionProducerComponent::ActionProducerComponent;
 
     struct ImGuiStyle : ActionProducerComponent<ProducedActionType>, Component::ChangeListener {
         ImGuiStyle(ArgsT &&);

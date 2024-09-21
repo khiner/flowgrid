@@ -248,21 +248,21 @@ void TextBuffer::Apply(const ActionType &action) const {
             // Non-buffer actions
             [this](const ShowOpenDialog &) {
                 FileDialog.Set({
-                    .owner_id = Id,
-                    .title = "Open file",
-                    .filters = ".*", // No filter for opens. Go nuts :)
-                    .save_mode = false,
-                    .max_num_selections = 1, // todo open multiple files
+                    .OwnerId = Id,
+                    .Title = "Open file",
+                    .Filters = ".*", // No filter for opens. Go nuts :)
+                    .SaveMode = false,
+                    .MaxNumSelections = 1, // todo open multiple files
                 });
             },
             [this](const ShowSaveDialog &) {
                 const std::string current_file_ext = fs::path(LastOpenedFilePath).extension();
                 FileDialog.Set({
-                    .owner_id = Id,
-                    .title = std::format("Save {} file", State->Syntax->GetLanguageName()),
-                    .filters = current_file_ext,
-                    .default_file_name = std::format("my_{}_program{}", State->Syntax->GetLanguageName() | transform(::tolower) | to<std::string>(), current_file_ext),
-                    .save_mode = true,
+                    .OwnerId = Id,
+                    .Title = std::format("Save {} file", State->Syntax->GetLanguageName()),
+                    .Filters = current_file_ext,
+                    .DefaultFileName = std::format("my_{}_program{}", State->Syntax->GetLanguageName() | transform(::tolower) | to<std::string>(), current_file_ext),
+                    .SaveMode = true,
                 });
             },
             [this](const Save &a) { FileIO::write(a.file_path, GetBuffer().GetText()); },
@@ -655,10 +655,10 @@ void TextBuffer::Refresh() {
 
 void TextBuffer::Render() const {
     static std::string PrevSelectedPath = "";
-    if (FileDialog.OwnerId == Id && PrevSelectedPath != FileDialog.SelectedFilePath) {
+    if (FileDialog.Data.OwnerId == Id && PrevSelectedPath != FileDialog.SelectedFilePath) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         PrevSelectedPath = FileDialog.SelectedFilePath = "";
-        if (FileDialog.SaveMode) Q(Action::TextBuffer::Save{Id, selected_path});
+        if (FileDialog.Data.SaveMode) Q(Action::TextBuffer::Save{Id, selected_path});
         else Q(Action::TextBuffer::Open{Id, selected_path});
     }
 

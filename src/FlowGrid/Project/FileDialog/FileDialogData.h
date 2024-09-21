@@ -10,12 +10,12 @@ constexpr ImGuiFileDialogFlags FileDialogFlags_ConfirmOverwrite = 1 << 0;
 constexpr ImGuiFileDialogFlags FileDialogFlags_Modal = 1 << 9;
 
 struct FileDialogData {
-    ID owner_id;
-    std::string title{"Choose file"};
-    std::string filters{".*"};
-    std::string file_path{"."};
-    std::string default_file_name{""};
-    bool save_mode{false};
-    int max_num_selections{1};
-    ImGuiFileDialogFlags flags{FileDialogFlags_Modal};
+    ID OwnerId;
+    std::string Title{"Choose file"};
+    std::string Filters{".*"};
+    std::string FilePath{"."};
+    std::string DefaultFileName{""};
+    bool SaveMode{false};
+    int MaxNumSelections{1};
+    ImGuiFileDialogFlags Flags{FileDialogFlags_Modal};
 };

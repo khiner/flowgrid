@@ -11,7 +11,6 @@
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
-#include "FileDialog/FileDialogDataJson.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/Time.h"
@@ -29,9 +28,9 @@ static const std::map<ProjectFormat, std::string_view> ExtensionByProjectFormat{
     {ProjectFormat::ActionFormat, ".fla"},
     {ProjectFormat::StateFormat, ".fls"},
 };
-static const auto ProjectFormatByExtension = ExtensionByProjectFormat | transform([](const auto &p) { return std::pair(p.second, p.first); }) | to<std::map>();
+static const auto ProjectFormatByExtension = ExtensionByProjectFormat | transform([](const auto &pe) { return std::pair(pe.second, pe.first); }) | to<std::map>();
 static const auto AllProjectExtensions = ProjectFormatByExtension | keys;
-static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | join | to<std::string>();
+static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | transform([](const auto &e) { return std::format("{}, ", e); }) | join | to<std::string>();
 
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + string(ExtensionByProjectFormat.at(ProjectFormat::StateFormat)));
 // The default project is a user-created project that loads on app start, instead of the empty project.
@@ -330,14 +329,14 @@ void Project::Apply(const ActionType &action) const {
             },
             [this](const Action::Project::ShowOpenDialog &) {
                 FileDialog.Set({
-                    .owner_id = Id,
-                    .title = "Choose file",
-                    .filters = AllProjectExtensionsDelimited,
+                    .OwnerId = Id,
+                    .Title = "Choose file",
+                    .Filters = AllProjectExtensionsDelimited,
                 });
             },
             [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             [this](const Audio::ActionType &a) { Audio.Apply(a); },
-            [this](const Action::FileDialog::Open &a) { FileDialog.Set(json::parse(a.dialog_json)); },
+            [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
             [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
             [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
@@ -499,10 +498,10 @@ void Project::Render() const {
 
     // Handle file dialog.
     static string PrevSelectedPath = "";
-    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.OwnerId == Id) {
+    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.Data.OwnerId == Id) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         PrevSelectedPath = FileDialog.SelectedFilePath = "";
-        if (FileDialog.SaveMode) Q(Action::Project::Save{selected_path});
+        if (FileDialog.Data.SaveMode) Q(Action::Project::Save{selected_path});
         else Q(Action::Project::Open{selected_path});
     }
 

@@ -6,7 +6,6 @@
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/String.h"
-#include "Project/FileDialog/FileDialogData.h"
 
 #include "TextBufferAction.h"
 #include "TextBufferData.h"

@@ -2,12 +2,10 @@
 
 #include "FlowGrid/Core/Primitive/PrimitiveActionQueuer.h"
 #include "FlowGrid/Core/Store/Store.h"
-#include "FlowGrid/Project/FileDialog/FileDialogImpl.h"
+#include "FlowGrid/Project/FileDialog/FileDialogManager.h"
 #include "FlowGrid/Project/Project.h"
 #include "UI/Fonts.h"
 #include "UI/UIContext.h"
-
-FileDialogImpl FileDialogImp;
 
 Patch CreatePatch(Project &project) {
     auto *ctx = ImGui::GetCurrentContext();
@@ -44,18 +42,17 @@ int main() {
     PrimitiveActionQueuer primitive_queuer{[&q](auto &&action) -> bool { return std::visit(q, std::move(action)); }};
     Project project{store, primitive_queuer, q};
 
-    const UIContext ui{project.ImGuiSettings, project.Style}; // Initialize ImGui and other UI state.
-    Fonts::Init(); // Must be done after initializing ImGui.
-    FileDialogImp.AddFonts();
-    ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
-
     // Initialize the global canonical store with all project state values set during project initialization.
     store.Commit();
 
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
     Component::RefreshAll();
 
-    FileDialogImp.Init();
+    const UIContext ui{project.ImGuiSettings, project.Style}; // Initialize ImGui and other UI state.
+    Fonts::Init(); // Must be done after initializing ImGui.
+    ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
+
+    FileDialogManager::Init();
 
     {
         // Relying on these rendering side effects up front is not great.
@@ -72,7 +69,7 @@ int main() {
         project.ApplyQueuedActions(queue, false, project.FileDialog.Visible);
     }
 
-    FileDialogImp.Uninit();
+    FileDialogManager::Uninit();
 
     return 0;
 }

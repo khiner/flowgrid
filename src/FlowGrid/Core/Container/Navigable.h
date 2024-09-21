@@ -1,18 +1,24 @@
 #pragma once
 
-#include "Container.h"
 #include "Core/Action/ActionProducer.h"
 #include "Core/Container/Vector.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/ProducerComponentArgs.h"
 #include "NavigableAction.h"
 
-template<typename T> struct Navigable : Container, ActionProducer<typename Action::Navigable<T>::Any> {
+template<typename T> struct Navigable : Component, ActionProducer<typename Action::Navigable<T>::Any> {
     using ActionT = typename Action::Navigable<T>;
     using ArgsT = ProducerComponentArgs<typename ActionT::Any>;
     using typename ActionProducer<typename ActionT::Any>::ProducedActionType;
 
-    Navigable(ArgsT &&args) : Container(std::move(args.Args)), ActionProducer<ProducedActionType>(std::move(args.Q)) {}
+    Navigable(ArgsT &&args) : Component(std::move(args.Args)), ActionProducer<ProducedActionType>(std::move(args.Q)) {
+        FieldIds.insert(Id);
+        Refresh();
+    }
+    ~Navigable() {
+        Erase();
+        FieldIds.erase(Id);
+    }
 
     void IssueClear() const { ActionProducer<ProducedActionType>::Q(typename ActionT::Clear{Id}); }
     template<typename U> void IssuePush(U &&value) const { ActionProducer<ProducedActionType>::Q(typename ActionT::Push{Id, std::forward<U>(value)}); }

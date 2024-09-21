@@ -67,11 +67,11 @@ Component::~Component() {
 bool Component::IsChanged(bool include_descendents) const noexcept {
     return ChangedIds.contains(Id) || (include_descendents && IsDescendentChanged());
 }
-const Component *Component::FindAncestorContainer(const Component &component) {
-    for (const auto *ancestor = component.Parent; ancestor != nullptr; ancestor = ancestor->Parent) {
-        if (ContainerIds.contains(ancestor->Id)) return ancestor;
+bool Component::HasAncestorContainer() const {
+    for (const auto *ancestor = Parent; ancestor != nullptr; ancestor = ancestor->Parent) {
+        if (ContainerIds.contains(ancestor->Id)) return true;
     }
-    return nullptr;
+    return false;
 }
 
 // By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,
@@ -90,9 +90,7 @@ json Component::ToJson() const {
             auto leaf_json = current->ToJson();
             if (!leaf_json.is_null()) j[current->JsonPointer()] = std::move(leaf_json);
         } else {
-            for (const auto *child : current->Children) {
-                to_visit.push(child);
-            }
+            for (const auto *child : current->Children) to_visit.push(child);
         }
     }
 
@@ -240,9 +238,7 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
     if (Children.empty()) return TextUnformatted(Name.c_str());
 
     if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel, false, nullptr, false, auto_select)) {
-        for (const auto *child : Children) {
-            child->RenderValueTree(annotate, auto_select);
-        }
+        for (const auto *child : Children) child->RenderValueTree(annotate, auto_select);
         TreePop();
     }
 }

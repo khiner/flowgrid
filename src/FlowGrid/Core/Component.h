@@ -92,8 +92,6 @@ struct Component {
     inline static std::unordered_set<ID> ContainerIds;
     inline static std::unordered_set<ID> ContainerAuxiliaryIds;
 
-    static const Component *FindAncestorContainer(const Component &);
-
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
 
     static void RegisterChangeListener(ChangeListener *listener, const Component &component) noexcept {
@@ -189,6 +187,7 @@ struct Component {
     // or if any of its descendent components have changed, if `include_descendents` is true.
     bool IsChanged(bool include_descendents = false) const noexcept;
     bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
+    bool HasAncestorContainer() const;
 
     ImGuiWindow *FindWindow() const;
     ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).

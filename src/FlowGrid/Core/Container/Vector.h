@@ -2,7 +2,7 @@
 
 #include "immer/flex_vector.hpp"
 
-#include "Container.h"
+#include "Core/Component.h"
 
 template<typename T> struct Vector : Component {
     using ContainerT = immer::flex_vector<T>;

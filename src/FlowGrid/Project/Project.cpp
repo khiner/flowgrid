@@ -117,7 +117,7 @@ Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops
         if (ops.size() == 1 && (ops.front().Op == PatchOpType::Add || ops.front().Op == PatchOpType::Remove)) {
             // Do not mark any components as added/removed if they are within a container.
             // The container's auxiliary component is marked as changed instead (and its ID will be in same patch).
-            if (auto *container = FindAncestorContainer(*component)) return nullptr;
+            if (component->HasAncestorContainer()) return nullptr;
         }
         // When a container's auxiliary component is changed, mark the container as changed instead.
         if (ContainerAuxiliaryIds.contains(component_id)) return component->Parent;

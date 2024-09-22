@@ -203,8 +203,16 @@ struct Component {
 
     const FlowGridStyle &GetFlowGridStyle() const;
 
-    // todo next up: instead of using a reference to the root store, provide a function to get the root store.
-    //   then, instead of modifying the root store during store commits, create a new store and replace it (more value-oriented).
+    /* todo next up: make `S` a const ref, and reassign to the (initially, single) root store in `main` during action
+    application, making state updates fully value-oriented.
+    ```
+    Store store;
+    Project project(store); // Passed as a const ref to the root project component.
+    // In main action loop:
+    store = project.Apply(action); // Note that we don't need to pass the store to the project,
+    because the project already has a reference to it.
+    */
+
     Store &S; // Reference to the store at the root of this component's tree.
     PrimitiveActionQueuer &PrimitiveQ;
     const Windows &gWindows;

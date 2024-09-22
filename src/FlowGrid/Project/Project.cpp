@@ -196,76 +196,7 @@ void ApplySetErase(Store &s, const auto &a) { s.Set(a.component_id, s.Get<immer:
 void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            // Primitives
-            [this](const Action::Primitive::Bool::Toggle &a) { S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
-            [this](const Action::Primitive::Int::Set &a) { S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::UInt::Set &a) { S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Float::Set &a) { S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Enum::Set &a) { S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Flags::Set &a) { S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::String::Set &a) { S.Set(a.component_id, a.value); },
-            [this](const Action::Container::Any &a) {
-                const auto *container = ById.at(a.GetComponentId());
-                std::visit(
-                    Match{
-                        [&container](const Action::AdjacencyList::ToggleConnection &a) {
-                            const auto *al = static_cast<const AdjacencyList *>(container);
-                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
-                            else al->Connect(a.source, a.destination);
-                        },
-                        [this, &container](const Action::Vec2::Set &a) {
-                            const auto *vec2 = static_cast<const Vec2 *>(container);
-                            S.Set(vec2->X.Id, a.value.first);
-                            S.Set(vec2->Y.Id, a.value.second);
-                        },
-                        [this, &container](const Action::Vec2::SetX &a) { S.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
-                        [this, &container](const Action::Vec2::SetY &a) { S.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
-                        [this, &container](const Action::Vec2::SetAll &a) {
-                            const auto *vec2 = static_cast<const Vec2 *>(container);
-                            S.Set(vec2->X.Id, a.value);
-                            S.Set(vec2->Y.Id, a.value);
-                        },
-                        [this, &container](const Action::Vec2::ToggleLinked &) {
-                            const auto *vec2 = static_cast<const Vec2Linked *>(container);
-                            S.Set(vec2->Linked.Id, !S.Get<bool>(vec2->Linked.Id));
-                            const float x = S.Get<float>(vec2->X.Id);
-                            const float y = S.Get<float>(vec2->Y.Id);
-                            if (x < y) S.Set(vec2->Y.Id, x);
-                            else if (y < x) S.Set(vec2->X.Id, y);
-                        },
-                        [this](const Action::Vector<bool>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::Vector<int>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::Vector<u32>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::Vector<float>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::Vector<std::string>::Set &a) { ApplyVectorSet(S, a); },
-                        [this](const Action::Set<u32>::Insert &a) { ApplySetInsert(S, a); },
-                        [this](const Action::Set<u32>::Erase &a) { ApplySetErase(S, a); },
-                        [this, &container](const Action::Navigable<u32>::Clear &) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
-                            S.Set(nav->Cursor.Id, 0);
-                        },
-                        [this, &container](const Action::Navigable<u32>::Push &a) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            const auto vec = S.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
-                            S.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
-                            S.Set<u32>(nav->Cursor.Id, vec.size() - 1);
-                        },
-
-                        [this, &container](const Action::Navigable<u32>::MoveTo &a) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            auto cursor = u32(std::clamp(int(a.index), 0, int(S.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
-                            S.Set(nav->Cursor.Id, std::move(cursor));
-                        },
-                    },
-                    a
-                );
-            },
-            [](const Action::TextBuffer::Any &a) {
-                const auto *buffer = ById.at(a.GetComponentId());
-                static_cast<const TextBuffer *>(buffer)->Apply(a);
-            },
-
+            /* Project */
             [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
             [this](const Action::Project::Open &a) { Open(a.file_path); },
             [this](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
@@ -275,7 +206,7 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Project::SaveCurrent &) {
                 if (CurrentProjectPath) Save(*CurrentProjectPath);
             },
-            // History-changing actions:
+            /* Project history */
             [this](const Action::Project::Undo &) {
                 // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
                 // If we're at the end of the stack, we want to commit the active gesture and add it to the stack.
@@ -291,7 +222,75 @@ void Project::Apply(const ActionType &action) const {
             },
             [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
             [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+            /* Primitives */
+            [this](const Action::Primitive::Bool::Toggle &a) { S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
+            [this](const Action::Primitive::Int::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::UInt::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Float::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Enum::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Flags::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::String::Set &a) { S.Set(a.component_id, a.value); },
+            [this](const Action::Container::Any &a) {
+                const auto *container = ById.at(a.GetComponentId());
+                std::visit(
+                    Match{
+                        [container](const Action::AdjacencyList::ToggleConnection &a) {
+                            const auto *al = static_cast<const AdjacencyList *>(container);
+                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
+                            else al->Connect(a.source, a.destination);
+                        },
+                        [this, container](const Action::Vec2::Set &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(container);
+                            S.Set(vec2->X.Id, a.value.first);
+                            S.Set(vec2->Y.Id, a.value.second);
+                        },
+                        [this, container](const Action::Vec2::SetX &a) { S.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
+                        [this, container](const Action::Vec2::SetY &a) { S.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
+                        [this, container](const Action::Vec2::SetAll &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(container);
+                            S.Set(vec2->X.Id, a.value);
+                            S.Set(vec2->Y.Id, a.value);
+                        },
+                        [this, container](const Action::Vec2::ToggleLinked &) {
+                            const auto *vec2 = static_cast<const Vec2Linked *>(container);
+                            S.Set(vec2->Linked.Id, !S.Get<bool>(vec2->Linked.Id));
+                            const float x = S.Get<float>(vec2->X.Id);
+                            const float y = S.Get<float>(vec2->Y.Id);
+                            if (x < y) S.Set(vec2->Y.Id, x);
+                            else if (y < x) S.Set(vec2->X.Id, y);
+                        },
+                        [this](const Action::Vector<bool>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<int>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<u32>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<float>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Vector<std::string>::Set &a) { ApplyVectorSet(S, a); },
+                        [this](const Action::Set<u32>::Insert &a) { ApplySetInsert(S, a); },
+                        [this](const Action::Set<u32>::Erase &a) { ApplySetErase(S, a); },
+                        [this, container](const Action::Navigable<u32>::Clear &) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
+                            S.Set(nav->Cursor.Id, 0);
+                        },
+                        [this, container](const Action::Navigable<u32>::Push &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            const auto vec = S.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
+                            S.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
+                            S.Set<u32>(nav->Cursor.Id, vec.size() - 1);
+                        },
 
+                        [this, container](const Action::Navigable<u32>::MoveTo &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            auto cursor = u32(std::clamp(int(a.index), 0, int(S.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
+                            S.Set(nav->Cursor.Id, std::move(cursor));
+                        },
+                    },
+                    a
+                );
+            },
+            [](const Action::TextBuffer::Any &a) {
+                const auto *buffer = ById.at(a.GetComponentId());
+                static_cast<const TextBuffer *>(buffer)->Apply(a);
+            },
             [this](const Action::Store::ApplyPatch &a) {
                 for (const auto &[id, ops] : a.patch.Ops) {
                     for (const auto &op : ops) {

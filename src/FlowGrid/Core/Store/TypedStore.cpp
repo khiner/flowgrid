@@ -39,9 +39,9 @@ void AddOps(const StoreMap<TextBufferData> &before, const StoreMap<TextBufferDat
     diff(
         before,
         after,
-        [&](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, "", std::nullopt); },
-        [&](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, ""); },
-        [&](const auto &o, const auto &n) { ops[o.first].emplace_back(PatchOpType::Replace, "", ""); }
+        [&ops](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, "", std::nullopt); },
+        [&ops](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, ""); },
+        [&ops](const auto &o, const auto &) { ops[o.first].emplace_back(PatchOpType::Replace, "", ""); }
     );
 }
 
@@ -50,9 +50,9 @@ void AddOps(const StoreMap<ValueType> &before, const StoreMap<ValueType> &after,
     diff(
         before,
         after,
-        [&](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, added.second, std::nullopt); },
-        [&](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, removed.second); },
-        [&](const auto &o, const auto &n) { ops[o.first].emplace_back(PatchOpType::Replace, n.second, o.second); }
+        [&ops](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, added.second, std::nullopt); },
+        [&ops](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, removed.second); },
+        [&ops](const auto &o, const auto &n) { ops[o.first].emplace_back(PatchOpType::Replace, n.second, o.second); }
     );
 }
 
@@ -60,18 +60,18 @@ void AddOps(const StoreMap<IdPairs> &before, const StoreMap<IdPairs> &after, Pat
     diff(
         before,
         after,
-        [&](const auto &added) {
+        [&ops](const auto &added) {
             for (const auto &id_pair : added.second) ops[added.first].emplace_back(PatchOpType::Insert, SerializeIdPair(id_pair), std::nullopt);
         },
-        [&](const auto &removed) {
+        [&ops](const auto &removed) {
             for (const auto &id_pair : removed.second) ops[removed.first].emplace_back(PatchOpType::Erase, std::nullopt, SerializeIdPair(id_pair));
         },
-        [&](const auto &o, const auto &n) {
+        [&ops](const auto &o, const auto &n) {
             diff(
                 o.second,
                 n.second,
-                [&](const auto &added) { ops[n.first].emplace_back(PatchOpType::Insert, SerializeIdPair(added), std::nullopt); },
-                [&](const auto &removed) { ops[o.first].emplace_back(PatchOpType::Erase, std::nullopt, SerializeIdPair(removed)); },
+                [&ops, &n](const auto &added) { ops[n.first].emplace_back(PatchOpType::Insert, SerializeIdPair(added), std::nullopt); },
+                [&ops, &o](const auto &removed) { ops[o.first].emplace_back(PatchOpType::Erase, std::nullopt, SerializeIdPair(removed)); },
                 [](const auto &, const auto &) {} // Change callback required but never called for `immer::set`.
             );
         }
@@ -82,18 +82,18 @@ void AddOps(const StoreMap<immer::set<u32>> &before, const StoreMap<immer::set<u
     diff(
         before,
         after,
-        [&](const auto &added) {
+        [&ops](const auto &added) {
             for (auto v : added.second) ops[added.first].emplace_back(PatchOpType::Insert, v, std::nullopt);
         },
-        [&](const auto &removed) {
+        [&ops](const auto &removed) {
             for (auto v : removed.second) ops[removed.first].emplace_back(PatchOpType::Erase, std::nullopt, v);
         },
-        [&](const auto &o, const auto &n) {
+        [&ops](const auto &o, const auto &n) {
             diff(
                 o.second,
                 n.second,
-                [&](auto added) { ops[n.first].emplace_back(PatchOpType::Insert, added, std::nullopt); },
-                [&](auto removed) { ops[o.first].emplace_back(PatchOpType::Erase, std::nullopt, removed); },
+                [&ops, &n](auto added) { ops[n.first].emplace_back(PatchOpType::Insert, added, std::nullopt); },
+                [&ops, &o](auto removed) { ops[o.first].emplace_back(PatchOpType::Erase, std::nullopt, removed); },
                 [](const auto &, const auto &) {} // Change callback required but never called for `immer::set`.
             );
         }
@@ -104,24 +104,24 @@ template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, 
     diff(
         before,
         after,
-        [&](const auto &added) {
+        [&ops](const auto &added) {
             for (auto v : added.second) ops[added.first].emplace_back(PatchOpType::PushBack, v, std::nullopt);
         },
-        [&](const auto &removed) {
+        [&ops](const auto &removed) {
             for (auto v : std::ranges::reverse_view(removed.second)) ops[removed.first].emplace_back(PatchOpType::PopBack, std::nullopt, v);
         },
-        [&](const auto &o, const auto &n) {
+        [&ops](const auto &o, const auto &n) {
             diff(
                 o.second,
                 n.second,
                 // `diff` for `immer::vector<T>` provides callback values of type `pair<size_t, const T&>`,
                 // where the first element is the index and the second is the value.
-                [&](size_t, T added) { ops[n.first].emplace_back(PatchOpType::PushBack, added, std::nullopt); },
-                [&](size_t, T removed) { ops[o.first].emplace_back(PatchOpType::PopBack, std::nullopt, removed); },
+                [&ops, &n](size_t, T added) { ops[n.first].emplace_back(PatchOpType::PushBack, added, std::nullopt); },
+                [&ops, &o](size_t, T removed) { ops[o.first].emplace_back(PatchOpType::PopBack, std::nullopt, removed); },
                 // `PatchOpType::Set` op type is used to distinguish between primitive value changes and vector element changes.
                 // (Primitive value changes are of type `PatchOpType::Replace`.)
                 // This is also the only patch op path that does _not_ point straight to the component.
-                [&](size_t i, T o_el, T n_el) { ops[o.first].emplace_back(PatchOpType::Set, n_el, o_el, i); }
+                [&ops, &o](size_t i, T o_el, T n_el) { ops[o.first].emplace_back(PatchOpType::Set, n_el, o_el, i); }
             );
         }
     );

@@ -2,34 +2,10 @@
 
 #include "imgui.h"
 
-FaustGraphStyle::FaustGraphStyle(ArgsT &&args) : ActionableComponent(std::move(args)) {
+FaustGraphStyle::FaustGraphStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
     Colors.Set(ColorsDark);
     LayoutFlowGrid();
 }
-
-void FaustGraphStyle::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
-                switch (a.id) {
-                    case 0: return Colors.Set(ColorsDark);
-                    case 1: return Colors.Set(ColorsLight);
-                    case 2: return Colors.Set(ColorsClassic);
-                    case 3: return Colors.Set(ColorsFaust);
-                }
-            },
-            [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
-                switch (a.id) {
-                    case 0: return LayoutFlowGrid();
-                    case 1: return LayoutFaust();
-                }
-            },
-        },
-        action
-    );
-}
-
-bool FaustGraphStyle::CanApply(const ActionType &) const { return true; }
 
 const char *FaustGraphStyle::GetColorName(FlowGridGraphCol idx) {
     switch (idx) {

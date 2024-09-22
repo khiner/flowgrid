@@ -334,7 +334,27 @@ void Project::Apply(const ActionType &action) const {
                 });
             },
             [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
-            [this](const Audio::ActionType &a) { Audio.Apply(a); },
+            /* Audio */
+            [this](const Action::AudioGraph::Any &a) { Audio.Graph.Apply(a); },
+            [this](const Action::Faust::DSP::Create &) { Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
+            [this](const Action::Faust::DSP::Delete &a) { Audio.Faust.FaustDsps.EraseId(a.id); },
+            [this](const Action::Faust::Graph::Any &a) { Audio.Faust.Graphs.Apply(a); },
+            [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
+                const auto &colors = Audio.Faust.Graphs.Style.Colors;
+                switch (a.id) {
+                    case 0: return colors.Set(FaustGraphStyle::ColorsDark);
+                    case 1: return colors.Set(FaustGraphStyle::ColorsLight);
+                    case 2: return colors.Set(FaustGraphStyle::ColorsClassic);
+                    case 3: return colors.Set(FaustGraphStyle::ColorsFaust);
+                }
+            },
+            [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
+                const auto &style = Audio.Faust.Graphs.Style;
+                switch (a.id) {
+                    case 0: return style.LayoutFlowGrid();
+                    case 1: return style.LayoutFaust();
+                }
+            },
             [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
             [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
@@ -407,7 +427,10 @@ bool Project::CanApply(const ActionType &action) const {
             [](const Action::Project::Open &) { return true; },
 
             [](const Action::Store::ApplyPatch &) { return true; },
-            [this](const Audio::ActionType &a) { return Audio.CanApply(a); },
+            [this](const Action::AudioGraph::Any &a) { return Audio.Graph.CanApply(a); },
+            [](const Action::Faust::DSP::Any &) { return true; },
+            [this](const Action::Faust::Graph::Any &a) { return Audio.Faust.Graphs.CanApply(a); },
+            [](const Action::Faust::GraphStyle::Any &) { return true; },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
             [](const Action::FileDialog::Select &) { return true; }, // File dialog `Visible` is set to false _before_ the select action is issued.
             [](const Action::Windows::Any &) { return true; },

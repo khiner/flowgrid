@@ -5,34 +5,9 @@
 #include "Helper/File.h"
 #include "Project/FileDialog/FileDialog.h"
 
-using std::string, std::string_view;
+Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionProducerComponent(std::move(args)), FileDialog(file_dialog) {}
 
-Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionableComponent(std::move(args)), FileDialog(file_dialog) {}
-
-void Faust::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Faust::DSP::Any &a) { FaustDsps.Apply(a); },
-            [this](const Action::Faust::Graph::Any &a) { Graphs.Apply(a); },
-            [this](const Action::Faust::GraphStyle::Any &a) { Graphs.Style.Apply(a); },
-        },
-        action
-    );
-}
-
-bool Faust::CanApply(const ActionType &action) const {
-    return std::visit(
-        Match{
-            [this](const Action::Faust::DSP::Any &a) { return FaustDsps.CanApply(a); },
-            [this](const Action::Faust::Graph::Any &a) { return Graphs.CanApply(a); },
-            [this](const Action::Faust::GraphStyle::Any &a) { return Graphs.Style.CanApply(a); },
-        },
-        action
-    );
-}
-
-void Faust::Render() const {
-}
+void Faust::Render() const {}
 
 FaustParamss::FaustParamss(ComponentArgs &&args, const FaustParamsStyle &style)
     : ComponentVector(std::move(args), [](auto &&child_args) {
@@ -155,7 +130,7 @@ void FaustDSP::DestroyDsp() {
 void FaustDSP::Init() {
     if (Editor.Empty()) return;
 
-    static const string libraries_path = fs::relative("../lib/faust/libraries");
+    static const std::string libraries_path = fs::relative("../lib/faust/libraries");
     std::vector<const char *> argv = {"-I", libraries_path.c_str()};
     if (std::is_same_v<Sample, double>) argv.push_back("-double");
     const int argc = argv.size();
@@ -196,8 +171,6 @@ void FaustDSP::Update() {
     Init();
 }
 
-static const string_view FaustDspPathSegment{"FaustDSP"};
-
 FaustDSPs::FaustDSPs(ArgsT &&args, const FileDialog &file_dialog)
     : ComponentVector(std::move(args.Args), [&](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
@@ -205,7 +178,7 @@ FaustDSPs::FaustDSPs(ArgsT &&args, const FileDialog &file_dialog)
               FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container, file_dialog
           );
       }),
-      ActionableProducer(std::move(args.Q)) {
+      ActionProducer(std::move(args.Q)) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
     EmplaceBack_(FaustDspPathSegment);
@@ -264,16 +237,6 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
     }
 }
 
-void FaustDSPs::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::Faust::DSP::Create &) { EmplaceBack(FaustDspPathSegment); },
-            [this](const Action::Faust::DSP::Delete &a) { EraseId(a.id); },
-        },
-        action
-    );
-}
-
 using namespace ImGui;
 
 ImGuiTableFlags TableFlagsToImGui(const TableFlags flags) {
@@ -311,7 +274,7 @@ void FaustParamss::Render() const {
     }
 }
 
-void FaustLogs::RenderErrorMessage(string_view error_message) const {
+void FaustLogs::RenderErrorMessage(std::string_view error_message) const {
     if (!error_message.empty()) {
         PushStyleColor(ImGuiCol_Text, {1, 0, 0, 1});
         TextUnformatted(error_message);
@@ -341,7 +304,7 @@ void FaustLogs::Render() const {
 void FaustGraphs::Render() const {
     if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
 
-    static string PrevSelectedPath = "";
+    static std::string PrevSelectedPath = "";
     if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.Data.OwnerId == Id && FileDialog.Data.SaveMode) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
         PrevSelectedPath = FileDialog.SelectedFilePath = "";

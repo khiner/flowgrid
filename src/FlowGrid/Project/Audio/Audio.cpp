@@ -3,32 +3,12 @@
 #include "imgui.h"
 
 Audio::Audio(ArgsT &&args, const ::FileDialog &file_dialog)
-    : ActionableComponent(std::move(args)), FileDialog(file_dialog) {
+    : ActionProducerComponent(std::move(args)), FileDialog(file_dialog) {
     Faust.RegisterDspChangeListener(&Graph);
 }
 
 Audio::~Audio() {
     Faust.UnregisterDspChangeListener(&Graph);
-}
-
-void Audio::Apply(const ActionType &action) const {
-    std::visit(
-        Match{
-            [this](const Action::AudioGraph::Any &a) { Graph.Apply(a); },
-            [this](const Action::Faust::Any &a) { Faust.Apply(a); },
-        },
-        action
-    );
-}
-
-bool Audio::CanApply(const ActionType &action) const {
-    return std::visit(
-        Match{
-            [this](const Action::AudioGraph::Any &a) { return Graph.CanApply(a); },
-            [this](const Action::Faust::Any &a) { return Faust.CanApply(a); },
-        },
-        action
-    );
 }
 
 using namespace ImGui;

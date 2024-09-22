@@ -6,12 +6,11 @@
 #include "FaustGraphStyle.h"
 #include "FaustParams.h"
 #include "FaustParamsStyle.h"
-#include "Project/Audio/Graph/AudioGraphAction.h"
 
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionProducerComponent.h"
-#include "Core/ActionableComponent.h"
 #include "Core/Container/ComponentVector.h"
+#include "Project/Audio/Graph/AudioGraphAction.h"
 #include "Project/TextEditor/TextEditor.h"
 
 struct FileDialog;
@@ -92,6 +91,8 @@ enum NotificationType {
     Removed
 };
 
+inline static const std::string_view FaustDspPathSegment{"FaustDSP"};
+
 struct FaustDSP;
 struct FaustDSPContainer {
     virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
@@ -129,28 +130,20 @@ private:
     llvm_dsp_factory *DspFactory{nullptr};
 };
 
-struct FaustDSPs
-    : ComponentVector<FaustDSP>,
-      ActionableProducer<Action::Faust::DSP::Any, FaustDspProducedActionType> {
+struct FaustDSPs : ComponentVector<FaustDSP>, ActionProducer<FaustDspProducedActionType> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
     FaustDSPs(ArgsT &&, const FileDialog &);
     ~FaustDSPs();
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override { return true; }
 
 private:
     void Render() const override;
 };
 
 struct Faust
-    : ActionableComponent<Action::Faust::Any, Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, TextEditor::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
+    : ActionProducerComponent<Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, TextEditor::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
       FaustDSPContainer {
     Faust(ArgsT &&, const FileDialog &);
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override;
 
     void RegisterDspChangeListener(FaustDSPListener *listener) const noexcept {
         DspChangeListeners.insert(listener);

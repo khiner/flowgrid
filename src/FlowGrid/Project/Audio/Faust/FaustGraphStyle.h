@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/ActionableComponent.h"
+#include "Core/ActionProducerComponent.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
@@ -40,11 +40,11 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraphStyle : ActionableComponent<Action::Faust::GraphStyle::Any, Action::Combine<Action::Faust::GraphStyle::Any, Colors::ProducedActionType>> {
+struct FaustGraphStyle : ActionProducerComponent<Action::Combine<Action::Faust::GraphStyle::Any, Colors::ProducedActionType>> {
     FaustGraphStyle(ArgsT &&);
 
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override;
+    void LayoutFlowGrid() const;
+    void LayoutFaust() const; // Emulate Faust SVG rendering layout.
 
     Prop_(
         UInt, FoldComplexity,
@@ -90,9 +90,6 @@ struct FaustGraphStyle : ActionableComponent<Action::Faust::GraphStyle::Any, Act
 
 private:
     void Render() const override;
-
-    void LayoutFlowGrid() const;
-    void LayoutFaust() const; // Layout Faust graphs the same way Faust does when it renders to SVG.
 };
 
 struct FaustGraphSettings : Component {

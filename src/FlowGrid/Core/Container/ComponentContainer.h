@@ -4,7 +4,6 @@
 
 struct ComponentContainer : Component {
     ComponentContainer(ComponentArgs &&args, Menu &&menu) : Component(std::move(args), std::move(menu)) {
-        FieldIds.insert(Id);
         ContainerIds.insert(Id);
         Refresh();
     }
@@ -14,6 +13,5 @@ struct ComponentContainer : Component {
     virtual ~ComponentContainer() {
         Erase();
         ContainerIds.erase(Id);
-        FieldIds.erase(Id);
     }
 };

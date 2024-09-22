@@ -142,14 +142,12 @@ TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::
     : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
       State(std::make_unique<TextBufferState>(this)) {
     SetFilePath(file_path);
-    FieldIds.insert(Id); // Acts as a `TextBufferData` field.
     // if (Exists()) Refresh();
     Commit(TextBufferData{}.SetText(std::string(FileIO::read(file_path))));
 }
 
 TextBuffer::~TextBuffer() {
     Erase();
-    FieldIds.erase(Id);
 }
 
 bool TextBuffer::CanApply(const ActionType &action) const {

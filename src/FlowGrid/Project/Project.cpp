@@ -83,7 +83,7 @@ void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) {
 
     // Find listeners to notify.
     for (const auto id : ChangedIds) {
-        if (!FieldIds.contains(id)) continue; // The component was deleted.
+        if (!ById.contains(id)) continue; // The component was deleted.
 
         ById.at(id)->Refresh();
 
@@ -588,7 +588,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     S.Commit();
     ClearChanged();
     LatestChangedPaths.clear();
-    RefreshAll();
+    for (auto *child : Children) child->Refresh();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     ImGuiSettings.IsChanged = true;

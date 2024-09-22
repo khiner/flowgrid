@@ -5,18 +5,13 @@
 #include "Core/Component.h"
 
 template<typename T> struct Set : Component {
+    using Component::Component;
     using ContainerT = immer::set<T>;
 
-    Set(ComponentArgs &&args) : Component(std::move(args)) {
-        FieldIds.insert(Id);
-        Refresh();
-    }
     ~Set() {
         Erase();
-        FieldIds.erase(Id);
     }
 
-    void Refresh() override {} // Not cached.
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void SetJson(json &&) const override;

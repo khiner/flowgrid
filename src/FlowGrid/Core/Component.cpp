@@ -74,7 +74,7 @@ bool Component::HasAncestorContainer() const {
     return false;
 }
 
-// By default, a component is converted to JSON by visiting each of its leaf components (Fields) depth-first,
+// By default, a component is converted to JSON by visiting each of its leaf components depth-first,
 // and assigning the leaf's `json_pointer` to its JSON value.
 json Component::ToJson() const {
     if (Children.empty()) return nullptr;

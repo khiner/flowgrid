@@ -11,7 +11,7 @@ inline std::pair<std::string, std::string> Split(fs::path relative_path) {
 
 /*
 A component whose children are created/destroyed dynamically, with vector-ish semantics.
-Like a `Field`, this wraps around an inner `Value` instance, which in this case is a `std::vector` of `std::unique_ptr<ChildType>`.
+Wraps around an inner `Value` instance, which in this case is a `std::vector` of `std::unique_ptr<ChildType>`.
 Components typically own their children directly, declaring them as concrete instances on the stack via the `Prop` macro.
 Using `ComponentVector` allows for runtime creation/destruction of children, and for child component types without the header having access to the full child definition.
 (It needs access to the definition of ths `ChildType` default destructor, though, since it uses `std::unique_ptr`.)

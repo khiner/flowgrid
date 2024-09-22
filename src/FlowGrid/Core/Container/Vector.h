@@ -5,18 +5,13 @@
 #include "Core/Component.h"
 
 template<typename T> struct Vector : Component {
+    using Component::Component;
     using ContainerT = immer::flex_vector<T>;
 
-    Vector(ComponentArgs &&args) : Component(std::move(args)) {
-        FieldIds.insert(Id);
-        Refresh();
-    }
     ~Vector() {
         Erase();
-        FieldIds.erase(Id);
     }
 
-    void Refresh() override {} // Not cached.
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void SetJson(json &&) const override;

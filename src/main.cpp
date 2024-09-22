@@ -46,7 +46,7 @@ int main() {
     store.Commit();
 
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
-    Component::RefreshAll();
+    project.Refresh();
 
     const UIContext ui{project.ImGuiSettings, project.Style}; // Initialize ImGui and other UI state.
     Fonts::Init(); // Must be done after initializing ImGui.

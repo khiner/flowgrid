@@ -76,8 +76,6 @@ struct Component {
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
     inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
-    inline static std::unordered_set<ID> FieldIds; // IDs of all "field" components (primitives/containers).
-
     // Use when you expect a component with exactly this path to exist.
     static Component *ByPath(const StorePath &path) noexcept { return ById.at(IDs::ByPath.at(path)); }
     static Component *ByPath(StorePath &&path) noexcept { return ById.at(IDs::ByPath.at(std::move(path))); }
@@ -132,12 +130,6 @@ struct Component {
         return {};
     }
 
-    // Refresh the cached values of all fields.
-    // Only used during `main.cpp` initialization.
-    static void RefreshAll() {
-        for (auto id : FieldIds) ById.at(id)->Refresh();
-    }
-
     // todo gesturing should be project-global, not component-static.
     inline static bool IsGesturing{};
     static void UpdateGesturing();
@@ -161,18 +153,18 @@ struct Component {
 
     // Refresh the component's cached value(s) based on the main store.
     // Should be called for each affected component after a state change to avoid stale values.
-    // This is overriden by `Field`s to update their `Value` members after a state change.
+    // This is overriden by leaf components to update their `Value` members after a state change.
     virtual void Refresh() {
         for (auto *child : Children) child->Refresh();
     }
 
     // Erase the component's cached value(s) from the main store.
-    // This is overriden by Container `Field`s to update their `Value` members after a state change.
+    // This is overriden by leaf containers to update the stored values.
     virtual void Erase() const {
         for (const auto *child : Children) child->Erase();
     }
 
-    // Render a nested tree of components, with Fields as leaf nodes displaying their values as text.
+    // Render a nested tree of components, with leaf components displaying their values as text.
     // By default, renders `this` a node with children as child nodes.
     virtual void RenderValueTree(bool annotate, bool auto_select) const;
     virtual void RenderDebug() const {}
@@ -183,7 +175,7 @@ struct Component {
     const Component *Child(u32 i) const noexcept { return Children[i]; }
     u32 ChildCount() const noexcept { return Children.size(); }
 
-    // Returns true if this component has changed directly (it must me a `Field` to be changed directly),
+    // Returns true if this component has changed directly (must me a leaf),
     // or if any of its descendent components have changed, if `include_descendents` is true.
     bool IsChanged(bool include_descendents = false) const noexcept;
     bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }

@@ -12,12 +12,10 @@ template<typename T> struct Navigable : Component, ActionProducer<typename Actio
     using typename ActionProducer<typename ActionT::Any>::ProducedActionType;
 
     Navigable(ArgsT &&args) : Component(std::move(args.Args)), ActionProducer<ProducedActionType>(std::move(args.Q)) {
-        FieldIds.insert(Id);
         Refresh();
     }
     ~Navigable() {
         Erase();
-        FieldIds.erase(Id);
     }
 
     void IssueClear() const { ActionProducer<ProducedActionType>::Q(typename ActionT::Clear{Id}); }

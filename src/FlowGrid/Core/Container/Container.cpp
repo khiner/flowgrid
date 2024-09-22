@@ -19,6 +19,11 @@ template<typename T> void Vector<T>::Set(const std::vector<T> &value) const {
 }
 
 template<typename T> void Vector<T>::Set(size_t i, const T &value) const { S.Set(Id, Get().set(i, value)); }
+template<typename T> void Vector<T>::Set(const std::unordered_map<size_t, T> &values) const {
+    auto val = Get().transient();
+    for (const auto &[i, value] : values) val.set(i, value);
+    S.Set(Id, val.persistent());
+}
 template<typename T> void Vector<T>::PushBack(const T &value) const { S.Set(Id, S.Get<ContainerT>(Id).push_back(value)); }
 template<typename T> void Vector<T>::PopBack() const {
     const auto v = S.Get<ContainerT>(Id);
@@ -26,8 +31,9 @@ template<typename T> void Vector<T>::PopBack() const {
 }
 
 template<typename T> void Vector<T>::Resize(size_t size) const {
-    S.Set(Id, Get().take(size));
-    while (Size() < size) PushBack(T{});
+    auto val = Get().take(size).transient();
+    while (val.size() < size) val.push_back(T{});
+    S.Set(Id, val.persistent());
 }
 template<typename T> void Vector<T>::Erase(size_t i) const { S.Set(Id, Get().erase(i)); }
 

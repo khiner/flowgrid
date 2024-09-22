@@ -29,9 +29,7 @@ template<typename T> struct Vector : Component {
     ContainerT Get() const;
     void Set(const std::vector<T> &) const;
     void Set(size_t i, const T &) const;
-    void Set(const std::unordered_map<size_t, T> &values) const {
-        for (const auto &[i, value] : values) Set(i, value);
-    }
+    void Set(const std::unordered_map<size_t, T> &) const;
 
     void PushBack(const T &) const;
     void PopBack() const;

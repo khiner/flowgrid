@@ -50,7 +50,7 @@ u32 AdjacencyList::DestinationCount(ID source) const {
     return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
-void AdjacencyList::Erase() const { S.Erase<IdPairs>(Id); }
+void AdjacencyList::Erase() const { _S.Erase<IdPairs>(Id); }
 
 using namespace ImGui;
 

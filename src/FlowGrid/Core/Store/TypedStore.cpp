@@ -128,15 +128,15 @@ template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, 
 }
 
 template<typename ValueType>
-void AddOps(const auto &before, const auto &after, PatchOps &ops) {
-    AddOps(before.template GetMap<ValueType>(), after.template GetMap<ValueType>(), ops);
+void AddOps(const auto &before_maps, const auto &after_maps, PatchOps &ops) {
+    AddOps(std::get<StoreMap<ValueType>>(before_maps), std::get<StoreMap<ValueType>>(after_maps), ops);
 }
 
 template<typename... ValueTypes>
-Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...> &before, const TypedStore<ValueTypes...> &after, ID base_component_id) {
+Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...>::StoreMaps &before_maps, const TypedStore<ValueTypes...>::StoreMaps &after_maps, ID base_component_id) {
     PatchOps ops{};
     // Use template lambda to call `AddOps` for each value type.
-    ([&]<typename T>() { AddOps<T>(before, after, ops); }.template operator()<ValueTypes>(), ...);
+    ([&]<typename T>() { AddOps<T>(before_maps, after_maps, ops); }.template operator()<ValueTypes>(), ...);
     return {base_component_id, ops};
 }
 

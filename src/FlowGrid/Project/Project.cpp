@@ -168,10 +168,12 @@ void Project::SetHistoryIndex(u32 index) const {
     if (index == History.Index) return;
 
     GestureChangedPaths.clear();
-    // If we're mid-gesture, revert the current gesture before navigating to the new index.
-    ActiveGestureActions.clear();
+    ActiveGestureActions.clear(); // In case we're mid-gesture, revert before navigating.
     History.SetIndex(index);
-    RefreshChanged(_S.CheckedSet(History.CurrentStore(), Id));
+    const auto &store = History.CurrentStore();
+    auto patch = _S.CreatePatch(store, Id);
+    _S.Commit(store.Maps);
+    RefreshChanged(std::move(patch));
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
     // We only need to update the ImGui context based on settings changes when the history index changes.
@@ -305,7 +307,7 @@ void Project::Apply(const ActionType &action) const {
                                 *op.Old
                             );
                         } else if (op.Op == PatchOpType::Remove) {
-                            std::visit([&](auto &&v) { S.Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
+                            std::visit([&](auto &&v) { _S.Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
                         } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
                             std::visit([&](auto &&v) { _S.Set(id, std::move(v)); }, *op.Value);
                         } else if (op.Op == PatchOpType::PushBack) {
@@ -870,7 +872,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                     }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
-                        const auto &patch = Store::CreatePatch(history.PrevStore(), history.CurrentStore(), project.Id);
+                        const auto &patch = Store::CreatePatch(history.PrevStore().Maps, history.CurrentStore().Maps, project.Id);
                         for (const auto &[id, ops] : patch.Ops) {
                             const auto &path = ById.at(id)->Path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

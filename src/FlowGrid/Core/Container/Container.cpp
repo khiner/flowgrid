@@ -8,8 +8,8 @@
 
 template<typename T> Vector<T>::ContainerT Vector<T>::Get() const { return S.Get<ContainerT>(Id); }
 template<typename T> bool Vector<T>::Exists() const { return S.Count<ContainerT>(Id); }
-template<typename T> void Vector<T>::Erase() const { S.Erase<ContainerT>(Id); }
-template<typename T> void Vector<T>::Clear() const { S.Clear<ContainerT>(Id); }
+template<typename T> void Vector<T>::Erase() const { _S.Erase<ContainerT>(Id); }
+template<typename T> void Vector<T>::Clear() const { _S.Clear<ContainerT>(Id); }
 
 template<typename T> void Vector<T>::Set(const std::vector<T> &value) const {
     immer::flex_vector_transient<T> val{};
@@ -82,8 +82,8 @@ template struct Vector<std::string>;
 
 template<typename T> Set<T>::ContainerT Set<T>::Get() const { return S.Get<ContainerT>(Id); }
 template<typename T> bool Set<T>::Exists() const { return S.Count<ContainerT>(Id); }
-template<typename T> void Set<T>::Erase() const { S.Erase<ContainerT>(Id); }
-template<typename T> void Set<T>::Clear() const { S.Clear<ContainerT>(Id); }
+template<typename T> void Set<T>::Erase() const { _S.Erase<ContainerT>(Id); }
+template<typename T> void Set<T>::Clear() const { _S.Clear<ContainerT>(Id); }
 template<typename T> void Set<T>::Insert(const T &value) const { _S.Set(Id, Get().insert(value)); }
 template<typename T> void Set<T>::Erase(const T &value) const { _S.Set(Id, Get().erase(value)); }
 

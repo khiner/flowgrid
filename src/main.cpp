@@ -63,9 +63,14 @@ int main() {
 
     project.OnApplicationLaunch();
 
+    static ActionMoment<Project::ActionType> action_moment; // For dequeuing to flush the queue.
     while (Tick(project, ui)) {
         // Disable all actions while the file dialog is open.
-        project.ApplyQueuedActions(queue, false, project.FileDialog.Visible);
+        if (project.FileDialog.Visible) {
+            queue.Clear();
+        } else {
+            project.ApplyQueuedActions(queue, false);
+        }
     }
 
     FileDialogManager::Uninit();

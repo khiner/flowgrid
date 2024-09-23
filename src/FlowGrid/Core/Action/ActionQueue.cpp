@@ -10,19 +10,13 @@ template<typename ActionType>
 ActionQueue<ActionType>::~ActionQueue() = default;
 
 template<typename ActionType>
-bool ActionQueue<ActionType>::Enqueue(ActionMoment<ActionType> &&action_moment) {
-    return Queue->enqueue(std::move(action_moment));
-}
-
+bool ActionQueue<ActionType>::Enqueue(ActionMoment<ActionType> &&action_moment) { return Queue->enqueue(std::move(action_moment)); }
 template<typename ActionType>
-bool ActionQueue<ActionType>::Enqueue(ActionType &&action) {
-    return Queue->enqueue({std::move(action), Clock::now()});
-}
-
+bool ActionQueue<ActionType>::Enqueue(ActionType &&action) { return Queue->enqueue({std::move(action), Clock::now()}); }
 template<typename ActionType>
-bool ActionQueue<ActionType>::TryDequeue(ActionMoment<ActionType> &action_moment) {
-    return Queue->try_dequeue(action_moment);
-}
+bool ActionQueue<ActionType>::TryDequeue(ActionMoment<ActionType> &action_moment) { return Queue->try_dequeue(action_moment); }
+template<typename ActionType>
+void ActionQueue<ActionType>::Clear() { Queue = std::make_unique<QueueType>(); } // No `clear` method in `BlockingConcurrentQueue`.
 
 #include "Core/Action/Actions.h"
 

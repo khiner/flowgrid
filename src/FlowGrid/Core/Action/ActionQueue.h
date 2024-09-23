@@ -17,6 +17,7 @@ template<typename ActionType> struct ActionQueue {
     bool Enqueue(ActionMoment<ActionType> &&);
     bool Enqueue(ActionType &&);
     bool TryDequeue(ActionMoment<ActionType> &);
+    void Clear();
 
 private:
     using QueueType = moodycamel::BlockingConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;

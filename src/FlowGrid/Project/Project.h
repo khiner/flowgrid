@@ -223,7 +223,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
 
     void RenderDebug() const override;
 
-    void ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture = false, bool ignore_actions = false) const;
+    void ApplyQueuedActions(ActionQueue<ActionType> &, bool force_commit_gesture = false) const;
 
 protected:
     void Render() const override;

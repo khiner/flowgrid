@@ -927,16 +927,10 @@ void Project::Debug::Metrics::Render() const {
     RenderTabs();
 }
 
-void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture, bool ignore_actions) const {
+void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture) const {
     static ActionMoment<ActionType> action_moment; // For dequeuing.
 
-    if (ignore_actions) {
-        while (queue.TryDequeue(action_moment)) {};
-        return;
-    }
-
     const bool gesture_actions_already_present = !ActiveGestureActions.empty();
-
     while (queue.TryDequeue(action_moment)) {
         auto &[action, queue_time] = action_moment;
         if (!CanApply(action)) continue;

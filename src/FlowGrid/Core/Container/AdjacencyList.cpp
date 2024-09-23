@@ -32,16 +32,9 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 }
 
 bool AdjacencyList::Exists() const { return S.Count<IdPairs>(Id); }
-
-bool AdjacencyList::IsConnected(ID source, ID destination) const {
-    return S.Get<IdPairs>(Id).count({source, destination}) > 0;
-}
-void AdjacencyList::Disconnect(ID source, ID destination) const {
-    S.Set(Id, S.Get<IdPairs>(Id).erase({source, destination}));
-}
-void AdjacencyList::Add(IdPair &&id_pair) const {
-    S.Set(Id, S.Get<IdPairs>(Id).insert(std::move(id_pair)));
-}
+bool AdjacencyList::IsConnected(ID source, ID destination) const { return S.Get<IdPairs>(Id).count({source, destination}) > 0; }
+void AdjacencyList::Disconnect(ID source, ID destination) const { _S.Set(Id, S.Get<IdPairs>(Id).erase({source, destination})); }
+void AdjacencyList::Add(IdPair &&id_pair) const { _S.Set(Id, S.Get<IdPairs>(Id).insert(std::move(id_pair))); }
 void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
 
 void AdjacencyList::DisconnectOutput(ID id) const {

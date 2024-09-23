@@ -48,7 +48,7 @@ struct StoreHistory {
     u32 Index{0};
 
 private:
-    const Store &Store;
+    const Store &Store; // todo pass store in as needed instead of storing a reference
     std::unique_ptr<Records> _Records;
     std::unique_ptr<Metrics> _Metrics;
 };

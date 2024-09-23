@@ -46,14 +46,14 @@ void StoreHistory::Clear() {
 }
 
 void StoreHistory::AddGesture(Gesture &&gesture, ID component_id) {
-    const auto store_impl = Store;
-    const auto patch = Store.CreatePatch(CurrentStore(), store_impl, component_id);
+    const auto store = Store;
+    const auto patch = Store.CreatePatch(CurrentStore(), store, component_id);
     if (patch.Empty()) return;
 
     _Metrics->AddPatch(patch, gesture.CommitTime);
 
     while (Size() > Index + 1) _Records->Value.pop_back(); // TODO use an undo _tree_ and keep this history
-    _Records->Value.emplace_back(std::move(store_impl), std::move(gesture), *_Metrics);
+    _Records->Value.emplace_back(std::move(store), std::move(gesture), *_Metrics);
     Index = Size() - 1;
 }
 

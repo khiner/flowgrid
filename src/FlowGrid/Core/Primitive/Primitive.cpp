@@ -9,8 +9,8 @@ template<typename T> T Primitive<T>::Get() const { return S.Get<T>(Id); }
 template<typename T> json Primitive<T>::ToJson() const { return Value; }
 template<typename T> void Primitive<T>::SetJson(json &&j) const { Set(std::move(j)); }
 
-template<typename T> void Primitive<T>::Set(const T &value) const { S.Set(Id, value); }
-template<typename T> void Primitive<T>::Set(T &&value) const { S.Set(Id, std::move(value)); }
+template<typename T> void Primitive<T>::Set(const T &value) const { _S.Set(Id, value); }
+template<typename T> void Primitive<T>::Set(T &&value) const { _S.Set(Id, std::move(value)); }
 template<typename T> void Primitive<T>::Erase() const { S.Erase<T>(Id); }
 
 template<typename T> void Primitive<T>::RenderValueTree(bool annotate, bool auto_select) const {

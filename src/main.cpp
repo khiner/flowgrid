@@ -14,7 +14,7 @@ Patch CreatePatch(Project &project) {
     settings.Windows.Set(ctx->SettingsWindows);
     settings.Tables.Set(ctx->SettingsTables);
 
-    auto patch = settings.S.CreatePatchAndResetTransient(settings.Id);
+    auto patch = project._S.CreatePatchAndResetTransient(settings.Id);
     settings.Tables.Refresh(); // xxx tables may have been modified.
 
     return patch;
@@ -22,7 +22,6 @@ Patch CreatePatch(Project &project) {
 
 bool Tick(Project &project, const UIContext &ui) {
     auto &io = ImGui::GetIO();
-
     const bool running = ui.Tick(project);
     if (running && io.WantSaveIniSettings) {
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.

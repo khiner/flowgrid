@@ -67,6 +67,8 @@ struct Project : Component, ActionableProducer<Action::Any> {
     bool CanApply(const ActionType &) const override;
 
     void CommitGesture() const;
+    void AddGesture(Gesture &&) const;
+
     Plottable StorePathChangeFrequencyPlottable() const;
 
     json GetProjectJson(const ProjectFormat) const;

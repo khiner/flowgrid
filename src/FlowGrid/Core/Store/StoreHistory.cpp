@@ -35,24 +35,23 @@ struct StoreHistory::Records {
 };
 
 StoreHistory::StoreHistory(const ::Store &store)
-    : Store(store), _Records(std::make_unique<Records>(Store)), _Metrics(std::make_unique<Metrics>()) {}
+    : _Records(std::make_unique<Records>(store)), _Metrics(std::make_unique<Metrics>()) {}
 
 StoreHistory::~StoreHistory() = default;
 
-void StoreHistory::Clear() {
+void StoreHistory::Clear(const Store &store) {
     Index = 0;
-    _Records = std::make_unique<Records>(Store);
+    _Records = std::make_unique<Records>(store);
     _Metrics = std::make_unique<Metrics>();
 }
 
-void StoreHistory::AddGesture(Gesture &&gesture, ID component_id) {
-    const auto store = Store;
-    const auto patch = Store.CreatePatch(CurrentStore(), store, component_id);
+void StoreHistory::AddGesture(Store store, Gesture &&gesture, ID component_id) {
+    const auto patch = store.CreatePatch(CurrentStore(), component_id);
     if (patch.Empty()) return;
 
     _Metrics->AddPatch(patch, gesture.CommitTime);
 
-    while (Size() > Index + 1) _Records->Value.pop_back(); // TODO use an undo _tree_ and keep this history
+    while (Size() > Index + 1) _Records->Value.pop_back(); // todo use an undo _tree_ and keep this history
     _Records->Value.emplace_back(std::move(store), std::move(gesture), *_Metrics);
     Index = Size() - 1;
 }
@@ -63,6 +62,7 @@ bool StoreHistory::CanUndo() const { return Index > 0; }
 bool StoreHistory::CanRedo() const { return Index < Size() - 1; }
 
 const Store &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
+const Store &StoreHistory::PrevStore() const { return _Records->Value[Index - 1].Store; }
 
 std::map<ID, u32> StoreHistory::GetChangeCountById() const {
     return _Records->Value[Index].Metrics.CommitTimesById |
@@ -72,11 +72,7 @@ std::map<ID, u32> StoreHistory::GetChangeCountById() const {
 
 u32 StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesById.size(); }
 
-Patch StoreHistory::CreatePatch(u32 index, ID component_id) const {
-    return Store.CreatePatch(_Records->Value[index - 1].Store, _Records->Value[index].Store, component_id);
-}
-
-StoreHistory::ReferenceRecord StoreHistory::RecordAt(u32 index) const {
+StoreHistory::ReferenceRecord StoreHistory::At(u32 index) const {
     const auto &record = _Records->Value[index];
     return {record.Store, record.Gesture};
 }

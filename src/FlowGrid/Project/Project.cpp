@@ -159,8 +159,10 @@ void Project::CommitGesture() const {
     ActiveGestureActions.clear();
     if (merged_actions.empty()) return;
 
-    History.AddGesture({merged_actions, Clock::now()}, Id);
+    AddGesture({merged_actions, Clock::now()});
 }
+
+void Project::AddGesture(Gesture &&gesture) const { History.AddGesture(S, std::move(gesture), Id); }
 
 void Project::SetHistoryIndex(u32 index) const {
     if (index == History.Index) return;
@@ -572,7 +574,7 @@ bool Project::Save(const fs::path &path) const {
 
 void Project::OnApplicationLaunch() const {
     Component::IsGesturing = false;
-    History.Clear();
+    History.Clear(S);
     ClearChanged();
     LatestChangedPaths.clear();
 
@@ -614,7 +616,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     ImGuiSettings.IsChanged = true;
-    History.Clear();
+    History.Clear(S);
 }
 
 void Project::Open(const fs::path &file_path) const {
@@ -629,12 +631,12 @@ void Project::Open(const fs::path &file_path) const {
         OpenStateFormatProject(EmptyProjectPath);
 
         StoreHistory::IndexedGestures indexed_gestures = ReadFileJson(file_path);
-        for (auto &gesture : indexed_gestures.Gestures) {
+        for (auto &&gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
                 RefreshChanged(_S.CheckedCommit(Id));
             }
-            History.AddGesture(std::move(gesture), Id);
+            AddGesture(std::move(gesture));
         }
         SetHistoryIndex(indexed_gestures.Index);
         LatestChangedPaths.clear();
@@ -860,7 +862,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
             for (u32 i = 1; i < history.Size(); i++) {
                 // todo button to navitate to this history index.
                 if (TreeNodeEx(std::to_string(i).c_str(), i == history.Index ? (ImGuiTreeNodeFlags_Selected | ImGuiTreeNodeFlags_DefaultOpen) : ImGuiTreeNodeFlags_None)) {
-                    const auto &[store_record, gesture] = history.RecordAt(i);
+                    const auto &[store_record, gesture] = history.At(i);
                     BulletText("Gesture committed: %s\n", std::format("{:%Y-%m-%d %T}", gesture.CommitTime).c_str());
                     if (TreeNode("Actions")) {
                         ShowActions(gesture.Actions);
@@ -868,7 +870,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                     }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
-                        const auto &patch = history.CreatePatch(i, project.Id);
+                        const auto &patch = Store::CreatePatch(history.PrevStore(), history.CurrentStore(), project.Id);
                         for (const auto &[id, ops] : patch.Ops) {
                             const auto &path = ById.at(id)->Path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {

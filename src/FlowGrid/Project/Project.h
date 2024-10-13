@@ -2,7 +2,6 @@
 
 #include "Audio/Audio.h"
 #include "Core/Action/ActionMenuItem.h"
-#include "Core/Action/ActionQueue.h"
 #include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
 #include "Core/ImGuiSettings.h"
@@ -12,6 +11,10 @@
 #include "Info/Info.h"
 #include "ProjectSettings.h"
 #include "Style/Style.h"
+
+namespace moodycamel {
+struct ConsumerToken;
+}
 
 enum ProjectFormat {
     StateFormat,
@@ -31,7 +34,7 @@ It is a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
 struct Project : Component, ActionableProducer<Action::Any> {
-    Project(Store &, PrimitiveActionQueuer &, ActionProducer::Enqueue);
+    Project(Store &, moodycamel::ConsumerToken, const PrimitiveActionQueuer &, ActionProducer::Enqueue);
     ~Project();
 
     // A `ProjectComponent` is a `Component` that can cast the `Root` component pointer to its true `Project` type.
@@ -175,6 +178,9 @@ struct Project : Component, ActionableProducer<Action::Any> {
         Prop(Metrics, Metrics);
     };
 
+    std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
+    mutable ActionMoment<ActionType> DequeueActionMoment{};
+
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
 
@@ -225,6 +231,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
 
     void RenderDebug() const override;
 
+    // Provided queue is drained.
     void ApplyQueuedActions(ActionQueue<ActionType> &, bool force_commit_gesture = false) const;
 
 protected:

@@ -1,5 +1,6 @@
 #include "imgui_internal.h"
 
+#include "FlowGrid/Core/Action/ActionQueue.h"
 #include "FlowGrid/Core/Primitive/PrimitiveActionQueuer.h"
 #include "FlowGrid/Core/Store/Store.h"
 #include "FlowGrid/Project/FileDialog/FileDialogManager.h"
@@ -37,9 +38,10 @@ bool Tick(Project &project, const UIContext &ui) {
 int main() {
     Store store{};
     ActionQueue<Action::Any> queue{};
-    ActionProducer<Action::Any>::EnqueueFn q = [&queue](auto &&a) -> bool { return queue.Enqueue(std::move(a)); };
+    const auto q_producer_token = queue.CreateProducerToken();
+    ActionProducer<Action::Any>::EnqueueFn q = [&queue, &q_producer_token](auto &&a) -> bool { return queue.Enqueue(q_producer_token, std::move(a)); };
     PrimitiveActionQueuer primitive_queuer{[&q](auto &&action) -> bool { return std::visit(q, std::move(action)); }};
-    Project project{store, primitive_queuer, q};
+    Project project{store, queue.CreateConsumerToken(), primitive_queuer, q};
 
     // Initialize the global canonical store with all project state values set during project initialization.
     store.Commit();

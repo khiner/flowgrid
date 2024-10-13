@@ -50,7 +50,7 @@ template<typename... ValueTypes> struct TypedStore {
         TransientMaps = std::make_unique<TransientStoreMaps>(Transient());
     }
 
-    // Same as `Commit`, but returns the resulting patch.
+    // Same as `Commit`, but returns thtatic e resulting patch.
     Patch CheckedCommit(ID base_component_id) {
         auto new_maps = Persistent();
         const auto patch = CreatePatch(Maps, new_maps, base_component_id);

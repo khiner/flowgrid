@@ -9,6 +9,7 @@
 
 #include "Application/ApplicationPreferences.h"
 #include "Core/Action/ActionMenuItem.h"
+#include "Core/Action/ActionQueue.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 #include "Helper/File.h"
@@ -50,9 +51,9 @@ static float GestureTimeRemainingSec(float gesture_duration_sec) {
     return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
-Project::Project(Store &store, PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::Enqueue q)
+Project::Project(Store &store, moodycamel::ConsumerToken ctok, const PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::Enqueue q)
     : Component(store, primitive_q, Windows, Style), ActionableProducer(std::move(q)),
-      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+      DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -932,11 +933,9 @@ void Project::Debug::Metrics::Render() const {
 }
 
 void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture) const {
-    static ActionMoment<ActionType> action_moment; // For dequeuing.
-
     const bool gesture_actions_already_present = !ActiveGestureActions.empty();
-    while (queue.TryDequeue(action_moment)) {
-        auto &[action, queue_time] = action_moment;
+    while (queue.TryDequeue(*DequeueToken.get(), DequeueActionMoment)) {
+        auto &[action, queue_time] = DequeueActionMoment;
         if (!CanApply(action)) continue;
 
         // Special cases:

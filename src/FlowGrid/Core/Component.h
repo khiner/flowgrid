@@ -134,7 +134,7 @@ struct Component {
     inline static bool IsGesturing{};
     static void UpdateGesturing();
 
-    Component(Store &, PrimitiveActionQueuer &, const Windows &, const fg::Style &);
+    Component(Store &, const PrimitiveActionQueuer &, const Windows &, const fg::Style &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -203,7 +203,7 @@ struct Component {
 
     const FlowGridStyle &GetFlowGridStyle() const;
 
-    /* todo next up: make `S` a const ref, and reassign to the (initially, single) root store in `main` during action
+    /* todo next up: make `S` a const ref, and reassign to the (single, initially) root store in `main` during action
     application, making state updates fully value-oriented.
     ```
     Store store;
@@ -223,7 +223,7 @@ struct Component {
     // - It starts with the value of `S` at the beginning of each tick.
     //   (If no actions have been applied during the current tick, `_S == S.transient()`.)
     Store &_S; // Read-only access to the store at the root of this component's tree (which is a `Project`).
-    PrimitiveActionQueuer &PrimitiveQ;
+    const PrimitiveActionQueuer &PrimitiveQ;
     const Windows &gWindows;
     const fg::Style &gStyle;
     Component *Root; // The root (project) component.

@@ -2,24 +2,23 @@
 
 #include <memory>
 
+#include "concurrentqueue.h"
+
 #include "Core/Action/ActionMoment.h"
 
-// Forward declaration of BlockingConcurrentQueue
-namespace moodycamel {
-struct ConcurrentQueueDefaultTraits;
-template<typename T, typename Traits> class BlockingConcurrentQueue;
-} // namespace moodycamel
-
 template<typename ActionType> struct ActionQueue {
-    ActionQueue();
-    ~ActionQueue();
+    using ProducerToken = moodycamel::ProducerToken;
+    using ConsumerToken = moodycamel::ConsumerToken;
 
-    bool Enqueue(ActionMoment<ActionType> &&);
-    bool Enqueue(ActionType &&);
-    bool TryDequeue(ActionMoment<ActionType> &);
-    void Clear();
+    ProducerToken CreateProducerToken() { return ProducerToken{Queue}; }
+    ConsumerToken CreateConsumerToken() { return ConsumerToken{Queue}; }
+
+    bool Enqueue(const ProducerToken &ptok, ActionMoment<ActionType> &&action_moment) { return Queue.enqueue(ptok, std::move(action_moment)); }
+    bool Enqueue(const ProducerToken &ptok, ActionType &&action) { return Enqueue(ptok, {std::move(action), Clock::now()}); }
+    bool TryDequeue(ConsumerToken &ctok, ActionMoment<ActionType> &action_moment) { return Queue.try_dequeue(ctok, action_moment); }
+    void Clear() { Queue = QueueType{}; } // No `clear` method in `ConcurrentQueue`.
 
 private:
-    using QueueType = moodycamel::BlockingConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;
-    std::unique_ptr<QueueType> Queue;
+    using QueueType = moodycamel::ConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;
+    QueueType Queue;
 };

@@ -18,7 +18,7 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(Store &store, PrimitiveActionQueuer &primitive_q, const Windows &windows, const fg::Style &style)
+Component::Component(Store &store, const PrimitiveActionQueuer &primitive_q, const Windows &windows, const fg::Style &style)
     : S(store), _S(store), PrimitiveQ(primitive_q), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);

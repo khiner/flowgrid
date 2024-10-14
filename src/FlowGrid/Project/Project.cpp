@@ -733,7 +733,7 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
 }
 
 void Project::Debug::StorePathUpdateFrequency::Render() const {
-    auto [labels, values] = GetProject().StorePathChangeFrequencyPlottable();
+    auto [labels, values] = static_cast<const Project &>(*Root).StorePathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;
@@ -791,7 +791,7 @@ void Project::Debug::ProjectPreview::Render() const {
 
     Separator();
 
-    json project_json = GetProject().GetProjectJson(ProjectFormat(int(Format)));
+    json project_json = static_cast<const Project &>(*Root).GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {
@@ -823,7 +823,7 @@ ImRect RowItemRatioRect(float ratio) {
 }
 
 void Project::Debug::Metrics::FlowGridMetrics::Render() const {
-    const auto &project = GetProject();
+    const auto &project = static_cast<const Project &>(*Root);
     {
         // Active (uncompressed) gesture
         const bool is_gesturing = Component::IsGesturing, any_gesture_actions = !ActiveGestureActions.empty();

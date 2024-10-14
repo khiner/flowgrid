@@ -37,13 +37,6 @@ struct Project : Component, ActionableProducer<Action::Any> {
     Project(Store &, moodycamel::ConsumerToken, const PrimitiveActionQueuer &, ActionProducer::Enqueue);
     ~Project();
 
-    // A `ProjectComponent` is a `Component` that can cast the `Root` component pointer to its true `Project` type.
-    struct ProjectComponent : Component {
-        using Component::Component;
-
-        const Project &GetProject() const { return static_cast<const Project &>(*Root); }
-    };
-
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
     // This is always called immediately after a store commit.
     static void RefreshChanged(Patch &&, bool add_to_gesture = false);
@@ -91,11 +84,11 @@ struct Project : Component, ActionableProducer<Action::Any> {
             UnregisterChangeListener(this);
         }
 
-        struct Metrics : ProjectComponent {
-            using ProjectComponent::ProjectComponent;
+        struct Metrics : Component {
+            using Component::Component;
 
-            struct FlowGridMetrics : ProjectComponent {
-                using ProjectComponent::ProjectComponent;
+            struct FlowGridMetrics : Component {
+                using Component::Component;
 
                 Prop(Bool, ShowRelativePaths, true);
 
@@ -103,15 +96,15 @@ struct Project : Component, ActionableProducer<Action::Any> {
                 void Render() const override;
             };
 
-            struct ImGuiMetrics : ProjectComponent {
-                using ProjectComponent::ProjectComponent;
+            struct ImGuiMetrics : Component {
+                using Component::Component;
 
             protected:
                 void Render() const override;
             };
 
-            struct ImPlotMetrics : ProjectComponent {
-                using ProjectComponent::ProjectComponent;
+            struct ImPlotMetrics : Component {
+                using Component::Component;
 
             protected:
                 void Render() const override;
@@ -125,8 +118,8 @@ struct Project : Component, ActionableProducer<Action::Any> {
             void Render() const override;
         };
 
-        struct ProjectPreview : ProjectComponent {
-            using ProjectComponent::ProjectComponent;
+        struct ProjectPreview : Component {
+            using Component::Component;
 
             Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
             Prop(Bool, Raw);
@@ -135,22 +128,22 @@ struct Project : Component, ActionableProducer<Action::Any> {
             void Render() const override;
         };
 
-        struct StorePathUpdateFrequency : ProjectComponent {
-            using ProjectComponent::ProjectComponent;
+        struct StorePathUpdateFrequency : Component {
+            using Component::Component;
 
         protected:
             void Render() const override;
         };
 
-        struct DebugLog : ProjectComponent {
-            using ProjectComponent::ProjectComponent;
+        struct DebugLog : Component {
+            using Component::Component;
 
         protected:
             void Render() const override;
         };
 
-        struct StackTool : ProjectComponent {
-            using ProjectComponent::ProjectComponent;
+        struct StackTool : Component {
+            using Component::Component;
 
         protected:
             void Render() const override;

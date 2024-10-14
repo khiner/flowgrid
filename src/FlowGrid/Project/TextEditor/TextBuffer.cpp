@@ -155,25 +155,6 @@ bool TextBuffer::CanApply(const ActionType &action) const {
 
     return std::visit(
         Match{
-            [](const ShowOpenDialog &) { return true; },
-            [](const ShowSaveDialog &) { return true; },
-            [](const Open &) { return true; },
-            [](const Save &) { return true; },
-
-            [](const SetCursor &) { return true; },
-            [](const SetCursorRange &) { return true; },
-            [](const MoveCursorsLines &) { return true; },
-            [](const PageCursorsLines &) { return true; },
-            [](const MoveCursorsChar &) { return true; },
-            [](const MoveCursorsTop &) { return true; },
-            [](const MoveCursorsBottom &) { return true; },
-            [](const MoveCursorsStartLine &) { return true; },
-            [](const MoveCursorsEndLine &) { return true; },
-            [](const SelectAll &) { return true; },
-            [](const SelectNextOccurrence &) { return true; },
-
-            [](const SetText &) { return true; },
-
             [this](const Copy &) { return GetBuffer().AnyCursorsRanged(); },
             [this](const Cut &) { return !ReadOnly && GetBuffer().AnyCursorsRanged(); },
             [this](const Paste &) { return !ReadOnly && ImGui::GetClipboardText() != nullptr; },
@@ -184,6 +165,7 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [this](const MoveCurrentLines &) { return !ReadOnly; },
             [this](const ToggleLineComment &) { return !ReadOnly && !State->Syntax->GetLanguage().SingleLineComment.empty(); },
             [this](const EnterChar &) { return !ReadOnly; },
+            [](auto &&) { return true; }, // All other actions are always allowed.
         },
         action
     );

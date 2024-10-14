@@ -415,31 +415,19 @@ void Project::Apply(const ActionType &action) const {
 bool Project::CanApply(const ActionType &action) const {
     return std::visit(
         Match{
-            [](const Action::Primitive::Any &) { return true; },
-            [](const Action::Container::Any &) { return true; },
-            [](const Action::TextBuffer::Any &) { return true; },
-
             [this](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
             [this](const Action::Project::Redo &) { return History.CanRedo(); },
             [this](const Action::Project::SetHistoryIndex &a) { return a.index < History.Size(); },
             [this](const Action::Project::Save &) { return !History.Empty(); },
             [this](const Action::Project::SaveDefault &) { return !History.Empty(); },
-            [](const Action::Project::ShowOpenDialog &) { return true; },
             [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
             [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
-            [](const Action::Project::OpenEmpty &) { return true; },
-            [](const Action::Project::Open &) { return true; },
 
-            [](const Action::Store::ApplyPatch &) { return true; },
             [this](const Action::AudioGraph::Any &a) { return Audio.Graph.CanApply(a); },
-            [](const Action::Faust::DSP::Any &) { return true; },
             [this](const Action::Faust::Graph::Any &a) { return Audio.Faust.Graphs.CanApply(a); },
-            [](const Action::Faust::GraphStyle::Any &) { return true; },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
-            [](const Action::FileDialog::Select &) { return true; }, // File dialog `Visible` is set to false _before_ the select action is issued.
-            [](const Action::Windows::Any &) { return true; },
-            [](const Action::Style::Any &) { return true; },
+            [](auto &&) { return true; }, // All other actions are always allowed.
         },
         action
     );

@@ -151,8 +151,8 @@ void Menu::Render() const {
 }
 
 void Component::UpdateGesturing() {
-    if (ImGui::IsItemActivated()) IsGesturing = true;
-    if (ImGui::IsItemDeactivated()) IsGesturing = false;
+    if (ImGui::IsItemActivated()) IsWidgetGesturing = true;
+    if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
 }
 
 ImGuiWindow *Component::FindWindow() const {

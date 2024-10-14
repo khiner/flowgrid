@@ -87,9 +87,7 @@ struct Component {
 
     // Component containers are fields that dynamically create/destroy child components.
     // Each component container has a single auxiliary field as a direct child which tracks the presence/ordering of its child component(s).
-    inline static std::unordered_set<ID> ContainerIds;
-    inline static std::unordered_set<ID> ContainerAuxiliaryIds;
-
+    inline static std::unordered_set<ID> ContainerIds, ContainerAuxiliaryIds;
     inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
 
     static void RegisterChangeListener(ChangeListener *listener, const Component &component) noexcept {
@@ -101,22 +99,9 @@ struct Component {
     }
     void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
-    // IDs of all fields updated/added/removed during the latest action or undo/redo, mapped to all (field-relative) paths affected in the field.
-    // For primitive fields, the paths will consist of only the root path.
-    // For container fields, the paths will contain the container-relative paths of all affected elements.
-    // All values are appended to `GestureChangedPaths` if the change occurred during a runtime action batch (as opposed to undo/redo, initialization, or project load).
-    // `ChangedPaths` is cleared after each action (after refreshing all affected fields), and can thus be used to determine which fields were affected by the latest action.
-    // (`LatestChangedPaths` is retained for the lifetime of the application.)
-    // These same key IDs are also stored in the `ChangedIds` set, which also includes IDs for all ancestor component of all changed components.
-    inline static std::unordered_map<ID, PathsMoment> ChangedPaths;
-
     // Latest (unique-field-relative-paths, store-commit-time) pair for each field over the lifetime of the application.
     // This is updated by both the forward action pass, and by undo/redo.
     inline static std::unordered_map<ID, PathsMoment> LatestChangedPaths{};
-
-    // Chronological vector of (unique-field-relative-paths, store-commit-time) pairs for each field that has been updated during the current gesture.
-    inline static std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPaths{};
-
     // IDs of all fields to which `ChangedPaths` are attributed.
     // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
     inline static std::unordered_set<ID> ChangedIds;
@@ -130,8 +115,7 @@ struct Component {
         return {};
     }
 
-    // todo gesturing should be project-global, not component-static.
-    inline static bool IsGesturing{};
+    inline static bool IsWidgetGesturing{};
     static void UpdateGesturing();
 
     Component(Store &, const PrimitiveActionQueuer &, const Windows &, const fg::Style &);

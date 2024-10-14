@@ -37,21 +37,6 @@ struct Project : Component, ActionableProducer<Action::Any> {
     Project(Store &, moodycamel::ConsumerToken, const PrimitiveActionQueuer &, ActionProducer::Enqueue);
     ~Project();
 
-    // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
-    // This is always called immediately after a store commit.
-    static void RefreshChanged(Patch &&, bool add_to_gesture = false);
-
-    inline static void ClearChanged() noexcept {
-        ChangedPaths.clear();
-        ChangedIds.clear();
-        ChangedAncestorComponentIds.clear();
-    }
-
-    // Find and mark fields that are made stale with the provided patch.
-    // If `Refresh()` is called on every field marked in `ChangedIds`, the component tree will be fully refreshed.
-    // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
-    static void MarkAllChanged(Patch &&);
-
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
     static Component *FindChanged(ID component_id, const std::vector<PatchOp> &ops);
 
@@ -171,12 +156,6 @@ struct Project : Component, ActionableProducer<Action::Any> {
         Prop(Metrics, Metrics);
     };
 
-    std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
-    mutable ActionMoment<ActionType> DequeueActionMoment{};
-
-    std::unique_ptr<StoreHistory> HistoryPtr;
-    StoreHistory &History; // A reference to the above unique_ptr for convenience.
-
     ProducerProp(FileDialog, FileDialog);
     ProducerProp(fg::Style, Style);
     ProducerProp(Windows, Windows);
@@ -226,19 +205,52 @@ struct Project : Component, ActionableProducer<Action::Any> {
 
     // Provided queue is drained.
     void ApplyQueuedActions(ActionQueue<ActionType> &, bool force_commit_gesture = false) const;
+    bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
+    const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
+    float GestureTimeRemainingSec() const;
 
 protected:
     void Render() const override;
 
 private:
+    std::unique_ptr<StoreHistory> HistoryPtr;
+    StoreHistory &History; // A reference to the above unique_ptr for convenience.
+
+    std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
+    mutable ActionMoment<ActionType> DequeueActionMoment{};
+
+    mutable SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
+    mutable std::optional<fs::path> CurrentProjectPath;
+    mutable bool ProjectHasChanges{false}; // todo after store is fully value-oriented, this can be replaced with a comparison of the store and the last saved store.
+    // Chronological vector of (unique-field-relative-paths, store-commit-time) pairs for each field that has been updated during the current gesture.
+    mutable std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPaths{};
+    // IDs of all fields updated/added/removed during the latest action or undo/redo, mapped to all (field-relative) paths affected in the field.
+    // For primitive fields, the paths will consist of only the root path.
+    // For container fields, the paths will contain the container-relative paths of all affected elements.
+    // All values are appended to `GestureChangedPaths` if the change occurred during a runtime action batch (as opposed to undo/redo, initialization, or project load).
+    // `ChangedPaths` is cleared after each action (after refreshing all affected fields), and can thus be used to determine which fields were affected by the latest action.
+    // (`LatestChangedPaths` is retained for the lifetime of the application.)
+    // These same key IDs are also stored in the `ChangedIds` set, which also includes IDs for all ancestor component of all changed components.
+    mutable std::unordered_map<ID, PathsMoment> ChangedPaths;
+
     std::optional<ActionType> ProduceKeyboardAction() const;
 
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
 
+    void SetCurrentProjectPath(const fs::path &) const;
     void OpenStateFormatProject(const fs::path &file_path) const;
 
     void SetHistoryIndex(u32) const;
 
     void WindowMenuItem() const;
+
+    // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
+    // This is always called immediately after a store commit.
+    void RefreshChanged(Patch &&, bool add_to_gesture = false) const;
+    // Find and mark fields that are made stale with the provided patch.
+    // If `Refresh()` is called on every field marked in `ChangedIds`, the component tree will be fully refreshed.
+    // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
+    void MarkAllChanged(Patch &&) const;
+    void ClearChanged() const;
 };

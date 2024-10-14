@@ -20,8 +20,6 @@ using namespace FlowGrid;
 
 using std::ranges::to, std::views::join, std::views::keys, std::views::transform;
 
-static SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
-
 // Project constants:
 static const fs::path InternalPath = ".flowgrid";
 // Order matters here, as the first extension is the default project extension.
@@ -38,22 +36,16 @@ static const fs::path EmptyProjectPath = InternalPath / ("empty" + string(Extens
 // As an action-formatted project, it builds on the empty project, replaying the actions present at the time the default project was saved.
 static const fs::path DefaultProjectPath = InternalPath / ("default" + string(ExtensionByProjectFormat.at(ProjectFormat::ActionFormat)));
 
-static std::optional<fs::path> CurrentProjectPath;
-static bool ProjectHasChanges{false};
-
-std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
-    if (auto it = ProjectFormatByExtension.find(std::string(path.extension())); it != ProjectFormatByExtension.end()) return it->second;
+static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
+    if (auto it = ProjectFormatByExtension.find(std::string{path.extension()}); it != ProjectFormatByExtension.end()) {
+        return it->second;
+    }
     return {};
-}
-
-static float GestureTimeRemainingSec(float gesture_duration_sec) {
-    if (ActiveGestureActions.empty()) return 0;
-    return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
 Project::Project(Store &store, moodycamel::ConsumerToken ctok, const PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::Enqueue q)
     : Component(store, primitive_q, Windows, Style), ActionableProducer(std::move(q)),
-      DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr), DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -77,10 +69,10 @@ Project::Project(Store &store, moodycamel::ConsumerToken ctok, const PrimitiveAc
 
 Project::~Project() = default;
 
-void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) {
+void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
     MarkAllChanged(std::move(patch));
 
-    static std::unordered_set<ChangeListener *> affected_listeners;
+    std::unordered_set<ChangeListener *> affected_listeners;
 
     // Find listeners to notify.
     for (const auto id : ChangedIds) {
@@ -102,7 +94,6 @@ void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) {
     }
 
     for (auto *listener : affected_listeners) listener->OnComponentChanged();
-    affected_listeners.clear();
 
     // Update gesture paths.
     if (add_to_gesture) {
@@ -128,16 +119,21 @@ Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops
     return nullptr;
 }
 
-void Project::MarkAllChanged(Patch &&patch) {
+void Project::ClearChanged() const {
+    ChangedPaths.clear();
+    ChangedIds.clear();
+    ChangedAncestorComponentIds.clear();
+}
+
+void Project::MarkAllChanged(Patch &&patch) const {
     const auto change_time = Clock::now();
     ClearChanged();
 
     for (const auto &[id, ops] : patch.Ops) {
         if (auto *changed = FindChanged(id, ops)) {
             const ID id = changed->Id;
-            const auto path = changed->Path;
             ChangedPaths[id].first = change_time;
-            ChangedPaths[id].second.insert(path); // todo build path for containers from ops.
+            ChangedPaths.at(id).second.insert(changed->Path); // todo build path for containers from ops.
 
             // Mark the changed field and all its ancestors.
             ChangedIds.insert(id);
@@ -420,8 +416,8 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::SetHistoryIndex &a) { return a.index < History.Size(); },
             [this](const Action::Project::Save &) { return !History.Empty(); },
             [this](const Action::Project::SaveDefault &) { return !History.Empty(); },
-            [](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
-            [](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
+            [this](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
+            [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
 
             [this](const Action::AudioGraph::Any &a) { return Audio.Graph.CanApply(a); },
@@ -532,12 +528,12 @@ void Project::OpenRecentProjectMenuItem() const {
     }
 }
 
-bool IsUserProjectPath(const fs::path &path) {
+static bool IsUserProjectPath(const fs::path &path) {
     return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
         fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
 }
 
-void SetCurrentProjectPath(const fs::path &path) {
+void Project::SetCurrentProjectPath(const fs::path &path) const {
     ProjectHasChanges = false;
     if (IsUserProjectPath(path)) {
         CurrentProjectPath = path;
@@ -564,7 +560,7 @@ bool Project::Save(const fs::path &path) const {
 }
 
 void Project::OnApplicationLaunch() const {
-    Component::IsGesturing = false;
+    Component::IsWidgetGesturing = false;
     History.Clear(S);
     ClearChanged();
     LatestChangedPaths.clear();
@@ -614,7 +610,7 @@ void Project::Open(const fs::path &file_path) const {
     const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 
-    Component::IsGesturing = false;
+    Component::IsWidgetGesturing = false;
 
     if (format == StateFormat) {
         OpenStateFormatProject(file_path);
@@ -721,7 +717,8 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
 }
 
 void Project::Debug::StorePathUpdateFrequency::Render() const {
-    auto [labels, values] = static_cast<const Project &>(*Root).StorePathChangeFrequencyPlottable();
+    const auto &project = static_cast<const Project &>(*Root);
+    auto [labels, values] = project.StorePathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;
@@ -740,7 +737,7 @@ void Project::Debug::StorePathUpdateFrequency::Render() const {
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), c_labels.data(), false);
 
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};
-        const int item_count = !ActiveGestureActions.empty() ? 2 : 1;
+        const int item_count = !project.ActiveGestureActions.empty() ? 2 : 1;
         const int group_count = values.size() / item_count;
         ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
@@ -810,26 +807,32 @@ ImRect RowItemRatioRect(float ratio) {
     return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
 }
 
+float Project::GestureTimeRemainingSec() const {
+    if (ActiveGestureActions.empty()) return 0;
+
+    const float gesture_duration_sec = Settings.GestureDurationSec;
+    return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
+}
+
 void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     const auto &project = static_cast<const Project &>(*Root);
     {
         // Active (uncompressed) gesture
-        const bool is_gesturing = Component::IsGesturing, any_gesture_actions = !ActiveGestureActions.empty();
-        if (any_gesture_actions || is_gesturing) {
+        if (const bool is_gesturing = Component::IsWidgetGesturing, has_gesture_actions = project.HasGestureActions();
+            is_gesturing || has_gesture_actions) {
             // Gesture completion progress bar (full-width to empty).
-            const float gesture_duration_sec = project.Settings.GestureDurationSec;
-            const float time_remaining_sec = GestureTimeRemainingSec(gesture_duration_sec);
-            const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / gesture_duration_sec);
+            const float time_remaining_sec = project.GestureTimeRemainingSec();
+            const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / float(project.Settings.GestureDurationSec));
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, GetFlowGridStyle().Colors[FlowGridCol_GestureIndicator]);
 
-            const string active_gesture_title = std::format("Active gesture{}", any_gesture_actions ? " (uncompressed)" : "");
+            const string active_gesture_title = std::format("Active gesture{}", has_gesture_actions ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (is_gesturing) FillRowItemBg(gStyle.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
                 Text("Widget gesture: %s", is_gesturing ? "true" : "false");
                 if (!is_gesturing) EndDisabled();
 
-                if (any_gesture_actions) ShowActions(ActiveGestureActions);
+                if (has_gesture_actions) ShowActions(project.GetGestureActions());
                 else Text("No actions yet");
                 TreePop();
             }
@@ -921,7 +924,7 @@ void Project::Debug::Metrics::Render() const {
 }
 
 void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture) const {
-    const bool gesture_actions_already_present = !ActiveGestureActions.empty();
+    const bool has_gesture_actions = HasGestureActions();
     while (queue.TryDequeue(*DequeueToken.get(), DequeueActionMoment)) {
         auto &[action, queue_time] = DequeueActionMoment;
         if (!CanApply(action)) continue;
@@ -955,8 +958,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
         );
     }
 
-    if (force_commit_gesture ||
-        (!Component::IsGesturing && gesture_actions_already_present && GestureTimeRemainingSec(Settings.GestureDurationSec) <= 0)) {
+    if (force_commit_gesture || (!Component::IsWidgetGesturing && has_gesture_actions && GestureTimeRemainingSec() <= 0)) {
         CommitGesture();
     }
 }

@@ -28,31 +28,22 @@ struct Plottable {
     std::vector<u64> Values;
 };
 
+struct Project;
+
 /**
-This class fully describes the project at any point in time.
-It is a structured representation of its underlying store (of type `Store`,
+`State` fully describes the FlowGrid application state at any point in time.
+It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
-struct Project : Component, ActionableProducer<Action::Any> {
-    Project(Store &, moodycamel::ConsumerToken, const PrimitiveActionQueuer &, ActionProducer::Enqueue);
-    ~Project();
+struct State : Component, ActionProducer<Action::Any> {
+    // todo project param is temporary to make it easier to migrate `Component` to hold a `State` component rather than _being_ a `Component`.
+    //  It's a bad parent-access pattern.
+    //  Instead, `Project` should be further broken up into a `ProjectContext` struct that can be read by components.
+    //  This also would be the place to put the state that's currently static in `Component`.
+    State(Store &, const PrimitiveActionQueuer &, ActionProducer::EnqueueFn, Project &);
+    ~State();
 
-    // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
-    static Component *FindChanged(ID component_id, const std::vector<PatchOp> &ops);
-
-    void OpenRecentProjectMenuItem() const;
-
-    void OnApplicationLaunch() const;
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override;
-
-    void CommitGesture() const;
-    void AddGesture(Gesture &&) const;
-
-    Plottable StorePathChangeFrequencyPlottable() const;
-
-    json GetProjectJson(const ProjectFormat) const;
+    Project &P;
 
     struct Debug : DebugComponent, Component::ChangeListener {
         Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
@@ -103,7 +94,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
             void Render() const override;
         };
 
-        struct ProjectPreview : Component {
+        struct StatePreview : Component {
             using Component::Component;
 
             Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
@@ -149,7 +140,7 @@ struct Project : Component, ActionableProducer<Action::Any> {
                                 "State menu items can only be opened or closed manually if auto-select is disabled.",
               true);
 
-        Prop(ProjectPreview, ProjectPreview);
+        Prop(StatePreview, StatePreview);
         Prop(StorePathUpdateFrequency, StorePathUpdateFrequency);
         Prop(DebugLog, DebugLog);
         Prop(StackTool, StackTool);
@@ -167,14 +158,60 @@ struct Project : Component, ActionableProducer<Action::Any> {
     Prop(Demo, Demo, FileDialog);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
+    void RenderDebug() const override;
+
+protected:
+    void Render() const override;
+
+private:
+    std::optional<ProducedActionType> ProduceKeyboardAction() const;
+};
+
+// todo project own an action queue (rather than main), and be typed on the store/action type.
+//   It should be agnostic to the the store and root component subtype, provide a `ProjectContext` to the root component,
+//   and `State` should not reach into `Project`.
+
+/**
+Holds the root `State` component... does project things... (todo)
+*/
+struct Project : Actionable<Action::Any> {
+    Project(Store &, moodycamel::ConsumerToken, const PrimitiveActionQueuer &, State::EnqueueFn);
+    ~Project();
+
+    // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
+    static Component *FindChanged(ID component_id, const std::vector<PatchOp> &ops);
+
+    void OnApplicationLaunch() const;
+
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override;
+
+    void CommitGesture() const;
+    void AddGesture(Gesture &&) const;
+
+    Plottable StorePathChangeFrequencyPlottable() const;
+
+    json GetProjectJson(const ProjectFormat) const;
+
+    // Provided queue is drained.
+    void ApplyQueuedActions(ActionQueue<ActionType> &, bool force_commit_gesture = false) const;
+    bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
+    const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
+    float GestureTimeRemainingSec() const;
+
+    State::EnqueueFn q;
+    const Store &S;
+    Store &_S;
+    std::unique_ptr<State> State;
+
     ActionMenuItem<ActionType>
-        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}, "Cmd+N"},
-        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}, "Cmd+O"},
-        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
-        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}, "Cmd+S"},
-        SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
-        UndoMenuItem{*this, Action::Project::Undo{}, "Cmd+Z"},
-        RedoMenuItem{*this, Action::Project::Redo{}, "Shift+Cmd+Z"};
+        OpenEmptyMenuItem{*this, q, Action::Project::OpenEmpty{}, "Cmd+N"},
+        ShowOpenDialogMenuItem{*this, q, Action::Project::ShowOpenDialog{}, "Cmd+O"},
+        OpenDefaultMenuItem{*this, q, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
+        SaveCurrentMenuItem{*this, q, Action::Project::SaveCurrent{}, "Cmd+S"},
+        SaveDefaultMenuItem{*this, q, Action::Project::SaveDefault{}},
+        UndoMenuItem{*this, q, Action::Project::Undo{}, "Cmd+Z"},
+        RedoMenuItem{*this, q, Action::Project::Redo{}, "Shift+Cmd+Z"};
 
     const Menu MainMenu{
         {
@@ -201,21 +238,10 @@ struct Project : Component, ActionableProducer<Action::Any> {
         true
     };
 
-    void RenderDebug() const override;
-
-    // Provided queue is drained.
-    void ApplyQueuedActions(ActionQueue<ActionType> &, bool force_commit_gesture = false) const;
-    bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
-    const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
-    float GestureTimeRemainingSec() const;
-
-protected:
-    void Render() const override;
-
-private:
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
 
+private:
     std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
     mutable ActionMoment<ActionType> DequeueActionMoment{};
 
@@ -223,7 +249,7 @@ private:
     mutable std::optional<fs::path> CurrentProjectPath;
     mutable bool ProjectHasChanges{false}; // todo after store is fully value-oriented, this can be replaced with a comparison of the store and the last saved store.
     // Chronological vector of (unique-field-relative-paths, store-commit-time) pairs for each field that has been updated during the current gesture.
-    mutable std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPaths{};
+    mutable std::unordered_map<ID, std::vector<Component::PathsMoment>> GestureChangedPaths{};
     // IDs of all fields updated/added/removed during the latest action or undo/redo, mapped to all (field-relative) paths affected in the field.
     // For primitive fields, the paths will consist of only the root path.
     // For container fields, the paths will contain the container-relative paths of all affected elements.
@@ -231,9 +257,7 @@ private:
     // `ChangedPaths` is cleared after each action (after refreshing all affected fields), and can thus be used to determine which fields were affected by the latest action.
     // (`LatestChangedPaths` is retained for the lifetime of the application.)
     // These same key IDs are also stored in the `ChangedIds` set, which also includes IDs for all ancestor component of all changed components.
-    mutable std::unordered_map<ID, PathsMoment> ChangedPaths;
-
-    std::optional<ActionType> ProduceKeyboardAction() const;
+    mutable std::unordered_map<ID, Component::PathsMoment> ChangedPaths;
 
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
@@ -243,6 +267,7 @@ private:
 
     void SetHistoryIndex(u32) const;
 
+    void OpenRecentProjectMenuItem() const;
     void WindowMenuItem() const;
 
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.

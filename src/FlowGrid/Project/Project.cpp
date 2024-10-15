@@ -43,53 +43,33 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Project::Project(Store &store, moodycamel::ConsumerToken ctok, const PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::Enqueue q)
-    : Component(store, primitive_q, Windows, Style), ActionableProducer(std::move(q)),
-      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr), DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {
-    Windows.SetWindowComponents({
-        Audio.Graph,
-        Audio.Graph.Connections,
-        Audio.Style,
-        Settings,
-        Audio.Faust.FaustDsps,
-        Audio.Faust.Logs,
-        Audio.Faust.Graphs,
-        Audio.Faust.Paramss,
-        Debug,
-        Debug.ProjectPreview,
-        Debug.StorePathUpdateFrequency,
-        Debug.DebugLog,
-        Debug.StackTool,
-        Debug.Metrics,
-        Style,
-        Demo,
-        Info,
-    });
-}
+Project::Project(Store &store, moodycamel::ConsumerToken ctok, const PrimitiveActionQueuer &primitive_q, ActionProducer<Action::Any>::EnqueueFn q)
+    : q(q), S(store), _S(store), State(std::make_unique<::State>(store, primitive_q, q, *this)),
+      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr), DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {}
 
 Project::~Project() = default;
 
 void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
     MarkAllChanged(std::move(patch));
 
-    std::unordered_set<ChangeListener *> affected_listeners;
+    std::unordered_set<Component::ChangeListener *> affected_listeners;
 
     // Find listeners to notify.
-    for (const auto id : ChangedIds) {
-        if (!ById.contains(id)) continue; // The component was deleted.
+    for (const auto id : Component::ChangedIds) {
+        if (!Component::ById.contains(id)) continue; // The component was deleted.
 
-        ById.at(id)->Refresh();
+        Component::ById.at(id)->Refresh();
 
-        const auto &listeners = ChangeListenersById[id];
+        const auto &listeners = Component::ChangeListenersById[id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
     // Find ancestor listeners to notify.
     // (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
-    for (const auto id : ChangedAncestorComponentIds) {
-        if (!ById.contains(id)) continue; // The component was deleted.
+    for (const auto id : Component::ChangedAncestorComponentIds) {
+        if (!Component::ById.contains(id)) continue; // The component was deleted.
 
-        const auto &listeners = ChangeListenersById[id];
+        const auto &listeners = Component::ChangeListenersById[id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
@@ -104,7 +84,7 @@ void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
 }
 
 Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops) {
-    if (auto it = ById.find(component_id); it != ById.end()) {
+    if (auto it = Component::ById.find(component_id); it != Component::ById.end()) {
         auto *component = it->second;
         if (ops.size() == 1 && (ops.front().Op == PatchOpType::Add || ops.front().Op == PatchOpType::Remove)) {
             // Do not mark any components as added/removed if they are within a container.
@@ -112,7 +92,7 @@ Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops
             if (component->HasAncestorContainer()) return nullptr;
         }
         // When a container's auxiliary component is changed, mark the container as changed instead.
-        if (ContainerAuxiliaryIds.contains(component_id)) return component->Parent;
+        if (Component::ContainerAuxiliaryIds.contains(component_id)) return component->Parent;
         return component;
     }
 
@@ -121,8 +101,8 @@ Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops
 
 void Project::ClearChanged() const {
     ChangedPaths.clear();
-    ChangedIds.clear();
-    ChangedAncestorComponentIds.clear();
+    Component::ChangedIds.clear();
+    Component::ChangedAncestorComponentIds.clear();
 }
 
 void Project::MarkAllChanged(Patch &&patch) const {
@@ -136,16 +116,16 @@ void Project::MarkAllChanged(Patch &&patch) const {
             ChangedPaths.at(id).second.insert(changed->Path); // todo build path for containers from ops.
 
             // Mark the changed field and all its ancestors.
-            ChangedIds.insert(id);
+            Component::ChangedIds.insert(id);
             for (const auto *ancestor = changed->Parent; ancestor != nullptr; ancestor = ancestor->Parent) {
-                ChangedAncestorComponentIds.insert(ancestor->Id);
+                Component::ChangedAncestorComponentIds.insert(ancestor->Id);
             }
         }
     }
 
     // Copy `ChangedPaths` over to `LatestChangedPaths`.
     // (`ChangedPaths` is cleared at the end of each action, while `LatestChangedPaths` is retained for the lifetime of the application.)
-    for (const auto &[field_id, paths_moment] : ChangedPaths) LatestChangedPaths[field_id] = paths_moment;
+    for (const auto &[field_id, paths_moment] : ChangedPaths) Component::LatestChangedPaths[field_id] = paths_moment;
 }
 
 void Project::CommitGesture() const {
@@ -159,7 +139,7 @@ void Project::CommitGesture() const {
     AddGesture({merged_actions, Clock::now()});
 }
 
-void Project::AddGesture(Gesture &&gesture) const { History.AddGesture(S, std::move(gesture), Id); }
+void Project::AddGesture(Gesture &&gesture) const { History.AddGesture(S, std::move(gesture), State->Id); }
 
 void Project::SetHistoryIndex(u32 index) const {
     if (index == History.Index) return;
@@ -168,7 +148,7 @@ void Project::SetHistoryIndex(u32 index) const {
     ActiveGestureActions.clear(); // In case we're mid-gesture, revert before navigating.
     History.SetIndex(index);
     const auto &store = History.CurrentStore();
-    auto patch = _S.CreatePatch(store, Id);
+    auto patch = _S.CreatePatch(store, State->Id);
     _S.Commit(store.Maps);
     RefreshChanged(std::move(patch));
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
@@ -185,7 +165,7 @@ void Project::SetHistoryIndex(u32 index) const {
 
 json Project::GetProjectJson(const ProjectFormat format) const {
     switch (format) {
-        case StateFormat: return ToJson();
+        case StateFormat: return State->ToJson();
         case ActionFormat: return History.GetIndexedGestures();
     }
 }
@@ -232,7 +212,7 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Primitive::Flags::Set &a) { _S.Set(a.component_id, a.value); },
             [this](const Action::Primitive::String::Set &a) { _S.Set(a.component_id, a.value); },
             [this](const Action::Container::Any &a) {
-                const auto *container = ById.at(a.GetComponentId());
+                const auto *container = Component::ById.at(a.GetComponentId());
                 std::visit(
                     Match{
                         [container](const Action::AdjacencyList::ToggleConnection &a) {
@@ -289,7 +269,7 @@ void Project::Apply(const ActionType &action) const {
                 );
             },
             [](const Action::TextBuffer::Any &a) {
-                const auto *buffer = ById.at(a.GetComponentId());
+                const auto *buffer = Component::ById.at(a.GetComponentId());
                 static_cast<const TextBuffer *>(buffer)->Apply(a);
             },
             [this](const Action::Store::ApplyPatch &a) {
@@ -328,20 +308,20 @@ void Project::Apply(const ActionType &action) const {
                 }
             },
             [this](const Action::Project::ShowOpenDialog &) {
-                FileDialog.Set({
-                    .OwnerId = Id,
+                State->FileDialog.Set({
+                    .OwnerId = State->Id,
                     .Title = "Choose file",
                     .Filters = AllProjectExtensionsDelimited,
                 });
             },
-            [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+            [this](const Action::Project::ShowSaveDialog &) { State->FileDialog.Set({State->Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             /* Audio */
-            [this](const Action::AudioGraph::Any &a) { Audio.Graph.Apply(a); },
-            [this](const Action::Faust::DSP::Create &) { Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
-            [this](const Action::Faust::DSP::Delete &a) { Audio.Faust.FaustDsps.EraseId(a.id); },
-            [this](const Action::Faust::Graph::Any &a) { Audio.Faust.Graphs.Apply(a); },
+            [this](const Action::AudioGraph::Any &a) { State->Audio.Graph.Apply(a); },
+            [this](const Action::Faust::DSP::Create &) { State->Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
+            [this](const Action::Faust::DSP::Delete &a) { State->Audio.Faust.FaustDsps.EraseId(a.id); },
+            [this](const Action::Faust::Graph::Any &a) { State->Audio.Faust.Graphs.Apply(a); },
             [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
-                const auto &colors = Audio.Faust.Graphs.Style.Colors;
+                const auto &colors = State->Audio.Faust.Graphs.Style.Colors;
                 switch (a.id) {
                     case 0: return colors.Set(FaustGraphStyle::ColorsDark);
                     case 1: return colors.Set(FaustGraphStyle::ColorsLight);
@@ -350,22 +330,22 @@ void Project::Apply(const ActionType &action) const {
                 }
             },
             [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
-                const auto &style = Audio.Faust.Graphs.Style;
+                const auto &style = State->Audio.Faust.Graphs.Style;
                 switch (a.id) {
                     case 0: return style.LayoutFlowGrid();
                     case 1: return style.LayoutFaust();
                 }
             },
-            [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(json::parse(a.dialog_json)); },
+            [this](const Action::FileDialog::Open &a) { State->FileDialog.SetJson(json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
-            [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
-            [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
+            [this](const Action::FileDialog::Select &a) { State->FileDialog.SelectedFilePath = a.file_path; },
+            [this](const Action::Windows::ToggleVisible &a) { State->Windows.ToggleVisible(a.component_id); },
             [this](const Action::Windows::ToggleDebug &a) {
-                const bool toggling_on = !Windows.VisibleComponents.Contains(a.component_id);
-                Windows.ToggleVisible(a.component_id);
+                const bool toggling_on = !State->Windows.VisibleComponents.Contains(a.component_id);
+                State->Windows.ToggleVisible(a.component_id);
                 if (!toggling_on) return;
 
-                auto *debug_component = static_cast<DebugComponent *>(ById.at(a.component_id));
+                auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
                 if (auto *window = debug_component->FindDockWindow()) {
                     auto docknode_id = window->DockId;
                     auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
@@ -375,32 +355,32 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Style::SetImGuiColorPreset &a) {
                 // todo enum types instead of raw int keys
                 switch (a.id) {
-                    case 0: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsDark);
-                    case 1: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsLight);
-                    case 2: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsClassic);
+                    case 0: return State->Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsDark);
+                    case 1: return State->Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsLight);
+                    case 2: return State->Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsClassic);
                 }
             },
             [this](const Action::Style::SetImPlotColorPreset &a) {
                 switch (a.id) {
                     case 0:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsAuto);
-                        return Style.ImPlot.MinorAlpha.Set(0.25f);
+                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsAuto);
+                        return State->Style.ImPlot.MinorAlpha.Set(0.25f);
                     case 1:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsDark);
-                        return Style.ImPlot.MinorAlpha.Set(0.25f);
+                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsDark);
+                        return State->Style.ImPlot.MinorAlpha.Set(0.25f);
                     case 2:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsLight);
-                        return Style.ImPlot.MinorAlpha.Set(1);
+                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsLight);
+                        return State->Style.ImPlot.MinorAlpha.Set(1);
                     case 3:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsClassic);
-                        return Style.ImPlot.MinorAlpha.Set(0.5f);
+                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsClassic);
+                        return State->Style.ImPlot.MinorAlpha.Set(0.5f);
                 }
             },
             [this](const Action::Style::SetFlowGridColorPreset &a) {
                 switch (a.id) {
-                    case 0: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsDark);
-                    case 1: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsLight);
-                    case 2: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
+                    case 0: return State->Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsDark);
+                    case 1: return State->Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsLight);
+                    case 2: return State->Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
                 }
             },
         },
@@ -420,9 +400,9 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
 
-            [this](const Action::AudioGraph::Any &a) { return Audio.Graph.CanApply(a); },
-            [this](const Action::Faust::Graph::Any &a) { return Audio.Faust.Graphs.CanApply(a); },
-            [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
+            [this](const Action::AudioGraph::Any &a) { return State->Audio.Graph.CanApply(a); },
+            [this](const Action::Faust::Graph::Any &a) { return State->Audio.Faust.Graphs.CanApply(a); },
+            [this](const Action::FileDialog::Open &) { return !State->FileDialog.Visible; },
             [](auto &&) { return true; }, // All other actions are always allowed.
         },
         action
@@ -435,7 +415,7 @@ static bool IsPressed(ImGuiKeyChord chord) {
     return IsKeyChordPressed(chord, ImGuiInputFlags_Repeat, ImGuiKeyOwner_NoOwner);
 }
 
-std::optional<Project::ActionType> Project::ProduceKeyboardAction() const {
+std::optional<State::ProducedActionType> State::ProduceKeyboardAction() const {
     using namespace Action::Project;
 
     if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_N)) return OpenEmpty{};
@@ -449,8 +429,33 @@ std::optional<Project::ActionType> Project::ProduceKeyboardAction() const {
     return {};
 }
 
-void Project::Render() const {
-    MainMenu.Draw();
+State::State(Store &store, const PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::EnqueueFn q, Project &project)
+    : Component(store, primitive_q, Windows, Style), ActionProducer(std::move(q)), P(project) {
+    Windows.SetWindowComponents({
+        Audio.Graph,
+        Audio.Graph.Connections,
+        Audio.Style,
+        Settings,
+        Audio.Faust.FaustDsps,
+        Audio.Faust.Logs,
+        Audio.Faust.Graphs,
+        Audio.Faust.Paramss,
+        Debug,
+        Debug.StatePreview,
+        Debug.StorePathUpdateFrequency,
+        Debug.DebugLog,
+        Debug.StackTool,
+        Debug.Metrics,
+        Style,
+        Demo,
+        Info,
+    });
+}
+
+State::~State() = default;
+
+void State::Render() const {
+    P.MainMenu.Draw();
 
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
@@ -478,7 +483,7 @@ void Project::Render() const {
         Audio.Faust.Logs.Dock(faust_tools_node_id);
 
         Debug.Dock(debug_node_id);
-        Debug.ProjectPreview.Dock(debug_node_id);
+        Debug.StatePreview.Dock(debug_node_id);
         Debug.StorePathUpdateFrequency.Dock(debug_node_id);
         Debug.DebugLog.Dock(debug_node_id);
         Debug.StackTool.Dock(debug_node_id);
@@ -519,15 +524,6 @@ void Project::Render() const {
     if (auto action = ProduceKeyboardAction()) Q(*action);
 }
 
-void Project::OpenRecentProjectMenuItem() const {
-    if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
-        for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (MenuItem(recently_opened_path.filename().c_str())) Q(Action::Project::Open{recently_opened_path});
-        }
-        EndMenu();
-    }
-}
-
 static bool IsUserProjectPath(const fs::path &path) {
     return fs::relative(path).string() != fs::relative(EmptyProjectPath).string() &&
         fs::relative(path).string() != fs::relative(DefaultProjectPath).string();
@@ -563,11 +559,11 @@ void Project::OnApplicationLaunch() const {
     Component::IsWidgetGesturing = false;
     History.Clear(S);
     ClearChanged();
-    LatestChangedPaths.clear();
+    Component::LatestChangedPaths.clear();
 
     // When loading a new project, we always refresh all UI contexts.
-    Style.ImGui.IsChanged = true;
-    Style.ImPlot.IsChanged = true;
+    State->Style.ImGui.IsChanged = true;
+    State->Style.ImPlot.IsChanged = true;
     ImGuiSettings::IsChanged = true;
 
     // Keep the canonical "empty" project up-to-date.
@@ -582,8 +578,8 @@ static json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO:
 void Project::OpenStateFormatProject(const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
     // First, refresh all component containers to ensure the dynamically managed component instances match the JSON.
-    for (const ID auxiliary_id : ContainerAuxiliaryIds) {
-        if (auto *auxiliary_field = ById.at(auxiliary_id); j.contains(auxiliary_field->JsonPointer())) {
+    for (const ID auxiliary_id : Component::ContainerAuxiliaryIds) {
+        if (auto *auxiliary_field = Component::ById.at(auxiliary_id); j.contains(auxiliary_field->JsonPointer())) {
             auxiliary_field->SetJson(std::move(j.at(auxiliary_field->JsonPointer())));
             auxiliary_field->Refresh();
             auxiliary_field->Parent->Refresh();
@@ -591,18 +587,18 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     }
 
     // Now, every flattened JSON pointer is 1:1 with an instance path.
-    SetJson(std::move(j));
+    State->SetJson(std::move(j));
 
     // We could do `RefreshChanged(S.CheckedCommit(Id))`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
     // that have already been accounted for above.
     _S.Commit();
     ClearChanged();
-    LatestChangedPaths.clear();
-    for (auto *child : Children) child->Refresh();
+    Component::LatestChangedPaths.clear();
+    for (auto *child : State->Children) child->Refresh();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
-    ImGuiSettings.IsChanged = true;
+    State->ImGuiSettings.IsChanged = true;
     History.Clear(S);
 }
 
@@ -621,69 +617,30 @@ void Project::Open(const fs::path &file_path) const {
         for (auto &&gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
-                RefreshChanged(_S.CheckedCommit(Id));
+                RefreshChanged(_S.CheckedCommit(State->Id));
             }
             AddGesture(std::move(gesture));
         }
         SetHistoryIndex(indexed_gestures.Index);
-        LatestChangedPaths.clear();
+        Component::LatestChangedPaths.clear();
     }
 
     SetCurrentProjectPath(file_path);
 }
 
-void Project::WindowMenuItem() const {
-    const auto &item = [this](const Component &c) {
-        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, Windows.IsVisible(c.Id))) {
-            Q(Action::Windows::ToggleVisible{c.Id});
-        }
-    };
-    if (BeginMenu("Windows")) {
-        if (BeginMenu("Audio")) {
-            item(Audio.Graph);
-            item(Audio.Graph.Connections);
-            item(Audio.Style);
-            EndMenu();
-        }
-        if (BeginMenu("Faust")) {
-            item(Audio.Faust.FaustDsps);
-            item(Audio.Faust.Graphs);
-            item(Audio.Faust.Paramss);
-            item(Audio.Faust.Logs);
-            EndMenu();
-        }
-        if (BeginMenu("Debug")) {
-            item(Debug);
-            item(Debug.ProjectPreview);
-            item(Debug.StorePathUpdateFrequency);
-            item(Debug.DebugLog);
-            item(Debug.StackTool);
-            item(Debug.Metrics);
-            EndMenu();
-        }
-        item(Style);
-        item(Demo);
-        item(Info);
-        item(Settings);
-        EndMenu();
-    }
+float Project::GestureTimeRemainingSec() const {
+    if (ActiveGestureActions.empty()) return 0;
+
+    const float gesture_duration_sec = State->Settings.GestureDurationSec;
+    return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
-
-//-----------------------------------------------------------------------------
-// [SECTION] Debug
-//-----------------------------------------------------------------------------
-
-#include "implot.h"
-
-#include "UI/HelpMarker.h"
-#include "UI/JsonTree.h"
 
 Plottable Project::StorePathChangeFrequencyPlottable() const {
     if (History.GetChangedPathsCount() == 0 && GestureChangedPaths.empty()) return {};
 
     std::map<StorePath, u32> gesture_change_counts;
     for (const auto &[id, changed_paths] : GestureChangedPaths) {
-        const auto &component = ById.at(id);
+        const auto &component = Component::ById.at(id);
         for (const auto &paths_moment : changed_paths) {
             for (const auto &path : paths_moment.second) {
                 gesture_change_counts[path == "" ? component->Path : component->Path / path]++;
@@ -691,7 +648,7 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
         }
     }
 
-    const auto history_change_counts = History.GetChangeCountById() | transform([](const auto &entry) { return std::pair(ById.at(entry.first)->Path, entry.second); }) | to<std::map>();
+    const auto history_change_counts = History.GetChangeCountById() | transform([](const auto &entry) { return std::pair(Component::ById.at(entry.first)->Path, entry.second); }) | to<std::map>();
     std::set<StorePath> paths;
     paths.insert_range(keys(history_change_counts));
     paths.insert_range(keys(gesture_change_counts));
@@ -716,8 +673,59 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
     };
 }
 
-void Project::Debug::StorePathUpdateFrequency::Render() const {
-    const auto &project = static_cast<const Project &>(*Root);
+void Project::OpenRecentProjectMenuItem() const {
+    if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
+        for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
+            if (MenuItem(recently_opened_path.filename().c_str())) State->Q(Action::Project::Open{recently_opened_path});
+        }
+        EndMenu();
+    }
+}
+
+void Project::WindowMenuItem() const {
+    const auto &item = [this](const Component &c) {
+        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, State->Windows.IsVisible(c.Id))) {
+            State->Q(Action::Windows::ToggleVisible{c.Id});
+        }
+    };
+    if (BeginMenu("Windows")) {
+        if (BeginMenu("Audio")) {
+            item(State->Audio.Graph);
+            item(State->Audio.Graph.Connections);
+            item(State->Audio.Style);
+            EndMenu();
+        }
+        if (BeginMenu("Faust")) {
+            item(State->Audio.Faust.FaustDsps);
+            item(State->Audio.Faust.Graphs);
+            item(State->Audio.Faust.Paramss);
+            item(State->Audio.Faust.Logs);
+            EndMenu();
+        }
+        if (BeginMenu("Debug")) {
+            item(State->Debug);
+            item(State->Debug.StatePreview);
+            item(State->Debug.StorePathUpdateFrequency);
+            item(State->Debug.DebugLog);
+            item(State->Debug.StackTool);
+            item(State->Debug.Metrics);
+            EndMenu();
+        }
+        item(State->Style);
+        item(State->Demo);
+        item(State->Info);
+        item(State->Settings);
+        EndMenu();
+    }
+}
+
+#include "implot.h"
+
+#include "UI/HelpMarker.h"
+#include "UI/JsonTree.h"
+
+void State::Debug::StorePathUpdateFrequency::Render() const {
+    const auto &project = static_cast<const State &>(*Root).P; // todo use ProjectContext
     auto [labels, values] = project.StorePathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
@@ -737,7 +745,7 @@ void Project::Debug::StorePathUpdateFrequency::Render() const {
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), c_labels.data(), false);
 
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};
-        const int item_count = !project.ActiveGestureActions.empty() ? 2 : 1;
+        const int item_count = project.HasGestureActions() ? 2 : 1;
         const int group_count = values.size() / item_count;
         ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
@@ -745,44 +753,48 @@ void Project::Debug::StorePathUpdateFrequency::Render() const {
     }
 }
 
-void Project::Debug::DebugLog::Render() const {
+void State::Debug::DebugLog::Render() const {
     ShowDebugLogWindow();
 }
-void Project::Debug::StackTool::Render() const {
+void State::Debug::StackTool::Render() const {
     ShowIDStackToolWindow();
 }
 
-void Project::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
-void Project::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
+void State::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
+void State::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
 
 using namespace FlowGrid;
 
-void Project::Debug::OnComponentChanged() {
+void State::Debug::OnComponentChanged() {
     if (AutoSelect.IsChanged()) {
         WindowFlags = AutoSelect ? ImGuiWindowFlags_NoScrollWithMouse : ImGuiWindowFlags_None;
     }
 }
 
-void Project::RenderDebug() const {
+void State::RenderDebug() const {
     const bool auto_select = Debug.AutoSelect;
     if (auto_select) BeginDisabled();
     RenderValueTree(Debug::LabelModeType(int(Debug.LabelMode)) == Debug::LabelModeType::Annotated, auto_select);
     if (auto_select) EndDisabled();
 }
 
-void Project::Debug::ProjectPreview::Render() const {
+void State::Debug::StatePreview::Render() const {
     Format.Draw();
     Raw.Draw();
 
     Separator();
 
-    json project_json = static_cast<const Project &>(*Root).GetProjectJson(ProjectFormat(int(Format)));
+    json project_json = static_cast<const State &>(*Root).P.GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {
         SetNextItemOpen(true);
         fg::JsonTree("", std::move(project_json));
     }
+}
+
+void State::Debug::Metrics::Render() const {
+    RenderTabs();
 }
 
 void ShowActions(const SavedActionMoments &actions) {
@@ -807,22 +819,16 @@ ImRect RowItemRatioRect(float ratio) {
     return {row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(ratio, 0.f, 1.f), GetFontSize()}};
 }
 
-float Project::GestureTimeRemainingSec() const {
-    if (ActiveGestureActions.empty()) return 0;
-
-    const float gesture_duration_sec = Settings.GestureDurationSec;
-    return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
-}
-
-void Project::Debug::Metrics::FlowGridMetrics::Render() const {
-    const auto &project = static_cast<const Project &>(*Root);
+void State::Debug::Metrics::FlowGridMetrics::Render() const {
+    const auto &state = static_cast<const State &>(*Root);
+    const auto &project = state.P;
     {
         // Active (uncompressed) gesture
         if (const bool is_gesturing = Component::IsWidgetGesturing, has_gesture_actions = project.HasGestureActions();
             is_gesturing || has_gesture_actions) {
             // Gesture completion progress bar (full-width to empty).
             const float time_remaining_sec = project.GestureTimeRemainingSec();
-            const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / float(project.Settings.GestureDurationSec));
+            const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / float(state.Settings.GestureDurationSec));
             GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, GetFlowGridStyle().Colors[FlowGridCol_GestureIndicator]);
 
             const string active_gesture_title = std::format("Active gesture{}", has_gesture_actions ? " (uncompressed)" : "");
@@ -850,7 +856,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", history.Size() - 1, history.Index)) {
             if (!no_history) {
                 if (u32 edited_history_index = history.Index; SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
-                    project.Q(Action::Project::SetHistoryIndex{edited_history_index});
+                    state.Q(Action::Project::SetHistoryIndex{edited_history_index});
                 }
             }
             for (u32 i = 1; i < history.Size(); i++) {
@@ -864,7 +870,7 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
                     }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
-                        const auto &patch = Store::CreatePatch(history.PrevStore().Maps, history.CurrentStore().Maps, project.Id);
+                        const auto &patch = Store::CreatePatch(history.PrevStore().Maps, history.CurrentStore().Maps, state.Id);
                         for (const auto &[id, ops] : patch.Ops) {
                             const auto &path = ById.at(id)->Path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -919,10 +925,6 @@ void Project::Debug::Metrics::FlowGridMetrics::Render() const {
     }
 }
 
-void Project::Debug::Metrics::Render() const {
-    RenderTabs();
-}
-
 void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture) const {
     const bool has_gesture_actions = HasGestureActions();
     while (queue.TryDequeue(*DequeueToken.get(), DequeueActionMoment)) {
@@ -945,7 +947,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
         std::visit(
             Match{
                 [this, &store = _S, &queue_time](const Action::Saved &a) {
-                    if (auto patch = store.CheckedCommit(Id); !patch.Empty()) {
+                    if (auto patch = store.CheckedCommit(State->Id); !patch.Empty()) {
                         RefreshChanged(std::move(patch), true);
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;

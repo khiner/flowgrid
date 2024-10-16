@@ -44,7 +44,7 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 }
 
 Project::Project(Store &store, moodycamel::ConsumerToken ctok, const PrimitiveActionQueuer &primitive_q, ActionProducer<Action::Any>::EnqueueFn q)
-    : q(q), S(store), _S(store), State(std::make_unique<::State>(store, primitive_q, q, *this)),
+    : q(q), S(store), _S(store), State(store, primitive_q, q, *this),
       HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr), DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {}
 
 Project::~Project() = default;
@@ -139,7 +139,7 @@ void Project::CommitGesture() const {
     AddGesture({merged_actions, Clock::now()});
 }
 
-void Project::AddGesture(Gesture &&gesture) const { History.AddGesture(S, std::move(gesture), State->Id); }
+void Project::AddGesture(Gesture &&gesture) const { History.AddGesture(S, std::move(gesture), State.Id); }
 
 void Project::SetHistoryIndex(u32 index) const {
     if (index == History.Index) return;
@@ -148,7 +148,7 @@ void Project::SetHistoryIndex(u32 index) const {
     ActiveGestureActions.clear(); // In case we're mid-gesture, revert before navigating.
     History.SetIndex(index);
     const auto &store = History.CurrentStore();
-    auto patch = _S.CreatePatch(store, State->Id);
+    auto patch = _S.CreatePatch(store, State.Id);
     _S.Commit(store.Maps);
     RefreshChanged(std::move(patch));
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
@@ -165,7 +165,7 @@ void Project::SetHistoryIndex(u32 index) const {
 
 json Project::GetProjectJson(const ProjectFormat format) const {
     switch (format) {
-        case StateFormat: return State->ToJson();
+        case StateFormat: return State.ToJson();
         case ActionFormat: return History.GetIndexedGestures();
     }
 }
@@ -174,35 +174,9 @@ void ApplyVectorSet(Store &s, const auto &a) { s.Set(a.component_id, s.Get<immer
 void ApplySetInsert(Store &s, const auto &a) { s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).insert(a.value)); }
 void ApplySetErase(Store &s, const auto &a) { s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).erase(a.value)); }
 
-void Project::Apply(const ActionType &action) const {
+void State::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            /* Project */
-            [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
-            [this](const Action::Project::Open &a) { Open(a.file_path); },
-            [this](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
-
-            [this](const Action::Project::Save &a) { Save(a.file_path); },
-            [this](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
-            [this](const Action::Project::SaveCurrent &) {
-                if (CurrentProjectPath) Save(*CurrentProjectPath);
-            },
-            /* Project history */
-            [this](const Action::Project::Undo &) {
-                // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
-                // If we're at the end of the stack, we want to commit the active gesture and add it to the stack.
-                // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
-                // to commit and cut off everything after the current history index, so an undo just ditches the active changes.
-                // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
-                if (History.Index == History.Size() - 1) {
-                    if (!ActiveGestureActions.empty()) CommitGesture();
-                    SetHistoryIndex(History.Index - 1);
-                } else {
-                    SetHistoryIndex(History.Index - (ActiveGestureActions.empty() ? 1 : 0));
-                }
-            },
-            [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
-            [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
             /* Primitives */
             [this](const Action::Primitive::Bool::Toggle &a) { _S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
             [this](const Action::Primitive::Int::Set &a) { _S.Set(a.component_id, a.value); },
@@ -211,6 +185,7 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Primitive::Enum::Set &a) { _S.Set(a.component_id, a.value); },
             [this](const Action::Primitive::Flags::Set &a) { _S.Set(a.component_id, a.value); },
             [this](const Action::Primitive::String::Set &a) { _S.Set(a.component_id, a.value); },
+            /* Containers */
             [this](const Action::Container::Any &a) {
                 const auto *container = Component::ById.at(a.GetComponentId());
                 std::visit(
@@ -307,21 +282,13 @@ void Project::Apply(const ActionType &action) const {
                     }
                 }
             },
-            [this](const Action::Project::ShowOpenDialog &) {
-                State->FileDialog.Set({
-                    .OwnerId = State->Id,
-                    .Title = "Choose file",
-                    .Filters = AllProjectExtensionsDelimited,
-                });
-            },
-            [this](const Action::Project::ShowSaveDialog &) { State->FileDialog.Set({State->Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             /* Audio */
-            [this](const Action::AudioGraph::Any &a) { State->Audio.Graph.Apply(a); },
-            [this](const Action::Faust::DSP::Create &) { State->Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
-            [this](const Action::Faust::DSP::Delete &a) { State->Audio.Faust.FaustDsps.EraseId(a.id); },
-            [this](const Action::Faust::Graph::Any &a) { State->Audio.Faust.Graphs.Apply(a); },
+            [this](const Action::AudioGraph::Any &a) { Audio.Graph.Apply(a); },
+            [this](const Action::Faust::DSP::Create &) { Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
+            [this](const Action::Faust::DSP::Delete &a) { Audio.Faust.FaustDsps.EraseId(a.id); },
+            [this](const Action::Faust::Graph::Any &a) { Audio.Faust.Graphs.Apply(a); },
             [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
-                const auto &colors = State->Audio.Faust.Graphs.Style.Colors;
+                const auto &colors = Audio.Faust.Graphs.Style.Colors;
                 switch (a.id) {
                     case 0: return colors.Set(FaustGraphStyle::ColorsDark);
                     case 1: return colors.Set(FaustGraphStyle::ColorsLight);
@@ -330,19 +297,16 @@ void Project::Apply(const ActionType &action) const {
                 }
             },
             [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
-                const auto &style = State->Audio.Faust.Graphs.Style;
+                const auto &style = Audio.Faust.Graphs.Style;
                 switch (a.id) {
                     case 0: return style.LayoutFlowGrid();
                     case 1: return style.LayoutFaust();
                 }
             },
-            [this](const Action::FileDialog::Open &a) { State->FileDialog.SetJson(json::parse(a.dialog_json)); },
-            // `SelectedFilePath` mutations are non-stateful side effects.
-            [this](const Action::FileDialog::Select &a) { State->FileDialog.SelectedFilePath = a.file_path; },
-            [this](const Action::Windows::ToggleVisible &a) { State->Windows.ToggleVisible(a.component_id); },
+            [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
             [this](const Action::Windows::ToggleDebug &a) {
-                const bool toggling_on = !State->Windows.VisibleComponents.Contains(a.component_id);
-                State->Windows.ToggleVisible(a.component_id);
+                const bool toggling_on = !Windows.VisibleComponents.Contains(a.component_id);
+                Windows.ToggleVisible(a.component_id);
                 if (!toggling_on) return;
 
                 auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
@@ -355,34 +319,92 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Style::SetImGuiColorPreset &a) {
                 // todo enum types instead of raw int keys
                 switch (a.id) {
-                    case 0: return State->Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsDark);
-                    case 1: return State->Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsLight);
-                    case 2: return State->Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsClassic);
+                    case 0: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsDark);
+                    case 1: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsLight);
+                    case 2: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsClassic);
                 }
             },
             [this](const Action::Style::SetImPlotColorPreset &a) {
                 switch (a.id) {
                     case 0:
-                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsAuto);
-                        return State->Style.ImPlot.MinorAlpha.Set(0.25f);
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsAuto);
+                        return Style.ImPlot.MinorAlpha.Set(0.25f);
                     case 1:
-                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsDark);
-                        return State->Style.ImPlot.MinorAlpha.Set(0.25f);
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsDark);
+                        return Style.ImPlot.MinorAlpha.Set(0.25f);
                     case 2:
-                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsLight);
-                        return State->Style.ImPlot.MinorAlpha.Set(1);
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsLight);
+                        return Style.ImPlot.MinorAlpha.Set(1);
                     case 3:
-                        State->Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsClassic);
-                        return State->Style.ImPlot.MinorAlpha.Set(0.5f);
+                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsClassic);
+                        return Style.ImPlot.MinorAlpha.Set(0.5f);
                 }
             },
             [this](const Action::Style::SetFlowGridColorPreset &a) {
                 switch (a.id) {
-                    case 0: return State->Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsDark);
-                    case 1: return State->Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsLight);
-                    case 2: return State->Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
+                    case 0: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsDark);
+                    case 1: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsLight);
+                    case 2: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
                 }
             },
+            [](auto &&) {}, // All other actions are project actions.
+        },
+        action
+    );
+}
+
+bool State::CanApply(const ActionType &action) const {
+    return std::visit(
+        Match{
+            [this](const Action::AudioGraph::Any &a) { return Audio.Graph.CanApply(a); },
+            [this](const Action::Faust::Graph::Any &a) { return Audio.Faust.Graphs.CanApply(a); },
+            [](auto &&) { return true; }, // All other actions are always allowed.
+        },
+        action
+    );
+}
+
+void Project::Apply(const ActionType &action) const {
+    std::visit(
+        Match{
+            /* Project */
+            [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
+            [this](const Action::Project::Open &a) { Open(a.file_path); },
+            [this](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
+
+            [this](const Action::Project::Save &a) { Save(a.file_path); },
+            [this](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
+            [this](const Action::Project::SaveCurrent &) {
+                if (CurrentProjectPath) Save(*CurrentProjectPath);
+            },
+            /* Project history */
+            [this](const Action::Project::Undo &) {
+                // `StoreHistory::SetIndex` reverts the current gesture before applying the new history index.
+                // If we're at the end of the stack, we want to commit the active gesture and add it to the stack.
+                // Otherwise, if we're already in the middle of the stack somewhere, we don't want an active gesture
+                // to commit and cut off everything after the current history index, so an undo just ditches the active changes.
+                // (This allows consistent behavior when e.g. being in the middle of a change and selecting a point in the undo history.)
+                if (History.Index == History.Size() - 1) {
+                    if (!ActiveGestureActions.empty()) CommitGesture();
+                    SetHistoryIndex(History.Index - 1);
+                } else {
+                    SetHistoryIndex(History.Index - (ActiveGestureActions.empty() ? 1 : 0));
+                }
+            },
+            [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
+            [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
+            [this](const Action::Project::ShowOpenDialog &) {
+                State.FileDialog.Set({
+                    .OwnerId = State.Id,
+                    .Title = "Choose file",
+                    .Filters = AllProjectExtensionsDelimited,
+                });
+            },
+            [this](const Action::Project::ShowSaveDialog &) { State.FileDialog.Set({State.Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+            [this](const Action::FileDialog::Open &a) { State.FileDialog.SetJson(json::parse(a.dialog_json)); },
+            // `SelectedFilePath` mutations are non-stateful side effects.
+            [this](const Action::FileDialog::Select &a) { State.FileDialog.SelectedFilePath = a.file_path; },
+            [this](auto &&a) { State.Apply(std::move(a)); },
         },
         action
     );
@@ -399,11 +421,8 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
-
-            [this](const Action::AudioGraph::Any &a) { return State->Audio.Graph.CanApply(a); },
-            [this](const Action::Faust::Graph::Any &a) { return State->Audio.Faust.Graphs.CanApply(a); },
-            [this](const Action::FileDialog::Open &) { return !State->FileDialog.Visible; },
-            [](auto &&) { return true; }, // All other actions are always allowed.
+            [this](const Action::FileDialog::Open &) { return !State.FileDialog.Visible; },
+            [this](auto &&a) { return State.CanApply(std::move(a)); },
         },
         action
     );
@@ -429,8 +448,8 @@ std::optional<State::ProducedActionType> State::ProduceKeyboardAction() const {
     return {};
 }
 
-State::State(Store &store, const PrimitiveActionQueuer &primitive_q, ActionProducer<ProducedActionType>::EnqueueFn q, Project &project)
-    : Component(store, primitive_q, Windows, Style), ActionProducer(std::move(q)), P(project) {
+State::State(Store &store, const PrimitiveActionQueuer &primitive_q, ActionableProducer<ProducedActionType>::EnqueueFn q, Project &project)
+    : Component(store, primitive_q, Windows, Style), ActionableProducer(std::move(q)), P(project) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -562,8 +581,8 @@ void Project::OnApplicationLaunch() const {
     Component::LatestChangedPaths.clear();
 
     // When loading a new project, we always refresh all UI contexts.
-    State->Style.ImGui.IsChanged = true;
-    State->Style.ImPlot.IsChanged = true;
+    State.Style.ImGui.IsChanged = true;
+    State.Style.ImPlot.IsChanged = true;
     ImGuiSettings::IsChanged = true;
 
     // Keep the canonical "empty" project up-to-date.
@@ -587,7 +606,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     }
 
     // Now, every flattened JSON pointer is 1:1 with an instance path.
-    State->SetJson(std::move(j));
+    State.SetJson(std::move(j));
 
     // We could do `RefreshChanged(S.CheckedCommit(Id))`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
@@ -595,10 +614,10 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     _S.Commit();
     ClearChanged();
     Component::LatestChangedPaths.clear();
-    for (auto *child : State->Children) child->Refresh();
+    for (auto *child : State.Children) child->Refresh();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
-    State->ImGuiSettings.IsChanged = true;
+    State.ImGuiSettings.IsChanged = true;
     History.Clear(S);
 }
 
@@ -617,7 +636,7 @@ void Project::Open(const fs::path &file_path) const {
         for (auto &&gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
-                RefreshChanged(_S.CheckedCommit(State->Id));
+                RefreshChanged(_S.CheckedCommit(State.Id));
             }
             AddGesture(std::move(gesture));
         }
@@ -631,7 +650,7 @@ void Project::Open(const fs::path &file_path) const {
 float Project::GestureTimeRemainingSec() const {
     if (ActiveGestureActions.empty()) return 0;
 
-    const float gesture_duration_sec = State->Settings.GestureDurationSec;
+    const float gesture_duration_sec = State.Settings.GestureDurationSec;
     return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
@@ -676,7 +695,7 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
 void Project::OpenRecentProjectMenuItem() const {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (MenuItem(recently_opened_path.filename().c_str())) State->Q(Action::Project::Open{recently_opened_path});
+            if (MenuItem(recently_opened_path.filename().c_str())) State.Q(Action::Project::Open{recently_opened_path});
         }
         EndMenu();
     }
@@ -684,37 +703,37 @@ void Project::OpenRecentProjectMenuItem() const {
 
 void Project::WindowMenuItem() const {
     const auto &item = [this](const Component &c) {
-        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, State->Windows.IsVisible(c.Id))) {
-            State->Q(Action::Windows::ToggleVisible{c.Id});
+        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, State.Windows.IsVisible(c.Id))) {
+            State.Q(Action::Windows::ToggleVisible{c.Id});
         }
     };
     if (BeginMenu("Windows")) {
         if (BeginMenu("Audio")) {
-            item(State->Audio.Graph);
-            item(State->Audio.Graph.Connections);
-            item(State->Audio.Style);
+            item(State.Audio.Graph);
+            item(State.Audio.Graph.Connections);
+            item(State.Audio.Style);
             EndMenu();
         }
         if (BeginMenu("Faust")) {
-            item(State->Audio.Faust.FaustDsps);
-            item(State->Audio.Faust.Graphs);
-            item(State->Audio.Faust.Paramss);
-            item(State->Audio.Faust.Logs);
+            item(State.Audio.Faust.FaustDsps);
+            item(State.Audio.Faust.Graphs);
+            item(State.Audio.Faust.Paramss);
+            item(State.Audio.Faust.Logs);
             EndMenu();
         }
         if (BeginMenu("Debug")) {
-            item(State->Debug);
-            item(State->Debug.StatePreview);
-            item(State->Debug.StorePathUpdateFrequency);
-            item(State->Debug.DebugLog);
-            item(State->Debug.StackTool);
-            item(State->Debug.Metrics);
+            item(State.Debug);
+            item(State.Debug.StatePreview);
+            item(State.Debug.StorePathUpdateFrequency);
+            item(State.Debug.DebugLog);
+            item(State.Debug.StackTool);
+            item(State.Debug.Metrics);
             EndMenu();
         }
-        item(State->Style);
-        item(State->Demo);
-        item(State->Info);
-        item(State->Settings);
+        item(State.Style);
+        item(State.Demo);
+        item(State.Info);
+        item(State.Settings);
         EndMenu();
     }
 }
@@ -947,7 +966,7 @@ void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_comm
         std::visit(
             Match{
                 [this, &store = _S, &queue_time](const Action::Saved &a) {
-                    if (auto patch = store.CheckedCommit(State->Id); !patch.Empty()) {
+                    if (auto patch = store.CheckedCommit(State.Id); !patch.Empty()) {
                         RefreshChanged(std::move(patch), true);
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;

@@ -42,7 +42,7 @@ int main() {
     ActionProducer<Action::Any>::EnqueueFn q = [&queue, &q_producer_token](auto &&a) -> bool { return queue.Enqueue(q_producer_token, std::move(a)); };
     PrimitiveActionQueuer primitive_queuer{[&q](auto &&action) -> bool { return std::visit(q, std::move(action)); }};
     Project project{store, queue.CreateConsumerToken(), primitive_queuer, q};
-    State &state = *project.State;
+    State &state = project.State;
 
     // Initialize the global canonical store with all project state values set during project initialization.
     store.Commit();

@@ -35,7 +35,7 @@ struct Project;
 It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
-struct State : Component, ActionProducer<Action::Any> {
+struct State : Component, ActionableProducer<Action::Any> {
     // todo project param is temporary to make it easier to migrate `Component` to hold a `State` component rather than _being_ a `Component`.
     //  It's a bad parent-access pattern.
     //  Instead, `Project` should be further broken up into a `ProjectContext` struct that can be read by components.
@@ -44,6 +44,9 @@ struct State : Component, ActionProducer<Action::Any> {
     ~State();
 
     Project &P;
+
+    void Apply(const ActionType &) const override;
+    bool CanApply(const ActionType &) const override;
 
     struct Debug : DebugComponent, Component::ChangeListener {
         Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
@@ -202,7 +205,7 @@ struct Project : Actionable<Action::Any> {
     State::EnqueueFn q;
     const Store &S;
     Store &_S;
-    std::unique_ptr<State> State;
+    State State;
 
     ActionMenuItem<ActionType>
         OpenEmptyMenuItem{*this, q, Action::Project::OpenEmpty{}, "Cmd+N"},

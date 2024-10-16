@@ -289,7 +289,8 @@ static void PresentFrameVulkan() {
     VulkanWindow->SemaphoreIndex = (VulkanWindow->SemaphoreIndex + 1) % VulkanWindow->ImageCount; // Now we can use the next set of semaphores.
 }
 
-UIContext::UIContext(const ImGuiSettings &settings, const fg::Style &style) : Settings(settings), Style(style) {
+UIContext::UIContext(std::function<void()> draw, const ImGuiSettings &settings, const fg::Style &style)
+    : Draw(std::move(draw)), Settings(settings), Style(style) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) {
         throw std::runtime_error(std::format("SDL_Init error: {}", SDL_GetError()));
     }
@@ -378,7 +379,7 @@ void RenderFrame() {
     }
 }
 
-bool UIContext::Tick(const Component &drawable) const {
+bool UIContext::Tick() const {
     // Poll and handle events (inputs, window resize, etc.)
     // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -427,7 +428,7 @@ bool UIContext::Tick(const Component &drawable) const {
 #ifdef ONLY_RENDER_METRICS_WINDOW
     ImGui::ShowMetricsWindow();
 #else
-    drawable.Draw(); // All project content drawing, initial dockspace setup, keyboard shortcuts.
+    Draw(); // All project content drawing, initial dockspace setup, keyboard shortcuts.
 #endif
     RenderFrame();
 

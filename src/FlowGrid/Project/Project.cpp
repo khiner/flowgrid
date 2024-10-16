@@ -474,8 +474,6 @@ State::State(Store &store, const PrimitiveActionQueuer &primitive_q, ActionableP
 State::~State() = default;
 
 void State::Render() const {
-    P.MainMenu.Draw();
-
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;

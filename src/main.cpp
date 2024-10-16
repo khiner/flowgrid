@@ -23,7 +23,7 @@ Patch CreatePatch(State &state) {
 
 bool Tick(State &state, const UIContext &ui) {
     auto &io = ImGui::GetIO();
-    const bool running = ui.Tick(state);
+    const bool running = ui.Tick();
     if (running && io.WantSaveIniSettings) {
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
         if (auto patch = CreatePatch(state); !patch.Empty()) {
@@ -50,7 +50,11 @@ int main() {
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
     state.Refresh();
 
-    const UIContext ui{state.ImGuiSettings, state.Style}; // Initialize ImGui and other UI state.
+    std::function<void()> draw = [&project]() {
+        project.MainMenu.Draw();
+        project.State.Draw();
+    };
+    const UIContext ui{std::move(draw), state.ImGuiSettings, state.Style}; // Initialize ImGui and other UI state.
     Fonts::Init(); // Must be done after initializing ImGui.
     ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
 

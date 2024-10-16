@@ -5,7 +5,8 @@
 #include "PrimitiveAction.h"
 
 struct PrimitiveActionQueuer {
-    using EnqueueFn = ActionProducer<Action::Combine<Action::Primitive::Any, Action::Vec2::Any>>::EnqueueFn;
+    using ActionType = Action::Combine<Action::Primitive::Any, Action::Vec2::Any>;
+    using EnqueueFn = ActionProducer<ActionType>::EnqueueFn;
 
     PrimitiveActionQueuer(EnqueueFn q) : Q(std::move(q)) {}
 

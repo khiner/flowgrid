@@ -5,6 +5,7 @@
 #include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
 #include "Core/ImGuiSettings.h"
+#include "Core/Primitive/PrimitiveActionQueuer.h"
 #include "Core/Windows.h"
 #include "Demo/Demo.h"
 #include "FileDialog/FileDialog.h"
@@ -30,20 +31,23 @@ struct Plottable {
 
 struct Project;
 
+struct ProjectContext {
+    const std::function<json(ProjectFormat)> GetProjectJson;
+    const std::function<void()> RenderMetrics;
+    const std::function<void()> RenderStorePathChangeFrequency;
+};
+
 /**
 `State` fully describes the FlowGrid application state at any point in time.
 It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
 struct State : Component, ActionableProducer<Action::Any> {
-    // todo project param is temporary to make it easier to migrate `Component` to hold a `State` component rather than _being_ a `Component`.
-    //  It's a bad parent-access pattern.
-    //  Instead, `Project` should be further broken up into a `ProjectContext` struct that can be read by components.
-    //  This also would be the place to put the state that's currently static in `Component`.
-    State(Store &, const PrimitiveActionQueuer &, ActionProducer::EnqueueFn, Project &);
+    State(Store &, ActionProducer::EnqueueFn, const ProjectContext &);
     ~State();
 
-    Project &P;
+    const ProjectContext ProjectContext;
+    const PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
@@ -178,7 +182,7 @@ private:
 Holds the root `State` component... does project things... (todo)
 */
 struct Project : Actionable<Action::Any> {
-    Project(Store &, moodycamel::ConsumerToken, const PrimitiveActionQueuer &, State::EnqueueFn);
+    Project(Store &, moodycamel::ConsumerToken, State::EnqueueFn);
     ~Project();
 
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
@@ -202,7 +206,12 @@ struct Project : Actionable<Action::Any> {
     const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
     float GestureTimeRemainingSec() const;
 
-    State::EnqueueFn q;
+    const ProjectContext ProjectContext{
+        [this](ProjectFormat format) { return GetProjectJson(format); },
+        [this]() { RenderMetrics(); },
+        [this]() { RenderStorePathChangeFrequency(); }
+    };
+    const State::EnqueueFn q;
     const Store &S;
     Store &_S;
     State State;
@@ -272,6 +281,8 @@ private:
 
     void OpenRecentProjectMenuItem() const;
     void WindowMenuItem() const;
+    void RenderMetrics() const;
+    void RenderStorePathChangeFrequency() const;
 
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
     // This is always called immediately after a store commit.

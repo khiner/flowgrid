@@ -43,9 +43,10 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Project::Project(Store &store, moodycamel::ConsumerToken ctok, const PrimitiveActionQueuer &primitive_q, ActionProducer<Action::Any>::EnqueueFn q)
-    : q(q), S(store), _S(store), State(store, primitive_q, q, *this),
-      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr), DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {}
+Project::Project(Store &store, moodycamel::ConsumerToken ctok, State::EnqueueFn q)
+    : q(q), S(store), _S(store), State(store, std::move(q), ProjectContext),
+      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr),
+      DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {}
 
 Project::~Project() = default;
 
@@ -448,8 +449,8 @@ std::optional<State::ProducedActionType> State::ProduceKeyboardAction() const {
     return {};
 }
 
-State::State(Store &store, const PrimitiveActionQueuer &primitive_q, ActionableProducer<ProducedActionType>::EnqueueFn q, Project &project)
-    : Component(store, primitive_q, Windows, Style), ActionableProducer(std::move(q)), P(project) {
+State::State(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectContext &project_context)
+    : Component(store, PrimitiveQ, Windows, Style), ActionableProducer(std::move(q)), ProjectContext(project_context) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -742,8 +743,12 @@ void Project::WindowMenuItem() const {
 #include "UI/JsonTree.h"
 
 void State::Debug::StorePathUpdateFrequency::Render() const {
-    const auto &project = static_cast<const State &>(*Root).P; // todo use ProjectContext
-    auto [labels, values] = project.StorePathChangeFrequencyPlottable();
+    const auto &pc = static_cast<const State &>(*Root).ProjectContext;
+    pc.RenderStorePathChangeFrequency();
+}
+
+void Project::RenderStorePathChangeFrequency() const {
+    auto [labels, values] = StorePathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;
@@ -762,7 +767,7 @@ void State::Debug::StorePathUpdateFrequency::Render() const {
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), c_labels.data(), false);
 
         static const char *ItemLabels[] = {"Committed updates", "Active updates"};
-        const int item_count = project.HasGestureActions() ? 2 : 1;
+        const int item_count = HasGestureActions() ? 2 : 1;
         const int group_count = values.size() / item_count;
         ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);
 
@@ -801,7 +806,8 @@ void State::Debug::StatePreview::Render() const {
 
     Separator();
 
-    json project_json = static_cast<const State &>(*Root).P.GetProjectJson(ProjectFormat(int(Format)));
+    const auto &pc = static_cast<const State &>(*Root).ProjectContext;
+    json project_json = pc.GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4).c_str());
     } else {
@@ -837,25 +843,28 @@ ImRect RowItemRatioRect(float ratio) {
 }
 
 void State::Debug::Metrics::FlowGridMetrics::Render() const {
-    const auto &state = static_cast<const State &>(*Root);
-    const auto &project = state.P;
+    const auto &pc = static_cast<const State &>(*Root).ProjectContext;
+    pc.RenderMetrics();
+}
+
+void Project::RenderMetrics() const {
     {
         // Active (uncompressed) gesture
-        if (const bool is_gesturing = Component::IsWidgetGesturing, has_gesture_actions = project.HasGestureActions();
+        if (const bool is_gesturing = Component::IsWidgetGesturing, has_gesture_actions = HasGestureActions();
             is_gesturing || has_gesture_actions) {
             // Gesture completion progress bar (full-width to empty).
-            const float time_remaining_sec = project.GestureTimeRemainingSec();
-            const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / float(state.Settings.GestureDurationSec));
-            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, GetFlowGridStyle().Colors[FlowGridCol_GestureIndicator]);
+            const float time_remaining_sec = GestureTimeRemainingSec();
+            const auto row_item_ratio_rect = RowItemRatioRect(time_remaining_sec / float(State.Settings.GestureDurationSec));
+            GetWindowDrawList()->AddRectFilled(row_item_ratio_rect.Min, row_item_ratio_rect.Max, State.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
 
             const string active_gesture_title = std::format("Active gesture{}", has_gesture_actions ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (is_gesturing) FillRowItemBg(gStyle.ImGui.Colors[ImGuiCol_FrameBgActive]);
+                if (is_gesturing) FillRowItemBg(State.Style.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
                 Text("Widget gesture: %s", is_gesturing ? "true" : "false");
                 if (!is_gesturing) EndDisabled();
 
-                if (has_gesture_actions) ShowActions(project.GetGestureActions());
+                if (has_gesture_actions) ShowActions(GetGestureActions());
                 else Text("No actions yet");
                 TreePop();
             }
@@ -867,13 +876,13 @@ void State::Debug::Metrics::FlowGridMetrics::Render() const {
     }
     Separator();
     {
-        const auto &history = project.History;
+        const auto &history = History;
         const bool no_history = history.Empty();
         if (no_history) BeginDisabled();
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", history.Size() - 1, history.Index)) {
             if (!no_history) {
                 if (u32 edited_history_index = history.Index; SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
-                    state.Q(Action::Project::SetHistoryIndex{edited_history_index});
+                    State.Q(Action::Project::SetHistoryIndex{edited_history_index});
                 }
             }
             for (u32 i = 1; i < history.Size(); i++) {
@@ -887,9 +896,9 @@ void State::Debug::Metrics::FlowGridMetrics::Render() const {
                     }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
-                        const auto &patch = Store::CreatePatch(history.PrevStore().Maps, history.CurrentStore().Maps, state.Id);
+                        const auto &patch = Store::CreatePatch(history.PrevStore().Maps, history.CurrentStore().Maps, State.Id);
                         for (const auto &[id, ops] : patch.Ops) {
-                            const auto &path = ById.at(id)->Path;
+                            const auto &path = Component::ById.at(id)->Path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
                                 for (const auto &op : ops) {
                                     BulletText("Op: %s", ToString(op.Op).c_str());
@@ -915,12 +924,12 @@ void State::Debug::Metrics::FlowGridMetrics::Render() const {
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) Preferences.Clear();
             SameLine();
-            ShowRelativePaths.Draw();
+            State.Debug.Metrics.FlowGrid.ShowRelativePaths.Draw();
 
             if (!has_RecentlyOpenedPaths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
                 for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-                    BulletText("%s", (ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                    BulletText("%s", (State.Debug.Metrics.FlowGrid.ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();
             }

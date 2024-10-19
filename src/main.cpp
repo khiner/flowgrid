@@ -1,8 +1,8 @@
 #include "imgui_internal.h"
 
 #include "FlowGrid/Core/Action/ActionQueue.h"
+#include "FlowGrid/Core/FileDialog/FileDialogManager.h"
 #include "FlowGrid/Core/Store/Store.h"
-#include "FlowGrid/Project/FileDialog/FileDialogManager.h"
 #include "FlowGrid/Project/Project.h"
 #include "UI/Fonts.h"
 #include "UI/UIContext.h"
@@ -20,13 +20,13 @@ Patch CreatePatch(State &state) {
     return patch;
 }
 
-bool Tick(State &state, const UIContext &ui) {
+bool Tick(Project &project, const UIContext &ui) {
     auto &io = ImGui::GetIO();
     const bool running = ui.Tick();
     if (running && io.WantSaveIniSettings) {
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        if (auto patch = CreatePatch(state); !patch.Empty()) {
-            state.Q(Action::Store::ApplyPatch{std::move(patch)});
+        if (auto patch = CreatePatch(project.State); !patch.Empty()) {
+            project.Q(Action::Store::ApplyPatch{std::move(patch)});
         }
         io.WantSaveIniSettings = false;
     }
@@ -57,16 +57,16 @@ int main() {
 
     {
         // Relying on these rendering side effects up front is not great.
-        Tick(state, ui); // Rendering the first frame has side effects like creating dockspaces & windows.
+        Tick(project, ui); // Rendering the first frame has side effects like creating dockspaces & windows.
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        Tick(state, ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        Tick(project, ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
         project.ApplyQueuedActions(queue, true);
     }
 
     project.OnApplicationLaunch();
 
     static ActionMoment<Project::ActionType> action_moment; // For dequeuing to flush the queue.
-    while (Tick(state, ui)) {
+    while (Tick(project, ui)) {
         // Disable all actions while the file dialog is open.
         if (state.FileDialog.Visible) {
             queue.Clear();

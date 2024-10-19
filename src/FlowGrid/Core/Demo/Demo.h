@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Project/FileDialog/FileDialog.h"
+#include "Core/FileDialog/FileDialog.h"
 
 struct Demo : Component {
     Demo(ComponentArgs &&, const FileDialog &);

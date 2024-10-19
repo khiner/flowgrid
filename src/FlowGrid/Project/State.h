@@ -3,14 +3,14 @@
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
+#include "Core/Demo/Demo.h"
+#include "Core/FileDialog/FileDialog.h"
 #include "Core/ImGuiSettings.h"
+#include "Core/Info/Info.h"
 #include "Core/Primitive/PrimitiveActionQueuer.h"
 #include "Core/Windows.h"
 
 #include "Audio/Audio.h"
-#include "Demo/Demo.h"
-#include "FileDialog/FileDialog.h"
-#include "Info/Info.h"
 #include "ProjectSettings.h"
 #include "Style/Style.h"
 
@@ -21,7 +21,7 @@ struct ProjectContext;
 It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
-struct State : Component, ActionableProducer<Action::Any> {
+struct State : Component, ActionableProducer<Action::State::Any, Action::Any> {
     State(Store &, ActionProducer::EnqueueFn, const ProjectContext &);
     ~State();
 

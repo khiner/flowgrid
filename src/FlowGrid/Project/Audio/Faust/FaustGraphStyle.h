@@ -1,13 +1,13 @@
 #pragma once
 
 #include "Core/ActionProducerComponent.h"
+#include "Core/Colors.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Flags.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/String.h"
-#include "Project/Style/Colors.h"
 #include "UI/Styling.h"
 
 #include "FaustGraphStyleAction.h"

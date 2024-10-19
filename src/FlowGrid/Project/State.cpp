@@ -3,8 +3,6 @@
 #include "imgui_internal.h"
 #include "implot.h"
 
-#include "Core/Store/Store.h"
-
 #include "ProjectContext.h"
 
 #include "UI/JsonTree.h"
@@ -36,145 +34,9 @@ State::State(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectConte
 
 State::~State() = default;
 
-void ApplyVectorSet(Store &s, const auto &a) {
-    s.Set(a.component_id, s.Get<immer::flex_vector<decltype(a.value)>>(a.component_id).set(a.i, a.value));
-}
-void ApplySetInsert(Store &s, const auto &a) {
-    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).insert(a.value));
-}
-void ApplySetErase(Store &s, const auto &a) {
-    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).erase(a.value));
-}
-
 void State::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            /* Primitives */
-            [this](const Action::Primitive::Bool::Toggle &a) { _S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
-            [this](const Action::Primitive::Int::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::UInt::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Float::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Enum::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Flags::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::String::Set &a) { _S.Set(a.component_id, a.value); },
-            /* Containers */
-            [this](const Action::Container::Any &a) {
-                const auto *container = Component::ById.at(a.GetComponentId());
-                std::visit(
-                    Match{
-                        [container](const Action::AdjacencyList::ToggleConnection &a) {
-                            const auto *al = static_cast<const AdjacencyList *>(container);
-                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
-                            else al->Connect(a.source, a.destination);
-                        },
-                        [this, container](const Action::Vec2::Set &a) {
-                            const auto *vec2 = static_cast<const Vec2 *>(container);
-                            _S.Set(vec2->X.Id, a.value.first);
-                            _S.Set(vec2->Y.Id, a.value.second);
-                        },
-                        [this, container](const Action::Vec2::SetX &a) { _S.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
-                        [this, container](const Action::Vec2::SetY &a) { _S.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
-                        [this, container](const Action::Vec2::SetAll &a) {
-                            const auto *vec2 = static_cast<const Vec2 *>(container);
-                            _S.Set(vec2->X.Id, a.value);
-                            _S.Set(vec2->Y.Id, a.value);
-                        },
-                        [this, container](const Action::Vec2::ToggleLinked &) {
-                            const auto *vec2 = static_cast<const Vec2Linked *>(container);
-                            _S.Set(vec2->Linked.Id, !S.Get<bool>(vec2->Linked.Id));
-                            const float x = S.Get<float>(vec2->X.Id);
-                            const float y = S.Get<float>(vec2->Y.Id);
-                            if (x < y) _S.Set(vec2->Y.Id, x);
-                            else if (y < x) _S.Set(vec2->X.Id, y);
-                        },
-                        [this](const Action::Vector<bool>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<int>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<u32>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<float>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<std::string>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Set<u32>::Insert &a) { ApplySetInsert(_S, a); },
-                        [this](const Action::Set<u32>::Erase &a) { ApplySetErase(_S, a); },
-                        [this, container](const Action::Navigable<u32>::Clear &) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
-                            _S.Set(nav->Cursor.Id, 0);
-                        },
-                        [this, container](const Action::Navigable<u32>::Push &a) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            const auto vec = S.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
-                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
-                            _S.Set<u32>(nav->Cursor.Id, vec.size() - 1);
-                        },
-
-                        [this, container](const Action::Navigable<u32>::MoveTo &a) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            auto cursor = u32(std::clamp(int(a.index), 0, int(S.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
-                            _S.Set(nav->Cursor.Id, std::move(cursor));
-                        },
-                    },
-                    a
-                );
-            },
-            [](const Action::TextBuffer::Any &a) {
-                const auto *buffer = Component::ById.at(a.GetComponentId());
-                static_cast<const TextBuffer *>(buffer)->Apply(a);
-            },
-            [this](const Action::Store::ApplyPatch &a) {
-                for (const auto &[id, ops] : a.patch.Ops) {
-                    for (const auto &op : ops) {
-                        if (op.Op == PatchOpType::PopBack) {
-                            std::visit(
-                                [&](auto &&v) {
-                                    const auto vec = S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id);
-                                    _S.Set(id, vec.take(vec.size() - 1));
-                                },
-                                *op.Old
-                            );
-                        } else if (op.Op == PatchOpType::Remove) {
-                            std::visit([&](auto &&v) { _S.Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
-                        } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
-                            std::visit([&](auto &&v) { _S.Set(id, std::move(v)); }, *op.Value);
-                        } else if (op.Op == PatchOpType::PushBack) {
-                            std::visit([&](auto &&v) { _S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).push_back(std::move(v))); }, *op.Value);
-                        } else if (op.Op == PatchOpType::Set) {
-                            std::visit([&](auto &&v) { _S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).set(*op.Index, std::move(v))); }, *op.Value);
-                        } else {
-                            // `set` ops - currently, u32 is the only set value type.
-                            std::visit(
-                                Match{
-                                    [&](u32 v) {
-                                        if (op.Op == PatchOpType::Insert) _S.Set(id, S.Get<immer::set<decltype(v)>>(id).insert(v));
-                                        else if (op.Op == PatchOpType::Erase) _S.Set(id, S.Get<immer::set<decltype(v)>>(id).erase(v));
-                                    },
-                                    [](auto &&) {},
-                                },
-                                *op.Value
-                            );
-                        }
-                    }
-                }
-            },
-            /* Audio */
-            [this](const Action::AudioGraph::Any &a) { Audio.Graph.Apply(a); },
-            [this](const Action::Faust::DSP::Create &) { Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
-            [this](const Action::Faust::DSP::Delete &a) { Audio.Faust.FaustDsps.EraseId(a.id); },
-            [this](const Action::Faust::Graph::Any &a) { Audio.Faust.Graphs.Apply(a); },
-            [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
-                const auto &colors = Audio.Faust.Graphs.Style.Colors;
-                switch (a.id) {
-                    case 0: return colors.Set(FaustGraphStyle::ColorsDark);
-                    case 1: return colors.Set(FaustGraphStyle::ColorsLight);
-                    case 2: return colors.Set(FaustGraphStyle::ColorsClassic);
-                    case 3: return colors.Set(FaustGraphStyle::ColorsFaust);
-                }
-            },
-            [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
-                const auto &style = Audio.Faust.Graphs.Style;
-                switch (a.id) {
-                    case 0: return style.LayoutFlowGrid();
-                    case 1: return style.LayoutFaust();
-                }
-            },
             [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
             [this](const Action::Windows::ToggleDebug &a) {
                 const bool toggling_on = !Windows.VisibleComponents.Contains(a.component_id);
@@ -219,7 +81,33 @@ void State::Apply(const ActionType &action) const {
                     case 2: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
                 }
             },
-            [](auto &&) {}, // All other actions are project actions.
+            [](const Action::TextBuffer::Any &a) {
+                const auto *buffer = Component::ById.at(a.GetComponentId());
+                static_cast<const TextBuffer *>(buffer)->Apply(a);
+            },
+            /* Audio */
+            [this](const Action::AudioGraph::Any &a) { Audio.Graph.Apply(a); },
+            [this](const Action::Faust::DSP::Create &) { Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
+            [this](const Action::Faust::DSP::Delete &a) { Audio.Faust.FaustDsps.EraseId(a.id); },
+            [this](const Action::Faust::Graph::Any &a) { Audio.Faust.Graphs.Apply(a); },
+            [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
+                const auto &colors = Audio.Faust.Graphs.Style.Colors;
+                switch (a.id) {
+                    case 0: return colors.Set(FaustGraphStyle::ColorsDark);
+                    case 1: return colors.Set(FaustGraphStyle::ColorsLight);
+                    case 2: return colors.Set(FaustGraphStyle::ColorsClassic);
+                    case 3: return colors.Set(FaustGraphStyle::ColorsFaust);
+                }
+            },
+            [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
+                const auto &style = Audio.Faust.Graphs.Style;
+                switch (a.id) {
+                    case 0: return style.LayoutFlowGrid();
+                    case 1: return style.LayoutFaust();
+                }
+            },
+            [](const Action::Core::Any &&) {}, // All other actions are project actions.
+
         },
         action
     );
@@ -237,24 +125,6 @@ bool State::CanApply(const ActionType &action) const {
 }
 
 using namespace ImGui;
-
-bool IsPressed(ImGuiKeyChord chord) {
-    return IsKeyChordPressed(chord, ImGuiInputFlags_Repeat, ImGuiKeyOwner_NoOwner);
-}
-
-std::optional<State::ProducedActionType> ProduceKeyboardAction() {
-    using namespace Action::Project;
-
-    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_N)) return OpenEmpty{};
-    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_O)) return ShowOpenDialog{};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_S)) return ShowSaveDialog{};
-    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) return Undo{};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Z)) return Redo{};
-    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_O)) return OpenDefault{};
-    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_S)) return SaveCurrent{};
-
-    return {};
-}
 
 void State::Render() const {
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
@@ -311,8 +181,6 @@ void State::Render() const {
         Audio.Faust.Paramss.Focus();
         Debug.Focus(); // not visible by default anymore
     }
-
-    if (auto action = ProduceKeyboardAction()) Q(*action);
 }
 
 void State::Debug::StorePathUpdateFrequency::Render() const {

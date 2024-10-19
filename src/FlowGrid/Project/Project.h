@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/Action/Actions.h"
 #include "ProjectContext.h"
 #include "State.h"
 
@@ -21,8 +22,8 @@ struct Plottable {
 /**
 Holds the root `State` component... does project things... (todo)
 */
-struct Project : Actionable<Action::Any> {
-    Project(Store &, moodycamel::ConsumerToken, State::EnqueueFn);
+struct Project : ActionableProducer<Action::Any> {
+    Project(Store &, moodycamel::ConsumerToken, EnqueueFn);
     ~Project();
 
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
@@ -51,19 +52,19 @@ struct Project : Actionable<Action::Any> {
         [this]() { RenderMetrics(); },
         [this]() { RenderStorePathChangeFrequency(); }
     };
-    const State::EnqueueFn q;
+
     const Store &S;
     Store &_S;
     State State;
 
     ActionMenuItem<ActionType>
-        OpenEmptyMenuItem{*this, q, Action::Project::OpenEmpty{}, "Cmd+N"},
-        ShowOpenDialogMenuItem{*this, q, Action::Project::ShowOpenDialog{}, "Cmd+O"},
-        OpenDefaultMenuItem{*this, q, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
-        SaveCurrentMenuItem{*this, q, Action::Project::SaveCurrent{}, "Cmd+S"},
-        SaveDefaultMenuItem{*this, q, Action::Project::SaveDefault{}},
-        UndoMenuItem{*this, q, Action::Project::Undo{}, "Cmd+Z"},
-        RedoMenuItem{*this, q, Action::Project::Redo{}, "Shift+Cmd+Z"};
+        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}, "Cmd+N"},
+        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}, "Cmd+O"},
+        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
+        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}, "Cmd+S"},
+        SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
+        UndoMenuItem{*this, Action::Project::Undo{}, "Cmd+Z"},
+        RedoMenuItem{*this, Action::Project::Redo{}, "Shift+Cmd+Z"};
 
     const Menu MainMenu{
         {

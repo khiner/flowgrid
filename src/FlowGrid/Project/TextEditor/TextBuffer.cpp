@@ -8,12 +8,12 @@
 #include "immer/vector_transient.hpp"
 
 #include "Application/ApplicationPreferences.h"
+#include "Core/FileDialog/FileDialog.h"
 #include "Core/Store/Store.h"
 #include "Core/Windows.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/Time.h"
-#include "Project/FileDialog/FileDialog.h"
 #include "UI/Fonts.h"
 
 #include "SyntaxTree.h"

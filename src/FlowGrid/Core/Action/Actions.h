@@ -1,20 +1,12 @@
 #pragma once
 
 #include "ActionMoment.h"
-
-#include "Core/Container/ContainerAction.h"
-#include "Core/Primitive/PrimitiveAction.h"
-#include "Core/Store/StoreAction.h"
-#include "Core/WindowsAction.h"
-#include "Project/Audio/AudioAction.h"
-#include "Project/FileDialog/FileDialogAction.h"
-#include "Project/ProjectAction.h"
-#include "Project/Style/StyleAction.h"
-#include "Project/TextEditor/TextBufferAction.h"
+#include "Core/CoreAction.h"
+#include "Project/StateAction.h"
 
 namespace Action {
 // `Any` holds all action types.
-using Any = Combine<Primitive::Any, Container::Any, Project::Any, Store::Any, TextBuffer::Any, Audio::Any, FileDialog::Any, Windows::Any, Style::Any>;
+using Any = Combine<Core::Any, State::Any>;
 using Saved = Filter<Action::IsSaved, Any>;
 using NonSaved = Filter<Action::IsNotSaved, Any>;
 } // namespace Action

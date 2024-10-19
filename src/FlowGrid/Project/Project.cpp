@@ -45,8 +45,8 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Project::Project(Store &store, moodycamel::ConsumerToken ctok, State::EnqueueFn q)
-    : q(q), S(store), _S(store), State(store, std::move(q), ProjectContext),
+Project::Project(Store &store, moodycamel::ConsumerToken ctok, ActionableProducer::EnqueueFn q)
+    : ActionableProducer(std::move(q)), S(store), _S(store), State(store, q, ProjectContext),
       HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr),
       DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {}
 
@@ -173,6 +173,16 @@ json Project::GetProjectJson(const ProjectFormat format) const {
     }
 }
 
+void ApplyVectorSet(Store &s, const auto &a) {
+    s.Set(a.component_id, s.Get<immer::flex_vector<decltype(a.value)>>(a.component_id).set(a.i, a.value));
+}
+void ApplySetInsert(Store &s, const auto &a) {
+    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).insert(a.value));
+}
+void ApplySetErase(Store &s, const auto &a) {
+    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).erase(a.value));
+}
+
 void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
@@ -210,10 +220,113 @@ void Project::Apply(const ActionType &action) const {
                 });
             },
             [this](const Action::Project::ShowSaveDialog &) { State.FileDialog.Set({State.Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+            /* File dialog */
             [this](const Action::FileDialog::Open &a) { State.FileDialog.SetJson(json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
             [this](const Action::FileDialog::Select &a) { State.FileDialog.SelectedFilePath = a.file_path; },
-            [this](auto &&a) { State.Apply(std::move(a)); },
+            /* Primitives */
+            [this](const Action::Primitive::Bool::Toggle &a) { _S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
+            [this](const Action::Primitive::Int::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::UInt::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Float::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Enum::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Flags::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::String::Set &a) { _S.Set(a.component_id, a.value); },
+            /* Containers */
+            [this](const Action::Container::Any &a) {
+                const auto *container = Component::ById.at(a.GetComponentId());
+                std::visit(
+                    Match{
+                        [container](const Action::AdjacencyList::ToggleConnection &a) {
+                            const auto *al = static_cast<const AdjacencyList *>(container);
+                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
+                            else al->Connect(a.source, a.destination);
+                        },
+                        [this, container](const Action::Vec2::Set &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(container);
+                            _S.Set(vec2->X.Id, a.value.first);
+                            _S.Set(vec2->Y.Id, a.value.second);
+                        },
+                        [this, container](const Action::Vec2::SetX &a) { _S.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
+                        [this, container](const Action::Vec2::SetY &a) { _S.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
+                        [this, container](const Action::Vec2::SetAll &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(container);
+                            _S.Set(vec2->X.Id, a.value);
+                            _S.Set(vec2->Y.Id, a.value);
+                        },
+                        [this, container](const Action::Vec2::ToggleLinked &) {
+                            const auto *vec2 = static_cast<const Vec2Linked *>(container);
+                            _S.Set(vec2->Linked.Id, !S.Get<bool>(vec2->Linked.Id));
+                            const float x = S.Get<float>(vec2->X.Id);
+                            const float y = S.Get<float>(vec2->Y.Id);
+                            if (x < y) _S.Set(vec2->Y.Id, x);
+                            else if (y < x) _S.Set(vec2->X.Id, y);
+                        },
+                        [this](const Action::Vector<bool>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<int>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<u32>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<float>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<std::string>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Set<u32>::Insert &a) { ApplySetInsert(_S, a); },
+                        [this](const Action::Set<u32>::Erase &a) { ApplySetErase(_S, a); },
+                        [this, container](const Action::Navigable<u32>::Clear &) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
+                            _S.Set(nav->Cursor.Id, 0);
+                        },
+                        [this, container](const Action::Navigable<u32>::Push &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            const auto vec = S.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
+                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
+                            _S.Set<u32>(nav->Cursor.Id, vec.size() - 1);
+                        },
+
+                        [this, container](const Action::Navigable<u32>::MoveTo &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(container);
+                            auto cursor = u32(std::clamp(int(a.index), 0, int(S.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
+                            _S.Set(nav->Cursor.Id, std::move(cursor));
+                        },
+                    },
+                    a
+                );
+            },
+            /* Store */
+            [this](const Action::Store::ApplyPatch &a) {
+                for (const auto &[id, ops] : a.patch.Ops) {
+                    for (const auto &op : ops) {
+                        if (op.Op == PatchOpType::PopBack) {
+                            std::visit(
+                                [&](auto &&v) {
+                                    const auto vec = S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id);
+                                    _S.Set(id, vec.take(vec.size() - 1));
+                                },
+                                *op.Old
+                            );
+                        } else if (op.Op == PatchOpType::Remove) {
+                            std::visit([&](auto &&v) { _S.Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
+                        } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
+                            std::visit([&](auto &&v) { _S.Set(id, std::move(v)); }, *op.Value);
+                        } else if (op.Op == PatchOpType::PushBack) {
+                            std::visit([&](auto &&v) { _S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).push_back(std::move(v))); }, *op.Value);
+                        } else if (op.Op == PatchOpType::Set) {
+                            std::visit([&](auto &&v) { _S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).set(*op.Index, std::move(v))); }, *op.Value);
+                        } else {
+                            // `set` ops - currently, u32 is the only set value type.
+                            std::visit(
+                                Match{
+                                    [&](u32 v) {
+                                        if (op.Op == PatchOpType::Insert) _S.Set(id, S.Get<immer::set<decltype(v)>>(id).insert(v));
+                                        else if (op.Op == PatchOpType::Erase) _S.Set(id, S.Get<immer::set<decltype(v)>>(id).erase(v));
+                                    },
+                                    [](auto &&) {},
+                                },
+                                *op.Value
+                            );
+                        }
+                    }
+                }
+            },
+            [this](Action::State::Any &&a) { State.Apply(std::move(a)); },
         },
         action
     );
@@ -231,7 +344,8 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
             [this](const Action::FileDialog::Open &) { return !State.FileDialog.Visible; },
-            [this](auto &&a) { return State.CanApply(std::move(a)); },
+            [this](Action::State::Any &&a) { return State.CanApply(std::move(a)); },
+            [](auto &&) { return true; } // All other actions
         },
         action
     );
@@ -391,7 +505,7 @@ Plottable Project::StorePathChangeFrequencyPlottable() const {
 void Project::OpenRecentProjectMenuItem() const {
     if (BeginMenu("Open recent project", !Preferences.RecentlyOpenedPaths.empty())) {
         for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-            if (MenuItem(recently_opened_path.filename().c_str())) State.Q(Action::Project::Open{recently_opened_path});
+            if (MenuItem(recently_opened_path.filename().c_str())) Q(Action::Project::Open{recently_opened_path});
         }
         EndMenu();
     }
@@ -467,15 +581,35 @@ void Project::RenderStorePathChangeFrequency() const {
     }
 }
 
+bool IsPressed(ImGuiKeyChord chord) {
+    return IsKeyChordPressed(chord, ImGuiInputFlags_Repeat, ImGuiKeyOwner_NoOwner);
+}
+
+// todo return and handle `Action::Project::Any` subtype
+std::optional<Action::Any> ProduceKeyboardAction() {
+    using namespace Action::Project;
+
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_N)) return OpenEmpty{};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_O)) return ShowOpenDialog{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_S)) return ShowSaveDialog{};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) return Undo{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_Z)) return Redo{};
+    if (IsPressed(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_O)) return OpenDefault{};
+    if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_S)) return SaveCurrent{};
+
+    return {};
+}
+
 void Project::Draw() const {
     MainMenu.Draw();
     State.Draw();
     if (PrevSelectedPath != State.FileDialog.SelectedFilePath && State.FileDialog.Data.OwnerId == State.Id) {
         const fs::path selected_path = State.FileDialog.SelectedFilePath;
         PrevSelectedPath = State.FileDialog.SelectedFilePath = "";
-        if (State.FileDialog.Data.SaveMode) State.Q(Action::Project::Save{selected_path});
-        else State.Q(Action::Project::Open{selected_path});
+        if (State.FileDialog.Data.SaveMode) Q(Action::Project::Save{selected_path});
+        else Q(Action::Project::Open{selected_path});
     }
+    if (auto action = ProduceKeyboardAction()) Q(*action);
 }
 
 void ShowActions(const SavedActionMoments &actions) {
@@ -532,7 +666,7 @@ void Project::RenderMetrics() const {
         if (TreeNodeEx("History", ImGuiTreeNodeFlags_DefaultOpen, "History (Records: %d, Current record index: %d)", history.Size() - 1, history.Index)) {
             if (!no_history) {
                 if (u32 edited_history_index = history.Index; SliderU32("History index", &edited_history_index, 0, history.Size() - 1)) {
-                    State.Q(Action::Project::SetHistoryIndex{edited_history_index});
+                    Q(Action::Project::SetHistoryIndex{edited_history_index});
                 }
             }
             for (u32 i = 1; i < history.Size(); i++) {

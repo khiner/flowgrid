@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
+#include "Core/FileDialog/FileDialog.h"
 #include "Helper/File.h"
-#include "Project/FileDialog/FileDialog.h"
 
 Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionProducerComponent(std::move(args)), FileDialog(file_dialog) {}
 

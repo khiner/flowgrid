@@ -6,6 +6,7 @@
 #include "Core/ProducerComponentArgs.h"
 #include "NavigableAction.h"
 
+// Not using `ActionProducerComponent`, since even worse of a templating mess than it already is here.
 template<typename T> struct Navigable : Component, ActionProducer<typename Action::Navigable<T>::Any> {
     using ActionT = typename Action::Navigable<T>;
     using ArgsT = ProducerComponentArgs<typename ActionT::Any>;
@@ -24,8 +25,8 @@ template<typename T> struct Navigable : Component, ActionProducer<typename Actio
     void IssueStepForward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Id, u32(Cursor) + 1}); }
     void IssueStepBackward() const { ActionProducer<ProducedActionType>::Q(typename ActionT::MoveTo{Id, u32(Cursor) - 1}); }
 
-    inline auto begin() { return Value.begin(); }
-    inline auto end() { return Value.end(); }
+    auto begin() { return Value.begin(); }
+    auto end() { return Value.end(); }
 
     bool Empty() const { return Value.Empty(); }
     bool CanStepBackward() const { return u32(Cursor) > 0; }
@@ -33,7 +34,7 @@ template<typename T> struct Navigable : Component, ActionProducer<typename Actio
 
     auto Back() const { return Value.back(); }
 
-    inline auto operator[](u32 index) { return Value[index]; }
+    auto operator[](u32 index) { return Value[index]; }
     T operator*() const { return Value[Cursor]; }
 
     void RenderValueTree(bool annotate, bool auto_select) const override {

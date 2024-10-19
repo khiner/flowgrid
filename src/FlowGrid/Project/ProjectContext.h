@@ -17,7 +17,7 @@ Every component under (and including) the project's root `State` has access to i
 It doesn't know about any specific `State` or `Store` (but it may be templated on them in the future).
 */
 struct ProjectContext {
-    Preferences &Preferences;
+    const Preferences &Preferences;
     const std::function<nlohmann::json(ProjectFormat)> GetProjectJson;
     const std::function<void()> RenderMetrics;
     const std::function<void()> RenderStorePathChangeFrequency;

@@ -7,16 +7,15 @@
 #include <ranges>
 #include <set>
 
-#include "Project/Preferences.h"
-
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Action/ActionQueue.h"
+#include "Core/Helper/File.h"
+#include "Core/Helper/String.h"
+#include "Core/Helper/Time.h"
 #include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 
-#include "Helper/File.h"
-#include "Helper/String.h"
-#include "Helper/Time.h"
+#include "Preferences.h"
 
 using namespace FlowGrid;
 

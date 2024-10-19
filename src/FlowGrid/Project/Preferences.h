@@ -3,7 +3,7 @@
 #include <list>
 #include <string>
 
-#include "Helper/Path.h"
+#include "Core/Helper/Path.h"
 
 struct Preferences {
     inline static const std::string FileExtension = ".flp";
@@ -12,7 +12,7 @@ struct Preferences {
         // todo thinking of digging into grammars' `config.json` files to automatically find the supported file extensions...
         TreeSitterGrammarsPath = fs::path("..") / "lib" / "tree-sitter-grammars",
         // todo recursively copy `queries` dir to build dir in CMake.
-        TreeSitterQueriesPath = fs::path("..") / "src" / "FlowGrid" / "Project" / "TextEditor" / "queries";
+        TreeSitterQueriesPath = fs::path("..") / "src" / "FlowGrid" / "TextEditor" / "queries";
 
     Preferences();
 

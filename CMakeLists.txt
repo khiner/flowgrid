@@ -26,7 +26,7 @@ find_package(Vulkan REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_search_module(FFTW3F REQUIRED fftw3f IMPORTED_TARGET)
 
-file(GLOB_RECURSE FlowGridSourceFiles CONFIGURE_DEPENDS src/FlowGrid/*.cpp)
+file(GLOB_RECURSE FlowGridSourceFiles CONFIGURE_DEPENDS src/Core/*.cpp src/FlowGrid/*.cpp)
 set(ImGuiDir lib/imgui)
 set(ImPlotDir lib/implot)
 set(ImGuiFileDialogDir lib/ImGuiFileDialog)
@@ -58,7 +58,7 @@ add_executable(${PROJECT_NAME}
 )
 
 include_directories(
-    src/FlowGrid
+    src
     ${SDL3_DIR}/include
     ${FREETYPE_INCLUDE_DIRS}
     ${Vulkan_INCLUDE_DIRS}

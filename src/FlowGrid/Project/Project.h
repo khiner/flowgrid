@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Core/Action/Actions.h"
+#include "FlowGrid/State.h"
 #include "ProjectContext.h"
-#include "State.h"
 
 namespace moodycamel {
 struct ConsumerToken;
@@ -45,6 +45,8 @@ struct Project : ActionableProducer<Action::Any> {
     bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
     const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
     float GestureTimeRemainingSec() const;
+
+    mutable Preferences Preferences;
 
     ProjectContext ProjectContext{
         Preferences,
@@ -97,8 +99,6 @@ struct Project : ActionableProducer<Action::Any> {
     void Draw() const;
 
 private:
-    mutable Preferences Preferences;
-
     std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
     mutable ActionMoment<ActionType> DequeueActionMoment{};
 

@@ -4,7 +4,7 @@
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Flags.h"
 #include "Core/Primitive/Float.h"
-#include "UI/Styling.h"
+#include "Core/UI/Styling.h"
 
 using ImGuiTableFlags = int;
 

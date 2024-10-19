@@ -12,10 +12,10 @@
 
 #include "Application/ApplicationPreferences.h"
 #include "Core/HelpInfo.h"
+#include "Core/UI/Fonts.h"
 #include "Helper/Color.h"
 #include "LanguageID.h"
 #include "TextInputEdit.h"
-#include "UI/Fonts.h"
 
 using json = nlohmann::json;
 

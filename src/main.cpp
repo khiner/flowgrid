@@ -1,12 +1,12 @@
 #include "imgui_internal.h"
 #include "implot.h"
 
+#include "Core/UI/Fonts.h"
+#include "Core/UI/UIContext.h"
 #include "FlowGrid/Core/Action/ActionQueue.h"
 #include "FlowGrid/Core/FileDialog/FileDialogManager.h"
 #include "FlowGrid/Core/Store/Store.h"
 #include "FlowGrid/Project/Project.h"
-#include "UI/Fonts.h"
-#include "UI/UIContext.h"
 
 Patch CreatePatch(State &state) {
     auto *ctx = ImGui::GetCurrentContext();

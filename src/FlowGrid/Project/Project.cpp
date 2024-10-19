@@ -550,8 +550,8 @@ void Project::WindowMenuItem() const {
 
 #include "implot.h"
 
-#include "UI/HelpMarker.h"
-#include "UI/JsonTree.h"
+#include "Core/UI/HelpMarker.h"
+#include "Core/UI/JsonTree.h"
 
 void Project::RenderStorePathChangeFrequency() const {
     auto [labels, values] = StorePathChangeFrequencyPlottable();

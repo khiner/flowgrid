@@ -10,13 +10,13 @@
 
 #include "Core/Container/AdjacencyListAction.h"
 #include "Core/Primitive/String.h"
+#include "Core/UI/HelpMarker.h"
+#include "Core/UI/InvisibleButton.h"
+#include "Core/UI/Styling.h"
 #include "Helper/String.h"
 #include "Project/Audio/Device/AudioDevice.h"
 #include "Project/Audio/Faust/FaustNode.h"
 #include "Project/Audio/WaveformNode.h"
-#include "UI/HelpMarker.h"
-#include "UI/InvisibleButton.h"
-#include "UI/Styling.h"
 
 #define ma_offset_ptr(p, offset) (((ma_uint8 *)(p)) + (offset))
 

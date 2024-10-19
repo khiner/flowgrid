@@ -5,11 +5,11 @@
 #include "ImGuiFileDialog.h"
 #include "imgui_internal.h"
 
+#include "Core/UI/Fonts.h"
+#include "Core/UI/HelpMarker.h"
 #include "FileDialogDataJson.h"
 #include "FileDialogManager.h"
 #include "Helper/File.h"
-#include "UI/Fonts.h"
-#include "UI/HelpMarker.h"
 
 using std::views::keys, std::ranges::to;
 

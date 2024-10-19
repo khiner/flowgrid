@@ -5,7 +5,7 @@
 
 #include "ProjectContext.h"
 
-#include "UI/JsonTree.h"
+#include "Core/UI/JsonTree.h"
 
 using namespace FlowGrid;
 

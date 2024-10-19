@@ -9,13 +9,13 @@
 #include "imgui_internal.h"
 
 #include "Core/HelpInfo.h"
+#include "Core/UI/InvisibleButton.h"
 #include "FaustGraphStyle.h"
 #include "Helper/Color.h"
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/basen.h"
 #include "Project/Audio/AudioIO.h"
-#include "UI/InvisibleButton.h"
 
 using std::min, std::max, std::pair;
 using std::ranges::to, std::views::take, std::views::take_while;

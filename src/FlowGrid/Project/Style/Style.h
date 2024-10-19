@@ -1,14 +1,14 @@
 #pragma once
 
 #include "Core/ActionProducerComponent.h"
-#include "Core/Colors.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/Int.h"
 #include "Core/Primitive/PrimitiveAction.h"
+#include "Core/UI/Colors.h"
+#include "Core/UI/Styling.h"
 #include "StyleAction.h"
-#include "UI/Styling.h"
 
 struct ImGuiContext;
 struct ImPlotContext;

@@ -3,8 +3,8 @@
 #include <imgui.h>
 #include <ranges>
 
+#include "Core/UI/Widgets.h"
 #include "FaustParamsStyle.h"
-#include "UI/Widgets.h"
 
 using namespace ImGui;
 using namespace fg;

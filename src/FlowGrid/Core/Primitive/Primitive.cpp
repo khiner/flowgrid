@@ -34,11 +34,10 @@ template struct Primitive<std::string>;
 
 #include "imgui_internal.h"
 
-#include "UI/HelpMarker.h"
+#include "Bool.h"
+#include "Core/UI/HelpMarker.h"
 
 using namespace ImGui;
-
-#include "Bool.h"
 
 void Bool::IssueToggle() const { PrimitiveQ(Action::Primitive::Bool::Toggle{Id}); }
 

@@ -1,177 +1,17 @@
 #pragma once
 
-#include "Audio/Audio.h"
-#include "Core/Action/ActionMenuItem.h"
-#include "Core/Action/ActionableProducer.h"
-#include "Core/Action/Actions.h"
-#include "Core/ImGuiSettings.h"
-#include "Core/Primitive/PrimitiveActionQueuer.h"
-#include "Core/Windows.h"
-#include "Demo/Demo.h"
-#include "FileDialog/FileDialog.h"
-#include "Info/Info.h"
-#include "ProjectSettings.h"
-#include "Style/Style.h"
+#include "ProjectContext.h"
+#include "State.h"
 
 namespace moodycamel {
 struct ConsumerToken;
 }
-
-enum ProjectFormat {
-    StateFormat,
-    ActionFormat
-};
 
 struct StoreHistory;
 
 struct Plottable {
     std::vector<std::string> Labels;
     std::vector<u64> Values;
-};
-
-struct Project;
-
-struct ProjectContext {
-    const std::function<json(ProjectFormat)> GetProjectJson;
-    const std::function<void()> RenderMetrics;
-    const std::function<void()> RenderStorePathChangeFrequency;
-};
-
-/**
-`State` fully describes the FlowGrid application state at any point in time.
-It's a structured representation of its underlying store (of type `Store`,
-which is composed of an `immer::map<Path, {Type}>` for each stored type).
-*/
-struct State : Component, ActionableProducer<Action::Any> {
-    State(Store &, ActionProducer::EnqueueFn, const ProjectContext &);
-    ~State();
-
-    const ProjectContext ProjectContext;
-    const PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
-
-    void Apply(const ActionType &) const override;
-    bool CanApply(const ActionType &) const override;
-
-    struct Debug : DebugComponent, Component::ChangeListener {
-        Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
-            : DebugComponent(
-                  std::move(args), flags,
-                  Menu({
-                      Menu("Settings", {AutoSelect, LabelMode}),
-                      Menu({}), // Need multiple elements to disambiguate vector-of-variants construction from variant construction.
-                  })
-              ) {
-            AutoSelect.RegisterChangeListener(this);
-        }
-        ~Debug() {
-            UnregisterChangeListener(this);
-        }
-
-        struct Metrics : Component {
-            using Component::Component;
-
-            struct FlowGridMetrics : Component {
-                using Component::Component;
-
-                Prop(Bool, ShowRelativePaths, true);
-
-            protected:
-                void Render() const override;
-            };
-
-            struct ImGuiMetrics : Component {
-                using Component::Component;
-
-            protected:
-                void Render() const override;
-            };
-
-            struct ImPlotMetrics : Component {
-                using Component::Component;
-
-            protected:
-                void Render() const override;
-            };
-
-            Prop(FlowGridMetrics, FlowGrid);
-            Prop(ImGuiMetrics, ImGui);
-            Prop(ImPlotMetrics, ImPlot);
-
-        protected:
-            void Render() const override;
-        };
-
-        struct StatePreview : Component {
-            using Component::Component;
-
-            Prop(Enum, Format, {"StateFormat", "ActionFormat"}, 1);
-            Prop(Bool, Raw);
-
-        protected:
-            void Render() const override;
-        };
-
-        struct StorePathUpdateFrequency : Component {
-            using Component::Component;
-
-        protected:
-            void Render() const override;
-        };
-
-        struct DebugLog : Component {
-            using Component::Component;
-
-        protected:
-            void Render() const override;
-        };
-
-        struct StackTool : Component {
-            using Component::Component;
-
-        protected:
-            void Render() const override;
-        };
-
-        enum LabelModeType {
-            Annotated,
-            Raw
-        };
-
-        void OnComponentChanged() override;
-
-        Prop_(Enum, LabelMode, "?'Raw' mode shows plain data structures and 'Annotated' mode shows (highlighted) human-readable labels in some cases.\n"
-                               "For example, colors are stored as lists with a separate label mapping."
-                               "When 'Annotated' mode is enabled, color keys are shown as labels instead of indexes.",
-              {"Annotated", "Raw"}, Annotated);
-        Prop_(Bool, AutoSelect, "Auto-Select?When enabled, changes to state automatically expand the tree to open the changed field value leaf, closing all other state nodes.\n"
-                                "State menu items can only be opened or closed manually if auto-select is disabled.",
-              true);
-
-        Prop(StatePreview, StatePreview);
-        Prop(StorePathUpdateFrequency, StorePathUpdateFrequency);
-        Prop(DebugLog, DebugLog);
-        Prop(StackTool, StackTool);
-        Prop(Metrics, Metrics);
-    };
-
-    ProducerProp(FileDialog, FileDialog);
-    ProducerProp(fg::Style, Style);
-    ProducerProp(Windows, Windows);
-    Prop(ImGuiSettings, ImGuiSettings);
-    ProducerProp(Audio, Audio, FileDialog);
-    Prop(ProjectSettings, Settings);
-    Prop(Info, Info);
-
-    Prop(Demo, Demo, FileDialog);
-    Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
-
-    void RenderDebug() const override;
-
-protected:
-    void Render() const override;
-
-private:
-    std::optional<ProducedActionType> ProduceKeyboardAction() const;
 };
 
 // todo project own an action queue (rather than main), and be typed on the store/action type.
@@ -253,6 +93,8 @@ struct Project : Actionable<Action::Any> {
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
 
+    void Draw() const;
+
 private:
     std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
     mutable ActionMoment<ActionType> DequeueActionMoment{};
@@ -260,6 +102,8 @@ private:
     mutable SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     mutable std::optional<fs::path> CurrentProjectPath;
     mutable bool ProjectHasChanges{false}; // todo after store is fully value-oriented, this can be replaced with a comparison of the store and the last saved store.
+    mutable std::string PrevSelectedPath;
+
     // Chronological vector of (unique-field-relative-paths, store-commit-time) pairs for each field that has been updated during the current gesture.
     mutable std::unordered_map<ID, std::vector<Component::PathsMoment>> GestureChangedPaths{};
     // IDs of all fields updated/added/removed during the latest action or undo/redo, mapped to all (field-relative) paths affected in the field.
@@ -281,6 +125,7 @@ private:
 
     void OpenRecentProjectMenuItem() const;
     void WindowMenuItem() const;
+
     void RenderMetrics() const;
     void RenderStorePathChangeFrequency() const;
 

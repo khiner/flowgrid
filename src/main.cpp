@@ -48,10 +48,7 @@ int main() {
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
     state.Refresh();
 
-    std::function<void()> draw = [&project]() {
-        project.MainMenu.Draw();
-        project.State.Draw();
-    };
+    std::function<void()> draw = [&project]() { project.Draw(); };
     const UIContext ui{std::move(draw), state.ImGuiSettings, state.Style}; // Initialize ImGui and other UI state.
     Fonts::Init(); // Must be done after initializing ImGui.
     ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;

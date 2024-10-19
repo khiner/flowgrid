@@ -1,5 +1,7 @@
 #include "UIContext.h"
 
+#include <format>
+
 #include "imgui.h"
 #include "implot.h"
 
@@ -10,9 +12,7 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
-#include "Core/ImGuiSettings.h"
-#include "Fonts.h"
-#include "Project/Style/Style.h"
+#include "Core/Primitive/Scalar.h"
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>
@@ -289,8 +289,8 @@ static void PresentFrameVulkan() {
     VulkanWindow->SemaphoreIndex = (VulkanWindow->SemaphoreIndex + 1) % VulkanWindow->ImageCount; // Now we can use the next set of semaphores.
 }
 
-UIContext::UIContext(std::function<void()> draw, const ImGuiSettings &settings, const fg::Style &style)
-    : Draw(std::move(draw)), Settings(settings), Style(style) {
+UIContext::UIContext(std::function<void()> predraw, std::function<void()> draw)
+    : Predraw(std::move(predraw)), Draw(std::move(draw)) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) {
         throw std::runtime_error(std::format("SDL_Init error: {}", SDL_GetError()));
     }
@@ -406,23 +406,7 @@ bool UIContext::Tick() const {
         }
     }
 
-    // Check if new UI settings need to be applied.
-    Settings.UpdateIfChanged(ImGui::GetCurrentContext());
-    Style.ImGui.UpdateIfChanged(ImGui::GetCurrentContext());
-    Style.ImPlot.UpdateIfChanged(ImPlot::GetCurrentContext());
-
-    auto &io = ImGui::GetIO();
-
-    static int PrevFontIndex = 0;
-    static float PrevFontScale = 1.0;
-    if (PrevFontIndex != Style.ImGui.FontIndex) {
-        io.FontDefault = io.Fonts->Fonts[Style.ImGui.FontIndex];
-        PrevFontIndex = Style.ImGui.FontIndex;
-    }
-    if (PrevFontScale != Style.ImGui.FontScale) {
-        io.FontGlobalScale = Style.ImGui.FontScale / Fonts::AtlasScale;
-        PrevFontScale = Style.ImGui.FontScale;
-    }
+    Predraw();
 
     PrepareFrame();
 #ifdef ONLY_RENDER_METRICS_WINDOW

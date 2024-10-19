@@ -1,4 +1,5 @@
 #include "imgui_internal.h"
+#include "implot.h"
 
 #include "FlowGrid/Core/Action/ActionQueue.h"
 #include "FlowGrid/Core/FileDialog/FileDialogManager.h"
@@ -49,9 +50,30 @@ int main() {
     state.Refresh();
 
     std::function<void()> draw = [&project]() { project.Draw(); };
-    const UIContext ui{std::move(draw), state.ImGuiSettings, state.Style}; // Initialize ImGui and other UI state.
+    std::function<void()> predraw = [&state]() {
+        // Check if new UI settings need to be applied.
+        auto &settings = state.ImGuiSettings;
+        auto &style = state.Style;
+        settings.UpdateIfChanged(ImGui::GetCurrentContext());
+        style.ImGui.UpdateIfChanged(ImGui::GetCurrentContext());
+        style.ImPlot.UpdateIfChanged(ImPlot::GetCurrentContext());
+
+        // Check if new font settings need to be applied.
+        auto &io = ImGui::GetIO();
+        static int PrevFontIndex = 0;
+        static float PrevFontScale = 1.0;
+        if (PrevFontIndex != style.ImGui.FontIndex) {
+            io.FontDefault = io.Fonts->Fonts[style.ImGui.FontIndex];
+            PrevFontIndex = style.ImGui.FontIndex;
+        }
+        if (PrevFontScale != style.ImGui.FontScale) {
+            io.FontGlobalScale = style.ImGui.FontScale / Fonts::AtlasScale;
+            PrevFontScale = style.ImGui.FontScale;
+        }
+    };
+    const UIContext ui{std::move(predraw), std::move(draw)}; // Initialize ImGui and other UI state.
     Fonts::Init(); // Must be done after initializing ImGui.
-    ImGui::GetIO().FontGlobalScale = ui.Style.ImGui.FontScale / Fonts::AtlasScale;
+    ImGui::GetIO().FontGlobalScale = state.Style.ImGui.FontScale / Fonts::AtlasScale;
 
     FileDialogManager::Init();
 

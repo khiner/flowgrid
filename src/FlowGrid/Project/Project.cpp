@@ -7,7 +7,7 @@
 #include <ranges>
 #include <set>
 
-#include "Application/ApplicationPreferences.h"
+#include "Project/Preferences.h"
 
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Action/ActionQueue.h"

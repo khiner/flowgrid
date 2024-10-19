@@ -16,8 +16,7 @@ struct Plottable {
 };
 
 // todo project own an action queue (rather than main), and be typed on the store/action type.
-//   It should be agnostic to the the store and root component subtype, provide a `ProjectContext` to the root component,
-//   and `State` should not reach into `Project`.
+//   It should be agnostic to the the store and root component subtype.
 
 /**
 Holds the root `State` component... does project things... (todo)
@@ -47,7 +46,8 @@ struct Project : ActionableProducer<Action::Any> {
     const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
     float GestureTimeRemainingSec() const;
 
-    const ProjectContext ProjectContext{
+    ProjectContext ProjectContext{
+        Preferences,
         [this](ProjectFormat format) { return GetProjectJson(format); },
         [this]() { RenderMetrics(); },
         [this]() { RenderStorePathChangeFrequency(); }
@@ -97,6 +97,8 @@ struct Project : ActionableProducer<Action::Any> {
     void Draw() const;
 
 private:
+    mutable Preferences Preferences;
+
     std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
     mutable ActionMoment<ActionType> DequeueActionMoment{};
 

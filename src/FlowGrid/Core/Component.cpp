@@ -5,6 +5,7 @@
 #include "imgui_internal.h"
 
 #include "Helper/String.h"
+#include "Project/ProjectContext.h"
 #include "Project/Style/Style.h"
 #include "UI/HelpMarker.h"
 
@@ -18,8 +19,9 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(Store &store, const PrimitiveActionQueuer &primitive_q, const Windows &windows, const fg::Style &style)
-    : S(store), _S(store), PrimitiveQ(primitive_q), gWindows(windows), gStyle(style), Root(this), Parent(nullptr),
+Component::Component(Store &store, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context, const Windows &windows, const fg::Style &style)
+    : S(store), _S(store), PrimitiveQ(primitive_q), ProjectContext(project_context), gWindows(windows), gStyle(style),
+      Root(this), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IDs::ByPath.emplace(Path, Id);
@@ -29,6 +31,7 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
     : S(parent->S),
       _S(parent->_S),
       PrimitiveQ(parent->PrimitiveQ),
+      ProjectContext(parent->ProjectContext),
       gWindows(parent->gWindows),
       gStyle(parent->gStyle),
       Root(parent->Root),

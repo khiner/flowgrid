@@ -7,7 +7,6 @@
 #include "immer/flex_vector_transient.hpp"
 #include "immer/vector_transient.hpp"
 
-#include "Application/ApplicationPreferences.h"
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Store/Store.h"
 #include "Core/UI/Fonts.h"
@@ -15,6 +14,7 @@
 #include "Helper/File.h"
 #include "Helper/String.h"
 #include "Helper/Time.h"
+#include "Project/ProjectContext.h"
 
 #include "SyntaxTree.h"
 
@@ -347,7 +347,10 @@ u32 TextBuffer::GetColor(PaletteIndex palette_index) const { return Palettes.at(
 
 void TextBuffer::SetFilePath(const fs::path &file_path) const {
     const std::string extension = file_path.extension();
-    State->Syntax->SetLanguage(!extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None);
+    State->Syntax->SetLanguage(
+        !extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None,
+        ProjectContext.Preferences
+    );
 }
 
 void TextBuffer::CreateHoveredNode(u32 byte_index) const {

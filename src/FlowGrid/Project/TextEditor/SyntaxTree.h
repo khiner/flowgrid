@@ -10,11 +10,11 @@
 #include "nlohmann/json.hpp"
 #include <tree_sitter/api.h>
 
-#include "Application/ApplicationPreferences.h"
 #include "Core/HelpInfo.h"
 #include "Core/UI/Fonts.h"
 #include "Helper/Color.h"
 #include "LanguageID.h"
+#include "Project/Preferences.h"
 #include "TextInputEdit.h"
 
 using json = nlohmann::json;
@@ -42,7 +42,7 @@ There's also this huge list: https://github.com/rockerBOO/awesome-neovim?tab=rea
 */
 
 struct LanguageDefinition {
-    TSQuery *GetQuery() const;
+    TSQuery *GetQuery(const Preferences &) const;
 
     LanguageID Id;
     std::string Name;
@@ -66,13 +66,13 @@ struct LanguageDefinitions {
 
 static const LanguageDefinitions Languages{};
 
-TSQuery *LanguageDefinition::GetQuery() const {
+TSQuery *LanguageDefinition::GetQuery(const Preferences &preferences) const {
     if (ShortName.empty()) return nullptr;
 
     static const std::string HighlightsFileName = "highlights.scm";
-    fs::path highlights_path = Preferences.TreeSitterQueriesPath / ShortName / HighlightsFileName;
+    fs::path highlights_path = preferences.TreeSitterQueriesPath / ShortName / HighlightsFileName;
     if (!fs::exists(highlights_path)) {
-        highlights_path = Preferences.TreeSitterGrammarsPath / ("tree-sitter-" + ShortName) / "queries" / HighlightsFileName;
+        highlights_path = preferences.TreeSitterGrammarsPath / ("tree-sitter-" + ShortName) / "queries" / HighlightsFileName;
         if (!fs::exists(highlights_path)) {
             std::println("No {} found for language '{}'", HighlightsFileName, Name);
             return nullptr;
@@ -404,20 +404,20 @@ struct SyntaxTree {
     const LanguageDefinition &GetLanguage() const { return Languages.Get(LanguageId); }
     std::string_view GetLanguageName() const { return GetLanguage().Name; }
 
-    void SetLanguage(LanguageID language_id) {
+    void SetLanguage(LanguageID language_id, const Preferences &preferences) {
         if (LanguageId == language_id) return;
 
         LanguageId = language_id;
 
-        if (LanguageId != LanguageID::None && !Preferences.TreeSitterConfigPath.empty()) {
-            const auto config_json = json::parse(FileIO::read(Preferences.TreeSitterConfigPath));
+        if (LanguageId != LanguageID::None && !preferences.TreeSitterConfigPath.empty()) {
+            const auto config_json = json::parse(FileIO::read(preferences.TreeSitterConfigPath));
             Config = config_json.get<TSConfig>();
         } else if (LanguageId == LanguageID::None) {
             Config = {};
         }
         const auto &language = GetLanguage();
         ts_parser_set_language(Parser, language.TsLanguage);
-        Query = language.GetQuery();
+        Query = language.GetQuery(preferences);
         const u32 capture_count = ts_query_capture_count(Query);
         StyleByCaptureId.clear();
         StyleByCaptureId.reserve(capture_count + 1);

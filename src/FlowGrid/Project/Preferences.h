@@ -5,7 +5,7 @@
 
 #include "Helper/Path.h"
 
-struct ApplicationPreferences {
+struct Preferences {
     inline static const std::string FileExtension = ".flp";
     inline static const fs::path
         Path = fs::path(".flowgrid") / ("Preferences" + FileExtension),
@@ -14,7 +14,7 @@ struct ApplicationPreferences {
         // todo recursively copy `queries` dir to build dir in CMake.
         TreeSitterQueriesPath = fs::path("..") / "src" / "FlowGrid" / "Project" / "TextEditor" / "queries";
 
-    ApplicationPreferences();
+    Preferences();
 
     bool Write() const;
     bool Clear(); // Clear and re-save default preferences.
@@ -25,5 +25,3 @@ struct ApplicationPreferences {
     std::list<fs::path> RecentlyOpenedPaths{};
     fs::path TreeSitterConfigPath{fs::path{"~"} / "Library" / "Application Support" / "tree-sitter" / "config.json"};
 };
-
-extern ApplicationPreferences Preferences;

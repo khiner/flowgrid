@@ -26,6 +26,7 @@ struct Style;
 }
 struct FlowGridStyle;
 struct Windows;
+struct ProjectContext;
 
 template<typename T> struct ActionQueue;
 
@@ -118,7 +119,7 @@ struct Component {
     inline static bool IsWidgetGesturing{};
     static void UpdateGesturing();
 
-    Component(Store &, const PrimitiveActionQueuer &, const Windows &, const fg::Style &);
+    Component(Store &, const PrimitiveActionQueuer &, const ProjectContext &, const Windows &, const fg::Style &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -208,6 +209,7 @@ struct Component {
     //   (If no actions have been applied during the current tick, `_S == S.transient()`.)
     Store &_S; // Read-only access to the store at the root of this component's tree (of type `State`).
     const PrimitiveActionQueuer &PrimitiveQ;
+    const ProjectContext &ProjectContext;
     const Windows &gWindows;
     const fg::Style &gStyle;
     Component *Root; // The root (project) component.

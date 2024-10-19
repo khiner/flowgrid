@@ -22,10 +22,9 @@ It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
 struct State : Component, ActionableProducer<Action::State::Any, Action::Any> {
-    State(Store &, ActionProducer::EnqueueFn, const ProjectContext &);
+    State(Store &, ActionProducer::EnqueueFn, const ::ProjectContext &);
     ~State();
 
-    const ProjectContext &ProjectContext;
     const PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
 
     void Apply(const ActionType &) const override;

@@ -10,7 +10,7 @@
 using namespace FlowGrid;
 
 State::State(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectContext &project_context)
-    : Component(store, PrimitiveQ, Windows, Style), ActionableProducer(std::move(q)), ProjectContext(project_context) {
+    : Component(store, PrimitiveQ, project_context, Windows, Style), ActionableProducer(std::move(q)) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,

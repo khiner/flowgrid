@@ -72,7 +72,7 @@ void Colors::Render() const {
             if (is_auto) EndDisabled();
 
             SameLine(0, GetStyle().ItemInnerSpacing.x);
-            TextUnformatted(color_name.c_str());
+            TextUnformatted(color_name);
 
             PopID();
 

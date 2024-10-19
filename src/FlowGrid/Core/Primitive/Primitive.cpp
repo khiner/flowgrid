@@ -238,9 +238,7 @@ void UInt::Render(const std::vector<u32> &options) const {
 String::String(ComponentArgs &&args, std::string_view value) : Primitive(std::move(args), std::string(value)) {}
 String::String(ComponentArgs &&args, fs::path value) : Primitive(std::move(args), std::string(value)) {}
 
-void String::Render() const {
-    TextUnformatted(Value.c_str());
-}
+void String::Render() const { TextUnformatted(Value); }
 
 void String::Render(const std::vector<std::string> &options) const {
     if (options.empty()) return;

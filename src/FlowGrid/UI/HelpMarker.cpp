@@ -12,7 +12,7 @@ void HelpMarker(std::string_view help) {
     if (IsItemHovered()) {
         BeginTooltip();
         PushTextWrapPos(GetFontSize() * 35);
-        TextUnformatted(std::string(help).c_str());
+        TextUnformatted(help.data());
         PopTextWrapPos();
         EndTooltip();
     }

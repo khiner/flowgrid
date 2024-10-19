@@ -183,7 +183,7 @@ void FileDialog::Demo::Render() const {
                             if (Selectable(selection_key.c_str(), i == selected, flags)) selected = i;
                         }
                         if (TableSetColumnIndex(1)) {
-                            TextUnformatted(selection.at(selection_key).c_str());
+                            TextUnformatted(selection.at(selection_key));
                         }
                     }
                 }

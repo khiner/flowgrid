@@ -147,7 +147,7 @@ void FaustGraphStyle::Render() const {
             Scale.Draw();
             if (scale_fill) {
                 SameLine();
-                TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name).c_str());
+                TextUnformatted(std::format("Uncheck '{}' to manually edit graph scale.", ScaleFillHeight.Name));
                 EndDisabled();
             }
             Direction.Draw();

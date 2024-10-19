@@ -78,7 +78,7 @@ bool Component::HasAncestorContainer() const {
 // By default, a component is converted to JSON by visiting each of its leaf components depth-first,
 // and assigning the leaf's `json_pointer` to its JSON value.
 json Component::ToJson() const {
-    if (Children.empty()) return nullptr;
+    if (Children.empty()) return {};
 
     std::stack<const Component *> to_visit;
     to_visit.push(this);
@@ -215,11 +215,9 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     bool is_open = false;
     if (highlight_label) PushStyleColor(ImGuiCol_Text, GetFlowGridStyle().Colors[FlowGridCol_HighlightText]);
     if (value == nullptr) {
-        const auto label = string(label_view);
-        is_open = TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_None);
+        is_open = TreeNodeEx(string(label_view).c_str(), ImGuiTreeNodeFlags_None);
     } else if (!label_view.empty()) {
-        const auto label = string(label_view);
-        Text("%s: ", label.c_str()); // Render leaf label/value as raw text.
+        Text("%s: ", string(label_view).c_str()); // Render leaf label/value as raw text.
     }
     if (highlight_label) PopStyleColor();
 
@@ -233,10 +231,10 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
 }
 
 void Component::TreePop() { ImGui::TreePop(); }
-void Component::TextUnformatted(string_view text) { ImGui::TextUnformatted(string(text).c_str()); }
+void Component::TextUnformatted(string_view text) { ImGui::TextUnformatted(text.data()); }
 
 void Component::RenderValueTree(bool annotate, bool auto_select) const {
-    if (Children.empty()) return TextUnformatted(Name.c_str());
+    if (Children.empty()) return TextUnformatted(Name);
 
     if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel, false, nullptr, false, auto_select)) {
         for (const auto *child : Children) child->RenderValueTree(annotate, auto_select);

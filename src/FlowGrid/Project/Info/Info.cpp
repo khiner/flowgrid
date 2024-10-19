@@ -43,9 +43,9 @@ void Info::Render() const {
             if (const auto it = HelpInfo::ById.find(info->ID); it != HelpInfo::ById.end()) {
                 const auto &data = it->second;
                 TableNextColumn();
-                TextUnformatted(data.Name.c_str());
+                TextUnformatted(data.Name);
                 TableNextColumn();
-                TextUnformatted(data.Help.empty() ? "-" : data.Help.c_str());
+                TextUnformatted(data.Help.empty() ? "-" : data.Help);
             } else {
                 TableNextColumn();
                 Text("-");

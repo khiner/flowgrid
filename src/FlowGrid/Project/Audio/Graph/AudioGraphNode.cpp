@@ -388,7 +388,7 @@ void AudioGraphNode::Render() const {
         }
     }
     if (ImGui::TreeNode("Node info")) {
-        TextUnformatted(std::format("Active: {}", bool(IsActive)).c_str());
+        TextUnformatted(std::format("Active: {}", bool(IsActive)));
         SameLine();
         fg::HelpMarker(
             "A node is considered active if there is a connection path from it to the graph endpoint node.\n"

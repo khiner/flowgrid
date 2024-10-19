@@ -59,7 +59,7 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
 
     const auto value = Get();
     if (value.empty()) {
-        TextUnformatted(std::format("{} (empty)", Name).c_str());
+        TextUnformatted(std::format("{} (empty)", Name));
         return;
     }
 

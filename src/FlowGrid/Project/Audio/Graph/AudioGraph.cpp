@@ -215,7 +215,7 @@ private:
         ));
 
         if (Format) Format->Draw();
-        else TextUnformatted(Device->GetNativeFormat().ToString().c_str());
+        else TextUnformatted(Device->GetNativeFormat().ToString());
 
         if (ImGui::TreeNode("Device info")) {
             Device->RenderInfo();

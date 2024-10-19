@@ -352,7 +352,7 @@ void State::Debug::StatePreview::Render() const {
     const auto &pc = static_cast<const State &>(*Root).ProjectContext;
     json project_json = pc.GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
-        TextUnformatted(project_json.dump(4).c_str());
+        TextUnformatted(project_json.dump(4));
     } else {
         SetNextItemOpen(true);
         fg::JsonTree("", std::move(project_json));

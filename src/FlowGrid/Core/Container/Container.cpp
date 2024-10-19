@@ -56,7 +56,7 @@ template<typename T> void Vector<T>::RenderValueTree(bool annotate, bool auto_se
 
     auto value = Get();
     if (value.empty()) {
-        TextUnformatted(std::format("{} (empty)", Name).c_str());
+        TextUnformatted(std::format("{} (empty)", Name));
         return;
     }
 
@@ -103,14 +103,14 @@ template<typename T> void Set<T>::RenderValueTree(bool annotate, bool auto_selec
 
     auto value = Get();
     if (value.empty()) {
-        TextUnformatted(std::format("{} (empty)", Name).c_str());
+        TextUnformatted(std::format("{} (empty)", Name));
         return;
     }
 
     if (TreeNode(Name, false, nullptr, false, auto_select)) {
         for (u32 v : value) {
             FlashUpdateRecencyBackground(std::to_string(v));
-            TextUnformatted(std::to_string(v).c_str());
+            TextUnformatted(std::to_string(v));
         }
         TreePop();
     }

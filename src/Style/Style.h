@@ -1,18 +1,15 @@
 #pragma once
 
-#include "Core/ActionProducerComponent.h"
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Enum.h"
-#include "Core/Primitive/Float.h"
 #include "Core/Primitive/Int.h"
 #include "Core/Primitive/PrimitiveAction.h"
-#include "Core/UI/Colors.h"
 #include "Core/UI/Styling.h"
-#include "StyleAction.h"
+
+#include "ProjectStyle.h"
 
 struct ImGuiContext;
 struct ImPlotContext;
-struct ImVec4;
 
 // Copy of some of ImGui's flags, to avoid including `imgui.h` in this header.
 // Be sure to keep these in sync, because they are used directly as values for their ImGui counterparts.
@@ -22,29 +19,8 @@ enum SliderFlags_ {
     SliderFlags_Logarithmic = 1 << 5, // Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
 };
 
-enum FlowGridCol_ {
-    FlowGridCol_GestureIndicator, // 2nd series in ImPlot color map (same in all 3 styles for now): `ImPlot::GetColormapColor(1, 0)`
-    FlowGridCol_HighlightText, // ImGuiCol_PlotHistogramHovered
-    FlowGridCol_Flash, // ImGuiCol_FrameBgActive
-    FlowGridCol_COUNT
-};
-using FlowGridCol = int;
-
-struct FlowGridStyle : ActionProducerComponent<Action::Combine<Action::Style::Any, Colors::ProducedActionType>> {
-    FlowGridStyle(ArgsT &&);
-
-    static std::unordered_map<size_t, ImVec4> ColorsDark, ColorsLight, ColorsClassic;
-    static const char *GetColorName(FlowGridCol idx);
-
-    Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
-    ProducerProp(Colors, Colors, FlowGridCol_COUNT, GetColorName);
-
-protected:
-    void Render() const override;
-};
-
 namespace FlowGrid {
-struct Style : ActionProducerComponent<FlowGridStyle::ProducedActionType> {
+struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
     using ActionProducerComponent::ActionProducerComponent;
 
     struct ImGuiStyle : ActionProducerComponent<ProducedActionType>, Component::ChangeListener {
@@ -194,9 +170,9 @@ struct Style : ActionProducerComponent<FlowGridStyle::ProducedActionType> {
         void Render() const override;
     };
 
-    ChildProducerProp_(ImGuiStyle, ImGui, "?Configure style for base UI");
-    ChildProducerProp_(ImPlotStyle, ImPlot, "?Configure style for plots");
-    ChildProducerProp_(FlowGridStyle, FlowGrid, "?Configure FlowGrid-specific style");
+    ChildProducerProp_(ImGuiStyle, ImGui, "?Configure base UI style");
+    ChildProducerProp_(ImPlotStyle, ImPlot, "?Configure plot style");
+    ChildProducerProp_(ProjectStyle, Project, "?Configure FlowGrid project style");
 
 protected:
     void Render() const override;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Action/Actions.h"
+#include "Preferences.h"
 #include "ProjectContext.h"
 #include "ProjectState.h"
 
@@ -54,6 +55,7 @@ struct Project : ActionableProducer<Action::Any> {
         [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
 
         [this](ProjectFormat format) { return GetProjectJson(format); },
+        [this]() -> const ProjectStyle &{ return State.Style.Project; },
 
         [this]() { RenderMetrics(); },
         [this]() { RenderStorePathChangeFrequency(); }

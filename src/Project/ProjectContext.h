@@ -5,12 +5,14 @@
 #include "nlohmann/json_fwd.hpp"
 
 #include "Core/Primitive/ID.h"
-#include "Preferences.h"
 
 enum class ProjectFormat {
     State,
     Action
 };
+
+struct Preferences;
+struct ProjectStyle;
 
 /*
 `ProjectContext` is essentially the public slice of a `Project`.
@@ -24,6 +26,7 @@ struct ProjectContext {
     const std::function<void(ID)> ToggleDemoWindow;
 
     const std::function<nlohmann::json(ProjectFormat)> GetProjectJson;
+    const std::function<const ProjectStyle&()> GetProjectStyle;
 
     const std::function<void()> RenderMetrics;
     const std::function<void()> RenderStorePathChangeFrequency;

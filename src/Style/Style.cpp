@@ -7,6 +7,49 @@
 
 using namespace ImGui;
 
+ProjectStyle::ProjectStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
+    Colors.Set(ColorsDark);
+}
+
+std::unordered_map<size_t, ImVec4> ProjectStyle::ColorsDark = {
+    {ProjectCol_HighlightText, {1, 0.6, 0, 1}},
+    {ProjectCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+    {ProjectCol_Flash, {0.26, 0.59, 0.98, 0.67}},
+};
+std::unordered_map<size_t, ImVec4> ProjectStyle::ColorsLight = {
+    {ProjectCol_HighlightText, {1, 0.45, 0, 1}},
+    {ProjectCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+    {ProjectCol_Flash, {0.26, 0.59, 0.98, 0.4}},
+};
+std::unordered_map<size_t, ImVec4> ProjectStyle::ColorsClassic = {
+    {ProjectCol_HighlightText, {1, 0.6, 0, 1}},
+    {ProjectCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
+    {ProjectCol_Flash, {0.47, 0.47, 0.69, 0.4}},
+};
+
+const char *ProjectStyle::GetColorName(ProjectCol idx) {
+    switch (idx) {
+        case ProjectCol_GestureIndicator: return "GestureIndicator";
+        case ProjectCol_HighlightText: return "HighlightText";
+        case ProjectCol_Flash: return "Flash";
+        default: return "Unknown";
+    }
+}
+
+void ProjectStyle::Render() const {
+    int colors_idx = -1;
+    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) Q(Action::Style::SetProjectColorPreset{colors_idx});
+    FlashDurationSec.Draw();
+
+    if (BeginTabBar("")) {
+        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
+            Colors.Draw();
+            EndTabItem();
+        }
+        EndTabBar();
+    }
+}
+
 namespace FlowGrid {
 std::vector<ImVec4> Style::ImGuiStyle::ColorsDark(ImGuiCol_COUNT);
 std::vector<ImVec4> Style::ImGuiStyle::ColorsLight(ImGuiCol_COUNT);
@@ -139,7 +182,7 @@ Style::ImPlotStyle::ImPlotColors::ImPlotColors(ArgsT &&args)
     : Colors(std::move(args), ImPlotCol_COUNT, ImPlot::GetStyleColorName, true) {}
 
 void Style::ImGuiStyle::Render() const {
-    static int style_idx = -1;
+    int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Dark\0Light\0Classic\0")) Q(Action::Style::SetImGuiColorPreset{style_idx});
 
     const auto &io = GetIO();
@@ -265,7 +308,7 @@ void Style::ImGuiStyle::Render() const {
 }
 
 void Style::ImPlotStyle::Render() const {
-    static int style_idx = -1;
+    int style_idx = -1;
     if (Combo("Colors##Selector", &style_idx, "Auto\0Dark\0Light\0Classic\0")) Q(Action::Style::SetImPlotColorPreset{style_idx});
 
     if (BeginTabBar("")) {
@@ -316,46 +359,3 @@ void Style::Render() const {
     RenderTabs();
 }
 } // namespace FlowGrid
-
-FlowGridStyle::FlowGridStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
-    Colors.Set(ColorsDark);
-}
-
-const char *FlowGridStyle::GetColorName(FlowGridCol idx) {
-    switch (idx) {
-        case FlowGridCol_GestureIndicator: return "GestureIndicator";
-        case FlowGridCol_HighlightText: return "HighlightText";
-        case FlowGridCol_Flash: return "Flash";
-        default: return "Unknown";
-    }
-}
-
-std::unordered_map<size_t, ImVec4> FlowGridStyle::ColorsDark = {
-    {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-    {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-    {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.67}},
-};
-std::unordered_map<size_t, ImVec4> FlowGridStyle::ColorsLight = {
-    {FlowGridCol_HighlightText, {1, 0.45, 0, 1}},
-    {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-    {FlowGridCol_Flash, {0.26, 0.59, 0.98, 0.4}},
-};
-std::unordered_map<size_t, ImVec4> FlowGridStyle::ColorsClassic = {
-    {FlowGridCol_HighlightText, {1, 0.6, 0, 1}},
-    {FlowGridCol_GestureIndicator, {0.87, 0.52, 0.32, 1}},
-    {FlowGridCol_Flash, {0.47, 0.47, 0.69, 0.4}},
-};
-
-void FlowGridStyle::Render() const {
-    static int colors_idx = -1;
-    if (Combo("Colors", &colors_idx, "Dark\0Light\0Classic\0")) Q(Action::Style::SetFlowGridColorPreset{colors_idx});
-    FlashDurationSec.Draw();
-
-    if (BeginTabBar("")) {
-        if (BeginTabItem(Colors.ImGuiLabel.c_str(), nullptr, ImGuiTabItemFlags_NoPushId)) {
-            Colors.Draw();
-            EndTabItem();
-        }
-        EndTabBar();
-    }
-}

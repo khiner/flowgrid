@@ -7,11 +7,11 @@ DefineActionType(
 
     DefineAction(SetImGuiColorPreset, Merge, "", int id;);
     DefineAction(SetImPlotColorPreset, Merge, "", int id;);
-    DefineAction(SetFlowGridColorPreset, Merge, "", int id;);
+    DefineAction(SetProjectColorPreset, Merge, "", int id;);
 
     Json(SetImGuiColorPreset, id);
     Json(SetImPlotColorPreset, id);
-    Json(SetFlowGridColorPreset, id);
+    Json(SetProjectColorPreset, id);
 
-    using Any = ActionVariant<SetImGuiColorPreset, SetImPlotColorPreset, SetFlowGridColorPreset>;
+    using Any = ActionVariant<SetImGuiColorPreset, SetImPlotColorPreset, SetProjectColorPreset>;
 );

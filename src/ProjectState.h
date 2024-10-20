@@ -47,7 +47,7 @@ struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::
         struct Metrics : Component {
             using Component::Component;
 
-            struct FlowGridMetrics : Component {
+            struct ProjectMetrics : Component {
                 using Component::Component;
 
                 Prop(Bool, ShowRelativePaths, true);
@@ -70,7 +70,7 @@ struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::
                 void Render() const override;
             };
 
-            Prop(FlowGridMetrics, FlowGrid);
+            Prop(ProjectMetrics, Project);
             Prop(ImGuiMetrics, ImGui);
             Prop(ImPlotMetrics, ImPlot);
 

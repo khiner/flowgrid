@@ -24,7 +24,7 @@ struct PrimitiveActionQueuer;
 namespace FlowGrid {
 struct Style;
 }
-struct FlowGridStyle;
+struct ProjectStyle;
 struct ProjectContext;
 
 template<typename T> struct ActionQueue;
@@ -118,7 +118,7 @@ struct Component {
     inline static bool IsWidgetGesturing{};
     static void UpdateGesturing();
 
-    Component(Store &, std::string_view name, const PrimitiveActionQueuer &, const ProjectContext &, const fg::Style &);
+    Component(Store &, std::string_view name, const PrimitiveActionQueuer &, const ProjectContext &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -170,8 +170,6 @@ struct Component {
     void Dock(ID node_id) const;
     bool Focus() const;
 
-    void ToggleDebugMenuItem() const;
-
     // Child renderers.
     void RenderTabs() const;
     void RenderTreeNodes(ImGuiTreeNodeFlags flags = 0) const;
@@ -187,7 +185,8 @@ struct Component {
 
     void Draw() const; // Wraps around the internal `Render` function.
 
-    const FlowGridStyle &GetFlowGridStyle() const;
+    const ProjectStyle &GetProjectStyle() const;
+    void ToggleDebugMenuItem() const;
 
     /* todo next up: make `S` a const ref, and reassign to the (single, initially) root store in `main` during action
     application, making state updates fully value-oriented.
@@ -211,7 +210,6 @@ struct Component {
     Store &_S; // Read-only access to the store at the root of this component's tree (of type `State`).
     const PrimitiveActionQueuer &PrimitiveQ;
     const ProjectContext &ProjectContext;
-    const fg::Style &gStyle;
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
     const std::string PathSegment;

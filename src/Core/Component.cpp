@@ -5,9 +5,11 @@
 #include "imgui_internal.h"
 
 #include "Helper/String.h"
+#include "Helper/Variant.h"
 #include "Project/ProjectContext.h"
-#include "Style/Style.h"
+#include "Style/ProjectStyle.h"
 #include "UI/HelpMarker.h"
+#include "UI/Styling.h"
 
 DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio)
     : Component(std::move(args)), SplitRatio(split_ratio) {}
@@ -19,8 +21,8 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(Store &store, string_view name, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context, const fg::Style &style)
-    : S(store), _S(store), PrimitiveQ(primitive_q), ProjectContext(project_context), gStyle(style),
+Component::Component(Store &store, string_view name, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context)
+    : S(store), _S(store), PrimitiveQ(primitive_q), ProjectContext(project_context),
       Parent(nullptr), PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IDs::ByPath.emplace(Path, Id);
@@ -31,7 +33,6 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
       _S(parent->_S),
       PrimitiveQ(parent->PrimitiveQ),
       ProjectContext(parent->ProjectContext),
-      gStyle(parent->gStyle),
       Parent(parent),
       PathSegment(path_segment),
       Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),
@@ -113,8 +114,6 @@ void Component::HelpMarker(const bool after) const {
     fg::HelpMarker(Help);
     if (!after) ImGui::SameLine();
 }
-
-const FlowGridStyle &Component::GetFlowGridStyle() const { return gStyle.FlowGrid; }
 
 using namespace ImGui;
 
@@ -213,7 +212,7 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     }
 
     bool is_open = false;
-    if (highlight_label) PushStyleColor(ImGuiCol_Text, GetFlowGridStyle().Colors[FlowGridCol_HighlightText]);
+    if (highlight_label) PushStyleColor(ImGuiCol_Text, GetProjectStyle().Colors[ProjectCol_HighlightText]);
     if (value == nullptr) {
         is_open = TreeNodeEx(string(label_view).c_str(), ImGuiTreeNodeFlags_None);
     } else if (!label_view.empty()) {
@@ -222,7 +221,7 @@ bool Component::TreeNode(std::string_view label_view, bool highlight_label, cons
     if (highlight_label) PopStyleColor();
 
     if (value != nullptr) {
-        if (highlight_value) PushStyleColor(ImGuiCol_Text, GetFlowGridStyle().Colors[FlowGridCol_HighlightText]);
+        if (highlight_value) PushStyleColor(ImGuiCol_Text, GetProjectStyle().Colors[ProjectCol_HighlightText]);
         SameLine();
         TextUnformatted(value);
         if (highlight_value) PopStyleColor();
@@ -244,13 +243,15 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
 
 void Component::FlashUpdateRecencyBackground(std::optional<StorePath> relative_path) const {
     if (const auto latest_update_time = LatestUpdateTime(Id, relative_path)) {
-        const auto &style = GetFlowGridStyle();
+        const auto &style = GetProjectStyle();
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / style.FlashDurationSec;
-        ImColor flash_color = style.Colors[FlowGridCol_Flash];
+        ImColor flash_color = style.Colors[ProjectCol_Flash];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
     }
 }
+
+const ProjectStyle &Component::GetProjectStyle() const { return ProjectContext.GetProjectStyle(); }
 
 void Component::ToggleDebugMenuItem() const {
     if (MenuItem(ImGuiLabel.c_str(), nullptr, ProjectContext.IsWindowVisible(Id))) {

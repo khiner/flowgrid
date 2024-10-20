@@ -680,7 +680,7 @@ void Project::RenderMetrics() const {
             const ImVec2 row_min{GetWindowPos().x, GetCursorScreenPos().y};
             const float gesture_ratio = time_remaining_sec / float(State.Settings.GestureDurationSec);
             const ImRect gesture_ratio_rect{row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(gesture_ratio, 0.f, 1.f), GetFontSize()}};
-            GetWindowDrawList()->AddRectFilled(gesture_ratio_rect.Min, gesture_ratio_rect.Max, State.Style.FlowGrid.Colors[FlowGridCol_GestureIndicator]);
+            GetWindowDrawList()->AddRectFilled(gesture_ratio_rect.Min, gesture_ratio_rect.Max, State.Style.Project.Colors[ProjectCol_GestureIndicator]);
 
             const string active_gesture_title = std::format("Active gesture{}", has_gesture_actions ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -749,12 +749,12 @@ void Project::RenderMetrics() const {
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) Preferences.Clear();
             SameLine();
-            State.Debug.Metrics.FlowGrid.ShowRelativePaths.Draw();
+            State.Debug.Metrics.Project.ShowRelativePaths.Draw();
 
             if (!has_RecentlyOpenedPaths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
                 for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-                    BulletText("%s", (State.Debug.Metrics.FlowGrid.ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                    BulletText("%s", (State.Debug.Metrics.Project.ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();
             }

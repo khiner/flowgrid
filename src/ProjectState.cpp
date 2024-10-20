@@ -10,7 +10,7 @@
 using namespace FlowGrid;
 
 ProjectState::ProjectState(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectContext &project_context)
-    : Component(store, "ProjectState", PrimitiveQ, project_context, Style), ActionableProducer(std::move(q)) {
+    : Component(store, "ProjectState", PrimitiveQ, project_context), ActionableProducer(std::move(q)) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -74,11 +74,11 @@ void ProjectState::Apply(const ActionType &action) const {
                         return Style.ImPlot.MinorAlpha.Set(0.5f);
                 }
             },
-            [this](const Action::Style::SetFlowGridColorPreset &a) {
+            [this](const Action::Style::SetProjectColorPreset &a) {
                 switch (a.id) {
-                    case 0: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsDark);
-                    case 1: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsLight);
-                    case 2: return Style.FlowGrid.Colors.Set(FlowGridStyle::ColorsClassic);
+                    case 0: return Style.Project.Colors.Set(ProjectStyle::ColorsDark);
+                    case 1: return Style.Project.Colors.Set(ProjectStyle::ColorsLight);
+                    case 2: return Style.Project.Colors.Set(ProjectStyle::ColorsClassic);
                 }
             },
             [](const Action::TextBuffer::Any &a) {
@@ -229,6 +229,6 @@ void ProjectState::Debug::Metrics::Render() const {
     RenderTabs();
 }
 
-void ProjectState::Debug::Metrics::FlowGridMetrics::Render() const {
+void ProjectState::Debug::Metrics::ProjectMetrics::Render() const {
     ProjectContext.RenderMetrics();
 }

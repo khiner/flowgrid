@@ -2,11 +2,7 @@
 
 #include <ranges>
 
-#include "immer/map_transient.hpp"
-#include "immer/vector.hpp"
-#include "immer/vector_transient.hpp"
-
-#include "Core/Component.h"
+#include "Core/Action/Actions.h"
 #include "Store.h"
 
 using std::ranges::to, std::views::drop, std::views::transform;
@@ -77,10 +73,9 @@ StoreHistory::ReferenceRecord StoreHistory::At(u32 index) const {
     return {record.Store, record.Gesture};
 }
 
-StoreHistory::IndexedGestures StoreHistory::GetIndexedGestures() const {
-    // All recorded gestures except the first, since the first record only holds the initial store with no gestures.
-    Gestures gestures = _Records->Value | drop(1) | transform([](const auto &record) { return record.Gesture; }) | to<std::vector>();
-    return {std::move(gestures), Index};
+Gestures StoreHistory::GetGestures() const {
+    // The first record only holds the initial store with no gestures.
+    return _Records->Value | drop(1) | transform([](const auto &record) { return record.Gesture; }) | to<std::vector>();
 }
 
 void StoreHistory::SetIndex(u32 new_index) {

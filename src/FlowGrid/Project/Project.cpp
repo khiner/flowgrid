@@ -165,10 +165,18 @@ void Project::SetHistoryIndex(u32 index) const {
     ProjectHasChanges = true;
 }
 
+// Used for saving/loading the history.
+// This is all the information needed to reconstruct a project.
+struct IndexedGestures {
+    Gestures Gestures;
+    u32 Index;
+};
+Json(IndexedGestures, Gestures, Index);
+
 json Project::GetProjectJson(const ProjectFormat format) const {
     switch (format) {
         case ProjectFormat::State: return State.ToJson();
-        case ProjectFormat::Action: return History.GetIndexedGestures();
+        case ProjectFormat::Action: return IndexedGestures{History.GetGestures(), History.Index};
     }
 }
 
@@ -441,7 +449,7 @@ void Project::Open(const fs::path &file_path) const {
     } else if (format == ProjectFormat::Action) {
         OpenStateFormatProject(EmptyProjectPath);
 
-        StoreHistory::IndexedGestures indexed_gestures = ReadFileJson(file_path);
+        IndexedGestures indexed_gestures = ReadFileJson(file_path);
         for (auto &&gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);

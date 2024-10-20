@@ -1,9 +1,16 @@
 #pragma once
 
-#include "Core/Action/Actions.h"
-#include "Core/Helper/Path.h"
+#include <map>
+
+#include "nlohmann/json_fwd.hpp"
+
+#include "Core/Primitive/Scalar.h"
+
+using json = nlohmann::json;
 
 struct Store;
+struct Gesture;
+using Gestures = std::vector<Gesture>;
 
 enum Direction {
     Forward,
@@ -13,13 +20,6 @@ enum Direction {
 struct StoreHistory {
     struct Records;
     struct Metrics;
-
-    // Used for saving/loading the history.
-    // This is all the information needed to reconstruct a project.
-    struct IndexedGestures {
-        Gestures Gestures;
-        u32 Index;
-    };
 
     struct ReferenceRecord {
         const Store &Store; // Reference to the store as it was at `GestureCommitTime`.
@@ -42,7 +42,8 @@ struct StoreHistory {
     const Store &PrevStore() const;
 
     ReferenceRecord At(u32 index) const;
-    IndexedGestures GetIndexedGestures() const; // An action-formmatted project is the result of this method converted directly to JSON.
+    Gestures GetGestures() const;
+
     std::map<ID, u32> GetChangeCountById() const; // Ordered by path.
     u32 GetChangedPathsCount() const;
 
@@ -52,5 +53,3 @@ private:
     std::unique_ptr<Records> _Records;
     std::unique_ptr<Metrics> _Metrics;
 };
-
-Json(StoreHistory::IndexedGestures, Gestures, Index);

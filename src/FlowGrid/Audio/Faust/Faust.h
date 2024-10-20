@@ -10,8 +10,8 @@
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionProducerComponent.h"
 #include "Core/Container/ComponentVector.h"
+#include "Core/TextEditor/TextEditor.h"
 #include "FlowGrid/Audio/Graph/AudioGraphAction.h"
-#include "FlowGrid/TextEditor/TextEditor.h"
 
 struct FileDialog;
 

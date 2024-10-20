@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Core/TextEditor/TextBufferAction.h"
 #include "Core/WindowsAction.h"
 #include "FlowGrid/Audio/AudioAction.h"
 #include "FlowGrid/Style/StyleAction.h"
-#include "FlowGrid/TextEditor/TextBufferAction.h"
 
 namespace Action {
 namespace State {

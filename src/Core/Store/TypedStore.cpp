@@ -4,7 +4,7 @@
 
 #include "immer/algorithm.hpp"
 
-#include "FlowGrid/TextEditor/TextBufferData.h"
+#include "Core/TextEditor/TextBufferData.h"
 #include "IdPairs.h"
 
 // `AddOps` function definitions for all specialized `ValueTypes`, to fully implement the `CreatePatch` method.

@@ -2,8 +2,8 @@
 
 #include "TypedStore.h"
 
+#include "Core/TextEditor/TextBufferData.h"
 #include "IdPairs.h"
-#include "FlowGrid/TextEditor/TextBufferData.h"
 
 struct Store : TypedStore<
                    bool, u32, s32, float, std::string, IdPairs, TextBufferData, immer::set<u32>,

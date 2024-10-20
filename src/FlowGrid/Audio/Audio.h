@@ -2,8 +2,8 @@
 
 #include "AudioAction.h"
 #include "Core/ActionProducerComponent.h"
+#include "Core/TextEditor/TextBufferAction.h"
 #include "Faust/Faust.h"
-#include "FlowGrid/TextEditor/TextBufferAction.h"
 #include "Graph/AudioGraph.h"
 
 struct Audio : ActionProducerComponent<Action::Combine<Action::Audio::Any, Action::AdjacencyList::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, Action::TextBuffer::Any>> {

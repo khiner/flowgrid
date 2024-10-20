@@ -119,7 +119,7 @@ struct Component {
     inline static bool IsWidgetGesturing{};
     static void UpdateGesturing();
 
-    Component(Store &, const PrimitiveActionQueuer &, const ProjectContext &, const Windows &, const fg::Style &);
+    Component(Store &, std::string_view name, const PrimitiveActionQueuer &, const ProjectContext &, const Windows &, const fg::Style &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -212,7 +212,6 @@ struct Component {
     const ProjectContext &ProjectContext;
     const Windows &gWindows;
     const fg::Style &gStyle;
-    Component *Root; // The root (project) component.
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
     const std::string PathSegment;

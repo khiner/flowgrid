@@ -19,10 +19,9 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(Store &store, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context, const Windows &windows, const fg::Style &style)
+Component::Component(Store &store, string_view name, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context, const Windows &windows, const fg::Style &style)
     : S(store), _S(store), PrimitiveQ(primitive_q), ProjectContext(project_context), gWindows(windows), gStyle(style),
-      Root(this), Parent(nullptr),
-      PathSegment(""), Path(RootPath), Name(""), Help(""), ImGuiLabel(""), Id(ImHashStr("", 0, 0)) {
+      Parent(nullptr), PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IDs::ByPath.emplace(Path, Id);
 }
@@ -34,7 +33,6 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
       ProjectContext(parent->ProjectContext),
       gWindows(parent->gWindows),
       gStyle(parent->gStyle),
-      Root(parent->Root),
       Parent(parent),
       PathSegment(path_segment),
       Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),
@@ -239,7 +237,7 @@ void Component::TextUnformatted(string_view text) { ImGui::TextUnformatted(text.
 void Component::RenderValueTree(bool annotate, bool auto_select) const {
     if (Children.empty()) return TextUnformatted(Name);
 
-    if (TreeNode(ImGuiLabel.empty() ? "Project" : ImGuiLabel, false, nullptr, false, auto_select)) {
+    if (TreeNode(ImGuiLabel, false, nullptr, false, auto_select)) {
         for (const auto *child : Children) child->RenderValueTree(annotate, auto_select);
         TreePop();
     }

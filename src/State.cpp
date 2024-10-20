@@ -10,7 +10,7 @@
 using namespace FlowGrid;
 
 State::State(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectContext &project_context)
-    : Component(store, PrimitiveQ, project_context, Windows, Style), ActionableProducer(std::move(q)) {
+    : Component(store, "State", PrimitiveQ, project_context, Windows, Style), ActionableProducer(std::move(q)) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -184,8 +184,7 @@ void State::Render() const {
 }
 
 void State::Debug::StorePathUpdateFrequency::Render() const {
-    const auto &pc = static_cast<const State &>(*Root).ProjectContext;
-    pc.RenderStorePathChangeFrequency();
+    ProjectContext.RenderStorePathChangeFrequency();
 }
 
 void State::Debug::DebugLog::Render() const {
@@ -217,8 +216,7 @@ void State::Debug::StatePreview::Render() const {
 
     Separator();
 
-    const auto &pc = static_cast<const State &>(*Root).ProjectContext;
-    json project_json = pc.GetProjectJson(ProjectFormat(int(Format)));
+    json project_json = ProjectContext.GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4));
     } else {
@@ -232,6 +230,5 @@ void State::Debug::Metrics::Render() const {
 }
 
 void State::Debug::Metrics::FlowGridMetrics::Render() const {
-    const auto &pc = static_cast<const State &>(*Root).ProjectContext;
-    pc.RenderMetrics();
+    ProjectContext.RenderMetrics();
 }

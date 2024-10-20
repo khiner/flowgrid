@@ -1,10 +1,10 @@
 #include "FaustNode.h"
 
-#include "FlowGrid/Audio/Graph/AudioGraph.h"
+#include "Audio/Graph/AudioGraph.h"
 
 #include "Faust.h"
 
-#include "FlowGrid/Audio/Graph/ma_faust_node/ma_faust_node.h"
+#include "Audio/Graph/ma_faust_node/ma_faust_node.h"
 
 struct FaustMaNode : MaNode, Component, Component::ChangeListener {
     FaustMaNode(ComponentArgs &&args, AudioGraph *graph, ID dsp_id = 0)

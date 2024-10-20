@@ -608,6 +608,40 @@ std::optional<Action::Any> ProduceKeyboardAction() {
 }
 
 void Project::Draw() const {
+    static const ActionMenuItem<ActionType>
+        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}, "Cmd+N"},
+        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}, "Cmd+O"},
+        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
+        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}, "Cmd+S"},
+        SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
+        UndoMenuItem{*this, Action::Project::Undo{}, "Cmd+Z"},
+        RedoMenuItem{*this, Action::Project::Redo{}, "Shift+Cmd+Z"};
+
+    static const Menu MainMenu{
+        {
+            Menu(
+                "File",
+                {
+                    OpenEmptyMenuItem,
+                    ShowOpenDialogMenuItem,
+                    [this]() { OpenRecentProjectMenuItem(); },
+                    OpenDefaultMenuItem,
+                    SaveCurrentMenuItem,
+                    SaveDefaultMenuItem,
+                }
+            ),
+            Menu(
+                "Edit",
+                {
+                    UndoMenuItem,
+                    RedoMenuItem,
+                }
+            ),
+            [this] { return WindowMenuItem(); },
+        },
+        true
+    };
+
     MainMenu.Draw();
     State.Draw();
     if (PrevSelectedPath != State.FileDialog.SelectedFilePath && State.FileDialog.Data.OwnerId == State.Id) {

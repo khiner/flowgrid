@@ -2,7 +2,7 @@
 
 #include "ActionMoment.h"
 #include "Core/CoreAction.h"
-#include "FlowGrid/StateAction.h"
+#include "StateAction.h"
 
 namespace Action {
 // `Any` holds all action types.

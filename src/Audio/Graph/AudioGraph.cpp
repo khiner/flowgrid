@@ -15,9 +15,9 @@
 #include "Core/UI/InvisibleButton.h"
 #include "Core/UI/Styling.h"
 
-#include "FlowGrid/Audio/Device/AudioDevice.h"
-#include "FlowGrid/Audio/Faust/FaustNode.h"
-#include "FlowGrid/Audio/WaveformNode.h"
+#include "Audio/Device/AudioDevice.h"
+#include "Audio/Faust/FaustNode.h"
+#include "Audio/WaveformNode.h"
 
 #define ma_offset_ptr(p, offset) (((ma_uint8 *)(p)) + (offset))
 

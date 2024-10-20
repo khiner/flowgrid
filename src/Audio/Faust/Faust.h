@@ -7,11 +7,11 @@
 #include "FaustParams.h"
 #include "FaustParamsStyle.h"
 
+#include "Audio/Graph/AudioGraphAction.h"
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/ActionProducerComponent.h"
 #include "Core/Container/ComponentVector.h"
 #include "Core/TextEditor/TextEditor.h"
-#include "FlowGrid/Audio/Graph/AudioGraphAction.h"
 
 struct FileDialog;
 

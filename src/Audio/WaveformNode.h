@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FlowGrid/Audio/Graph/AudioGraphNode.h"
+#include "Audio/Graph/AudioGraphNode.h"
 
 struct WaveformNode : AudioGraphNode {
     WaveformNode(ComponentArgs &&);

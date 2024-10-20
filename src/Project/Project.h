@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Core/Action/Actions.h"
-#include "FlowGrid/State.h"
 #include "ProjectContext.h"
+#include "State.h"
 
 namespace moodycamel {
 struct ConsumerToken;
@@ -58,40 +58,6 @@ struct Project : ActionableProducer<Action::Any> {
     const Store &S;
     Store &_S;
     State State;
-
-    ActionMenuItem<ActionType>
-        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}, "Cmd+N"},
-        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}, "Cmd+O"},
-        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
-        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}, "Cmd+S"},
-        SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
-        UndoMenuItem{*this, Action::Project::Undo{}, "Cmd+Z"},
-        RedoMenuItem{*this, Action::Project::Redo{}, "Shift+Cmd+Z"};
-
-    const Menu MainMenu{
-        {
-            Menu(
-                "File",
-                {
-                    OpenEmptyMenuItem,
-                    ShowOpenDialogMenuItem,
-                    [this]() { OpenRecentProjectMenuItem(); },
-                    OpenDefaultMenuItem,
-                    SaveCurrentMenuItem,
-                    SaveDefaultMenuItem,
-                }
-            ),
-            Menu(
-                "Edit",
-                {
-                    UndoMenuItem,
-                    RedoMenuItem,
-                }
-            ),
-            [this] { return WindowMenuItem(); },
-        },
-        true
-    };
 
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.

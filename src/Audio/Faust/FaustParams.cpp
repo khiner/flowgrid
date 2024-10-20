@@ -1,7 +1,7 @@
 #include "FaustParams.h"
 #include "FaustParamsUI.h"
 
-#include "FlowGrid/Audio/Sample.h" // Must be included before any Faust includes.
+#include "Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/dsp.h"
 
 #include <imgui.h>

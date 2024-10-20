@@ -6,7 +6,7 @@
 #include "Core/Store/Store.h"
 #include "Core/UI/Fonts.h"
 #include "Core/UI/UIContext.h"
-#include "FlowGrid/Project/Project.h"
+#include "Project/Project.h"
 
 Patch CreatePatch(State &state) {
     auto *ctx = ImGui::GetCurrentContext();

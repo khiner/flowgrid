@@ -4,7 +4,7 @@
 #include <optional>
 
 #include "DeviceDataFormat.h"
-#include "FlowGrid/Audio/AudioIO.h"
+#include "Audio/AudioIO.h"
 
 #include "miniaudio.h"
 

@@ -1,6 +1,6 @@
 #include "WaveformNode.h"
 
-#include "FlowGrid/Audio/Graph/AudioGraph.h"
+#include "Audio/Graph/AudioGraph.h"
 
 #include "Graph/ma_waveform_node/ma_waveform_node.h"
 

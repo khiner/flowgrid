@@ -5,7 +5,7 @@
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/UInt.h"
 
-#include "FlowGrid/Audio/AudioIO.h"
+#include "Audio/AudioIO.h"
 
 using ma_node = void;
 

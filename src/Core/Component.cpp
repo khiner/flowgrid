@@ -4,9 +4,9 @@
 
 #include "imgui_internal.h"
 
-#include "FlowGrid/Project/ProjectContext.h"
-#include "FlowGrid/Style/Style.h"
 #include "Helper/String.h"
+#include "Project/ProjectContext.h"
+#include "Style/Style.h"
 #include "UI/HelpMarker.h"
 
 DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio)

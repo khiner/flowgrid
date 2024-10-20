@@ -15,8 +15,8 @@
 #include "Core/Helper/basen.h"
 #include "Core/UI/InvisibleButton.h"
 
+#include "Audio/AudioIO.h"
 #include "FaustGraphStyle.h"
-#include "FlowGrid/Audio/AudioIO.h"
 
 using std::min, std::max, std::pair;
 using std::ranges::to, std::views::take, std::views::take_while;

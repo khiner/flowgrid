@@ -98,7 +98,7 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
     );
 }
 
-#include "FlowGrid/Audio/Sample.h" // Must be included before any Faust includes.
+#include "Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
 FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container, const ::FileDialog &file_dialog)

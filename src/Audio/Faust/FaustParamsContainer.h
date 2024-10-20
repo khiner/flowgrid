@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FlowGrid/Audio/Sample.h" // Must be included before any Faust includes
+#include "Audio/Sample.h" // Must be included before any Faust includes
 
 #include "Core/UI/NamesAndValues.h"
 #include "FaustParamType.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FlowGrid/Audio/Sample.h"
+#include "Audio/Sample.h"
 
 #include "Core/Primitive/Float.h"
 #include "Core/UI/NamesAndValues.h"

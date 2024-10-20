@@ -14,8 +14,8 @@
 #include "Core/Helper/Color.h"
 #include "Core/UI/Fonts.h"
 
-#include "FlowGrid/Project/Preferences.h"
 #include "LanguageID.h"
+#include "Project/Preferences.h"
 #include "TextInputEdit.h"
 
 using json = nlohmann::json;

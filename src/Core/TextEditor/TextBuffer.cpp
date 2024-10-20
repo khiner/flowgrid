@@ -15,7 +15,7 @@
 #include "Core/UI/Fonts.h"
 #include "Core/Windows.h"
 
-#include "FlowGrid/Project/ProjectContext.h"
+#include "Project/ProjectContext.h"
 
 #include "SyntaxTree.h"
 

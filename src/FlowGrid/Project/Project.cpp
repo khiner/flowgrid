@@ -521,13 +521,13 @@ void Project::WindowMenuItem() const {
             item(State.Audio.Graph);
             item(State.Audio.Graph.Connections);
             item(State.Audio.Style);
-            EndMenu();
-        }
-        if (BeginMenu("Faust")) {
-            item(State.Audio.Faust.FaustDsps);
-            item(State.Audio.Faust.Graphs);
-            item(State.Audio.Faust.Paramss);
-            item(State.Audio.Faust.Logs);
+            if (BeginMenu("Faust")) {
+                item(State.Audio.Faust.FaustDsps);
+                item(State.Audio.Faust.Graphs);
+                item(State.Audio.Faust.Paramss);
+                item(State.Audio.Faust.Logs);
+                EndMenu();
+            }
             EndMenu();
         }
         if (BeginMenu("Debug")) {

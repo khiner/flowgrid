@@ -136,12 +136,12 @@ struct State : Component, ActionableProducer<Action::State::Any, Action::Any> {
     ProducerProp(fg::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
-    ProducerProp(Audio, Audio, FileDialog);
     Prop(ProjectSettings, Settings);
     Prop(Info, Info);
-
     Prop(Demo, Demo, FileDialog);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
+
+    ProducerProp(Audio, Audio, FileDialog);
 
     void RenderDebug() const override;
 

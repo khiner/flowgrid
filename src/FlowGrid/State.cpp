@@ -131,14 +131,14 @@ void State::Render() const {
     auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;
     if (frame_count == 1) {
-        auto audio_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);
-        auto utilities_node_id = DockBuilderSplitNode(audio_node_id, ImGuiDir_Down, 0.5f, nullptr, &audio_node_id);
-
         auto debug_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.3f, nullptr, &dockspace_id);
-        auto metrics_node_id = DockBuilderSplitNode(debug_node_id, ImGuiDir_Right, 0.35f, nullptr, &debug_node_id);
+        auto metrics_node_id = DockBuilderSplitNode(debug_node_id, ImGuiDir_Right, 0.3f, nullptr, &debug_node_id);
+        auto utilities_node_id = DockBuilderSplitNode(debug_node_id, ImGuiDir_Left, 0.3f, nullptr, &debug_node_id);
 
         auto info_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.2f, nullptr, &dockspace_id);
         auto settings_node_id = DockBuilderSplitNode(info_node_id, ImGuiDir_Down, 0.25f, nullptr, &info_node_id);
+
+        auto audio_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.25f, nullptr, &dockspace_id);
         auto faust_tools_node_id = DockBuilderSplitNode(dockspace_id, ImGuiDir_Down, 0.5f, nullptr, &dockspace_id);
         auto faust_graph_node_id = DockBuilderSplitNode(faust_tools_node_id, ImGuiDir_Left, 0.5f, nullptr, &faust_tools_node_id);
         DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.5f, nullptr, &dockspace_id); // text editor

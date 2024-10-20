@@ -19,8 +19,8 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(Store &store, string_view name, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context, const Windows &windows, const fg::Style &style)
-    : S(store), _S(store), PrimitiveQ(primitive_q), ProjectContext(project_context), gWindows(windows), gStyle(style),
+Component::Component(Store &store, string_view name, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context, const fg::Style &style)
+    : S(store), _S(store), PrimitiveQ(primitive_q), ProjectContext(project_context), gStyle(style),
       Parent(nullptr), PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IDs::ByPath.emplace(Path, Id);
@@ -31,7 +31,6 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
       _S(parent->_S),
       PrimitiveQ(parent->PrimitiveQ),
       ProjectContext(parent->ProjectContext),
-      gWindows(parent->gWindows),
       gStyle(parent->gStyle),
       Parent(parent),
       PathSegment(path_segment),
@@ -250,5 +249,11 @@ void Component::FlashUpdateRecencyBackground(std::optional<StorePath> relative_p
         ImColor flash_color = style.Colors[FlowGridCol_Flash];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
         FillRowItemBg(flash_color);
+    }
+}
+
+void Component::ToggleDebugMenuItem() const {
+    if (MenuItem(ImGuiLabel.c_str(), nullptr, ProjectContext.IsWindowVisible(Id))) {
+        ProjectContext.ToggleDemoWindow(Id);
     }
 }

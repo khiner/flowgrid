@@ -20,9 +20,9 @@ struct ProjectContext;
 It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
-struct State : Component, ActionableProducer<Action::State::Any, Action::Any> {
-    State(Store &, ActionProducer::EnqueueFn, const ::ProjectContext &);
-    ~State();
+struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::Any> {
+    ProjectState(Store &, ActionProducer::EnqueueFn, const ::ProjectContext &);
+    ~ProjectState();
 
     const PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
 

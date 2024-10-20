@@ -713,7 +713,7 @@ void TextBuffer::RenderMenu() const {
         ShortTabs.MenuItem();
         ShowStyleTransitionPoints.MenuItem();
         ShowChangedCaptureRanges.MenuItem();
-        gWindows.ToggleDebugMenuItem(Debug);
+        Debug.ToggleDebugMenuItem();
         EndMenu();
     }
 }

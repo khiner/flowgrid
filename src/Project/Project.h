@@ -2,7 +2,7 @@
 
 #include "Core/Action/Actions.h"
 #include "ProjectContext.h"
-#include "State.h"
+#include "ProjectState.h"
 
 namespace moodycamel {
 struct ConsumerToken;
@@ -50,14 +50,18 @@ struct Project : ActionableProducer<Action::Any> {
 
     ProjectContext ProjectContext{
         Preferences,
+        [this](ID id) { return State.Windows.IsVisible(id); },
+        [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
+
         [this](ProjectFormat format) { return GetProjectJson(format); },
+
         [this]() { RenderMetrics(); },
         [this]() { RenderStorePathChangeFrequency(); }
     };
 
     const Store &S;
     Store &_S;
-    State State;
+    ProjectState State;
 
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.

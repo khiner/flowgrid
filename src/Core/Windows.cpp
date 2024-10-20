@@ -37,9 +37,3 @@ void Windows::Render() const {
         if (!open) Q(Action::Windows::ToggleVisible{id});
     }
 }
-
-void Windows::ToggleDebugMenuItem(const Component &component) const {
-    if (MenuItem(component.ImGuiLabel.c_str(), nullptr, IsVisible(component.Id))) {
-        Q(Action::Windows::ToggleDebug{component.Id});
-    }
-}

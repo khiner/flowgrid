@@ -15,7 +15,6 @@ struct Windows : ActionProducerComponent<Action::Windows::Any> {
     bool IsVisible(ID component_id) const;
 
     void ToggleVisible(ID component_id) const;
-    void ToggleDebugMenuItem(const Component &) const;
 
     Prop(Set<ID>, VisibleComponents);
 

@@ -25,7 +25,6 @@ namespace FlowGrid {
 struct Style;
 }
 struct FlowGridStyle;
-struct Windows;
 struct ProjectContext;
 
 template<typename T> struct ActionQueue;
@@ -119,7 +118,7 @@ struct Component {
     inline static bool IsWidgetGesturing{};
     static void UpdateGesturing();
 
-    Component(Store &, std::string_view name, const PrimitiveActionQueuer &, const ProjectContext &, const Windows &, const fg::Style &);
+    Component(Store &, std::string_view name, const PrimitiveActionQueuer &, const ProjectContext &, const fg::Style &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -171,6 +170,8 @@ struct Component {
     void Dock(ID node_id) const;
     bool Focus() const;
 
+    void ToggleDebugMenuItem() const;
+
     // Child renderers.
     void RenderTabs() const;
     void RenderTreeNodes(ImGuiTreeNodeFlags flags = 0) const;
@@ -210,7 +211,6 @@ struct Component {
     Store &_S; // Read-only access to the store at the root of this component's tree (of type `State`).
     const PrimitiveActionQueuer &PrimitiveQ;
     const ProjectContext &ProjectContext;
-    const Windows &gWindows;
     const fg::Style &gStyle;
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};

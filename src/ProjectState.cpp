@@ -1,4 +1,4 @@
-#include "State.h"
+#include "ProjectState.h"
 
 #include "imgui_internal.h"
 #include "implot.h"
@@ -9,8 +9,8 @@
 
 using namespace FlowGrid;
 
-State::State(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectContext &project_context)
-    : Component(store, "State", PrimitiveQ, project_context, Windows, Style), ActionableProducer(std::move(q)) {
+ProjectState::ProjectState(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectContext &project_context)
+    : Component(store, "ProjectState", PrimitiveQ, project_context, Style), ActionableProducer(std::move(q)) {
     Windows.SetWindowComponents({
         Audio.Graph,
         Audio.Graph.Connections,
@@ -32,9 +32,9 @@ State::State(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectConte
     });
 }
 
-State::~State() = default;
+ProjectState::~ProjectState() = default;
 
-void State::Apply(const ActionType &action) const {
+void ProjectState::Apply(const ActionType &action) const {
     std::visit(
         Match{
             [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
@@ -113,7 +113,7 @@ void State::Apply(const ActionType &action) const {
     );
 }
 
-bool State::CanApply(const ActionType &action) const {
+bool ProjectState::CanApply(const ActionType &action) const {
     return std::visit(
         Match{
             [this](const Action::AudioGraph::Any &a) { return Audio.Graph.CanApply(a); },
@@ -126,7 +126,7 @@ bool State::CanApply(const ActionType &action) const {
 
 using namespace ImGui;
 
-void State::Render() const {
+void ProjectState::Render() const {
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;
@@ -183,34 +183,34 @@ void State::Render() const {
     }
 }
 
-void State::Debug::StorePathUpdateFrequency::Render() const {
+void ProjectState::Debug::StorePathUpdateFrequency::Render() const {
     ProjectContext.RenderStorePathChangeFrequency();
 }
 
-void State::Debug::DebugLog::Render() const {
+void ProjectState::Debug::DebugLog::Render() const {
     ShowDebugLogWindow();
 }
-void State::Debug::StackTool::Render() const {
+void ProjectState::Debug::StackTool::Render() const {
     ShowIDStackToolWindow();
 }
 
-void State::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
-void State::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
+void ProjectState::Debug::Metrics::ImGuiMetrics::Render() const { ImGui::ShowMetricsWindow(); }
+void ProjectState::Debug::Metrics::ImPlotMetrics::Render() const { ImPlot::ShowMetricsWindow(); }
 
-void State::Debug::OnComponentChanged() {
+void ProjectState::Debug::OnComponentChanged() {
     if (AutoSelect.IsChanged()) {
         WindowFlags = AutoSelect ? ImGuiWindowFlags_NoScrollWithMouse : ImGuiWindowFlags_None;
     }
 }
 
-void State::RenderDebug() const {
+void ProjectState::RenderDebug() const {
     const bool auto_select = Debug.AutoSelect;
     if (auto_select) BeginDisabled();
     RenderValueTree(Debug::LabelModeType(int(Debug.LabelMode)) == Debug::LabelModeType::Annotated, auto_select);
     if (auto_select) EndDisabled();
 }
 
-void State::Debug::StatePreview::Render() const {
+void ProjectState::Debug::StatePreview::Render() const {
     Format.Draw();
     Raw.Draw();
 
@@ -225,10 +225,10 @@ void State::Debug::StatePreview::Render() const {
     }
 }
 
-void State::Debug::Metrics::Render() const {
+void ProjectState::Debug::Metrics::Render() const {
     RenderTabs();
 }
 
-void State::Debug::Metrics::FlowGridMetrics::Render() const {
+void ProjectState::Debug::Metrics::FlowGridMetrics::Render() const {
     ProjectContext.RenderMetrics();
 }

@@ -4,6 +4,7 @@
 
 #include "nlohmann/json_fwd.hpp"
 
+#include "Core/Primitive/ID.h"
 #include "Preferences.h"
 
 enum class ProjectFormat {
@@ -18,7 +19,12 @@ It doesn't know about any specific `State` or `Store` (but it may be templated o
 */
 struct ProjectContext {
     const Preferences &Preferences;
+
+    const std::function<bool(ID)> IsWindowVisible;
+    const std::function<void(ID)> ToggleDemoWindow;
+
     const std::function<nlohmann::json(ProjectFormat)> GetProjectJson;
+
     const std::function<void()> RenderMetrics;
     const std::function<void()> RenderStorePathChangeFrequency;
 };

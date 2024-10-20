@@ -8,14 +8,14 @@
 #include "Core/UI/UIContext.h"
 #include "Project/Project.h"
 
-Patch CreatePatch(State &state) {
+Patch CreatePatch(Project &project) {
     auto *ctx = ImGui::GetCurrentContext();
-    auto &settings = state.ImGuiSettings;
+    auto &settings = project.State.ImGuiSettings;
     settings.Nodes.Set(ctx->DockContext.NodesSettings);
     settings.Windows.Set(ctx->SettingsWindows);
     settings.Tables.Set(ctx->SettingsTables);
 
-    auto patch = state._S.CreatePatchAndResetTransient(settings.Id);
+    auto patch = project._S.CreatePatchAndResetTransient(settings.Id);
     settings.Tables.Refresh(); // xxx tables may have been modified.
 
     return patch;
@@ -26,7 +26,7 @@ bool Tick(Project &project, const UIContext &ui) {
     const bool running = ui.Tick();
     if (running && io.WantSaveIniSettings) {
         ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        if (auto patch = CreatePatch(project.State); !patch.Empty()) {
+        if (auto patch = CreatePatch(project); !patch.Empty()) {
             project.Q(Action::Store::ApplyPatch{std::move(patch)});
         }
         io.WantSaveIniSettings = false;
@@ -41,16 +41,15 @@ int main() {
     const auto q_producer_token = queue.CreateProducerToken();
     ActionProducer<Action::Any>::EnqueueFn q = [&queue, &q_producer_token](auto &&a) -> bool { return queue.Enqueue(q_producer_token, std::move(a)); };
     Project project{store, queue.CreateConsumerToken(), q};
-    State &state = project.State;
 
     // Initialize the global canonical store with all project state values set during project initialization.
     store.Commit();
 
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
+    auto &state = project.State;
     state.Refresh();
 
-    std::function<void()> draw = [&project]() { project.Draw(); };
-    std::function<void()> predraw = [&state]() {
+    auto predraw = [&state]() {
         // Check if new UI settings need to be applied.
         auto &settings = state.ImGuiSettings;
         auto &style = state.Style;
@@ -71,7 +70,8 @@ int main() {
             PrevFontScale = style.ImGui.FontScale;
         }
     };
-    const UIContext ui{std::move(predraw), std::move(draw)}; // Initialize ImGui and other UI state.
+    auto draw = [&project]() { project.Draw(); };
+    const UIContext ui{std::move(predraw), std::move(draw)};
     Fonts::Init(); // Must be done after initializing ImGui.
     ImGui::GetIO().FontGlobalScale = state.Style.ImGui.FontScale / Fonts::AtlasScale;
 

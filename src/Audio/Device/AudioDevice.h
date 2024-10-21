@@ -3,8 +3,8 @@
 #include <memory>
 #include <optional>
 
-#include "DeviceDataFormat.h"
 #include "Audio/AudioIO.h"
+#include "DeviceDataFormat.h"
 
 #include "miniaudio.h"
 

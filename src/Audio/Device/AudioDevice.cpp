@@ -224,7 +224,6 @@ void AudioDevice::Init() {
     Device->onNotification = [](const ma_device_notification *notification) {
         switch (notification->type) {
             case ma_device_notification_type_started:
-                break;
             case ma_device_notification_type_stopped:
                 break;
             case ma_device_notification_type_rerouted:
@@ -235,8 +234,8 @@ void AudioDevice::Init() {
                 AudioContext->ScanDevices();
                 break;
             case ma_device_notification_type_interruption_began:
-                break;
             case ma_device_notification_type_interruption_ended:
+            case ma_device_notification_type_unlocked:
                 break;
         }
     };

@@ -1,53 +1,16 @@
 #include "imgui_internal.h"
 #include "implot.h"
 
-#include "Core/Action/ActionQueue.h"
 #include "Core/FileDialog/FileDialogManager.h"
 #include "Core/Store/Store.h"
 #include "Core/UI/Fonts.h"
 #include "Core/UI/UIContext.h"
 #include "Project/Project.h"
 
-Patch CreatePatch(Project &project) {
-    auto *ctx = ImGui::GetCurrentContext();
-    auto &settings = project.State.ImGuiSettings;
-    settings.Nodes.Set(ctx->DockContext.NodesSettings);
-    settings.Windows.Set(ctx->SettingsWindows);
-    settings.Tables.Set(ctx->SettingsTables);
-
-    auto patch = project._S.CreatePatchAndResetTransient(settings.Id);
-    settings.Tables.Refresh(); // xxx tables may have been modified.
-
-    return patch;
-}
-
-bool Tick(Project &project, const UIContext &ui) {
-    auto &io = ImGui::GetIO();
-    const bool running = ui.Tick();
-    if (running && io.WantSaveIniSettings) {
-        ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        if (auto patch = CreatePatch(project); !patch.Empty()) {
-            project.Q(Action::Store::ApplyPatch{std::move(patch)});
-        }
-        io.WantSaveIniSettings = false;
-    }
-
-    return running;
-}
-
 int main() {
     Store store{};
-    ActionQueue<Action::Any> queue{};
-    const auto q_producer_token = queue.CreateProducerToken();
-    ActionProducer<Action::Any>::EnqueueFn q = [&queue, &q_producer_token](auto &&a) -> bool { return queue.Enqueue(q_producer_token, std::move(a)); };
-    Project project{store, queue.CreateConsumerToken(), q};
-
-    // Initialize the global canonical store with all project state values set during project initialization.
-    store.Commit();
-
-    // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
+    Project project{store};
     auto &state = project.State;
-    state.Refresh();
 
     auto predraw = [&state]() {
         // Check if new UI settings need to be applied.
@@ -79,22 +42,17 @@ int main() {
 
     {
         // Relying on these rendering side effects up front is not great.
-        Tick(project, ui); // Rendering the first frame has side effects like creating dockspaces & windows.
+        ui.Tick(); // Rendering the first frame has side effects like creating dockspaces & windows.
+        project.Tick();
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        Tick(project, ui); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
-        project.ApplyQueuedActions(queue, true);
+        ui.Tick(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        project.Tick();
+        project.ApplyQueuedActions(true);
     }
 
     project.OnApplicationLaunch();
-
-    static ActionMoment<Project::ActionType> action_moment; // For dequeuing to flush the queue.
-    while (Tick(project, ui)) {
-        // Disable all actions while the file dialog is open.
-        if (state.FileDialog.Visible) {
-            queue.Clear();
-        } else {
-            project.ApplyQueuedActions(queue, false);
-        }
+    while (ui.Tick()) {
+        project.Tick();
     }
 
     FileDialogManager::Uninit();

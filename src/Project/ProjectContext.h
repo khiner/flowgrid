@@ -26,7 +26,7 @@ struct ProjectContext {
     const std::function<void(ID)> ToggleDemoWindow;
 
     const std::function<nlohmann::json(ProjectFormat)> GetProjectJson;
-    const std::function<const ProjectStyle&()> GetProjectStyle;
+    const std::function<const ProjectStyle &()> GetProjectStyle;
 
     const std::function<void()> RenderMetrics;
     const std::function<void()> RenderStorePathChangeFrequency;

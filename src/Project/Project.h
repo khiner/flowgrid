@@ -1,6 +1,8 @@
 #pragma once
 
+#include "Core/Action/ActionQueue.h"
 #include "Core/Action/Actions.h"
+
 #include "Preferences.h"
 #include "ProjectContext.h"
 #include "ProjectState.h"
@@ -16,23 +18,29 @@ struct Plottable {
     std::vector<u64> Values;
 };
 
-// todo project own an action queue (rather than main), and be typed on the store/action type.
-//   It should be agnostic to the the store and root component subtype.
+// todo project takes a store and a generic app `Component`, and is templated on action type.
+//   It should be agnostic to the app-component type,
+//   holding a ProjectState and the provided component.
+//   (So, a forest of two component trees, is my current thinking...
+//    may be good reason to introduce an additional root component holding both, though)
 
 /**
 Holds the root `State` component... does project things... (todo)
 */
-struct Project : ActionableProducer<Action::Any> {
-    Project(Store &, moodycamel::ConsumerToken, EnqueueFn);
+struct Project : Actionable<Action::Any> {
+    Project(Store &);
     ~Project();
 
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
     static Component *FindChanged(ID component_id, const std::vector<PatchOp> &ops);
 
     void OnApplicationLaunch() const;
+    void Tick();
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
+
+    void Draw() const;
 
     void CommitGesture() const;
     void AddGesture(Gesture &&) const;
@@ -42,7 +50,7 @@ struct Project : ActionableProducer<Action::Any> {
     json GetProjectJson(const ProjectFormat) const;
 
     // Provided queue is drained.
-    void ApplyQueuedActions(ActionQueue<ActionType> &, bool force_commit_gesture = false) const;
+    void ApplyQueuedActions(bool force_commit_gesture = false);
     bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
     const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
     float GestureTimeRemainingSec() const;
@@ -55,24 +63,25 @@ struct Project : ActionableProducer<Action::Any> {
         [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
 
         [this](ProjectFormat format) { return GetProjectJson(format); },
-        [this]() -> const ProjectStyle &{ return State.Style.Project; },
+        [this]() -> const ProjectStyle & { return State.Style.Project; },
 
         [this]() { RenderMetrics(); },
         [this]() { RenderStorePathChangeFrequency(); }
     };
 
+    ActionQueue<ActionType> Queue{};
+    moodycamel::ProducerToken EnqueueToken{Queue.CreateProducerToken()};
+    moodycamel::ConsumerToken DequeueToken{Queue.CreateConsumerToken()};
+    ActionProducer<Action::Any>::EnqueueFn Q;
+    mutable ActionMoment<ActionType> DequeueActionMoment{};
+
     const Store &S;
     Store &_S;
     ProjectState State;
 
+private:
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
-
-    void Draw() const;
-
-private:
-    std::unique_ptr<moodycamel::ConsumerToken> DequeueToken;
-    mutable ActionMoment<ActionType> DequeueActionMoment{};
 
     mutable SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     mutable std::optional<fs::path> CurrentProjectPath;
@@ -112,4 +121,6 @@ private:
     // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
     void MarkAllChanged(Patch &&) const;
     void ClearChanged() const;
+
+    Patch CreatePatch();
 };

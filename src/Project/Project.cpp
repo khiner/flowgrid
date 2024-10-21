@@ -8,7 +8,6 @@
 #include <set>
 
 #include "Core/Action/ActionMenuItem.h"
-#include "Core/Action/ActionQueue.h"
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
 #include "Core/Helper/Time.h"
@@ -44,10 +43,17 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Project::Project(Store &store, moodycamel::ConsumerToken ctok, ActionableProducer::EnqueueFn q)
-    : ActionableProducer(std::move(q)), S(store), _S(store), State(store, q, ProjectContext),
-      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr),
-      DequeueToken(std::make_unique<moodycamel::ConsumerToken>(std::move(ctok))) {}
+Project::Project(Store &store)
+    : Q([this](auto &&a) -> bool {
+          return Queue.Enqueue(EnqueueToken, std::move(a));
+      }),
+      S(store), _S(store), State(store, Q, ProjectContext),
+      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+    // Initialize the global canonical store with all project state values set during project initialization.
+    store.Commit();
+    // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
+    State.Refresh();
+}
 
 Project::~Project() = default;
 
@@ -407,6 +413,36 @@ void Project::OnApplicationLaunch() const {
     Save(EmptyProjectPath);
 }
 
+Patch Project::CreatePatch() {
+    auto *ctx = ImGui::GetCurrentContext();
+    auto &settings = State.ImGuiSettings;
+    settings.Nodes.Set(ctx->DockContext.NodesSettings);
+    settings.Windows.Set(ctx->SettingsWindows);
+    settings.Tables.Set(ctx->SettingsTables);
+
+    auto patch = _S.CreatePatchAndResetTransient(settings.Id);
+    settings.Tables.Refresh(); // xxx tables may have been modified.
+
+    return patch;
+}
+
+void Project::Tick() {
+    auto &io = ImGui::GetIO();
+    if (io.WantSaveIniSettings) {
+        ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
+        if (auto patch = CreatePatch(); !patch.Empty()) {
+            Q(Action::Store::ApplyPatch{std::move(patch)});
+        }
+        io.WantSaveIniSettings = false;
+    }
+    if (State.FileDialog.Visible) {
+        // Drain action queue. All actions are no-ops while the file dialog is open.
+        while (Queue.TryDequeue(DequeueToken, DequeueActionMoment)) {}
+    } else {
+        ApplyQueuedActions(false);
+    }
+}
+
 static json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(file_path)); }
 
 // Helper function used in `Project::Open`.
@@ -609,13 +645,13 @@ std::optional<Action::Any> ProduceKeyboardAction() {
 
 void Project::Draw() const {
     static const ActionMenuItem<ActionType>
-        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}, "Cmd+N"},
-        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}, "Cmd+O"},
-        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
-        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}, "Cmd+S"},
-        SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
-        UndoMenuItem{*this, Action::Project::Undo{}, "Cmd+Z"},
-        RedoMenuItem{*this, Action::Project::Redo{}, "Shift+Cmd+Z"};
+        OpenEmptyMenuItem{*this, Q, Action::Project::OpenEmpty{}, "Cmd+N"},
+        ShowOpenDialogMenuItem{*this, Q, Action::Project::ShowOpenDialog{}, "Cmd+O"},
+        OpenDefaultMenuItem{*this, Q, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
+        SaveCurrentMenuItem{*this, Q, Action::Project::SaveCurrent{}, "Cmd+S"},
+        SaveDefaultMenuItem{*this, Q, Action::Project::SaveDefault{}},
+        UndoMenuItem{*this, Q, Action::Project::Undo{}, "Cmd+Z"},
+        RedoMenuItem{*this, Q, Action::Project::Redo{}, "Shift+Cmd+Z"};
 
     static const Menu MainMenu{
         {
@@ -650,7 +686,9 @@ void Project::Draw() const {
         if (State.FileDialog.Data.SaveMode) Q(Action::Project::Save{selected_path});
         else Q(Action::Project::Open{selected_path});
     }
-    if (auto action = ProduceKeyboardAction()) Q(*action);
+    if (auto action = ProduceKeyboardAction()) {
+        std::visit([this](auto &&a) { Q(std::move(a)); }, *action);
+    }
 }
 
 void ShowActions(const SavedActionMoments &actions) {
@@ -776,9 +814,9 @@ void Project::RenderMetrics() const {
     }
 }
 
-void Project::ApplyQueuedActions(ActionQueue<ActionType> &queue, bool force_commit_gesture) const {
+void Project::ApplyQueuedActions(bool force_commit_gesture) {
     const bool has_gesture_actions = HasGestureActions();
-    while (queue.TryDequeue(*DequeueToken.get(), DequeueActionMoment)) {
+    while (Queue.TryDequeue(DequeueToken, DequeueActionMoment)) {
         auto &[action, queue_time] = DequeueActionMoment;
         if (!CanApply(action)) continue;
 

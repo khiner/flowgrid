@@ -16,7 +16,6 @@ template<typename ActionType> struct ActionQueue {
     bool Enqueue(const ProducerToken &ptok, ActionMoment<ActionType> &&action_moment) { return Queue.enqueue(ptok, std::move(action_moment)); }
     bool Enqueue(const ProducerToken &ptok, ActionType &&action) { return Enqueue(ptok, {std::move(action), Clock::now()}); }
     bool TryDequeue(ConsumerToken &ctok, ActionMoment<ActionType> &action_moment) { return Queue.try_dequeue(ctok, action_moment); }
-    void Clear() { Queue = QueueType{}; } // No `clear` method in `ConcurrentQueue`.
 
 private:
     using QueueType = moodycamel::ConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;

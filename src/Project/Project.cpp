@@ -45,7 +45,7 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 
 Project::Project(Store &store)
     : Q([this](auto &&a) -> bool {
-          return Queue.Enqueue(EnqueueToken, std::move(a));
+          return Queue.enqueue(EnqueueToken, {std::move(a), Clock::now()});
       }),
       S(store), _S(store), State(store, Q, ProjectContext),
       HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
@@ -437,7 +437,7 @@ void Project::Tick() {
     }
     if (State.FileDialog.Visible) {
         // Drain action queue. All actions are no-ops while the file dialog is open.
-        while (Queue.TryDequeue(DequeueToken, DequeueActionMoment)) {}
+        while (Queue.try_dequeue(DequeueToken, DequeueActionMoment)) {}
     } else {
         ApplyQueuedActions(false);
     }
@@ -816,7 +816,7 @@ void Project::RenderMetrics() const {
 
 void Project::ApplyQueuedActions(bool force_commit_gesture) {
     const bool has_gesture_actions = HasGestureActions();
-    while (Queue.TryDequeue(DequeueToken, DequeueActionMoment)) {
+    while (Queue.try_dequeue(DequeueToken, DequeueActionMoment)) {
         auto &[action, queue_time] = DequeueActionMoment;
         if (!CanApply(action)) continue;
 

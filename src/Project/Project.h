@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Core/Action/ActionQueue.h"
+#include "concurrentqueue.h"
+
 #include "Core/Action/Actions.h"
 
 #include "Preferences.h"
@@ -28,6 +29,7 @@ struct Plottable {
 Holds the root `State` component... does project things... (todo)
 */
 struct Project : Actionable<Action::Any> {
+
     Project(Store &);
     ~Project();
 
@@ -69,9 +71,10 @@ struct Project : Actionable<Action::Any> {
         [this]() { RenderStorePathChangeFrequency(); }
     };
 
-    ActionQueue<ActionType> Queue{};
-    moodycamel::ProducerToken EnqueueToken{Queue.CreateProducerToken()};
-    moodycamel::ConsumerToken DequeueToken{Queue.CreateConsumerToken()};
+    using QueueType = moodycamel::ConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;
+    QueueType Queue{};
+    moodycamel::ProducerToken EnqueueToken{Queue};
+    moodycamel::ConsumerToken DequeueToken{Queue};
     ActionProducer<Action::Any>::EnqueueFn Q;
     mutable ActionMoment<ActionType> DequeueActionMoment{};
 

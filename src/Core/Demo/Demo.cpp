@@ -3,8 +3,9 @@
 #include "imgui.h"
 #include "implot.h"
 
-Demo::Demo(ComponentArgs &&args, const ::FileDialog &dialog)
-    : Component(std::move(args), ImGuiWindowFlags_MenuBar), Dialog(dialog) {}
+Demo::Demo(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
+    WindowFlags |= ImGuiWindowFlags_MenuBar;
+}
 
 void Demo::ImGuiDemo::Render() const {
     ImGui::ShowDemoWindow();

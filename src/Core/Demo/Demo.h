@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Core/FileDialog/FileDialog.h"
+#include "Core/FileDialog/FileDialogDemo.h"
 
-struct Demo : Component {
-    Demo(ComponentArgs &&, const FileDialog &);
+struct Demo : ActionProducerComponent<Action::FileDialog::Any> {
+    Demo(ArgsT &&);
 
     struct ImGuiDemo : Component {
         using Component::Component;
@@ -18,10 +18,9 @@ struct Demo : Component {
         void Render() const override;
     };
 
-    const FileDialog &Dialog;
     Prop(ImGuiDemo, ImGui);
     Prop(ImPlotDemo, ImPlot);
-    Prop(FileDialog::Demo, FileDialog, Dialog);
+    ProducerProp(FileDialogDemo, FileDialog);
 
 protected:
     void Render() const override;

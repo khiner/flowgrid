@@ -1,4 +1,5 @@
 #include "FileDialog.h"
+#include "FileDialogDemo.h"
 
 #include <ranges>
 
@@ -59,11 +60,9 @@ void FileDialog::Render() const {
 // It is up-to-date as of https://github.com/aiekick/ImGuiFileDialog/commit/43daff00783dd1c4862d31e69a8186259ab1605b
 // Demos related to the C interface have been removed.
 
-FileDialog::Demo::Demo(ComponentArgs &&args, const ::FileDialog &dialog) : Component(std::move(args)), FileDialog(dialog) {}
+void FileDialogDemo::OpenDialog(const FileDialogData &data) const { Q(Action::FileDialog::Open{json(data).dump()}); }
 
-void FileDialog::Demo::OpenDialog(const FileDialogData &data) const { FileDialog.Q(Action::FileDialog::Open{json(data).dump()}); }
-
-void FileDialog::Demo::Render() const {
+void FileDialogDemo::Render() const {
 #ifdef USE_EXPLORATION_BY_KEYS
     static float flash_attenuation_sec = 1.f;
     if (Button("R##resetflashlifetime")) {

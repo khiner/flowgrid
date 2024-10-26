@@ -1,34 +1,22 @@
 #pragma once
 
-#include "Core/ActionProducerComponent.h"
+#include "Core/Action/ActionProducer.h"
+#include "Core/Component.h"
+
 #include "FileDialogAction.h"
 #include "FileDialogData.h"
 
 using ImGuiFileDialogFlags = int;
 
-struct FileDialog : ActionProducerComponent<Action::FileDialog::Any> {
-    using ActionProducerComponent::ActionProducerComponent;
+struct FileDialog : ActionProducer<Action::FileDialog::Any> {
+    using ActionProducer::ActionProducer;
 
     void Set(FileDialogData &&) const;
-    void SetJson(json &&) const override;
-
-    struct Demo : Component {
-        Demo(ComponentArgs &&, const FileDialog &);
-
-        const FileDialog &FileDialog;
-
-    protected:
-        void Render() const override;
-
-    private:
-        void OpenDialog(const FileDialogData &) const;
-    };
+    void SetJson(json &&) const;
 
     inline static bool Visible;
     inline static FileDialogData Data;
+    inline static std::string SelectedFilePath;
 
-    inline static std::string SelectedFilePath; // Not saved to state, since we never want to replay file selection side effects.
-
-protected:
-    void Render() const override;
+    void Render() const;
 };

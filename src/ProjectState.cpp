@@ -127,6 +127,7 @@ bool ProjectState::CanApply(const ActionType &action) const {
 using namespace ImGui;
 
 void ProjectState::Render() const {
+    FileDialog.Render();
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
     int frame_count = GetCurrentContext()->FrameCount;

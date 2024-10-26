@@ -131,13 +131,13 @@ struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::
         Prop(Metrics, Metrics);
     };
 
-    ProducerProp(FileDialog, FileDialog);
+    FileDialog FileDialog{FileDialog::EnqueueFn(CreateProducer<FileDialog::ProducedActionType>())};
     ProducerProp(fg::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(ProjectSettings, Settings);
     Prop(Info, Info);
-    Prop(Demo, Demo, FileDialog);
+    ProducerProp(Demo, Demo);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
     ProducerProp(Audio, Audio, FileDialog);

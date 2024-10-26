@@ -244,6 +244,10 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Primitive::Enum::Set &a) { _S.Set(a.component_id, a.value); },
             [this](const Action::Primitive::Flags::Set &a) { _S.Set(a.component_id, a.value); },
             [this](const Action::Primitive::String::Set &a) { _S.Set(a.component_id, a.value); },
+            [](const Action::TextBuffer::Any &a) {
+                const auto *buffer = Component::ById.at(a.GetComponentId());
+                static_cast<const TextBuffer *>(buffer)->Apply(a);
+            },
             /* Containers */
             [this](const Action::Container::Any &a) {
                 const auto *container = Component::ById.at(a.GetComponentId());
@@ -357,7 +361,7 @@ bool Project::CanApply(const ActionType &action) const {
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
             [this](Action::State::Any &&a) { return State.CanApply(std::move(a)); },
-            [](auto &&) { return true; } // All other actions
+            [](auto &&) { return true; }
         },
         action
     );

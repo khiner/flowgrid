@@ -166,7 +166,7 @@ bool TextBuffer::CanApply(const ActionType &action) const {
             [this](const MoveCurrentLines &) { return !ReadOnly; },
             [this](const ToggleLineComment &) { return !ReadOnly && !State->Syntax->GetLanguage().SingleLineComment.empty(); },
             [this](const EnterChar &) { return !ReadOnly; },
-            [](auto &&) { return true; }, // All other actions are always allowed.
+            [](auto &&) { return true; },
         },
         action
     );

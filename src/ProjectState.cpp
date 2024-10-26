@@ -3,6 +3,7 @@
 #include "imgui_internal.h"
 #include "implot.h"
 
+#include "Core/TextEditor/TextEditor.h"
 #include "Core/UI/JsonTree.h"
 
 #include "Project/ProjectContext.h"
@@ -81,31 +82,7 @@ void ProjectState::Apply(const ActionType &action) const {
                     case 2: return Style.Project.Colors.Set(ProjectStyle::ColorsClassic);
                 }
             },
-            [](const Action::TextBuffer::Any &a) {
-                const auto *buffer = Component::ById.at(a.GetComponentId());
-                static_cast<const TextBuffer *>(buffer)->Apply(a);
-            },
-            /* Audio */
-            [this](const Action::AudioGraph::Any &a) { Audio.Graph.Apply(a); },
-            [this](const Action::Faust::DSP::Create &) { Audio.Faust.FaustDsps.EmplaceBack(FaustDspPathSegment); },
-            [this](const Action::Faust::DSP::Delete &a) { Audio.Faust.FaustDsps.EraseId(a.id); },
-            [this](const Action::Faust::Graph::Any &a) { Audio.Faust.Graphs.Apply(a); },
-            [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
-                const auto &colors = Audio.Faust.Graphs.Style.Colors;
-                switch (a.id) {
-                    case 0: return colors.Set(FaustGraphStyle::ColorsDark);
-                    case 1: return colors.Set(FaustGraphStyle::ColorsLight);
-                    case 2: return colors.Set(FaustGraphStyle::ColorsClassic);
-                    case 3: return colors.Set(FaustGraphStyle::ColorsFaust);
-                }
-            },
-            [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
-                const auto &style = Audio.Faust.Graphs.Style;
-                switch (a.id) {
-                    case 0: return style.LayoutFlowGrid();
-                    case 1: return style.LayoutFaust();
-                }
-            },
+            [this](Action::Audio::Any &&a) { Audio.Apply(std::move(a)); },
             [](const Action::Core::Any &&) {}, // All other actions are project actions.
 
         },
@@ -116,9 +93,8 @@ void ProjectState::Apply(const ActionType &action) const {
 bool ProjectState::CanApply(const ActionType &action) const {
     return std::visit(
         Match{
-            [this](const Action::AudioGraph::Any &a) { return Audio.Graph.CanApply(a); },
-            [this](const Action::Faust::Graph::Any &a) { return Audio.Faust.Graphs.CanApply(a); },
-            [](auto &&) { return true; }, // All other actions are always allowed.
+            [this](Action::Audio::Any &&a) { return Audio.CanApply(std::move(a)); },
+            [](auto &&) { return true; },
         },
         action
     );

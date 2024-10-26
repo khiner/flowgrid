@@ -5,9 +5,10 @@
 #include "Primitive/PrimitiveAction.h"
 #include "Project/ProjectAction.h"
 #include "Store/StoreAction.h"
+#include "TextEditor/TextBufferAction.h"
 
 namespace Action {
 namespace Core {
-using Any = Combine<Project::Any, Primitive::Any, Container::Any, Store::Any, FileDialog::Any>;
+using Any = Combine<Project::Any, FileDialog::Any, Primitive::Any, Container::Any, TextBuffer::Any, Store::Any>;
 } // namespace Core
 } // namespace Action

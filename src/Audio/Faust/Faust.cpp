@@ -4,8 +4,7 @@
 
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Helper/File.h"
-
-Faust::Faust(ArgsT &&args, const ::FileDialog &file_dialog) : ActionProducerComponent(std::move(args)), FileDialog(file_dialog) {}
+#include "Project/ProjectContext.h"
 
 void Faust::Render() const {}
 
@@ -26,7 +25,7 @@ FaustParams *FaustParamss::FindUi(ID dsp_id) const {
 
 static std::unordered_set<FaustGraphs *> AllInstances{};
 
-FaustGraphs::FaustGraphs(ArgsT &&args, const ::FileDialog &file_dialog, const FaustGraphStyle &style, const FaustGraphSettings &settings)
+FaustGraphs::FaustGraphs(ArgsT &&args, const FaustGraphStyle &style, const FaustGraphSettings &settings)
     : ComponentVector(
           std::move(args.Args),
           Menu({
@@ -41,7 +40,6 @@ FaustGraphs::FaustGraphs(ArgsT &&args, const ::FileDialog &file_dialog, const Fa
           }
       ),
       ActionableProducer(std::move(args.Q)),
-      FileDialog(file_dialog),
       Style(style), Settings(settings) {
     Style.FoldComplexity.RegisterChangeListener(this);
     AllInstances.insert(this);
@@ -70,7 +68,7 @@ void FaustGraphs::Apply(const ActionType &action) const {
         Match{
             // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
             [this](const Action::Faust::Graph::ShowSaveSvgDialog &) {
-                FileDialog.Set({
+                ProjectContext.FileDialog.Set({
                     .OwnerId = Id,
                     .Title = Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(),
                     .DefaultFileName = "faust_graph",
@@ -101,8 +99,8 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
 #include "Audio/Sample.h" // Must be included before any Faust includes.
 #include "faust/dsp/llvm-dsp.h"
 
-FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container, const ::FileDialog &file_dialog)
-    : ActionProducerComponent(std::move(args)), Container(container), FileDialog(file_dialog) {
+FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container)
+    : ActionProducerComponent(std::move(args)), Container(container) {
     Editor.RegisterChangeListener(this);
     Init();
 }
@@ -171,11 +169,11 @@ void FaustDSP::Update() {
     Init();
 }
 
-FaustDSPs::FaustDSPs(ArgsT &&args, const FileDialog &file_dialog)
+FaustDSPs::FaustDSPs(ArgsT &&args)
     : ComponentVector(std::move(args.Args), [&](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
           return std::make_unique<FaustDSP>(
-              FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container, file_dialog
+              FaustDSP::ArgsT{std::move(child_args), CreateProducer<FaustDSP::ProducedActionType>()}, *container
           );
       }),
       ActionProducer(std::move(args.Q)) {
@@ -305,9 +303,10 @@ void FaustGraphs::Render() const {
     if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
 
     static std::string PrevSelectedPath = "";
-    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.Data.OwnerId == Id && FileDialog.Data.SaveMode) {
-        const fs::path selected_path = FileDialog.SelectedFilePath;
-        PrevSelectedPath = FileDialog.SelectedFilePath = "";
+    auto &file_dialog = ProjectContext.FileDialog;
+    if (PrevSelectedPath != file_dialog.SelectedFilePath && file_dialog.Data.OwnerId == Id && file_dialog.Data.SaveMode) {
+        const fs::path selected_path = file_dialog.SelectedFilePath;
+        PrevSelectedPath = file_dialog.SelectedFilePath = "";
         Q(Action::Faust::Graph::SaveSvgFile{LastSelectedDspId, selected_path});
     }
 

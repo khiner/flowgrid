@@ -12,14 +12,13 @@
 #include "TextBufferPalette.h"
 
 struct TextBufferState;
-struct FileDialog;
 
 struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
     using Line = TextBufferLine;
     using Lines = TextBufferLines;
     using Cursor = LineCharRange;
 
-    TextBuffer(ArgsT &&, const FileDialog &, const fs::path &);
+    TextBuffer(ArgsT &&, const fs::path &);
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;
@@ -37,7 +36,6 @@ struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
 
     std::optional<ActionType> ProduceKeyboardAction() const;
 
-    const FileDialog &FileDialog;
     fs::path _LastOpenedFilePath;
     Prop(String, LastOpenedFilePath, _LastOpenedFilePath);
     Prop_(DebugComponent, Debug, "Editor debug");

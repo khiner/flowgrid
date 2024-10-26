@@ -2,7 +2,9 @@
 
 #include "concurrentqueue.h"
 
+#include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
+#include "Core/FileDialog/FileDialog.h"
 
 #include "Preferences.h"
 #include "ProjectContext.h"
@@ -28,8 +30,7 @@ struct Plottable {
 /**
 Holds the root `State` component... does project things... (todo)
 */
-struct Project : Actionable<Action::Any> {
-
+struct Project : ActionableProducer<Action::Any> {
     Project(Store &);
     ~Project();
 
@@ -57,10 +58,17 @@ struct Project : Actionable<Action::Any> {
     const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
     float GestureTimeRemainingSec() const;
 
-    mutable Preferences Preferences;
+    using QueueType = moodycamel::ConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;
+    QueueType Queue{};
+    moodycamel::ProducerToken EnqueueToken{Queue};
+    moodycamel::ConsumerToken DequeueToken{Queue};
+    mutable ActionMoment<ActionType> DequeueActionMoment{};
 
+    mutable Preferences Preferences;
+    FileDialog FileDialog{FileDialog::EnqueueFn(CreateProducer<FileDialog::ProducedActionType>())};
     ProjectContext ProjectContext{
         Preferences,
+        FileDialog,
         [this](ID id) { return State.Windows.IsVisible(id); },
         [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
 
@@ -71,16 +79,9 @@ struct Project : Actionable<Action::Any> {
         [this]() { RenderStorePathChangeFrequency(); }
     };
 
-    using QueueType = moodycamel::ConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;
-    QueueType Queue{};
-    moodycamel::ProducerToken EnqueueToken{Queue};
-    moodycamel::ConsumerToken DequeueToken{Queue};
-    ActionProducer<Action::Any>::EnqueueFn Q;
-    mutable ActionMoment<ActionType> DequeueActionMoment{};
-
     const Store &S;
     Store &_S;
-    ProjectState State;
+    ProjectState State{_S, q, ProjectContext};
 
 private:
     std::unique_ptr<StoreHistory> HistoryPtr;

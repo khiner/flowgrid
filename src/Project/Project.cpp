@@ -44,11 +44,10 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 }
 
 Project::Project(Store &store)
-    : Q([this](auto &&a) -> bool {
+    : ActionableProducer(EnqueueFn([this](auto &&a) -> bool {
           return Queue.enqueue(EnqueueToken, {std::move(a), Clock::now()});
-      }),
-      S(store), _S(store), State(store, Q, ProjectContext),
-      HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+      })),
+      S(store), _S(store), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
     // Initialize the global canonical store with all project state values set during project initialization.
     store.Commit();
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
@@ -226,17 +225,17 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::Project::Redo &) { SetHistoryIndex(History.Index + 1); },
             [this](const Action::Project::SetHistoryIndex &a) { SetHistoryIndex(a.index); },
             [this](const Action::Project::ShowOpenDialog &) {
-                State.FileDialog.Set({
+                FileDialog.Set({
                     .OwnerId = State.Id,
                     .Title = "Choose file",
                     .Filters = AllProjectExtensionsDelimited,
                 });
             },
-            [this](const Action::Project::ShowSaveDialog &) { State.FileDialog.Set({State.Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
+            [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({State.Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             /* File dialog */
-            [this](const Action::FileDialog::Open &a) { State.FileDialog.SetJson(json::parse(a.dialog_json)); },
+            [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
-            [this](const Action::FileDialog::Select &a) { State.FileDialog.SelectedFilePath = a.file_path; },
+            [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
             /* Primitives */
             [this](const Action::Primitive::Bool::Toggle &a) { _S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
             [this](const Action::Primitive::Int::Set &a) { _S.Set(a.component_id, a.value); },
@@ -356,7 +355,7 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
-            [this](const Action::FileDialog::Open &) { return !State.FileDialog.Visible; },
+            [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
             [this](Action::State::Any &&a) { return State.CanApply(std::move(a)); },
             [](auto &&) { return true; } // All other actions
         },
@@ -435,7 +434,7 @@ void Project::Tick() {
         }
         io.WantSaveIniSettings = false;
     }
-    if (State.FileDialog.Visible) {
+    if (FileDialog.Visible) {
         // Drain action queue. All actions are no-ops while the file dialog is open.
         while (Queue.try_dequeue(DequeueToken, DequeueActionMoment)) {}
     } else {
@@ -557,7 +556,7 @@ void Project::OpenRecentProjectMenuItem() const {
 void Project::WindowMenuItem() const {
     const auto &item = [this](const Component &c) {
         if (MenuItem(c.ImGuiLabel.c_str(), nullptr, State.Windows.IsVisible(c.Id))) {
-            State.Q(Action::Windows::ToggleVisible{c.Id});
+            Q(Action::Windows::ToggleVisible{c.Id});
         }
     };
     if (BeginMenu("Windows")) {
@@ -645,13 +644,13 @@ std::optional<Action::Any> ProduceKeyboardAction() {
 
 void Project::Draw() const {
     static const ActionMenuItem<ActionType>
-        OpenEmptyMenuItem{*this, Q, Action::Project::OpenEmpty{}, "Cmd+N"},
-        ShowOpenDialogMenuItem{*this, Q, Action::Project::ShowOpenDialog{}, "Cmd+O"},
-        OpenDefaultMenuItem{*this, Q, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
-        SaveCurrentMenuItem{*this, Q, Action::Project::SaveCurrent{}, "Cmd+S"},
-        SaveDefaultMenuItem{*this, Q, Action::Project::SaveDefault{}},
-        UndoMenuItem{*this, Q, Action::Project::Undo{}, "Cmd+Z"},
-        RedoMenuItem{*this, Q, Action::Project::Redo{}, "Shift+Cmd+Z"};
+        OpenEmptyMenuItem{*this, Action::Project::OpenEmpty{}, "Cmd+N"},
+        ShowOpenDialogMenuItem{*this, Action::Project::ShowOpenDialog{}, "Cmd+O"},
+        OpenDefaultMenuItem{*this, Action::Project::OpenDefault{}, "Shift+Cmd+O"},
+        SaveCurrentMenuItem{*this, Action::Project::SaveCurrent{}, "Cmd+S"},
+        SaveDefaultMenuItem{*this, Action::Project::SaveDefault{}},
+        UndoMenuItem{*this, Action::Project::Undo{}, "Cmd+Z"},
+        RedoMenuItem{*this, Action::Project::Redo{}, "Shift+Cmd+Z"};
 
     static const Menu MainMenu{
         {
@@ -680,10 +679,11 @@ void Project::Draw() const {
 
     MainMenu.Draw();
     State.Draw();
-    if (PrevSelectedPath != State.FileDialog.SelectedFilePath && State.FileDialog.Data.OwnerId == State.Id) {
-        const fs::path selected_path = State.FileDialog.SelectedFilePath;
-        PrevSelectedPath = State.FileDialog.SelectedFilePath = "";
-        if (State.FileDialog.Data.SaveMode) Q(Action::Project::Save{selected_path});
+    FileDialog.Render();
+    if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.Data.OwnerId == State.Id) {
+        const fs::path selected_path = FileDialog.SelectedFilePath;
+        PrevSelectedPath = FileDialog.SelectedFilePath = "";
+        if (FileDialog.Data.SaveMode) Q(Action::Project::Save{selected_path});
         else Q(Action::Project::Open{selected_path});
     }
     if (auto action = ProduceKeyboardAction()) {

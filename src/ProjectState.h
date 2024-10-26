@@ -3,7 +3,6 @@
 #include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
 #include "Core/Demo/Demo.h"
-#include "Core/FileDialog/FileDialog.h"
 #include "Core/ImGuiSettings.h"
 #include "Core/Info/Info.h"
 #include "Core/Primitive/PrimitiveActionQueuer.h"
@@ -21,7 +20,7 @@ It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
 struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::Any> {
-    ProjectState(Store &, ActionProducer::EnqueueFn, const ::ProjectContext &);
+    ProjectState(Store &, ActionProducer::Enqueue, const ::ProjectContext &);
     ~ProjectState();
 
     const PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
@@ -131,7 +130,6 @@ struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::
         Prop(Metrics, Metrics);
     };
 
-    FileDialog FileDialog{FileDialog::EnqueueFn(CreateProducer<FileDialog::ProducedActionType>())};
     ProducerProp(fg::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
@@ -140,7 +138,7 @@ struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::
     ProducerProp(Demo, Demo);
     Prop(Debug, Debug, WindowFlags_NoScrollWithMouse);
 
-    ProducerProp(Audio, Audio, FileDialog);
+    ProducerProp(Audio, Audio);
 
     void RenderDebug() const override;
 

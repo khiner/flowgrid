@@ -2,11 +2,8 @@
 
 #include "imgui.h"
 
-#include "Core/FileDialog/FileDialog.h"
-#include "Core/Helper/File.h"
-
-TextEditor::TextEditor(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
-    : ActionProducerComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path) {
+TextEditor::TextEditor(ArgsT &&args, const fs::path &file_path)
+    : ActionProducerComponent(std::move(args)), _LastOpenedFilePath(file_path) {
     WindowFlags |= ImGuiWindowFlags_MenuBar;
 }
 

@@ -139,8 +139,8 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
     return &line.front() + position.column;
 }
 
-TextBuffer::TextBuffer(ArgsT &&args, const ::FileDialog &file_dialog, const fs::path &file_path)
-    : ActionableComponent(std::move(args)), FileDialog(file_dialog), _LastOpenedFilePath(file_path),
+TextBuffer::TextBuffer(ArgsT &&args, const fs::path &file_path)
+    : ActionableComponent(std::move(args)), _LastOpenedFilePath(file_path),
       State(std::make_unique<TextBufferState>(this)) {
     SetFilePath(file_path);
     // if (Exists()) Refresh();
@@ -228,7 +228,7 @@ void TextBuffer::Apply(const ActionType &action) const {
             },
             // Non-buffer actions
             [this](const ShowOpenDialog &) {
-                FileDialog.Set({
+                ProjectContext.FileDialog.Set({
                     .OwnerId = Id,
                     .Title = "Open file",
                     .Filters = ".*", // No filter for opens. Go nuts :)
@@ -238,7 +238,7 @@ void TextBuffer::Apply(const ActionType &action) const {
             },
             [this](const ShowSaveDialog &) {
                 const std::string current_file_ext = fs::path(LastOpenedFilePath).extension();
-                FileDialog.Set({
+                ProjectContext.FileDialog.Set({
                     .OwnerId = Id,
                     .Title = std::format("Save {} file", State->Syntax->GetLanguageName()),
                     .Filters = current_file_ext,
@@ -639,10 +639,11 @@ void TextBuffer::Refresh() {
 
 void TextBuffer::Render() const {
     static std::string PrevSelectedPath = "";
-    if (FileDialog.Data.OwnerId == Id && PrevSelectedPath != FileDialog.SelectedFilePath) {
-        const fs::path selected_path = FileDialog.SelectedFilePath;
-        PrevSelectedPath = FileDialog.SelectedFilePath = "";
-        if (FileDialog.Data.SaveMode) Q(Action::TextBuffer::Save{Id, selected_path});
+    auto &file_dialog = ProjectContext.FileDialog;
+    if (file_dialog.Data.OwnerId == Id && PrevSelectedPath != file_dialog.SelectedFilePath) {
+        const fs::path selected_path = file_dialog.SelectedFilePath;
+        PrevSelectedPath = file_dialog.SelectedFilePath = "";
+        if (file_dialog.Data.SaveMode) Q(Action::TextBuffer::Save{Id, selected_path});
         else Q(Action::TextBuffer::Open{Id, selected_path});
     }
 

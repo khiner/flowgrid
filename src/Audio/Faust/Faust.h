@@ -13,8 +13,6 @@
 #include "Core/Container/ComponentVector.h"
 #include "Core/TextEditor/TextEditor.h"
 
-struct FileDialog;
-
 /**
 - `Audio.Faust.FaustGraphs` (listens to `FaustDSP::Box`): Extensively configurable, live-updating block diagrams for all Faust DSP instances.
   - By default, `FaustGraph` matches the FlowGrid style (which is ImGui's dark style), but it can be configured to exactly match the Faust SVG diagram style.
@@ -51,7 +49,7 @@ struct FaustGraphs
       Component::ChangeListener {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
-    FaustGraphs(ArgsT &&, const FileDialog &, const FaustGraphStyle &, const FaustGraphSettings &);
+    FaustGraphs(ArgsT &&, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
 
     void Apply(const ActionType &) const override;
@@ -64,7 +62,6 @@ struct FaustGraphs
     ActionMenuItem<ActionType>
         ShowSaveSvgDialogMenuItem{*this, CreateProducer<ActionType>(), Action::Faust::Graph::ShowSaveSvgDialog{}};
 
-    const FileDialog &FileDialog;
     const FaustGraphStyle &Style;
     const FaustGraphSettings &Settings;
 
@@ -103,7 +100,7 @@ using FaustDspProducedActionType = Action::Append<Action::Combine<Action::Faust:
 // `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
 struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component::ChangeListener {
-    FaustDSP(ArgsT &&, FaustDSPContainer &, const FileDialog &);
+    FaustDSP(ArgsT &&, FaustDSPContainer &);
     ~FaustDSP();
 
     void OnComponentChanged() override;
@@ -111,8 +108,7 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
     inline static const std::string FaustDspFileExtension = ".dsp";
 
     FaustDSPContainer &Container;
-    const FileDialog &FileDialog;
-    ProducerProp(TextEditor, Editor, FileDialog, fs::path("./res") / "pitch_shifter.dsp");
+    ProducerProp(TextEditor, Editor, fs::path("./res") / "pitch_shifter.dsp");
 
     Box Box{nullptr};
     dsp *Dsp{nullptr};
@@ -133,7 +129,7 @@ private:
 struct FaustDSPs : ComponentVector<FaustDSP>, ActionProducer<FaustDspProducedActionType> {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
-    FaustDSPs(ArgsT &&, const FileDialog &);
+    FaustDSPs(ArgsT &&);
     ~FaustDSPs();
 
 private:
@@ -143,7 +139,7 @@ private:
 struct Faust
     : ActionProducerComponent<Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, TextEditor::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
       FaustDSPContainer {
-    Faust(ArgsT &&, const FileDialog &);
+    using ActionProducerComponent::ActionProducerComponent;
 
     void RegisterDspChangeListener(FaustDSPListener *listener) const noexcept {
         DspChangeListeners.insert(listener);
@@ -159,15 +155,14 @@ struct Faust
 
     inline static std::unordered_set<FaustDSPListener *> DspChangeListeners;
 
-    const FileDialog &FileDialog;
     ProducerProp(FaustGraphStyle, GraphStyle);
     Prop(FaustGraphSettings, GraphSettings);
     Prop(FaustParamsStyle, ParamsStyle);
 
-    ProducerProp_(FaustGraphs, Graphs, "Faust graphs", FileDialog, GraphStyle, GraphSettings);
+    ProducerProp_(FaustGraphs, Graphs, "Faust graphs", GraphStyle, GraphSettings);
     Prop_(FaustParamss, Paramss, "Faust params", ParamsStyle);
     Prop_(FaustLogs, Logs, "Faust logs");
-    ProducerProp(FaustDSPs, FaustDsps, FileDialog);
+    ProducerProp(FaustDSPs, FaustDsps);
 
 protected:
     void Render() const override;

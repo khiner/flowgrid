@@ -38,53 +38,7 @@ ProjectState::~ProjectState() = default;
 void ProjectState::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
-            [this](const Action::Windows::ToggleDebug &a) {
-                const bool toggling_on = !Windows.VisibleComponents.Contains(a.component_id);
-                Windows.ToggleVisible(a.component_id);
-                if (!toggling_on) return;
-
-                auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
-                if (auto *window = debug_component->FindDockWindow()) {
-                    auto docknode_id = window->DockId;
-                    auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
-                    debug_component->Dock(debug_node_id);
-                }
-            },
-            [this](const Action::Style::SetImGuiColorPreset &a) {
-                // todo enum types instead of raw int keys
-                switch (a.id) {
-                    case 0: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsDark);
-                    case 1: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsLight);
-                    case 2: return Style.ImGui.Colors.Set(Style::ImGuiStyle::ColorsClassic);
-                }
-            },
-            [this](const Action::Style::SetImPlotColorPreset &a) {
-                switch (a.id) {
-                    case 0:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsAuto);
-                        return Style.ImPlot.MinorAlpha.Set(0.25f);
-                    case 1:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsDark);
-                        return Style.ImPlot.MinorAlpha.Set(0.25f);
-                    case 2:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsLight);
-                        return Style.ImPlot.MinorAlpha.Set(1);
-                    case 3:
-                        Style.ImPlot.Colors.Set(Style::ImPlotStyle::ColorsClassic);
-                        return Style.ImPlot.MinorAlpha.Set(0.5f);
-                }
-            },
-            [this](const Action::Style::SetProjectColorPreset &a) {
-                switch (a.id) {
-                    case 0: return Style.Project.Colors.Set(ProjectStyle::ColorsDark);
-                    case 1: return Style.Project.Colors.Set(ProjectStyle::ColorsLight);
-                    case 2: return Style.Project.Colors.Set(ProjectStyle::ColorsClassic);
-                }
-            },
             [this](Action::Audio::Any &&a) { Audio.Apply(std::move(a)); },
-            [](const Action::Core::Any &&) {}, // All other actions are project actions.
-
         },
         action
     );
@@ -94,7 +48,6 @@ bool ProjectState::CanApply(const ActionType &action) const {
     return std::visit(
         Match{
             [this](Action::Audio::Any &&a) { return Audio.CanApply(std::move(a)); },
-            [](auto &&) { return true; },
         },
         action
     );

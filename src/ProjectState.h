@@ -6,11 +6,11 @@
 #include "Core/ImGuiSettings.h"
 #include "Core/Info/Info.h"
 #include "Core/Primitive/PrimitiveActionQueuer.h"
+#include "Core/Style/Style.h"
 #include "Core/Windows.h"
 
 #include "Audio/Audio.h"
 #include "Project/ProjectSettings.h"
-#include "Style/Style.h"
 
 struct ProjectContext;
 
@@ -19,7 +19,7 @@ struct ProjectContext;
 It's a structured representation of its underlying store (of type `Store`,
 which is composed of an `immer::map<Path, {Type}>` for each stored type).
 */
-struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::Any> {
+struct ProjectState : Component, ActionableProducer<Action::FlowGrid::Any, Action::Any> {
     ProjectState(Store &, ActionProducer::Enqueue, const ::ProjectContext &);
     ~ProjectState();
 

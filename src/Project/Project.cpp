@@ -342,7 +342,55 @@ void Project::Apply(const ActionType &action) const {
                     }
                 }
             },
-            [this](Action::State::Any &&a) { State.Apply(std::move(a)); },
+            [this](const Action::Windows::ToggleVisible &a) { State.Windows.ToggleVisible(a.component_id); },
+            [this](const Action::Windows::ToggleDebug &a) {
+                const bool toggling_on = !State.Windows.VisibleComponents.Contains(a.component_id);
+                State.Windows.ToggleVisible(a.component_id);
+                if (!toggling_on) return;
+
+                auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
+                if (auto *window = debug_component->FindDockWindow()) {
+                    auto docknode_id = window->DockId;
+                    auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
+                    debug_component->Dock(debug_node_id);
+                }
+            },
+            [this](const Action::Style::SetImGuiColorPreset &a) {
+                const auto &colors = State.Style.ImGui.Colors;
+                // todo enum types instead of raw int keys
+                switch (a.id) {
+                    case 0: return colors.Set(Style::ImGuiStyle::ColorsDark);
+                    case 1: return colors.Set(Style::ImGuiStyle::ColorsLight);
+                    case 2: return colors.Set(Style::ImGuiStyle::ColorsClassic);
+                }
+            },
+            [this](const Action::Style::SetImPlotColorPreset &a) {
+                const auto &style = State.Style.ImPlot;
+                const auto &colors = style.Colors;
+                switch (a.id) {
+                    case 0:
+                        colors.Set(Style::ImPlotStyle::ColorsAuto);
+                        return style.MinorAlpha.Set(0.25f);
+                    case 1:
+                        colors.Set(Style::ImPlotStyle::ColorsDark);
+                        return style.MinorAlpha.Set(0.25f);
+                    case 2:
+                        colors.Set(Style::ImPlotStyle::ColorsLight);
+                        return style.MinorAlpha.Set(1);
+                    case 3:
+                        colors.Set(Style::ImPlotStyle::ColorsClassic);
+                        return style.MinorAlpha.Set(0.5f);
+                }
+            },
+            [this](const Action::Style::SetProjectColorPreset &a) {
+                const auto &colors = State.Style.Project.Colors;
+                switch (a.id) {
+                    case 0: return colors.Set(ProjectStyle::ColorsDark);
+                    case 1: return colors.Set(ProjectStyle::ColorsLight);
+                    case 2: return colors.Set(ProjectStyle::ColorsClassic);
+                }
+            },
+            [this](Action::FlowGrid::Any &&a) { State.Apply(std::move(a)); },
         },
         action
     );
@@ -360,7 +408,7 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
-            [this](Action::State::Any &&a) { return State.CanApply(std::move(a)); },
+            [this](Action::FlowGrid::Any &&a) { return State.CanApply(std::move(a)); },
             [](auto &&) { return true; }
         },
         action

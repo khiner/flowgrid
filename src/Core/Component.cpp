@@ -247,7 +247,7 @@ void Component::FlashUpdateRecencyBackground(std::optional<StorePath> relative_p
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / style.FlashDurationSec;
         ImColor flash_color = style.Colors[ProjectCol_Flash];
         flash_color.Value.w = std::max(0.f, 1 - flash_elapsed_ratio);
-        FillRowItemBg(flash_color);
+        FillRowItemBg(std::move(flash_color));
     }
 }
 

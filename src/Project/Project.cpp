@@ -16,7 +16,7 @@
 
 #include "Preferences.h"
 
-using namespace FlowGrid;
+using namespace flowgrid;
 
 using std::ranges::to, std::views::join, std::views::keys, std::views::transform;
 

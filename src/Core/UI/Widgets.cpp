@@ -10,7 +10,7 @@
 using std::string, std::string_view;
 using namespace ImGui;
 
-namespace FlowGrid {
+namespace flowgrid {
 inline ImColor ScaleColor(const ImColor &color, const float scale) {
     return ImColor(color.Value.x * scale, color.Value.y * scale, color.Value.z * scale, color.Value.w);
 }
@@ -235,7 +235,7 @@ private:
 
     void DrawArc(float radius_ratio, float size, float start_angle, float end_angle, ImU32 color, int segments, int bezier_count) const {
         const auto track_size = size * Radius * 0.5f + 0.0001f;
-        FlowGrid::DrawArc(Center, radius_ratio * Radius, start_angle, end_angle, track_size, color, segments, bezier_count);
+        flowgrid::DrawArc(Center, radius_ratio * Radius, start_angle, end_angle, track_size, color, segments, bezier_count);
     }
 };
 
@@ -287,4 +287,4 @@ bool Knob(const char *label, float *p_value, float v_min, float v_max, float spe
 bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed, const char *format, HJustify h_justify, KnobType variant, KnobFlags flags, int steps) {
     return KnobBase(label, ImGuiDataType_S32, p_value, v_min, v_max, speed, format == nullptr ? "%i" : format, h_justify, variant, flags, steps);
 }
-}; // namespace FlowGrid
+}; // namespace flowgrid

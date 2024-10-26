@@ -19,7 +19,7 @@ enum SliderFlags_ {
     SliderFlags_Logarithmic = 1 << 5, // Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
 };
 
-namespace FlowGrid {
+namespace flowgrid {
 struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
     using ActionProducerComponent::ActionProducerComponent;
 
@@ -177,4 +177,4 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
 protected:
     void Render() const override;
 };
-} // namespace FlowGrid
+} // namespace flowgrid

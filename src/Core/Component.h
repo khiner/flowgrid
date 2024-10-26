@@ -15,13 +15,13 @@
 
 using json = nlohmann::json;
 
-namespace FlowGrid {}
-namespace fg = FlowGrid;
+namespace flowgrid {}
+namespace fg = flowgrid;
 
 struct Store;
 struct PrimitiveActionQueuer;
 
-namespace FlowGrid {
+namespace flowgrid {
 struct Style;
 }
 struct ProjectStyle;

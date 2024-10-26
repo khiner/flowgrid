@@ -7,7 +7,7 @@ using std::string, std::string_view;
 using namespace ImGui;
 using json = nlohmann::json;
 
-namespace FlowGrid {
+namespace flowgrid {
 bool TreeNode(string_view label_view, const char *id, const char *value) {
     bool is_open = false;
     if (value == nullptr) {
@@ -47,4 +47,4 @@ void JsonTree(string_view label, json &&value, const char *id) {
         TreeNode(label, id, std::move(value).dump().c_str());
     }
 }
-} // namespace FlowGrid
+} // namespace flowgrid

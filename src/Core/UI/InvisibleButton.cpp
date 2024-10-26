@@ -4,7 +4,7 @@
 
 using namespace ImGui;
 
-namespace FlowGrid {
+namespace flowgrid {
 InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id) {
     auto *window = GetCurrentWindow();
     if (window->SkipItems) return false;
@@ -25,4 +25,4 @@ InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id) {
 
     return flags;
 }
-} // namespace FlowGrid
+} // namespace flowgrid

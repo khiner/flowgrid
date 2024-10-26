@@ -3,8 +3,8 @@
 #include <string_view>
 
 // Similar to `imgui_demo.cpp`'s `HelpMarker`.
-namespace FlowGrid {
+namespace flowgrid {
 void HelpMarker(std::string_view);
-} // namespace FlowGrid
+} // namespace flowgrid
 
-namespace fg = FlowGrid;
+namespace fg = flowgrid;

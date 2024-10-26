@@ -2,11 +2,11 @@
 
 #include <functional>
 
-namespace FlowGrid {
+namespace flowgrid {
 struct Style;
 }
 
-namespace fg = FlowGrid;
+namespace fg = flowgrid;
 
 struct UIContext {
     UIContext(std::function<void()> predraw, std::function<void()> draw);

@@ -7,7 +7,7 @@
 class CTree;
 typedef CTree *Box;
 
-namespace FlowGrid {
+namespace flowgrid {
 struct Node;
 }
 

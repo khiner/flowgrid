@@ -11,8 +11,8 @@ enum InteractionFlags_ {
 using InteractionFlags = int;
 
 // Basically `ImGui::InvisibleButton`, but supports hover/held testing.
-namespace FlowGrid {
+namespace flowgrid {
 InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id);
-} // namespace FlowGrid
+} // namespace flowgrid
 
-namespace fg = FlowGrid;
+namespace fg = flowgrid;

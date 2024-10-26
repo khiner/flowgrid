@@ -50,7 +50,7 @@ void ProjectStyle::Render() const {
     }
 }
 
-namespace FlowGrid {
+namespace flowgrid {
 std::vector<ImVec4> Style::ImGuiStyle::ColorsDark(ImGuiCol_COUNT);
 std::vector<ImVec4> Style::ImGuiStyle::ColorsLight(ImGuiCol_COUNT);
 std::vector<ImVec4> Style::ImGuiStyle::ColorsClassic(ImGuiCol_COUNT);
@@ -358,4 +358,4 @@ void Style::ImPlotStyle::Render() const {
 void Style::Render() const {
     RenderTabs();
 }
-} // namespace FlowGrid
+} // namespace flowgrid

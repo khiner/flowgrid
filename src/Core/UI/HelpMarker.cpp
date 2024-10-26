@@ -6,7 +6,7 @@
 
 using namespace ImGui;
 
-namespace FlowGrid {
+namespace flowgrid {
 void HelpMarker(std::string_view help) {
     TextDisabled("(?)");
     if (IsItemHovered()) {
@@ -17,4 +17,4 @@ void HelpMarker(std::string_view help) {
         EndTooltip();
     }
 }
-} // namespace FlowGrid
+} // namespace flowgrid

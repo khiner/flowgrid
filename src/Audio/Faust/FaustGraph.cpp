@@ -452,7 +452,7 @@ string GetBoxType(Box t) {
     return "Unknown type";
 }
 
-namespace FlowGrid {
+namespace flowgrid {
 // An abstract block graph node.
 struct Node {
     static constexpr u32
@@ -637,7 +637,7 @@ protected:
         device.Dot(ImVec2{IsLr() ? rect.Min.x : rect.Max.x, IsForward() ? rect.Min.y : rect.Max.y} + ImVec2{DirUnit(), OrientationUnit()} * 4, color);
     }
 };
-} // namespace FlowGrid
+} // namespace flowgrid
 
 using namespace fg;
 

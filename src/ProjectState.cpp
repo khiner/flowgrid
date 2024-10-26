@@ -7,7 +7,7 @@
 
 #include "Project/ProjectContext.h"
 
-using namespace FlowGrid;
+using namespace flowgrid;
 
 ProjectState::ProjectState(Store &store, ActionableProducer::EnqueueFn q, const ::ProjectContext &project_context)
     : Component(store, "ProjectState", PrimitiveQ, project_context), ActionableProducer(std::move(q)) {

@@ -41,7 +41,7 @@ enum RadioButtonsFlags_ {
 };
 using RadioButtonsFlags = int;
 
-namespace FlowGrid {
+namespace flowgrid {
 bool Knob(const char *label, float *p_value, float v_min, float v_max, float speed = 0, const char *format = nullptr, HJustify h_justify = HJustify_Middle, KnobType variant = KnobType_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);
 bool KnobInt(const char *label, int *p_value, int v_min, int v_max, float speed = 0, const char *format = nullptr, HJustify h_justify = HJustify_Middle, KnobType variant = KnobType_Tick, KnobFlags flags = KnobFlags_None, int steps = 10);
 
@@ -65,4 +65,4 @@ bool ValueBar(const char *label, float *value, const float rect_height, const fl
 // Assumes the current item width has been set to the desired rectangle width (not including label width).
 bool RadioButtons(const char *label, float *value, const NamesAndValues &names_and_values, const RadioButtonsFlags flags = RadioButtonsFlags_None, const Justify justify = {HJustify_Middle, VJustify_Middle});
 float CalcRadioChoiceWidth(std::string_view choice_name);
-} // namespace FlowGrid
+} // namespace flowgrid

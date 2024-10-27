@@ -10,7 +10,7 @@
 int main() {
     Store store{};
     Project project{store};
-    auto &state = project.State;
+    auto &state = project.State.Core;
 
     auto predraw = [&state]() {
         // Check if new UI settings need to be applied.

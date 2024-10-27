@@ -69,11 +69,11 @@ struct Project : ActionableProducer<Action::Any> {
     ProjectContext ProjectContext{
         Preferences,
         FileDialog,
-        [this](ID id) { return State.Windows.IsVisible(id); },
+        [this](ID id) { return State.Core.Windows.IsVisible(id); },
         [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
 
         [this](ProjectFormat format) { return GetProjectJson(format); },
-        [this]() -> const ProjectStyle & { return State.Style.Project; },
+        [this]() -> const ProjectStyle & { return State.Core.Style.Project; },
 
         [this]() { RenderMetrics(); },
         [this]() { RenderStorePathChangeFrequency(); }

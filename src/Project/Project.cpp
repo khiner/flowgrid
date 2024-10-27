@@ -342,55 +342,7 @@ void Project::Apply(const ActionType &action) const {
                     }
                 }
             },
-            [this](const Action::Windows::ToggleVisible &a) { State.Windows.ToggleVisible(a.component_id); },
-            [this](const Action::Windows::ToggleDebug &a) {
-                const bool toggling_on = !State.Windows.VisibleComponents.Contains(a.component_id);
-                State.Windows.ToggleVisible(a.component_id);
-                if (!toggling_on) return;
-
-                auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
-                if (auto *window = debug_component->FindDockWindow()) {
-                    auto docknode_id = window->DockId;
-                    auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
-                    debug_component->Dock(debug_node_id);
-                }
-            },
-            [this](const Action::Style::SetImGuiColorPreset &a) {
-                const auto &colors = State.Style.ImGui.Colors;
-                // todo enum types instead of raw int keys
-                switch (a.id) {
-                    case 0: return colors.Set(Style::ImGuiStyle::ColorsDark);
-                    case 1: return colors.Set(Style::ImGuiStyle::ColorsLight);
-                    case 2: return colors.Set(Style::ImGuiStyle::ColorsClassic);
-                }
-            },
-            [this](const Action::Style::SetImPlotColorPreset &a) {
-                const auto &style = State.Style.ImPlot;
-                const auto &colors = style.Colors;
-                switch (a.id) {
-                    case 0:
-                        colors.Set(Style::ImPlotStyle::ColorsAuto);
-                        return style.MinorAlpha.Set(0.25f);
-                    case 1:
-                        colors.Set(Style::ImPlotStyle::ColorsDark);
-                        return style.MinorAlpha.Set(0.25f);
-                    case 2:
-                        colors.Set(Style::ImPlotStyle::ColorsLight);
-                        return style.MinorAlpha.Set(1);
-                    case 3:
-                        colors.Set(Style::ImPlotStyle::ColorsClassic);
-                        return style.MinorAlpha.Set(0.5f);
-                }
-            },
-            [this](const Action::Style::SetProjectColorPreset &a) {
-                const auto &colors = State.Style.Project.Colors;
-                switch (a.id) {
-                    case 0: return colors.Set(ProjectStyle::ColorsDark);
-                    case 1: return colors.Set(ProjectStyle::ColorsLight);
-                    case 2: return colors.Set(ProjectStyle::ColorsClassic);
-                }
-            },
-            [this](Action::FlowGrid::Any &&a) { State.Apply(std::move(a)); },
+            [this](Action::State::Any &&a) { State.Apply(std::move(a)); },
         },
         action
     );
@@ -408,8 +360,8 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
-            [this](Action::FlowGrid::Any &&a) { return State.CanApply(std::move(a)); },
-            [](auto &&) { return true; }
+            [this](Action::State::Any &&a) { return State.CanApply(std::move(a)); },
+            [](auto &&) { return true; },
         },
         action
     );
@@ -455,8 +407,8 @@ void Project::OnApplicationLaunch() const {
     Component::LatestChangedPaths.clear();
 
     // When loading a new project, we always refresh all UI contexts.
-    State.Style.ImGui.IsChanged = true;
-    State.Style.ImPlot.IsChanged = true;
+    State.Core.Style.ImGui.IsChanged = true;
+    State.Core.Style.ImPlot.IsChanged = true;
     ImGuiSettings::IsChanged = true;
 
     // Keep the canonical "empty" project up-to-date.
@@ -466,7 +418,7 @@ void Project::OnApplicationLaunch() const {
 
 Patch Project::CreatePatch() {
     auto *ctx = ImGui::GetCurrentContext();
-    auto &settings = State.ImGuiSettings;
+    auto &settings = State.Core.ImGuiSettings;
     settings.Nodes.Set(ctx->DockContext.NodesSettings);
     settings.Windows.Set(ctx->SettingsWindows);
     settings.Tables.Set(ctx->SettingsTables);
@@ -521,7 +473,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     for (auto *child : State.Children) child->Refresh();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
-    State.ImGuiSettings.IsChanged = true;
+    State.Core.ImGuiSettings.IsChanged = true;
     History.Clear(S);
 }
 
@@ -554,7 +506,7 @@ void Project::Open(const fs::path &file_path) const {
 float Project::GestureTimeRemainingSec() const {
     if (ActiveGestureActions.empty()) return 0;
 
-    const float gesture_duration_sec = State.Settings.GestureDurationSec;
+    const float gesture_duration_sec = State.Core.Settings.GestureDurationSec;
     return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
@@ -607,37 +559,37 @@ void Project::OpenRecentProjectMenuItem() const {
 
 void Project::WindowMenuItem() const {
     const auto &item = [this](const Component &c) {
-        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, State.Windows.IsVisible(c.Id))) {
+        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, State.Core.Windows.IsVisible(c.Id))) {
             Q(Action::Windows::ToggleVisible{c.Id});
         }
     };
     if (BeginMenu("Windows")) {
         if (BeginMenu("Audio")) {
-            item(State.Audio.Graph);
-            item(State.Audio.Graph.Connections);
-            item(State.Audio.Style);
+            item(State.FlowGrid.Audio.Graph);
+            item(State.FlowGrid.Audio.Graph.Connections);
+            item(State.FlowGrid.Audio.Style);
             if (BeginMenu("Faust")) {
-                item(State.Audio.Faust.FaustDsps);
-                item(State.Audio.Faust.Graphs);
-                item(State.Audio.Faust.Paramss);
-                item(State.Audio.Faust.Logs);
+                item(State.FlowGrid.Audio.Faust.FaustDsps);
+                item(State.FlowGrid.Audio.Faust.Graphs);
+                item(State.FlowGrid.Audio.Faust.Paramss);
+                item(State.FlowGrid.Audio.Faust.Logs);
                 EndMenu();
             }
             EndMenu();
         }
         if (BeginMenu("Debug")) {
-            item(State.Debug);
-            item(State.Debug.StatePreview);
-            item(State.Debug.StorePathUpdateFrequency);
-            item(State.Debug.DebugLog);
-            item(State.Debug.StackTool);
-            item(State.Debug.Metrics);
+            item(State.Core.Debug);
+            item(State.Core.Debug.StatePreview);
+            item(State.Core.Debug.StorePathUpdateFrequency);
+            item(State.Core.Debug.DebugLog);
+            item(State.Core.Debug.StackTool);
+            item(State.Core.Debug.Metrics);
             EndMenu();
         }
-        item(State.Style);
-        item(State.Demo);
-        item(State.Info);
-        item(State.Settings);
+        item(State.Core.Style);
+        item(State.Core.Demo);
+        item(State.Core.Info);
+        item(State.Core.Settings);
         EndMenu();
     }
 }
@@ -768,13 +720,13 @@ void Project::RenderMetrics() const {
             // Gesture completion progress bar (full-width to empty).
             const float time_remaining_sec = GestureTimeRemainingSec();
             const ImVec2 row_min{GetWindowPos().x, GetCursorScreenPos().y};
-            const float gesture_ratio = time_remaining_sec / float(State.Settings.GestureDurationSec);
+            const float gesture_ratio = time_remaining_sec / float(State.Core.Settings.GestureDurationSec);
             const ImRect gesture_ratio_rect{row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(gesture_ratio, 0.f, 1.f), GetFontSize()}};
-            GetWindowDrawList()->AddRectFilled(gesture_ratio_rect.Min, gesture_ratio_rect.Max, State.Style.Project.Colors[ProjectCol_GestureIndicator]);
+            GetWindowDrawList()->AddRectFilled(gesture_ratio_rect.Min, gesture_ratio_rect.Max, State.Core.Style.Project.Colors[ProjectCol_GestureIndicator]);
 
             const string active_gesture_title = std::format("Active gesture{}", has_gesture_actions ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (is_gesturing) FillRowItemBg(State.Style.ImGui.Colors[ImGuiCol_FrameBgActive]);
+                if (is_gesturing) FillRowItemBg(State.Core.Style.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
                 Text("Widget gesture: %s", is_gesturing ? "true" : "false");
                 if (!is_gesturing) EndDisabled();
@@ -839,12 +791,12 @@ void Project::RenderMetrics() const {
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) Preferences.Clear();
             SameLine();
-            State.Debug.Metrics.Project.ShowRelativePaths.Draw();
+            State.Core.Debug.Metrics.Project.ShowRelativePaths.Draw();
 
             if (!has_RecentlyOpenedPaths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
                 for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-                    BulletText("%s", (State.Debug.Metrics.Project.ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                    BulletText("%s", (State.Core.Debug.Metrics.Project.ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();
             }

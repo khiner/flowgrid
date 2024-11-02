@@ -14,6 +14,7 @@ enum class ProjectFormat {
 struct Preferences;
 struct ProjectStyle;
 struct FileDialog;
+struct PrimitiveActionQueuer;
 
 /*
 `ProjectContext` is essentially the public slice of a `Project`.
@@ -23,6 +24,7 @@ It doesn't know about any specific `State` or `Store` (but it may be templated o
 struct ProjectContext {
     const Preferences &Preferences;
     const FileDialog &FileDialog;
+    const PrimitiveActionQueuer &PrimitiveQ;
 
     const std::function<bool(ID)> IsWindowVisible;
     const std::function<void(ID)> ToggleDemoWindow;

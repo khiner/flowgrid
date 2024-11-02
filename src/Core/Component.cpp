@@ -21,8 +21,8 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(Store &store, string_view name, const PrimitiveActionQueuer &primitive_q, const ::ProjectContext &project_context)
-    : S(store), _S(store), PrimitiveQ(primitive_q), ProjectContext(project_context),
+Component::Component(Store &store, string_view name, const ::ProjectContext &project_context)
+    : S(store), _S(store), ProjectContext(project_context),
       Parent(nullptr), PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IDs::ByPath.emplace(Path, Id);
@@ -31,7 +31,6 @@ Component::Component(Store &store, string_view name, const PrimitiveActionQueuer
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo info, ImGuiWindowFlags flags, Menu &&menu)
     : S(parent->S),
       _S(parent->_S),
-      PrimitiveQ(parent->PrimitiveQ),
       ProjectContext(parent->ProjectContext),
       Parent(parent),
       PathSegment(path_segment),

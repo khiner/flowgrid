@@ -5,6 +5,7 @@
 #include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
 #include "Core/FileDialog/FileDialog.h"
+#include "Core/Primitive/PrimitiveActionQueuer.h"
 
 #include "Preferences.h"
 #include "ProjectContext.h"
@@ -66,17 +67,21 @@ struct Project : ActionableProducer<Action::Any> {
 
     mutable Preferences Preferences;
     FileDialog FileDialog{FileDialog::EnqueueFn(CreateProducer<FileDialog::ProducedActionType>())};
+    PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
+
     ProjectContext ProjectContext{
-        Preferences,
-        FileDialog,
-        [this](ID id) { return State.Core.Windows.IsVisible(id); },
-        [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
+        .Preferences = Preferences,
+        .FileDialog = FileDialog,
+        .PrimitiveQ = PrimitiveQ,
 
-        [this](ProjectFormat format) { return GetProjectJson(format); },
-        [this]() -> const ProjectStyle & { return State.Core.Style.Project; },
+        .IsWindowVisible = [this](ID id) { return State.Core.Windows.IsVisible(id); },
+        .ToggleDemoWindow = [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
 
-        [this]() { RenderMetrics(); },
-        [this]() { RenderStorePathChangeFrequency(); }
+        .GetProjectJson = [this](ProjectFormat format) { return GetProjectJson(format); },
+        .GetProjectStyle = [this]() -> const ProjectStyle & { return State.Core.Style.Project; },
+
+        .RenderMetrics = [this]() { RenderMetrics(); },
+        .RenderStorePathChangeFrequency = [this]() { RenderStorePathChangeFrequency(); },
     };
 
     const Store &S;

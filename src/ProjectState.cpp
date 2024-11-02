@@ -8,7 +8,7 @@
 using namespace flowgrid;
 
 ProjectState::ProjectState(Store &store, ActionableProducer::Enqueue q, const ::ProjectContext &project_context)
-    : Component(store, "ProjectState", PrimitiveQ, project_context), ActionableProducer(std::move(q)) {
+    : Component(store, "ProjectState", project_context), ActionableProducer(std::move(q)) {
     Core.Windows.SetWindowComponents({
         Core.Settings,
         Core.Debug,

@@ -19,7 +19,6 @@ namespace flowgrid {}
 namespace fg = flowgrid;
 
 struct Store;
-struct PrimitiveActionQueuer;
 
 namespace flowgrid {
 struct Style;
@@ -118,7 +117,7 @@ struct Component {
     inline static bool IsWidgetGesturing{};
     static void UpdateGesturing();
 
-    Component(Store &, std::string_view name, const PrimitiveActionQueuer &, const ProjectContext &);
+    Component(Store &, std::string_view name, const ProjectContext &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -208,7 +207,6 @@ struct Component {
     // - It starts with the value of `S` at the beginning of each tick.
     //   (If no actions have been applied during the current tick, `_S == S.transient()`.)
     Store &_S; // Read-only access to the store at the root of this component's tree (of type `State`).
-    const PrimitiveActionQueuer &PrimitiveQ;
     const ProjectContext &ProjectContext;
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};

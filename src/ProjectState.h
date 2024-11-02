@@ -15,8 +15,6 @@ struct ProjectState : Component, ActionableProducer<Action::State::Any, Action::
     ProjectState(Store &, ActionProducer::Enqueue, const ::ProjectContext &);
     ~ProjectState();
 
-    const PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
-
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 

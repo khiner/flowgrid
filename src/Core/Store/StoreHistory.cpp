@@ -84,5 +84,3 @@ void StoreHistory::SetIndex(u32 new_index) {
     Index = new_index;
     _Metrics = std::make_unique<Metrics>(_Records->Value[Index].Metrics);
 }
-
-extern StoreHistory &History; // Global.

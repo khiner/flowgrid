@@ -1,10 +1,14 @@
-#include "Vector.h"
-
 #include "imgui.h"
 
+#include "Core/Primitive/PrimitiveActionQueuer.h"
 #include "Core/Store/Store.h"
+#include "Project/ProjectContext.h"
+
+#include "Vector.h"
 
 #include "immer/flex_vector_transient.hpp"
+
+using namespace ImGui;
 
 template<typename T> Vector<T>::ContainerT Vector<T>::Get() const { return S.Get<ContainerT>(Id); }
 template<typename T> bool Vector<T>::Exists() const { return S.Count<ContainerT>(Id); }
@@ -48,8 +52,6 @@ template<typename T> void Vector<T>::SetJson(json &&j) const {
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
 template<typename T> json Vector<T>::ToJson() const { return json(Get()).dump(); }
-
-using namespace ImGui;
 
 template<typename T> void Vector<T>::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
@@ -96,8 +98,6 @@ template<typename T> void Set<T>::SetJson(json &&j) const {
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
 template<typename T> json Set<T>::ToJson() const { return json(Get()).dump(); }
 
-using namespace ImGui;
-
 template<typename T> void Set<T>::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
@@ -121,9 +121,6 @@ template struct Set<u32>;
 
 #include "Navigable.h"
 
-#include "Core/Primitive/PrimitiveActionQueuer.h"
-#include "Project/ProjectContext.h"
-
 template<typename T> void Navigable<T>::IssueClear() const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::Clear{Id}); }
 template<typename T> void Navigable<T>::IssuePush(T value) const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::Push{Id, std::move(value)}); }
 template<typename T> void Navigable<T>::IssueMoveTo(u32 index) const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, index}); }
@@ -132,3 +129,128 @@ template<typename T> void Navigable<T>::IssueStepBackward() const { ProjectConte
 
 // Explicit instantiations.
 template struct Navigable<u32>;
+
+#include "AdjacencyList.h"
+
+IdPairs AdjacencyList::Get() const { return S.Get<IdPairs>(Id); }
+
+// Non-recursive DFS handling cycles.
+bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
+    const auto id_pairs = Get();
+    std::unordered_set<ID> visited;
+    std::stack<ID> to_visit;
+    to_visit.push(from_id);
+    while (!to_visit.empty()) {
+        ID current = to_visit.top();
+        to_visit.pop();
+        if (current == to_id) return true;
+
+        if (!visited.contains(current)) {
+            visited.insert(current);
+            for (const auto &[source_id, destination_id] : id_pairs) {
+                if (source_id == current) to_visit.push(destination_id);
+            }
+        }
+    }
+
+    return false;
+}
+
+bool AdjacencyList::Exists() const { return S.Count<IdPairs>(Id); }
+bool AdjacencyList::IsConnected(ID source, ID destination) const { return S.Get<IdPairs>(Id).count({source, destination}) > 0; }
+void AdjacencyList::Disconnect(ID source, ID destination) const { _S.Set(Id, S.Get<IdPairs>(Id).erase({source, destination})); }
+void AdjacencyList::Add(IdPair &&id_pair) const { _S.Set(Id, S.Get<IdPairs>(Id).insert(std::move(id_pair))); }
+void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
+
+void AdjacencyList::DisconnectOutput(ID id) const {
+    for (const auto &[source_id, destination_id] : Get()) {
+        if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);
+    }
+}
+
+u32 AdjacencyList::SourceCount(ID destination) const {
+    return std::ranges::count_if(Get(), [destination](const auto &pair) { return pair.second == destination; });
+}
+u32 AdjacencyList::DestinationCount(ID source) const {
+    return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
+}
+
+void AdjacencyList::Erase() const { _S.Erase<IdPairs>(Id); }
+
+void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
+    FlashUpdateRecencyBackground();
+
+    const auto value = Get();
+    if (value.empty()) {
+        TextUnformatted(std::format("{} (empty)", Name));
+        return;
+    }
+
+    if (TreeNode(Name, false, nullptr, false, auto_select)) {
+        u32 i = 0;
+        for (const auto &v : value) {
+            FlashUpdateRecencyBackground(SerializeIdPair(v));
+            const auto &[source_id, destination_id] = v;
+            const bool can_annotate = annotate && ById.contains(source_id) && ById.contains(destination_id);
+            const std::string label = can_annotate ?
+                std::format("{} -> {}", ById.at(source_id)->Name, ById.at(destination_id)->Name) :
+                std::format("#{:08X} -> #{:08X}", source_id, destination_id);
+            TreeNode(std::to_string(i++), false, label.c_str(), can_annotate);
+        }
+        TreePop();
+    }
+}
+
+void AdjacencyList::SetJson(json &&j) const {
+    Erase();
+    for (IdPair id_pair : json::parse(std::string(std::move(j)))) Add(std::move(id_pair));
+}
+
+// Using a string representation to flatten the JSON without worrying about non-object collection values.
+json AdjacencyList::ToJson() const { return json(Get()).dump(); }
+
+#include "Vec2.h"
+
+Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
+    : Component(std::move(args)), X({this, "X"}, value.first, min, max, fmt), Y({this, "Y"}, value.second, min, max, fmt) {}
+
+Vec2::operator ImVec2() const { return {float(X), float(Y)}; }
+
+void Vec2::Render(ImGuiSliderFlags flags) const {
+    ImVec2 xy = *this;
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, X.Min, X.Max, X.Format, flags);
+    Component::UpdateGesturing();
+    if (edited) ProjectContext.PrimitiveQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
+    HelpMarker();
+}
+
+void Vec2::Render() const { Render(ImGuiSliderFlags_None); }
+
+Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt)
+    : Vec2(std::move(args), std::move(value), min, max, fmt), Linked({this, "Linked"}, linked) {}
+
+Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
+    : Vec2Linked(std::move(args), std::move(value), min, max, true, fmt) {}
+
+void Vec2Linked::Render(ImGuiSliderFlags flags) const {
+    PushID(ImGuiLabel.c_str());
+    bool linked = Linked;
+    if (Checkbox(Linked.Name.c_str(), &linked)) ProjectContext.PrimitiveQ(Action::Vec2::ToggleLinked{Id});
+    PopID();
+
+    SameLine();
+
+    ImVec2 xy = *this;
+    const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, X.Min, X.Max, X.Format, flags);
+    Component::UpdateGesturing();
+    if (edited) {
+        if (Linked) {
+            ProjectContext.PrimitiveQ(Action::Vec2::SetAll{Id, xy.x != X ? xy.x : xy.y});
+        } else {
+            ProjectContext.PrimitiveQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
+        }
+    }
+    HelpMarker();
+}
+
+void Vec2Linked::Render() const { Render(ImGuiSliderFlags_None); }

@@ -36,8 +36,8 @@ ProjectState::~ProjectState() = default;
 void ProjectState::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            [this](Action::ProjectCore::Any &&a) { Core.Apply(std::move(a)); },
-            [this](Action::FlowGrid::Any &&a) { FlowGrid.Apply(std::move(a)); },
+            [this](ProjectCore::ActionType &&a) { Core.Apply(std::move(a)); },
+            [this](FlowGrid::ActionType &&a) { FlowGrid.Apply(std::move(a)); },
         },
         action
     );
@@ -46,8 +46,8 @@ void ProjectState::Apply(const ActionType &action) const {
 bool ProjectState::CanApply(const ActionType &action) const {
     return std::visit(
         Match{
-            [this](Action::ProjectCore::Any &&a) { return Core.CanApply(std::move(a)); },
-            [this](Action::FlowGrid::Any &&a) { return FlowGrid.CanApply(std::move(a)); },
+            [this](ProjectCore::ActionType &&a) { return Core.CanApply(std::move(a)); },
+            [this](FlowGrid::ActionType &&a) { return FlowGrid.CanApply(std::move(a)); },
         },
         action
     );

@@ -18,8 +18,8 @@ struct PrimitiveActionQueuer;
 
 /*
 `ProjectContext` is essentially the public slice of a `Project`.
-Every component under (and including) the project's root `State` has access to it.
-It doesn't know about any specific `State` or `Store` (but it may be templated on them in the future).
+Every component under (and including) the project's root `ProjectState` has access to it.
+It doesn't know about any specific `Component` or `Store` (but it may be templated on them in the future).
 */
 struct ProjectContext {
     const Preferences &Preferences;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Action/Actions.h"
+#include "Core/Action/CoreAction.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Demo/Demo.h"
 #include "Core/ImGuiSettings.h"
@@ -10,10 +10,16 @@
 
 #include "Project/ProjectSettings.h"
 
+namespace Action {
+namespace ProjectCore {
+using Any = Action::Combine<Action::Windows::Any, Action::Style::Any>;
+} // namespace ProjectCore
+} // namespace Action
+
 /**
 Handles core project state underlying any project.
 */
-struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Any> {
+struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combine<Action::Core::Any, Action::ProjectCore::Any>> {
     using ActionableComponent::ActionableComponent;
 
     void Apply(const ActionType &) const override;

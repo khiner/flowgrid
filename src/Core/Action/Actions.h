@@ -1,19 +1,9 @@
 #pragma once
 
 #include "ActionMoment.h"
-#include "Core/CoreAction.h"
-#include "Core/FileDialog/FileDialogAction.h"
-
-#include "Project/ProjectAction.h"
-#include "StateAction.h"
+#include "AnyAction.h"
 
 namespace Action {
-namespace State {
-using Any = Combine<ProjectCore::Any, FlowGrid::Any>;
-} // namespace State
-
-// `Any` holds all action types.
-using Any = Combine<Project::Any, FileDialog::Any, Core::Any, State::Any>;
 using Saved = Filter<Action::IsSaved, Any>;
 using NonSaved = Filter<Action::IsNotSaved, Any>;
 } // namespace Action

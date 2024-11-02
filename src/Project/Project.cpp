@@ -342,7 +342,7 @@ void Project::Apply(const ActionType &action) const {
                     }
                 }
             },
-            [this](Action::State::Any &&a) { State.Apply(std::move(a)); },
+            [this](ProjectState::ActionType &&a) { State.Apply(std::move(a)); },
         },
         action
     );
@@ -360,7 +360,7 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
-            [this](Action::State::Any &&a) { return State.CanApply(std::move(a)); },
+            [this](ProjectState::ActionType &&a) { return State.CanApply(std::move(a)); },
             [](auto &&) { return true; },
         },
         action
@@ -631,8 +631,7 @@ bool IsPressed(ImGuiKeyChord chord) {
     return IsKeyChordPressed(chord, ImGuiInputFlags_Repeat, ImGuiKeyOwner_NoOwner);
 }
 
-// todo return and handle `Action::Project::Any` subtype
-std::optional<Action::Any> ProduceKeyboardAction() {
+std::optional<Action::Project::Any> ProduceKeyboardAction() {
     using namespace Action::Project;
 
     if (IsPressed(ImGuiMod_Ctrl | ImGuiKey_N)) return OpenEmpty{};

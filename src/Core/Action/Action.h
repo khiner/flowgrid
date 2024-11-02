@@ -20,11 +20,10 @@ Each action stores all the information needed to apply it to a `Store` instance.
 An `ActionMoment` is a combination of an action and the `TimePoint` when action was queued.
 
 Actions are grouped into `ActionVariant`s, which wrap around `std::variant`.
-Thus, `Action::Any` has enough bytes to hold the application's largest action type.
+Thus, an `ActionVariant` has enough bytes to hold its largest action type.
 - For actions holding very large structured data, using a JSON string is a good approach to keep the size low
-  (at the expense of losing type safety, incurring (de-)serialization costs, and storing the string contents in heap memory).
+  (at the expense of losing type safety, incurring (de-)serialization costs, and storing the string contents on the heap).
 - Note that adding static members does not increase the size of the variant(s) it belongs to.
-- Metrics->FlowGrid->'Action variant size' shows the byte size of `Action::Any`.
 */
 namespace Action {
 struct Metadata {

@@ -197,7 +197,7 @@ struct Component {
     because the project already has a reference to it.
     */
 
-    // `S` is a read-only access to the store at the root of this component's tree (of type `State`).
+    // `S` is a read-only access to the store at the root of this component's tree (of type `ProjectState`).
     // Guarantees:
     // - Refers to the same store throughout each tick (won't switch out from under you during a single action pass).
     const Store &S;
@@ -206,7 +206,7 @@ struct Component {
     // - It is only written to inside action `Apply` methods.
     // - It starts with the value of `S` at the beginning of each tick.
     //   (If no actions have been applied during the current tick, `_S == S.transient()`.)
-    Store &_S; // Read-only access to the store at the root of this component's tree (of type `State`).
+    Store &_S; // Read-only access to the store at the root of this component's tree (of type `ProjectState`).
     const ProjectContext &ProjectContext;
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};

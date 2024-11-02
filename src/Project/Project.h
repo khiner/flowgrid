@@ -11,10 +11,6 @@
 #include "ProjectContext.h"
 #include "ProjectState.h"
 
-namespace moodycamel {
-struct ConsumerToken;
-}
-
 struct StoreHistory;
 
 struct Plottable {
@@ -29,7 +25,8 @@ struct Plottable {
 //    may be good reason to introduce an additional root component holding both, though)
 
 /**
-Holds the root `State` component... does project things... (todo)
+Holds the root `ProjectState` component.
+Owns and processes the action queue, project history, and other project-level things.
 */
 struct Project : ActionableProducer<Action::Any> {
     Project(Store &);
@@ -86,7 +83,7 @@ struct Project : ActionableProducer<Action::Any> {
 
     const Store &S;
     Store &_S;
-    ProjectState State{_S, q, ProjectContext};
+    ProjectState State{_S, CreateProducer<ProjectState::ProducedActionType>(), ProjectContext};
 
 private:
     std::unique_ptr<StoreHistory> HistoryPtr;

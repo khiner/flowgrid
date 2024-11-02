@@ -19,11 +19,7 @@ inline const std::string
     OutputDeviceNodeTypeId = "Output",
     WaveformNodeTypeId = "Waveform", FaustNodeTypeId = "Faust";
 
-struct AudioGraph
-    : AudioGraphNode,
-      ActionableProducer<Action::AudioGraph::Any, Action::Combine<Action::AudioGraph::Any, Action::AdjacencyList::Any>>,
-      FaustDSPListener,
-      AudioGraphNode::Listener {
+struct AudioGraph : AudioGraphNode, ActionableProducer<Action::AudioGraph::Any>, FaustDSPListener, AudioGraphNode::Listener {
     AudioGraph(ProducerComponentArgs<ProducedActionType> &&);
     ~AudioGraph();
 
@@ -111,7 +107,7 @@ struct AudioGraph
     };
 
     Prop(ComponentVector<AudioGraphNode>, Nodes, CreateAudioGraphNode);
-    ProducerProp_(Connections, Connections, "Audio connections");
+    Prop_(Connections, Connections, "Audio connections");
 
     // We initialize with a sample rate of zero, which is the default sample rate. (See `GetDefaultSampleRate` for details.)
     // All device nodes with a default format (for which the user has not explicitly selected the format

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Core/Action/CoreAction.h"
 #include "Core/ActionableComponent.h"
 #include "Core/Demo/Demo.h"
+#include "Core/FileDialog/FileDialogAction.h"
 #include "Core/ImGuiSettings.h"
 #include "Core/Info/Info.h"
 #include "Core/Style/Style.h"
@@ -19,7 +19,7 @@ using Any = Action::Combine<Action::Windows::Any, Action::Style::Any>;
 /**
 Handles core project state underlying any project.
 */
-struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combine<Action::Core::Any, Action::ProjectCore::Any>> {
+struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combine<Action::ProjectCore::Any, Action::FileDialog::Any>> {
     using ActionableComponent::ActionableComponent;
 
     void Apply(const ActionType &) const override;

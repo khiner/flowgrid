@@ -31,7 +31,7 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
         inline static bool IsChanged{false};
 
         struct ImGuiColors : Colors {
-            ImGuiColors(ArgsT &&);
+            ImGuiColors(ComponentArgs &&);
         };
 
         void OnComponentChanged() override { IsChanged = true; }
@@ -100,7 +100,7 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
         Prop(Float, MouseCursorScale, 1);
         Prop(Float, ColumnsMinSpacing, 6);
 
-        ProducerProp(ImGuiColors, Colors);
+        Prop(ImGuiColors, Colors);
 
     protected:
         void Render() const override;
@@ -116,7 +116,7 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
         static std::vector<ImVec4> ColorsAuto, ColorsDark, ColorsLight, ColorsClassic;
 
         struct ImPlotColors : Colors {
-            ImPlotColors(ArgsT &&);
+            ImPlotColors(ComponentArgs &&);
         };
 
         void OnComponentChanged() override { IsChanged = true; }
@@ -159,7 +159,7 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
         Prop(Vec2Linked, AnnotationPadding, {2, 2}, 0, 5, "%.0f");
         Prop(Vec2Linked, FitPadding, {0, 0}, 0, 0.2, "%.2f");
 
-        ProducerProp(ImPlotColors, Colors);
+        Prop(ImPlotColors, Colors);
         Prop(Bool, UseLocalTime);
         Prop(Bool, UseISO8601);
         Prop(Bool, Use24HourClock);

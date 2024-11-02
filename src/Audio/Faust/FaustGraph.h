@@ -14,7 +14,7 @@ struct Node;
 struct FaustGraphStyle;
 struct FaustGraphSettings;
 
-struct FaustGraph : ActionProducerComponent<Action::Combine<Action::Faust::Graph::Any, Navigable<ID>::ProducedActionType>> {
+struct FaustGraph : ActionProducerComponent<Action::Faust::Graph::Any> {
     FaustGraph(ArgsT &&, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraph();
 
@@ -25,7 +25,7 @@ struct FaustGraph : ActionProducerComponent<Action::Combine<Action::Faust::Graph
     void ResetBox(); // Set to the box of the current root node.
 
     Prop(UInt, DspId);
-    ProducerProp(Navigable<ID>, NodeNavigationHistory);
+    Prop(Navigable<u32>, NodeNavigationHistory);
 
     const FaustGraphStyle &Style;
     const FaustGraphSettings &Settings;

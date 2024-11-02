@@ -1,11 +1,11 @@
 #pragma once
 
-#include "AdjacencyListAction.h"
-#include "Core/ActionProducerComponent.h"
+#include "Core/Component.h"
 #include "Core/Store/IdPairs.h"
 
-struct AdjacencyList : ActionProducerComponent<Action::AdjacencyList::Any> {
-    using ActionProducerComponent::ActionProducerComponent;
+struct AdjacencyList : Component {
+    using Component::Component;
+
     using Edge = IdPair; // Source, destination
 
     ~AdjacencyList() {

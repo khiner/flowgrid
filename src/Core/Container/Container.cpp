@@ -118,3 +118,17 @@ template<typename T> void Set<T>::RenderValueTree(bool annotate, bool auto_selec
 
 // Explicit instantiations.
 template struct Set<u32>;
+
+#include "Navigable.h"
+
+#include "Core/Primitive/PrimitiveActionQueuer.h"
+#include "Project/ProjectContext.h"
+
+template<typename T> void Navigable<T>::IssueClear() const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::Clear{Id}); }
+template<typename T> void Navigable<T>::IssuePush(T value) const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::Push{Id, std::move(value)}); }
+template<typename T> void Navigable<T>::IssueMoveTo(u32 index) const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, index}); }
+template<typename T> void Navigable<T>::IssueStepForward() const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) + 1}); }
+template<typename T> void Navigable<T>::IssueStepBackward() const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) - 1}); }
+
+// Explicit instantiations.
+template struct Navigable<u32>;

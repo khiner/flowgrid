@@ -178,7 +178,7 @@ struct IndexedGestures {
 };
 Json(IndexedGestures, Gestures, Index);
 
-json Project::GetProjectJson(const ProjectFormat format) const {
+json Project::GetProjectJson(ProjectFormat format) const {
     switch (format) {
         case ProjectFormat::State: return State.ToJson();
         case ProjectFormat::Action: return IndexedGestures{History.GetGestures(), History.Index};

@@ -18,22 +18,20 @@ struct Plottable {
     std::vector<u64> Values;
 };
 
-// todo project takes a store and a generic app `Component`, and is templated on action type.
-//   It should be agnostic to the app-component type,
-//   holding a ProjectState and the provided component.
-//   (So, a forest of two component trees, is my current thinking...
-//    may be good reason to introduce an additional root component holding both, though)
-
 /**
 Holds the root `ProjectState` component.
 Owns and processes the action queue, project history, and other project-level things.
+
+todo project takes a store and a generic app component type, and is templated on action type.
+  It should be agnostic to the app-component type,
+  holding a root `ProjectState` that is in turn holds the app component type (in addition to `ProjectCore`).
 */
 struct Project : ActionableProducer<Action::Any> {
     Project(Store &);
     ~Project();
 
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
-    static Component *FindChanged(ID component_id, const std::vector<PatchOp> &ops);
+    static Component *FindChanged(ID, const std::vector<PatchOp> &ops);
 
     void OnApplicationLaunch() const;
     void Tick();
@@ -48,7 +46,7 @@ struct Project : ActionableProducer<Action::Any> {
 
     Plottable StorePathChangeFrequencyPlottable() const;
 
-    json GetProjectJson(const ProjectFormat) const;
+    json GetProjectJson(ProjectFormat) const;
 
     // Provided queue is drained.
     void ApplyQueuedActions(bool force_commit_gesture = false);

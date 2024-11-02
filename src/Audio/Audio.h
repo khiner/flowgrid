@@ -6,7 +6,7 @@
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
 
-struct Audio : ActionableComponent<Action::Audio::Any, Action::Combine<Action::Audio::Any, Action::AdjacencyList::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, Action::TextBuffer::Any>> {
+struct Audio : ActionableComponent<Action::Audio::Any, Action::Combine<Action::Audio::Any, Action::TextBuffer::Any>> {
     Audio(ArgsT &&);
     ~Audio();
 

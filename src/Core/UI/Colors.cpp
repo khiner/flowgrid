@@ -7,15 +7,17 @@
 #include "implot_internal.h"
 
 #include "Core/Helper/Hex.h"
+#include "Core/Primitive/PrimitiveActionQueuer.h"
 #include "HelpMarker.h"
 #include "InvisibleButton.h"
+#include "Project/ProjectContext.h"
 
 using namespace ImGui;
 
 using std::views::transform, std::ranges::to;
 
-Colors::Colors(ArgsT &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
-    : Vector(std::move(args.Args)), ActionProducer(std::move(args.Q)), GetName(get_name), AllowAuto(allow_auto) {
+Colors::Colors(ComponentArgs &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
+    : Vector(std::move(args)), GetName(get_name), AllowAuto(allow_auto) {
     Vector::Set(std::views::iota(0u, u32(size)) | to<std::vector>());
 }
 
@@ -60,7 +62,7 @@ void Colors::Render() const {
             // todo use auto for FG colors (link to ImGui colors)
             if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) Q(Action::Vector<u32>::Set{Id, i, is_auto ? mapped_value : AutoColor});
+                if (Button("Auto")) ProjectContext.PrimitiveQ(Action::Vector<u32>::Set{Id, i, is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
@@ -76,7 +78,7 @@ void Colors::Render() const {
 
             PopID();
 
-            if (changed) Q(Action::Vector<u32>::Set{Id, i, ColorConvertFloat4ToU32(value)});
+            if (changed) ProjectContext.PrimitiveQ(Action::Vector<u32>::Set{Id, i, ColorConvertFloat4ToU32(value)});
         }
     }
     if (AllowAuto) {

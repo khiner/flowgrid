@@ -1,21 +1,14 @@
 #pragma once
 
-#include "Core/Action/ActionProducer.h"
 #include "Core/Container/Vector.h"
-#include "Core/Container/VectorAction.h"
-#include "Core/Primitive/UInt.h"
-#include "Core/ProducerComponentArgs.h"
 
 struct ImVec4;
 
-struct Colors : Vector<u32>, ActionProducer<Action::Vector<u32>::Any> {
-    using typename ActionProducer<typename Action::Vector<u32>::Any>::ProducedActionType;
-    using ArgsT = ProducerComponentArgs<ProducedActionType>;
+struct Colors : Vector<u32> {
+    Colors(ComponentArgs &&, u32 size, std::function<const char *(int)> get_name, const bool allow_auto = false);
 
-    Colors(ArgsT &&, u32 size, std::function<const char *(int)> get_name, const bool allow_auto = false);
-
-    static u32 Float4ToU32(const ImVec4 &value);
-    static ImVec4 U32ToFloat4(u32 value);
+    static u32 Float4ToU32(const ImVec4 &);
+    static ImVec4 U32ToFloat4(u32);
 
     // An arbitrary transparent color is used to mark colors as "auto".
     // Using a the unique bit pattern `010101` for the RGB components so as not to confuse it with black/white-transparent.

@@ -15,14 +15,14 @@ enum ProjectCol_ {
 };
 using ProjectCol = int;
 
-struct ProjectStyle : ActionProducerComponent<Action::Combine<Action::Style::Any, Colors::ProducedActionType>> {
+struct ProjectStyle : ActionProducerComponent<Action::Style::Any> {
     ProjectStyle(ArgsT &&);
 
     static std::unordered_map<size_t, ImVec4> ColorsDark, ColorsLight, ColorsClassic;
     static const char *GetColorName(ProjectCol idx);
 
     Prop_(Float, FlashDurationSec, "?Duration (sec) of short flashes to visually notify on events.", 0.2, 0.1, 1);
-    ProducerProp(Colors, Colors, ProjectCol_COUNT, GetColorName);
+    Prop(Colors, Colors, ProjectCol_COUNT, GetColorName);
 
 protected:
     void Render() const override;

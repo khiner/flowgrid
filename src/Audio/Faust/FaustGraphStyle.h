@@ -7,6 +7,7 @@
 #include "Core/Primitive/Flags.h"
 #include "Core/Primitive/Float.h"
 #include "Core/Primitive/String.h"
+#include "Core/Primitive/UInt.h"
 #include "Core/UI/Colors.h"
 #include "Core/UI/Styling.h"
 
@@ -40,7 +41,7 @@ enum FlowGridGraphCol_ {
 };
 using FlowGridGraphCol = int;
 
-struct FaustGraphStyle : ActionProducerComponent<Action::Combine<Action::Faust::GraphStyle::Any, Colors::ProducedActionType>> {
+struct FaustGraphStyle : ActionProducerComponent<Action::Faust::GraphStyle::Any> {
     FaustGraphStyle(ArgsT &&);
 
     void LayoutFlowGrid() const;
@@ -82,7 +83,7 @@ struct FaustGraphStyle : ActionProducerComponent<Action::Combine<Action::Faust::
     Prop(Vec2, ArrowSize, {3, 2}, 1, 10);
     Prop(Float, InverterRadius, 3, 1, 5);
 
-    ProducerProp(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
+    Prop(Colors, Colors, FlowGridGraphCol_COUNT, GetColorName);
 
     static const char *GetColorName(FlowGridGraphCol);
     // `ColorsFaust` Matches Faust SVG rendering.

@@ -137,7 +137,7 @@ private:
 };
 
 struct Faust
-    : ActionProducerComponent<Action::Append<Action::Combine<Action::Faust::Any, Navigable<ID>::ProducedActionType, Colors::ProducedActionType, TextEditor::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
+    : ActionProducerComponent<Action::Append<Action::Combine<Action::Faust::Any, TextEditor::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
       FaustDSPContainer {
     using ActionProducerComponent::ActionProducerComponent;
 

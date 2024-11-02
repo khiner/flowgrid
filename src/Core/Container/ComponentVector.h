@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ComponentContainer.h"
 #include "Core/Container/Vector.h"
 #include "Core/Helper/Hex.h"
 
@@ -31,7 +30,7 @@ The path prefix strategy is as follows:
 Child order is tracked with a separate `ChildPrefixes` vector.
 We need to store this in an auxiliary store member since child component members are stored in a persistent map without key ordering.
 */
-template<typename ChildType> struct ComponentVector : ComponentContainer {
+template<typename ChildType> struct ComponentVector : Component {
     using CreatorFunction = std::function<std::unique_ptr<ChildType>(ComponentArgs &&)>;
     using ChildInitializerFunction = std::function<void(ChildType *)>;
 
@@ -40,11 +39,15 @@ template<typename ChildType> struct ComponentVector : ComponentContainer {
     };
 
     ComponentVector(ComponentArgs &&args, Menu &&menu, CreatorFunction creator = DefaultCreator)
-        : ComponentContainer(std::move(args), std::move(menu)), Creator(std::move(creator)) {
+        : Component(std::move(args), std::move(menu)), Creator(std::move(creator)) {
+        ContainerIds.insert(Id);
         ContainerAuxiliaryIds.insert(ChildPrefixes.Id);
+        Refresh();
     }
     ~ComponentVector() {
+        Erase();
         ContainerAuxiliaryIds.erase(ChildPrefixes.Id);
+        ContainerIds.erase(Id);
     }
 
     ComponentVector(ComponentArgs &&args, CreatorFunction creator = DefaultCreator)

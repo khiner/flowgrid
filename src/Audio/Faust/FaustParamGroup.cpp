@@ -7,7 +7,6 @@
 #include <imgui.h>
 
 using namespace ImGui;
-using namespace fg;
 
 using enum FaustParamType;
 using std::min, std::max;

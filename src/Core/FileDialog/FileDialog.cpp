@@ -30,7 +30,7 @@ using namespace ImGui;
 bool CheckboxFlags(const char *label, int *flags, int flags_value, const char *help) {
     const bool result = ImGui::CheckboxFlags(label, flags, flags_value);
     SameLine();
-    fg::HelpMarker(help);
+    flowgrid::HelpMarker(help);
     return result;
 }
 

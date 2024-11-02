@@ -6,8 +6,6 @@ namespace flowgrid {
 struct Style;
 }
 
-namespace fg = flowgrid;
-
 struct UIContext {
     UIContext(std::function<void()> predraw, std::function<void()> draw);
     ~UIContext();

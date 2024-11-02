@@ -14,5 +14,3 @@ using InteractionFlags = int;
 namespace flowgrid {
 InteractionFlags InvisibleButton(const ImVec2 &size_arg, const char *id);
 } // namespace flowgrid
-
-namespace fg = flowgrid;

@@ -6,6 +6,7 @@
 #include "Core/Action/Actions.h"
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Primitive/PrimitiveActionQueuer.h"
+#include "Core/Store/Store.h"
 
 #include "Preferences.h"
 #include "ProjectContext.h"
@@ -20,14 +21,13 @@ struct Plottable {
 
 /**
 Holds the root `ProjectState` component.
-Owns and processes the action queue, project history, and other project-level things.
+Owns and processes the action queue, store, project history, and other project-level things.
 
-todo project takes a store and a generic app component type, and is templated on action type.
-  It should be agnostic to the app-component type,
-  holding a root `ProjectState` that is in turn holds the app component type (in addition to `ProjectCore`).
+todo project templated on (StoreType, AppComponentType, AppActionType).
+  holding a root `ProjectState` that is in turn holds an AppComponentType and ProjectCore
 */
 struct Project : ActionableProducer<Action::Any> {
-    Project(Store &);
+    Project();
     ~Project();
 
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
@@ -79,8 +79,8 @@ struct Project : ActionableProducer<Action::Any> {
         .RenderStorePathChangeFrequency = [this]() { RenderStorePathChangeFrequency(); },
     };
 
-    const Store &S;
-    Store &_S;
+    mutable Store _S;
+    const Store &S{_S};
     ProjectState State{_S, CreateProducer<ProjectState::ProducedActionType>(), ProjectContext};
 
 private:

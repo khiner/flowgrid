@@ -31,12 +31,12 @@ struct FaustGraph : ActionProducerComponent<Action::Faust::Graph::Any> {
     const FaustGraphSettings &Settings;
 
     Box _Box;
-    mutable std::unordered_map<ID, fg::Node *> NodeByImGuiId;
-    std::unique_ptr<fg::Node> RootNode{};
+    mutable std::unordered_map<ID, flowgrid::Node *> NodeByImGuiId;
+    std::unique_ptr<flowgrid::Node> RootNode{};
 
 private:
     void Render() const override;
 
-    fg::Node *Tree2Node(Box) const;
-    fg::Node *Tree2NodeInner(Box) const;
+    flowgrid::Node *Tree2Node(Box) const;
+    flowgrid::Node *Tree2NodeInner(Box) const;
 };

@@ -208,7 +208,7 @@ private:
         SetNextItemWidth(GetFontSize() * 14);
         if (bool follow_graph_format = !Format; Checkbox("Follow graph format", &follow_graph_format)) Format.IssueToggle();
         SameLine();
-        fg::HelpMarker(std::format(
+        flowgrid::HelpMarker(std::format(
             "When checked, this {0} device automatically follows the owning graph's sample rate and format. "
             "When the graph's sample rate changes, the device will be updated to use the native sample rate nearest to the graph's.\n\n"
             "When unchecked, this {0} device will be pinned to the selected native format, and will convert from the {1} format to the {2} format.\n"
@@ -802,7 +802,7 @@ void AudioGraph::Connections::Render() const {
         SetCursorScreenPos(grid_top_left + ImVec2{(cell_size + cell_gap) * out_count, -node_label_w.y});
 
         const string label = graph.Nodes.GetChildLabel(out_node);
-        const auto label_interaction_flags = fg::InvisibleButton({cell_size, node_label_w.y}, std::format("{}:{}", label, to_string(IO_Out)).c_str());
+        const auto label_interaction_flags = flowgrid::InvisibleButton({cell_size, node_label_w.y}, std::format("{}:{}", label, to_string(IO_Out)).c_str());
         string ellipsified_label{label};
         Ellipsify(ellipsified_label, node_label_w_no_padding.y);
         RenderConnectionsLabel(IO_Out, out_node, ellipsified_label, label_interaction_flags);
@@ -816,7 +816,7 @@ void AudioGraph::Connections::Render() const {
 
         SetCursorScreenPos(grid_top_left + ImVec2{-node_label_w.x, (cell_size + cell_gap) * in_i});
         const string label = graph.Nodes.GetChildLabel(in_node);
-        const auto label_interaction_flags = fg::InvisibleButton({node_label_w.x, cell_size}, std::format("{}:{}", label, to_string(IO_In)).c_str());
+        const auto label_interaction_flags = flowgrid::InvisibleButton({node_label_w.x, cell_size}, std::format("{}:{}", label, to_string(IO_In)).c_str());
         string ellipsified_label{label};
         Ellipsify(ellipsified_label, node_label_w_no_padding.x);
         SetCursorPos(GetCursorPos() + ImVec2{node_label_w.x - CalcTextSize(ellipsified_label).x - label_padding.y, (cell_size - GetTextLineHeight()) / 2}); // Right-align & vertically center label.
@@ -832,7 +832,7 @@ void AudioGraph::Connections::Render() const {
             const bool disabled = out_node->Id == in_node->Id;
             if (disabled) BeginDisabled();
 
-            const auto cell_interaction_flags = fg::InvisibleButton({cell_size, cell_size}, "Cell");
+            const auto cell_interaction_flags = flowgrid::InvisibleButton({cell_size, cell_size}, "Cell");
             if (cell_interaction_flags & InteractionFlags_Clicked) {
                 ProjectContext.PrimitiveQ(Action::AdjacencyList::ToggleConnection{Id, out_node->Id, in_node->Id});
             }

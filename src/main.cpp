@@ -2,14 +2,12 @@
 #include "implot.h"
 
 #include "Core/FileDialog/FileDialogManager.h"
-#include "Core/Store/Store.h"
 #include "Core/UI/Fonts.h"
 #include "Core/UI/UIContext.h"
 #include "Project/Project.h"
 
 int main() {
-    Store store{};
-    Project project{store};
+    Project project{};
     auto &state = project.State.Core;
 
     auto predraw = [&state]() {

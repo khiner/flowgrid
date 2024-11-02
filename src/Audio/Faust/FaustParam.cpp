@@ -7,7 +7,7 @@
 #include "FaustParamsStyle.h"
 
 using namespace ImGui;
-using namespace fg;
+using namespace flowgrid;
 
 using enum FaustParamType;
 using std::min, std::max, std::accumulate;

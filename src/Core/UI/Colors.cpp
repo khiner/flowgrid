@@ -42,9 +42,9 @@ void Colors::Render() const {
     SameLine();
     if (RadioButton("Both", flags == ImGuiColorEditFlags_AlphaPreviewHalf)) flags = ImGuiColorEditFlags_AlphaPreviewHalf;
     SameLine();
-    fg::HelpMarker("In the color list:\n"
-                   "Left-click on color square to open color picker.\n"
-                   "Right-click to open edit options menu.");
+    flowgrid::HelpMarker("In the color list:\n"
+                         "Left-click on color square to open color picker.\n"
+                         "Right-click to open edit options menu.");
 
     BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
     PushItemWidth(-160);
@@ -56,7 +56,7 @@ void Colors::Render() const {
             const u32 mapped_value = is_auto ? ColorConvertFloat4ToU32(ImPlot::GetAutoColor(int(i))) : color;
 
             PushID(i);
-            fg::InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
+            flowgrid::InvisibleButton({GetWindowWidth(), GetFontSize()}, ""); // todo try `Begin/EndGroup` after this works for hover info pane (over label)
             SetItemAllowOverlap();
 
             // todo use auto for FG colors (link to ImGui colors)

@@ -11,7 +11,6 @@
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
 #include "Core/Helper/Time.h"
-#include "Core/Store/Store.h"
 #include "Core/Store/StoreHistory.h"
 
 #include "Preferences.h"
@@ -24,8 +23,8 @@ using std::ranges::to, std::views::join, std::views::keys, std::views::transform
 static const fs::path InternalPath = ".flowgrid";
 // Order matters here, as the first extension is the default project extension.
 static const std::map<ProjectFormat, std::string_view> ExtensionByProjectFormat{
-    {ProjectFormat::Action, ".fla"},
-    {ProjectFormat::State, ".fls"},
+    {ProjectFormat::Action, ".fga"},
+    {ProjectFormat::State, ".fgs"},
 };
 static const auto ProjectFormatByExtension = ExtensionByProjectFormat | transform([](const auto &pe) { return std::pair(pe.second, pe.first); }) | to<std::map>();
 static const auto AllProjectExtensions = ProjectFormatByExtension | keys;
@@ -43,13 +42,13 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Project::Project(Store &store)
+Project::Project()
     : ActionableProducer(EnqueueFn([this](auto &&a) -> bool {
           return Queue.enqueue(EnqueueToken, {std::move(a), Clock::now()});
       })),
-      S(store), _S(store), HistoryPtr(std::make_unique<StoreHistory>(store)), History(*HistoryPtr) {
+      HistoryPtr(std::make_unique<StoreHistory>(S)), History(*HistoryPtr) {
     // Initialize the global canonical store with all project state values set during project initialization.
-    store.Commit();
+    _S.Commit();
     // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
     State.Refresh();
 }
@@ -700,7 +699,7 @@ void ShowActions(const SavedActionMoments &actions) {
         if (TreeNodeEx(std::to_string(action_index).c_str(), ImGuiTreeNodeFlags_None, "%s", action.GetPath().string().c_str())) {
             BulletText("Queue time: %s", std::format("{:%Y-%m-%d %T}", queue_time).c_str());
             SameLine();
-            fg::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
+            flowgrid::HelpMarker("The original queue time of the action. If this is a merged action, this is the queue time of the most recent action in the merge.");
             auto data = json(action)[1];
             if (!data.is_null()) {
                 SetNextItemOpen(true);
@@ -810,7 +809,7 @@ void Project::RenderMetrics() const {
         Text("Action variant size: %lu bytes", sizeof(Action::Saved));
         Text("Primitive variant size: %lu bytes", sizeof(PrimitiveVariant));
         SameLine();
-        fg::HelpMarker(
+        flowgrid::HelpMarker(
             "All actions are internally stored in a `std::variant`, which must be large enough to hold its largest type. "
             "Thus, it's important to keep action data minimal."
         );

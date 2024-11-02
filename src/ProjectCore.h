@@ -127,7 +127,7 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
         Prop(Metrics, Metrics);
     };
 
-    ProducerProp(fg::Style, Style);
+    ProducerProp(flowgrid::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
     Prop(ProjectSettings, Settings);

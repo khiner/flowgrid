@@ -7,7 +7,7 @@
 
 #include "Project/ProjectContext.h"
 
-using namespace flowgrid;
+using Style = flowgrid::Style;
 
 void ProjectCore::Apply(const ActionType &action) const {
     std::visit(
@@ -74,11 +74,11 @@ bool ProjectCore::CanApply(const ActionType &action) const {
     );
 }
 
-using namespace ImGui;
-
 void ProjectCore::Debug::StorePathUpdateFrequency::Render() const {
     ProjectContext.RenderStorePathChangeFrequency();
 }
+
+using namespace ImGui;
 
 void ProjectCore::Debug::DebugLog::Render() const {
     ShowDebugLogWindow();
@@ -114,7 +114,7 @@ void ProjectCore::Debug::StatePreview::Render() const {
         TextUnformatted(project_json.dump(4));
     } else {
         SetNextItemOpen(true);
-        fg::JsonTree("", std::move(project_json));
+        flowgrid::JsonTree("", std::move(project_json));
     }
 }
 

@@ -6,5 +6,3 @@
 namespace flowgrid {
 void HelpMarker(std::string_view);
 } // namespace flowgrid
-
-namespace fg = flowgrid;

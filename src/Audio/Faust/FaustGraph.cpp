@@ -524,7 +524,7 @@ struct Node {
             const auto before_cursor_inner = device.CursorPosition;
             const auto &local_rect = GetFrameRect();
             device.AdvanceCursor(local_rect.Min);
-            flags |= fg::InvisibleButton(local_rect.GetSize() * Context.GetScale(), "");
+            flags |= flowgrid::InvisibleButton(local_rect.GetSize() * Context.GetScale(), "");
             SetItemAllowOverlap();
             device.SetCursorPos(before_cursor_inner);
         }
@@ -639,7 +639,7 @@ protected:
 };
 } // namespace flowgrid
 
-using namespace fg;
+using Node = flowgrid::Node;
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {

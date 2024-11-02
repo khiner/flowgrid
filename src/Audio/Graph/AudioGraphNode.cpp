@@ -390,7 +390,7 @@ void AudioGraphNode::Render() const {
     if (ImGui::TreeNode("Node info")) {
         TextUnformatted(std::format("Active: {}", bool(IsActive)));
         SameLine();
-        fg::HelpMarker(
+        flowgrid::HelpMarker(
             "A node is considered active if there is a connection path from it to the graph endpoint node.\n"
             "Inactive nodes are not processed by the audio graph, and thus do not contribute to CPU load."
         );

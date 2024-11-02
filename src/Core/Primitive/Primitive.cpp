@@ -128,7 +128,7 @@ void Flags::Render() const {
             if (Checkbox(item.Name.c_str(), &is_selected)) IssueSet(value ^ option_mask); // Toggle bit
             if (!item.Help.empty()) {
                 SameLine();
-                fg::HelpMarker(item.Help.c_str());
+                flowgrid::HelpMarker(item.Help.c_str());
             }
         }
         TreePop();
@@ -144,7 +144,7 @@ void Flags::MenuItem() const {
             const int option_mask = 1 << i;
             const bool is_selected = option_mask & value;
             if (!item.Help.empty()) {
-                fg::HelpMarker(item.Help);
+                flowgrid::HelpMarker(item.Help);
                 SameLine();
             }
             if (ImGui::MenuItem(item.Name.c_str(), nullptr, is_selected)) IssueSet(value ^ option_mask); // Toggle bit

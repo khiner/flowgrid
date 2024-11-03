@@ -2,21 +2,15 @@
 
 #include "imgui_internal.h"
 
-void Windows::SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &components) {
-    WindowComponentIds.clear();
-    VisibleComponents.Clear();
-    for (const auto &component : components) {
-        WindowComponentIds.insert(component.get().Id);
-        VisibleComponents.Insert(component.get().Id);
-    }
+void Windows::RegisterWindow(ID id) {
+    WindowComponentIds.insert(id);
+    VisibleComponents.Insert(id);
 }
-
-bool Windows::IsWindow(ID component_id) const { return WindowComponentIds.contains(component_id); }
-bool Windows::IsVisible(ID component_id) const { return VisibleComponents.Contains(component_id); }
-
-void Windows::ToggleVisible(ID component_id) const {
-    if (!VisibleComponents.Contains(component_id)) VisibleComponents.Insert(component_id);
-    else VisibleComponents.Erase(component_id);
+bool Windows::IsWindow(ID id) const { return WindowComponentIds.contains(id); }
+bool Windows::IsVisible(ID id) const { return VisibleComponents.Contains(id); }
+void Windows::ToggleVisible(ID id) const {
+    if (!VisibleComponents.Contains(id)) VisibleComponents.Insert(id);
+    else VisibleComponents.Erase(id);
 }
 
 using namespace ImGui;

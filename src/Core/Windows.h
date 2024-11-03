@@ -9,12 +9,10 @@
 struct Windows : ActionProducerComponent<Action::Windows::Any> {
     using ActionProducerComponent::ActionProducerComponent;
 
-    void SetWindowComponents(const std::vector<std::reference_wrapper<const Component>> &);
-
-    bool IsWindow(ID component_id) const;
-    bool IsVisible(ID component_id) const;
-
-    void ToggleVisible(ID component_id) const;
+    void RegisterWindow(ID);
+    bool IsWindow(ID) const;
+    bool IsVisible(ID) const;
+    void ToggleVisible(ID) const;
 
     void DrawMenuItem(const Component &) const;
 

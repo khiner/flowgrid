@@ -21,6 +21,7 @@ Handles core project state underlying any project.
 */
 struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combine<Action::ProjectCore::Any, Action::FileDialog::Any>> {
     using ActionableComponent::ActionableComponent;
+    ProjectCore(ArgsT &&);
 
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;

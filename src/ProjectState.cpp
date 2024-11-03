@@ -7,28 +7,7 @@
 using namespace flowgrid;
 
 ProjectState::ProjectState(Store &store, ActionableProducer::Enqueue q, const ::ProjectContext &project_context)
-    : Component(store, "ProjectState", project_context), ActionableProducer(std::move(q)) {
-    Core.Windows.SetWindowComponents({
-        Core.Settings,
-        Core.Debug,
-        Core.Debug.StatePreview,
-        Core.Debug.StorePathUpdateFrequency,
-        Core.Debug.DebugLog,
-        Core.Debug.StackTool,
-        Core.Debug.Metrics,
-        Core.Style,
-        Core.Demo,
-        Core.Info,
-
-        FlowGrid.Audio.Graph,
-        FlowGrid.Audio.Graph.Connections,
-        FlowGrid.Audio.Style,
-        FlowGrid.Audio.Faust.FaustDsps,
-        FlowGrid.Audio.Faust.Logs,
-        FlowGrid.Audio.Faust.Graphs,
-        FlowGrid.Audio.Faust.Paramss,
-    });
-}
+    : Component(store, "ProjectState", project_context), ActionableProducer(std::move(q)) {}
 
 ProjectState::~ProjectState() = default;
 

@@ -3,6 +3,14 @@
 #include "imgui.h"
 
 Audio::Audio(ArgsT &&args) : ActionableComponent(std::move(args)) {
+    Graph.RegisterWindow();
+    Graph.Connections.RegisterWindow();
+    Style.RegisterWindow();
+    Faust.FaustDsps.RegisterWindow();
+    Faust.Logs.RegisterWindow();
+    Faust.Graphs.RegisterWindow();
+    Faust.Paramss.RegisterWindow();
+
     Faust.RegisterDspChangeListener(&Graph);
 }
 

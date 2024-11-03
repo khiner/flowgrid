@@ -9,6 +9,19 @@
 
 using Style = flowgrid::Style;
 
+ProjectCore::ProjectCore(ArgsT &&args) : ActionableComponent(std::move(args)) {
+    Settings.RegisterWindow();
+    Debug.RegisterWindow();
+    Debug.StatePreview.RegisterWindow();
+    Debug.StorePathUpdateFrequency.RegisterWindow();
+    Debug.DebugLog.RegisterWindow();
+    Debug.StackTool.RegisterWindow();
+    Debug.Metrics.RegisterWindow();
+    Style.RegisterWindow();
+    Demo.RegisterWindow();
+    Info.RegisterWindow();
+}
+
 void ProjectCore::Apply(const ActionType &action) const {
     std::visit(
         Match{

@@ -155,10 +155,10 @@ void Component::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
 }
 
+void Component::RegisterWindow() const { ProjectContext.RegisterWindow(Id); }
 bool Component::IsWindow() const { return ProjectContext.IsWindow(Id); }
-
-// todo memoize in ctor, since children don't change after construction.
 bool Component::HasWindows() const {
+    // todo memoize in ctor, since children don't change after construction.
     return IsWindow() || any_of(Children, [](const auto *c) { return c->HasWindows(); });
 }
 

@@ -160,10 +160,12 @@ struct Component {
     bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
     bool HasAncestorContainer() const;
 
+    void RegisterWindow() const;
     bool IsWindow() const;
     bool HasWindows() const;
     ImGuiWindow *FindWindow() const;
     ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
+
     void Dock(ID node_id) const;
     bool Focus() const;
 

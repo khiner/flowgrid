@@ -28,6 +28,7 @@ struct ProjectContext {
     const FileDialog &FileDialog;
     const PrimitiveActionQueuer &PrimitiveQ;
 
+    const std::function<void(ID)> RegisterWindow;
     const std::function<bool(ID)> IsWindow;
     const std::function<bool(ID)> IsWindowVisible;
     const std::function<void(const Component &)> DrawMenuItem;

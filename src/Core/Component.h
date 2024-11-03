@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -145,6 +146,7 @@ struct Component {
     // By default, renders `this` a node with children as child nodes.
     virtual void RenderValueTree(bool annotate, bool auto_select) const;
     virtual void RenderDebug() const {}
+    virtual void DrawWindowsMenu() const;
 
     // Override to return additional details to append to label in contexts with lots of horizontal room.
     virtual std::string GetLabelDetailSuffix() const { return ""; }
@@ -158,6 +160,8 @@ struct Component {
     bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
     bool HasAncestorContainer() const;
 
+    bool IsWindow() const;
+    bool HasWindows() const;
     ImGuiWindow *FindWindow() const;
     ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
     void Dock(ID node_id) const;

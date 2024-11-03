@@ -69,7 +69,9 @@ struct Project : ActionableProducer<Action::Any> {
         .FileDialog = FileDialog,
         .PrimitiveQ = PrimitiveQ,
 
+        .IsWindow = [this](ID id) { return State.Core.Windows.IsWindow(id); },
         .IsWindowVisible = [this](ID id) { return State.Core.Windows.IsVisible(id); },
+        .DrawMenuItem = [this](const Component &c) { State.Core.Windows.DrawMenuItem(c); },
         .ToggleDemoWindow = [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
 
         .GetProjectJson = [this](ProjectFormat format) { return GetProjectJson(format); },

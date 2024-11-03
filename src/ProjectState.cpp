@@ -1,7 +1,6 @@
 #include "ProjectState.h"
 
 #include "imgui_internal.h"
-#include "implot.h"
 
 #include "Project/ProjectContext.h"
 
@@ -55,43 +54,9 @@ bool ProjectState::CanApply(const ActionType &action) const {
 
 using namespace ImGui;
 
-void ProjectState::WindowMenuItem() const {
-    static const auto item = [](const Windows &w, const Component &c) {
-        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, w.IsVisible(c.Id))) {
-            w.Q(Action::Windows::ToggleVisible{c.Id});
-        }
-    };
-
-    const auto &w = Core.Windows;
-    if (BeginMenu("Windows")) {
-        if (BeginMenu("Audio")) {
-            item(w, FlowGrid.Audio.Graph);
-            item(w, FlowGrid.Audio.Graph.Connections);
-            item(w, FlowGrid.Audio.Style);
-            if (BeginMenu("Faust")) {
-                item(w, FlowGrid.Audio.Faust.FaustDsps);
-                item(w, FlowGrid.Audio.Faust.Graphs);
-                item(w, FlowGrid.Audio.Faust.Paramss);
-                item(w, FlowGrid.Audio.Faust.Logs);
-                EndMenu();
-            }
-            EndMenu();
-        }
-        if (BeginMenu("Debug")) {
-            item(w, Core.Debug);
-            item(w, Core.Debug.StatePreview);
-            item(w, Core.Debug.StorePathUpdateFrequency);
-            item(w, Core.Debug.DebugLog);
-            item(w, Core.Debug.StackTool);
-            item(w, Core.Debug.Metrics);
-            EndMenu();
-        }
-        item(w, Core.Style);
-        item(w, Core.Demo);
-        item(w, Core.Info);
-        item(w, Core.Settings);
-        EndMenu();
-    }
+// Only overriding to not draw named submenu, since this is the root.
+void ProjectState::DrawWindowsMenu() const {
+    for (const auto *c : Children) c->DrawWindowsMenu();
 }
 
 void ProjectState::Render() const {
@@ -136,7 +101,7 @@ void ProjectState::Render() const {
 
     // Draw non-window children.
     for (const auto *child : Core.Children) {
-        if (!Core.Windows.IsWindow(child->Id) && child != &Core.Windows) child->Draw();
+        if (!ProjectContext.IsWindow(child->Id) && child != &Core.Windows) child->Draw();
     }
 
     Core.Windows.Draw();

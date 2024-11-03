@@ -1,6 +1,7 @@
 #include "Component.h"
 
 #include <format>
+#include <ranges>
 
 #include "imgui_internal.h"
 
@@ -10,6 +11,8 @@
 #include "Style/ProjectStyle.h"
 #include "UI/HelpMarker.h"
 #include "UI/Styling.h"
+
+using std::views::filter, std::ranges::any_of;
 
 DebugComponent::DebugComponent(ComponentArgs &&args, float split_ratio)
     : Component(std::move(args)), SplitRatio(split_ratio) {}
@@ -152,10 +155,16 @@ void Component::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
 }
 
+bool Component::IsWindow() const { return ProjectContext.IsWindow(Id); }
+
+// todo memoize in ctor, since children don't change after construction.
+bool Component::HasWindows() const {
+    return IsWindow() || any_of(Children, [](const auto *c) { return c->HasWindows(); });
+}
+
 ImGuiWindow *Component::FindWindow() const {
     return GetCurrentContext() ? FindWindowByName(ImGuiLabel.c_str()) : nullptr;
 }
-
 ImGuiWindow *Component::FindDockWindow() const {
     if (!GetCurrentContext()) return nullptr;
     auto *window = FindWindowByName(ImGuiLabel.c_str());
@@ -236,6 +245,19 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
     if (TreeNode(ImGuiLabel, false, nullptr, false, auto_select)) {
         for (const auto *child : Children) child->RenderValueTree(annotate, auto_select);
         TreePop();
+    }
+}
+
+void Component::DrawWindowsMenu() const {
+    if (IsWindow()) return ProjectContext.DrawMenuItem(*this);
+
+    // todo memoize in ctor, since children don't change after construction.
+    auto windows = Children | filter([](const auto *c) { return c->HasWindows(); });
+    if (std::ranges::empty(windows)) return;
+
+    if (BeginMenu(Name.c_str())) {
+        for (const auto *w : windows) w->DrawWindowsMenu();
+        EndMenu();
     }
 }
 

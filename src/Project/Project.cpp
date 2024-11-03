@@ -637,7 +637,12 @@ void Project::Draw() const {
                     RedoMenuItem,
                 }
             ),
-            [this] { State.WindowMenuItem(); },
+            [this] {
+                if (BeginMenu("Windows")) {
+                    State.DrawWindowsMenu();
+                    EndMenu();
+                }
+            },
         },
         true
     };

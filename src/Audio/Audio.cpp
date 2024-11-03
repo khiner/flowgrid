@@ -50,11 +50,11 @@ bool Audio::CanApply(const ActionType &action) const {
     );
 }
 
-using namespace ImGui;
-
 void Audio::Render() const {
     Faust.Draw();
 }
+
+using namespace ImGui;
 
 void Audio::Style::Render() const {
     if (BeginTabBar("")) {

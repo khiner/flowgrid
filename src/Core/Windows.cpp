@@ -21,6 +21,12 @@ void Windows::ToggleVisible(ID component_id) const {
 
 using namespace ImGui;
 
+void Windows::DrawMenuItem(const Component &c) const {
+    if (MenuItem(c.ImGuiLabel.c_str(), nullptr, IsVisible(c.Id))) {
+        Q(Action::Windows::ToggleVisible{c.Id});
+    }
+};
+
 void Windows::Render() const {
     for (const ID id : VisibleComponents.Get()) {
         const auto *component = Component::ById.at(id);

@@ -40,6 +40,8 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
             UnregisterChangeListener(this);
         }
 
+        void DrawWindowsMenu() const override;
+
         struct Metrics : Component {
             using Component::Component;
 
@@ -127,9 +129,9 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
         Prop(Metrics, Metrics);
     };
 
-    ProducerProp(flowgrid::Style, Style);
     ProducerProp(Windows, Windows);
     Prop(ImGuiSettings, ImGuiSettings);
+    ProducerProp(flowgrid::Style, Style);
     Prop(ProjectSettings, Settings);
     Prop(Info, Info);
     ProducerProp(Demo, Demo);

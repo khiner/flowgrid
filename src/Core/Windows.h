@@ -16,6 +16,8 @@ struct Windows : ActionProducerComponent<Action::Windows::Any> {
 
     void ToggleVisible(ID component_id) const;
 
+    void DrawMenuItem(const Component &) const;
+
     Prop(Set<ID>, VisibleComponents);
 
 protected:

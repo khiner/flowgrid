@@ -16,6 +16,8 @@ struct ProjectStyle;
 struct FileDialog;
 struct PrimitiveActionQueuer;
 
+struct Component;
+
 /*
 `ProjectContext` is essentially the public slice of a `Project`.
 Every component under (and including) the project's root `ProjectState` has access to it.
@@ -26,7 +28,9 @@ struct ProjectContext {
     const FileDialog &FileDialog;
     const PrimitiveActionQueuer &PrimitiveQ;
 
+    const std::function<bool(ID)> IsWindow;
     const std::function<bool(ID)> IsWindowVisible;
+    const std::function<void(const Component &)> DrawMenuItem;
     const std::function<void(ID)> ToggleDemoWindow;
 
     const std::function<nlohmann::json(ProjectFormat)> GetProjectJson;

@@ -80,6 +80,20 @@ void ProjectCore::Debug::StorePathUpdateFrequency::Render() const {
 
 using namespace ImGui;
 
+// todo only overriding to draw self in addition to children - refactor to avoid this
+void ProjectCore::Debug::DrawWindowsMenu() const {
+    const auto &item = ProjectContext.DrawMenuItem;
+    if (BeginMenu(Name.c_str())) {
+        item(*this);
+        item(StatePreview);
+        item(StorePathUpdateFrequency);
+        item(DebugLog);
+        item(StackTool);
+        item(Metrics);
+        EndMenu();
+    }
+}
+
 void ProjectCore::Debug::DebugLog::Render() const {
     ShowDebugLogWindow();
 }

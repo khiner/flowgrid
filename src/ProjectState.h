@@ -19,7 +19,7 @@ struct ProjectState : Component,
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    void WindowMenuItem() const;
+    void DrawWindowsMenu() const override;
 
     ProducerProp(ProjectCore, Core);
     ProducerProp(FlowGrid, FlowGrid);

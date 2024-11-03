@@ -8,10 +8,13 @@
 #include <set>
 
 #include "Core/Action/ActionMenuItem.h"
+#include "Core/Container/AdjacencyList.h"
+#include "Core/Container/Navigable.h"
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
 #include "Core/Helper/Time.h"
 #include "Core/Store/StoreHistory.h"
+#include "Core/TextEditor/TextBuffer.h"
 
 #include "Preferences.h"
 
@@ -40,14 +43,13 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
     return {};
 }
 
-Project::Project()
-    : ActionableProducer(EnqueueFn([this](auto &&a) -> bool {
-          return Queue.enqueue(EnqueueToken, {std::move(a), Clock::now()});
-      })),
+Project::Project(CreateApp &&create_app)
+    : ActionableProducer(EnqueueFn([this](auto &&a) { return Queue.enqueue(EnqueueToken, {std::move(a), Clock::now()}); })),
+      App(create_app({{&State, "App"}, CreateProducer<AppProducedActionType>()})),
       HistoryPtr(std::make_unique<StoreHistory>(S)), History(*HistoryPtr) {
-    // Initialize the global canonical store with all project state values set during project initialization.
+    // Initialize the global canonical store with all values set during project initialization.
     _S.Commit();
-    // Ensure all store values set during initialization are reflected in cached field/collection values, and all side effects are run.
+    // Ensure all store values set during initialization are reflected in cached field/collection values, and any side effects are run.
     State.Refresh();
 }
 
@@ -339,7 +341,8 @@ void Project::Apply(const ActionType &action) const {
                     }
                 }
             },
-            [this](ProjectState::ActionType &&a) { State.Apply(std::move(a)); },
+            [this](ProjectCore::ActionType &&a) { Core.Apply(std::move(a)); },
+            [this](AppActionType &&a) { App->Apply(std::move(a)); },
         },
         action
     );
@@ -357,7 +360,8 @@ bool Project::CanApply(const ActionType &action) const {
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
             [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
-            [this](ProjectState::ActionType &&a) { return State.CanApply(std::move(a)); },
+            [this](ProjectCore::ActionType &&a) { return Core.CanApply(std::move(a)); },
+            [this](AppActionType &&a) { return App->CanApply(std::move(a)); },
             [](auto &&) { return true; },
         },
         action
@@ -404,8 +408,8 @@ void Project::OnApplicationLaunch() const {
     Component::LatestChangedPaths.clear();
 
     // When loading a new project, we always refresh all UI contexts.
-    State.Core.Style.ImGui.IsChanged = true;
-    State.Core.Style.ImPlot.IsChanged = true;
+    Core.Style.ImGui.IsChanged = true;
+    Core.Style.ImPlot.IsChanged = true;
     ImGuiSettings::IsChanged = true;
 
     // Keep the canonical "empty" project up-to-date.
@@ -413,24 +417,13 @@ void Project::OnApplicationLaunch() const {
     Save(EmptyProjectPath);
 }
 
-Patch Project::CreatePatch() {
-    auto *ctx = ImGui::GetCurrentContext();
-    auto &settings = State.Core.ImGuiSettings;
-    settings.Nodes.Set(ctx->DockContext.NodesSettings);
-    settings.Windows.Set(ctx->SettingsWindows);
-    settings.Tables.Set(ctx->SettingsTables);
-
-    auto patch = _S.CreatePatchAndResetTransient(settings.Id);
-    settings.Tables.Refresh(); // xxx tables may have been modified.
-
-    return patch;
-}
-
 void Project::Tick() {
     auto &io = ImGui::GetIO();
     if (io.WantSaveIniSettings) {
-        ImGui::SaveIniSettingsToMemory(); // Populate the `Settings` context members.
-        if (auto patch = CreatePatch(); !patch.Empty()) {
+        ImGui::SaveIniSettingsToMemory(); // Populate ImGui's `Settings...` context members.
+        auto &imgui_settings = Core.ImGuiSettings;
+        imgui_settings.Set(ImGui::GetCurrentContext());
+        if (auto patch = _S.CreatePatchAndResetTransient(imgui_settings.Id); !patch.Empty()) {
             Q(Action::Store::ApplyPatch{std::move(patch)});
         }
         io.WantSaveIniSettings = false;
@@ -470,7 +463,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     for (auto *child : State.Children) child->Refresh();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
-    State.Core.ImGuiSettings.IsChanged = true;
+    Core.ImGuiSettings.IsChanged = true;
     History.Clear(S);
 }
 
@@ -503,7 +496,7 @@ void Project::Open(const fs::path &file_path) const {
 float Project::GestureTimeRemainingSec() const {
     if (ActiveGestureActions.empty()) return 0;
 
-    const float gesture_duration_sec = State.Core.Settings.GestureDurationSec;
+    const float gesture_duration_sec = Core.Settings.GestureDurationSec;
     return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
@@ -646,7 +639,19 @@ void Project::Draw() const {
     };
 
     MainMenu.Draw();
-    State.Draw();
+    {
+        auto dockspace_id = ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+        if (Component::FrameCount() == 1) State.Dock(&dockspace_id);
+
+        const auto &windows = Core.Windows;
+        for (const auto *child : Core.Children) {
+            if (!windows.IsWindow(child->Id) && child != &windows) child->Draw();
+        }
+        windows.Draw();
+
+        if (Component::FrameCount() == 1) State.FocusDefault(); // todo default focus no longer working
+    }
+
     FileDialog.Render();
     if (PrevSelectedPath != FileDialog.SelectedFilePath && FileDialog.Data.OwnerId == State.Id) {
         const fs::path selected_path = FileDialog.SelectedFilePath;
@@ -684,13 +689,13 @@ void Project::RenderMetrics() const {
             // Gesture completion progress bar (full-width to empty).
             const float time_remaining_sec = GestureTimeRemainingSec();
             const ImVec2 row_min{GetWindowPos().x, GetCursorScreenPos().y};
-            const float gesture_ratio = time_remaining_sec / float(State.Core.Settings.GestureDurationSec);
+            const float gesture_ratio = time_remaining_sec / float(Core.Settings.GestureDurationSec);
             const ImRect gesture_ratio_rect{row_min, row_min + ImVec2{GetWindowWidth() * std::clamp(gesture_ratio, 0.f, 1.f), GetFontSize()}};
-            GetWindowDrawList()->AddRectFilled(gesture_ratio_rect.Min, gesture_ratio_rect.Max, State.Core.Style.Project.Colors[ProjectCol_GestureIndicator]);
+            GetWindowDrawList()->AddRectFilled(gesture_ratio_rect.Min, gesture_ratio_rect.Max, Core.Style.Project.Colors[ProjectCol_GestureIndicator]);
 
             const string active_gesture_title = std::format("Active gesture{}", has_gesture_actions ? " (uncompressed)" : "");
             if (TreeNodeEx(active_gesture_title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (is_gesturing) FillRowItemBg(State.Core.Style.ImGui.Colors[ImGuiCol_FrameBgActive]);
+                if (is_gesturing) FillRowItemBg(Core.Style.ImGui.Colors[ImGuiCol_FrameBgActive]);
                 else BeginDisabled();
                 Text("Widget gesture: %s", is_gesturing ? "true" : "false");
                 if (!is_gesturing) EndDisabled();
@@ -755,12 +760,12 @@ void Project::RenderMetrics() const {
         if (TreeNodeEx("Preferences", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (SmallButton("Clear")) Preferences.Clear();
             SameLine();
-            State.Core.Debug.Metrics.Project.ShowRelativePaths.Draw();
+            Core.Debug.Metrics.Project.ShowRelativePaths.Draw();
 
             if (!has_RecentlyOpenedPaths) BeginDisabled();
             if (TreeNodeEx("Recently opened paths", ImGuiTreeNodeFlags_DefaultOpen)) {
                 for (const auto &recently_opened_path : Preferences.RecentlyOpenedPaths) {
-                    BulletText("%s", (State.Core.Debug.Metrics.Project.ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
+                    BulletText("%s", (Core.Debug.Metrics.Project.ShowRelativePaths ? fs::relative(recently_opened_path) : recently_opened_path).c_str());
                 }
                 TreePop();
             }

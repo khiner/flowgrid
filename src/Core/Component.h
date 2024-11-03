@@ -289,13 +289,13 @@ todo Try out replacing semicolon separators by e.g. commas.
           - E.g. "?A state member for testing things."
 **/
 
-#define Prop(PropType, PropName, ...) PropType PropName{{this, #PropName, ""}, __VA_ARGS__};
+#define Prop(PropType, PropName, ...) PropType PropName{{this, #PropName}, __VA_ARGS__};
 #define Prop_(PropType, PropName, MetaStr, ...) PropType PropName{{this, #PropName, MetaStr}, __VA_ARGS__};
 
 // Sub-producers produce a subset action type, so they need a new producer generated from the parent.
-#define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
+#define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
 #define ProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
 
 // Child producers produce the same action type as their parent, so they can simply use their parent's `q` function.
-#define ChildProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName, ""}, q}, __VA_ARGS__};
+#define ChildProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName}, q}, __VA_ARGS__};
 #define ChildProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, q}, __VA_ARGS__};

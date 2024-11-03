@@ -2,15 +2,42 @@
 
 #include "concurrentqueue.h"
 
-#include "Core/Action/ActionableProducer.h"
 #include "Core/Action/Actions.h"
+#include "Core/ActionableComponent.h"
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Primitive/PrimitiveActionQueuer.h"
 #include "Core/Store/Store.h"
 
 #include "Preferences.h"
 #include "ProjectContext.h"
-#include "ProjectState.h"
+#include "ProjectCore.h"
+
+// todo just need a little more finagling to finally be done w/ project/app decoupling...
+//   The only reason Project needs these currently is for delegating the two `Actionable` methods to the `App`.
+#include "Audio/AudioAction.h"
+#include "Core/TextEditor/TextBufferAction.h"
+#include "FlowGridAction.h"
+using AppActionType = Action::FlowGrid::Any;
+using AppProducedActionType = Action::Combine<Action::Audio::Any, Action::TextBuffer::Any>;
+using AppType = ActionableComponent<AppActionType, AppProducedActionType>;
+
+/**
+`ProjectState` is the root component of a project, and it fully describes the project state.
+It's a structured representation of its underlying store (of type `Store`,
+which is composed of an `immer::map<Path, {Type}>` for each stored type).
+**Both the `ProjectCore` and `App` components get injected into it by the owning `Project`.**
+*/
+struct ProjectState : Component {
+    ProjectState(Store &store, const ProjectContext &ctx) : Component(store, "Project", ctx) {}
+
+    void FocusDefault() const override {
+        for (const auto *c : Children) c->FocusDefault();
+    }
+    // Overriding to not draw root submenu.
+    void DrawWindowsMenu() const override {
+        for (const auto *c : Children) c->DrawWindowsMenu();
+    }
+};
 
 struct StoreHistory;
 
@@ -22,12 +49,11 @@ struct Plottable {
 /**
 Holds the root `ProjectState` component.
 Owns and processes the action queue, store, project history, and other project-level things.
-
-todo project templated on (StoreType, AppComponentType, AppActionType).
-  holding a root `ProjectState` that is in turn holds an AppComponentType and ProjectCore
 */
 struct Project : ActionableProducer<Action::Any> {
-    Project();
+    using CreateApp = std::function<std::unique_ptr<AppType>(AppType::ArgsT)>;
+
+    Project(CreateApp &&);
     ~Project();
 
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
@@ -69,15 +95,15 @@ struct Project : ActionableProducer<Action::Any> {
         .FileDialog = FileDialog,
         .PrimitiveQ = PrimitiveQ,
 
-        .RegisterWindow = [this](ID id, bool dock = true) { return State.Core.Windows.Register(id, dock); },
-        .IsDock = [this](ID id) { return State.Core.Windows.IsDock(id); },
-        .IsWindow = [this](ID id) { return State.Core.Windows.IsWindow(id); },
-        .IsWindowVisible = [this](ID id) { return State.Core.Windows.IsVisible(id); },
-        .DrawMenuItem = [this](const Component &c) { State.Core.Windows.DrawMenuItem(c); },
+        .RegisterWindow = [this](ID id, bool dock = true) { return Core.Windows.Register(id, dock); },
+        .IsDock = [this](ID id) { return Core.Windows.IsDock(id); },
+        .IsWindow = [this](ID id) { return Core.Windows.IsWindow(id); },
+        .IsWindowVisible = [this](ID id) { return Core.Windows.IsVisible(id); },
+        .DrawMenuItem = [this](const Component &c) { Core.Windows.DrawMenuItem(c); },
         .ToggleDemoWindow = [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
 
         .GetProjectJson = [this](ProjectFormat format) { return GetProjectJson(format); },
-        .GetProjectStyle = [this]() -> const ProjectStyle & { return State.Core.Style.Project; },
+        .GetProjectStyle = [this]() -> const ProjectStyle & { return Core.Style.Project; },
 
         .RenderMetrics = [this]() { RenderMetrics(); },
         .RenderStorePathChangeFrequency = [this]() { RenderStorePathChangeFrequency(); },
@@ -85,9 +111,11 @@ struct Project : ActionableProducer<Action::Any> {
 
     mutable Store _S;
     const Store &S{_S};
-    ProjectState State{_S, CreateProducer<ProjectState::ProducedActionType>(), ProjectContext};
+    ProjectState State{_S, ProjectContext};
+    ProjectCore Core{{{&State, "Core"}, CreateProducer<ProjectCore::ProducedActionType>()}};
 
 private:
+    std::unique_ptr<AppType> App;
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
 
@@ -128,6 +156,4 @@ private:
     // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
     void MarkAllChanged(Patch &&) const;
     void ClearChanged() const;
-
-    Patch CreatePatch();
 };

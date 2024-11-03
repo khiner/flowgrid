@@ -233,3 +233,9 @@ void ImGuiSettings::UpdateIfChanged(ImGuiContext *ctx) const {
     ctx->SettingsLoaded = true;
     ctx->SettingsDirty = false;
 }
+
+void ImGuiSettings::Set(ImGuiContext *ctx) {
+    Nodes.Set(ctx->DockContext.NodesSettings);
+    Windows.Set(ctx->SettingsWindows);
+    Tables.Set(ctx->SettingsTables);
+}

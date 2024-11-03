@@ -5,7 +5,7 @@
 
 #include "Core/UI/JsonTree.h"
 
-#include "Project/ProjectContext.h"
+#include "ProjectContext.h"
 
 using Style = flowgrid::Style;
 

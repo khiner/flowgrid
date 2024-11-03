@@ -8,7 +8,7 @@
 #include "Core/Style/Style.h"
 #include "Core/Windows.h"
 
-#include "Project/ProjectSettings.h"
+#include "ProjectSettings.h"
 
 namespace Action {
 namespace ProjectCore {

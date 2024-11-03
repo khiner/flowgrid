@@ -6,9 +6,11 @@
 #include "Core/UI/UIContext.h"
 #include "Project/Project.h"
 
+#include "FlowGrid.h"
+
 int main() {
-    Project project{};
-    auto &state = project.State.Core;
+    Project project{[](auto app_args) { return std::make_unique<FlowGrid>(std::move(app_args)); }};
+    auto &state = project.Core;
 
     auto predraw = [&state]() {
         // Check if new UI settings need to be applied.

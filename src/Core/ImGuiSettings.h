@@ -84,10 +84,12 @@ struct ImGuiSettings : Component {
 
     inline static bool IsChanged{false};
 
-    // `Update(ctx)` is basically `imgui_context.settings = this`.
+    // Basically `imgui_context.settings = this`.
     // Behaves just like `ImGui::LoadIniSettingsFromMemory`, but using the structured `...Settings` members
     // in this struct instead of the serialized `.ini` text format.
     void UpdateIfChanged(ImGuiContext *) const;
+    // Basically `this = imgui_context.settings`.
+    void Set(ImGuiContext *);
 
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);

@@ -112,7 +112,6 @@ private:
     void SetHistoryIndex(u32) const;
 
     void OpenRecentProjectMenuItem() const;
-    void WindowMenuItem() const;
 
     void RenderMetrics() const;
     void RenderStorePathChangeFrequency() const;

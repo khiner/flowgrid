@@ -19,6 +19,8 @@ struct ProjectState : Component,
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
+    void WindowMenuItem() const;
+
     ProducerProp(ProjectCore, Core);
     ProducerProp(FlowGrid, FlowGrid);
 

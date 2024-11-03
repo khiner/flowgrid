@@ -556,43 +556,6 @@ void Project::OpenRecentProjectMenuItem() const {
     }
 }
 
-void Project::WindowMenuItem() const {
-    const auto &item = [this](const Component &c) {
-        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, State.Core.Windows.IsVisible(c.Id))) {
-            Q(Action::Windows::ToggleVisible{c.Id});
-        }
-    };
-    if (BeginMenu("Windows")) {
-        if (BeginMenu("Audio")) {
-            item(State.FlowGrid.Audio.Graph);
-            item(State.FlowGrid.Audio.Graph.Connections);
-            item(State.FlowGrid.Audio.Style);
-            if (BeginMenu("Faust")) {
-                item(State.FlowGrid.Audio.Faust.FaustDsps);
-                item(State.FlowGrid.Audio.Faust.Graphs);
-                item(State.FlowGrid.Audio.Faust.Paramss);
-                item(State.FlowGrid.Audio.Faust.Logs);
-                EndMenu();
-            }
-            EndMenu();
-        }
-        if (BeginMenu("Debug")) {
-            item(State.Core.Debug);
-            item(State.Core.Debug.StatePreview);
-            item(State.Core.Debug.StorePathUpdateFrequency);
-            item(State.Core.Debug.DebugLog);
-            item(State.Core.Debug.StackTool);
-            item(State.Core.Debug.Metrics);
-            EndMenu();
-        }
-        item(State.Core.Style);
-        item(State.Core.Demo);
-        item(State.Core.Info);
-        item(State.Core.Settings);
-        EndMenu();
-    }
-}
-
 #include "implot.h"
 
 #include "Core/UI/HelpMarker.h"
@@ -674,7 +637,7 @@ void Project::Draw() const {
                     RedoMenuItem,
                 }
             ),
-            [this] { return WindowMenuItem(); },
+            [this] { State.WindowMenuItem(); },
         },
         true
     };

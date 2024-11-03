@@ -55,6 +55,45 @@ bool ProjectState::CanApply(const ActionType &action) const {
 
 using namespace ImGui;
 
+void ProjectState::WindowMenuItem() const {
+    static const auto item = [](const Windows &w, const Component &c) {
+        if (MenuItem(c.ImGuiLabel.c_str(), nullptr, w.IsVisible(c.Id))) {
+            w.Q(Action::Windows::ToggleVisible{c.Id});
+        }
+    };
+
+    const auto &w = Core.Windows;
+    if (BeginMenu("Windows")) {
+        if (BeginMenu("Audio")) {
+            item(w, FlowGrid.Audio.Graph);
+            item(w, FlowGrid.Audio.Graph.Connections);
+            item(w, FlowGrid.Audio.Style);
+            if (BeginMenu("Faust")) {
+                item(w, FlowGrid.Audio.Faust.FaustDsps);
+                item(w, FlowGrid.Audio.Faust.Graphs);
+                item(w, FlowGrid.Audio.Faust.Paramss);
+                item(w, FlowGrid.Audio.Faust.Logs);
+                EndMenu();
+            }
+            EndMenu();
+        }
+        if (BeginMenu("Debug")) {
+            item(w, Core.Debug);
+            item(w, Core.Debug.StatePreview);
+            item(w, Core.Debug.StorePathUpdateFrequency);
+            item(w, Core.Debug.DebugLog);
+            item(w, Core.Debug.StackTool);
+            item(w, Core.Debug.Metrics);
+            EndMenu();
+        }
+        item(w, Core.Style);
+        item(w, Core.Demo);
+        item(w, Core.Info);
+        item(w, Core.Settings);
+        EndMenu();
+    }
+}
+
 void ProjectState::Render() const {
     // Good initial layout setup example in this issue: https://github.com/ocornut/imgui/issues/3548
     auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);

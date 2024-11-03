@@ -17,3 +17,9 @@ bool FlowGrid::CanApply(const ActionType &action) const {
         action
     );
 }
+
+void FlowGrid::FocusDefault() const {
+    Audio.Graph.Focus();
+    Audio.Faust.Graphs.Focus();
+    Audio.Faust.Paramss.Focus();
+}

@@ -19,6 +19,8 @@ struct ProjectState : Component,
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
+    void FocusDefault() const override;
+
     // Overriding to not draw root submenu.
     void DrawWindowsMenu() const override {
         for (const auto *c : Children) c->DrawWindowsMenu();

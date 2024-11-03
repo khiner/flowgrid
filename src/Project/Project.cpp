@@ -15,8 +15,6 @@
 
 #include "Preferences.h"
 
-using namespace flowgrid;
-
 using std::ranges::to, std::views::join, std::views::keys, std::views::transform;
 
 // Project constants:
@@ -671,7 +669,7 @@ void ShowActions(const SavedActionMoments &actions) {
             auto data = json(action)[1];
             if (!data.is_null()) {
                 SetNextItemOpen(true);
-                JsonTree("Data", std::move(data));
+                flowgrid::JsonTree("Data", std::move(data));
             }
             TreePop();
         }

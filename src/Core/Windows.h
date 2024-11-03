@@ -19,7 +19,7 @@ struct Windows : ActionProducerComponent<Action::Windows::Any> {
 
     void DrawMenuItem(const Component &) const;
 
-    Prop(Set<ID>, VisibleComponents);
+    Prop(Set<ID>, VisibleComponentIds);
 
 protected:
     void Render() const override;

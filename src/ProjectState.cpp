@@ -1,10 +1,8 @@
 #include "ProjectState.h"
 
-#include "imgui_internal.h"
+#include "imgui.h"
 
 #include "Project/ProjectContext.h"
-
-using namespace flowgrid;
 
 ProjectState::ProjectState(Store &store, ActionableProducer::Enqueue q, const ::ProjectContext &project_context)
     : Component(store, "ProjectState", project_context), ActionableProducer(std::move(q)) {}
@@ -31,28 +29,19 @@ bool ProjectState::CanApply(const ActionType &action) const {
     );
 }
 
-using namespace ImGui;
+void ProjectState::FocusDefault() const {
+    for (const auto *child : Children) child->FocusDefault();
+}
 
 void ProjectState::Render() const {
-    auto const frame_count = GetCurrentContext()->FrameCount;
+    auto dockspace_id = ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+    if (FrameCount() == 1) Dock(&dockspace_id);
 
-    auto dockspace_id = DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
-    if (frame_count == 1) Dock(&dockspace_id);
-
-    // Draw non-window children.
+    const auto &windows = Core.Windows;
     for (const auto *child : Core.Children) {
-        if (!ProjectContext.IsWindow(child->Id) && child != &Core.Windows) child->Draw();
+        if (!windows.IsWindow(child->Id) && child != &windows) child->Draw();
     }
+    windows.Draw();
 
-    Core.Windows.Draw();
-
-    if (frame_count == 1) {
-        // Default focused windows.
-        Core.Style.Focus();
-        Core.Debug.Focus(); // not visible by default anymore
-
-        FlowGrid.Audio.Graph.Focus();
-        FlowGrid.Audio.Faust.Graphs.Focus();
-        FlowGrid.Audio.Faust.Paramss.Focus();
-    }
+    if (FrameCount() == 1) FocusDefault(); // todo default focus no longer working
 }

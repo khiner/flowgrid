@@ -12,5 +12,7 @@ struct FlowGrid : ActionableComponent<Action::FlowGrid::Any, Audio::ProducedActi
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
+    void FocusDefault() const override;
+
     ProducerProp(Audio, Audio);
 };

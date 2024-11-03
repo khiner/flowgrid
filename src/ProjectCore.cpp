@@ -28,7 +28,7 @@ void ProjectCore::Apply(const ActionType &action) const {
         Match{
             [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
             [this](const Action::Windows::ToggleDebug &a) {
-                const bool toggling_on = !Windows.VisibleComponents.Contains(a.component_id);
+                const bool toggling_on = !Windows.VisibleComponentIds.Contains(a.component_id);
                 Windows.ToggleVisible(a.component_id);
                 if (!toggling_on) return;
 
@@ -88,25 +88,12 @@ bool ProjectCore::CanApply(const ActionType &action) const {
     );
 }
 
-void ProjectCore::Debug::StorePathUpdateFrequency::Render() const {
-    ProjectContext.RenderStorePathChangeFrequency();
+void ProjectCore::FocusDefault() const {
+    Style.Focus();
+    Debug.Focus(); // not visible by default anymore
 }
 
 using namespace ImGui;
-
-// todo only overriding to draw self in addition to children - refactor to avoid this
-void ProjectCore::Debug::DrawWindowsMenu() const {
-    const auto &item = ProjectContext.DrawMenuItem;
-    if (BeginMenu(Name.c_str())) {
-        item(*this);
-        item(StatePreview);
-        item(StorePathUpdateFrequency);
-        item(DebugLog);
-        item(StackTool);
-        item(Metrics);
-        EndMenu();
-    }
-}
 
 void ProjectCore::Dock(ID *node_id) const {
     auto debug_node_id = DockBuilderSplitNode(*node_id, ImGuiDir_Down, 0.3f, nullptr, node_id);
@@ -127,6 +114,31 @@ void ProjectCore::Dock(ID *node_id) const {
     Debug.Metrics.Dock(&metrics_node_id);
 }
 
+void ProjectCore::RenderDebug() const {
+    const bool auto_select = Debug.AutoSelect;
+    if (auto_select) BeginDisabled();
+    RenderValueTree(Debug::LabelModeType(int(Debug.LabelMode)) == Debug::LabelModeType::Annotated, auto_select);
+    if (auto_select) EndDisabled();
+}
+
+void ProjectCore::Debug::StorePathUpdateFrequency::Render() const {
+    ProjectContext.RenderStorePathChangeFrequency();
+}
+
+// todo only overriding to draw self in addition to children - refactor to avoid this
+void ProjectCore::Debug::DrawWindowsMenu() const {
+    const auto &item = ProjectContext.DrawMenuItem;
+    if (BeginMenu(Name.c_str())) {
+        item(*this);
+        item(StatePreview);
+        item(StorePathUpdateFrequency);
+        item(DebugLog);
+        item(StackTool);
+        item(Metrics);
+        EndMenu();
+    }
+}
+
 void ProjectCore::Debug::DebugLog::Render() const {
     ShowDebugLogWindow();
 }
@@ -141,13 +153,6 @@ void ProjectCore::Debug::OnComponentChanged() {
     if (AutoSelect.IsChanged()) {
         WindowFlags = AutoSelect ? ImGuiWindowFlags_NoScrollWithMouse : ImGuiWindowFlags_None;
     }
-}
-
-void ProjectCore::RenderDebug() const {
-    const bool auto_select = Debug.AutoSelect;
-    if (auto_select) BeginDisabled();
-    RenderValueTree(Debug::LabelModeType(int(Debug.LabelMode)) == Debug::LabelModeType::Annotated, auto_select);
-    if (auto_select) EndDisabled();
 }
 
 void ProjectCore::Debug::StatePreview::Render() const {

@@ -67,6 +67,8 @@ Component::~Component() {
     ChangeListenersById.erase(Id);
 }
 
+int Component::FrameCount() { return ImGui::GetFrameCount(); }
+
 bool Component::IsChanged(bool include_descendents) const noexcept {
     return ChangedIds.contains(Id) || (include_descendents && IsDescendentChanged());
 }
@@ -168,6 +170,7 @@ ImGuiWindow *Component::FindWindow() const {
 }
 ImGuiWindow *Component::FindDockWindow() const {
     if (!GetCurrentContext()) return nullptr;
+
     auto *window = FindWindowByName(ImGuiLabel.c_str());
     return window && window->DockId ? window : (Parent ? Parent->FindDockWindow() : nullptr);
 }

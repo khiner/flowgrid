@@ -58,6 +58,8 @@ struct Component {
     using UniquePaths = std::unordered_set<StorePath, PathHash>;
     using PathsMoment = std::pair<TimePoint, UniquePaths>;
 
+    static int FrameCount(); // Signed int because that's what ImGui uses.
+
     struct ChangeListener {
         // Called when at least one of the listened components has changed.
         // Changed component(s) are not passed to the callback, but it's called while the components are still marked as changed,
@@ -148,21 +150,21 @@ struct Component {
     virtual void RenderDebug() const {}
     virtual void DrawWindowsMenu() const; // By default, draws menu item if window, otherwise iterates over children with windows.
     virtual void Dock(ID *node_id) const; // By default, docks self if dock, otherwise docks children.
+    virtual void FocusDefault() const {} // By default, focuses no children. Override to focus specific children.
+
+    void RegisterWindow(bool dock = true) const;
+    bool IsDock() const;
+    bool IsWindow() const;
+    bool HasWindows() const;
+    ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
+    ImGuiWindow *FindWindow() const;
+    bool Focus() const; // If this is a window, focus it and return true.
 
     // Returns true if this component has changed directly (must me a leaf),
     // or if any of its descendent components have changed, if `include_descendents` is true.
     bool IsChanged(bool include_descendents = false) const noexcept;
     bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
     bool HasAncestorContainer() const;
-
-    void RegisterWindow(bool dock = true) const;
-    bool IsDock() const;
-    bool IsWindow() const;
-    bool HasWindows() const;
-    ImGuiWindow *FindWindow() const;
-    ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
-
-    bool Focus() const;
 
     // Override to return additional details to append to label in contexts with lots of horizontal room.
     virtual std::string GetLabelDetailSuffix() const { return ""; }

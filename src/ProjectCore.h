@@ -27,6 +27,7 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
     bool CanApply(const ActionType &) const override;
 
     void Dock(ID *) const override;
+    void FocusDefault() const override;
 
     struct Debug : DebugComponent, Component::ChangeListener {
         Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)

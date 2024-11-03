@@ -10,16 +10,17 @@
 using Style = flowgrid::Style;
 
 ProjectCore::ProjectCore(ArgsT &&args) : ActionableComponent(std::move(args)) {
+    Style.RegisterWindow();
+    Demo.RegisterWindow();
+    Info.RegisterWindow();
     Settings.RegisterWindow();
+
     Debug.RegisterWindow();
     Debug.StatePreview.RegisterWindow();
     Debug.StorePathUpdateFrequency.RegisterWindow();
     Debug.DebugLog.RegisterWindow();
     Debug.StackTool.RegisterWindow();
     Debug.Metrics.RegisterWindow();
-    Style.RegisterWindow();
-    Demo.RegisterWindow();
-    Info.RegisterWindow();
 }
 
 void ProjectCore::Apply(const ActionType &action) const {
@@ -35,7 +36,7 @@ void ProjectCore::Apply(const ActionType &action) const {
                 if (auto *window = debug_component->FindDockWindow()) {
                     auto docknode_id = window->DockId;
                     auto debug_node_id = ImGui::DockBuilderSplitNode(docknode_id, ImGuiDir_Right, debug_component->SplitRatio, nullptr, &docknode_id);
-                    debug_component->Dock(debug_node_id);
+                    debug_component->Dock(&debug_node_id);
                 }
             },
             [this](const Action::Style::SetImGuiColorPreset &a) {
@@ -105,6 +106,25 @@ void ProjectCore::Debug::DrawWindowsMenu() const {
         item(Metrics);
         EndMenu();
     }
+}
+
+void ProjectCore::Dock(ID *node_id) const {
+    auto debug_node_id = DockBuilderSplitNode(*node_id, ImGuiDir_Down, 0.3f, nullptr, node_id);
+    auto metrics_node_id = DockBuilderSplitNode(debug_node_id, ImGuiDir_Right, 0.3f, nullptr, &debug_node_id);
+    auto utilities_node_id = DockBuilderSplitNode(debug_node_id, ImGuiDir_Left, 0.3f, nullptr, &debug_node_id);
+    auto info_node_id = DockBuilderSplitNode(*node_id, ImGuiDir_Right, 0.2f, nullptr, node_id);
+    auto settings_node_id = DockBuilderSplitNode(info_node_id, ImGuiDir_Down, 0.25f, nullptr, &info_node_id);
+
+    Style.Dock(&utilities_node_id);
+    Demo.Dock(&utilities_node_id);
+    Info.Dock(&info_node_id);
+    Settings.Dock(&settings_node_id);
+    Debug.Dock(&debug_node_id);
+    Debug.StatePreview.Dock(&debug_node_id);
+    Debug.StorePathUpdateFrequency.Dock(&debug_node_id);
+    Debug.DebugLog.Dock(&debug_node_id);
+    Debug.StackTool.Dock(&debug_node_id);
+    Debug.Metrics.Dock(&metrics_node_id);
 }
 
 void ProjectCore::Debug::DebugLog::Render() const {

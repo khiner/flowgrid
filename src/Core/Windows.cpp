@@ -2,9 +2,12 @@
 
 #include "imgui_internal.h"
 
-void Windows::RegisterWindow(ID id) {
+bool Windows::IsDock(ID id) const { return DockComponentIds.contains(id); }
+
+void Windows::Register(ID id, bool dock) {
     WindowComponentIds.insert(id);
     VisibleComponents.Insert(id);
+    if (dock) DockComponentIds.insert(id);
 }
 bool Windows::IsWindow(ID id) const { return WindowComponentIds.contains(id); }
 bool Windows::IsVisible(ID id) const { return VisibleComponents.Contains(id); }

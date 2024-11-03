@@ -26,6 +26,8 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
+    void Dock(ID *) const override;
+
     struct Debug : DebugComponent, Component::ChangeListener {
         Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
             : DebugComponent(

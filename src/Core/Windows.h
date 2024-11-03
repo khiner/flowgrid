@@ -9,7 +9,10 @@
 struct Windows : ActionProducerComponent<Action::Windows::Any> {
     using ActionProducerComponent::ActionProducerComponent;
 
-    void RegisterWindow(ID);
+    void Register(ID, bool dock = true);
+
+    bool IsDock(ID) const;
+
     bool IsWindow(ID) const;
     bool IsVisible(ID) const;
     void ToggleVisible(ID) const;
@@ -22,5 +25,6 @@ protected:
     void Render() const override;
 
 private:
+    std::set<ID> DockComponentIds;
     std::set<ID> WindowComponentIds;
 };

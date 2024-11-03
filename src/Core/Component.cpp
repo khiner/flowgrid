@@ -89,7 +89,7 @@ json Component::ToJson() const {
     while (!to_visit.empty()) {
         const auto *current = to_visit.top();
         to_visit.pop();
-        if (current->ChildCount() == 0) {
+        if (current->Children.size() == 0) {
             auto leaf_json = current->ToJson();
             if (!leaf_json.is_null()) j[current->JsonPointer()] = std::move(leaf_json);
         } else {
@@ -155,7 +155,8 @@ void Component::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
 }
 
-void Component::RegisterWindow() const { ProjectContext.RegisterWindow(Id); }
+void Component::RegisterWindow(bool dock) const { ProjectContext.RegisterWindow(Id, dock); }
+bool Component::IsDock() const { return ProjectContext.IsDock(Id); }
 bool Component::IsWindow() const { return ProjectContext.IsWindow(Id); }
 bool Component::HasWindows() const {
     // todo memoize in ctor, since children don't change after construction.
@@ -171,8 +172,12 @@ ImGuiWindow *Component::FindDockWindow() const {
     return window && window->DockId ? window : (Parent ? Parent->FindDockWindow() : nullptr);
 }
 
-void Component::Dock(ID node_id) const {
-    DockBuilderDockWindow(ImGuiLabel.c_str(), node_id);
+void Component::Dock(ID *node_id) const {
+    if (IsDock()) {
+        DockBuilderDockWindow(ImGuiLabel.c_str(), *node_id);
+    } else {
+        for (const auto *c : Children) c->Dock(node_id);
+    }
 }
 
 bool Component::Focus() const {

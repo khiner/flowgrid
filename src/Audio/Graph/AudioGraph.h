@@ -107,7 +107,7 @@ struct AudioGraph : AudioGraphNode, ActionableProducer<Action::AudioGraph::Any>,
     };
 
     Prop(ComponentVector<AudioGraphNode>, Nodes, CreateAudioGraphNode);
-    Prop_(Connections, Connections, "Audio connections");
+    Prop_(Connections, Connections, "Audio matrix");
 
     // We initialize with a sample rate of zero, which is the default sample rate. (See `GetDefaultSampleRate` for details.)
     // All device nodes with a default format (for which the user has not explicitly selected the format

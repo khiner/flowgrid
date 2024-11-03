@@ -1,15 +1,15 @@
 #include "Audio.h"
 
-#include "imgui.h"
+#include "imgui_internal.h"
 
 Audio::Audio(ArgsT &&args) : ActionableComponent(std::move(args)) {
     Graph.RegisterWindow();
     Graph.Connections.RegisterWindow();
-    Style.RegisterWindow();
     Faust.FaustDsps.RegisterWindow();
     Faust.Logs.RegisterWindow();
     Faust.Graphs.RegisterWindow();
     Faust.Paramss.RegisterWindow();
+    Style.RegisterWindow();
 
     Faust.RegisterDspChangeListener(&Graph);
 }
@@ -63,6 +63,21 @@ void Audio::Render() const {
 }
 
 using namespace ImGui;
+
+void Audio::Dock(ID *node_id) const {
+    auto flowgrid_node_id = DockBuilderSplitNode(*node_id, ImGuiDir_Left, 0.25f, nullptr, node_id);
+    auto faust_tools_node_id = DockBuilderSplitNode(*node_id, ImGuiDir_Down, 0.5f, nullptr, node_id);
+    auto faust_graph_node_id = DockBuilderSplitNode(faust_tools_node_id, ImGuiDir_Left, 0.5f, nullptr, &faust_tools_node_id);
+    DockBuilderSplitNode(*node_id, ImGuiDir_Right, 0.5f, nullptr, node_id); // text editor
+
+    Graph.Dock(&flowgrid_node_id);
+    Graph.Connections.Dock(&flowgrid_node_id);
+    Style.Dock(&flowgrid_node_id);
+    Faust.FaustDsps.Dock(node_id);
+    Faust.Graphs.Dock(&faust_graph_node_id);
+    Faust.Paramss.Dock(&faust_tools_node_id);
+    Faust.Logs.Dock(&faust_tools_node_id);
+}
 
 void Audio::Style::Render() const {
     if (BeginTabBar("")) {

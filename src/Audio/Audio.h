@@ -13,6 +13,8 @@ struct Audio : ActionableComponent<Action::Audio::Any, Action::Combine<Action::A
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
+    void Dock(ID *) const override;
+
     struct Style : Component {
         using Component::Component;
 

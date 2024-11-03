@@ -69,7 +69,8 @@ struct Project : ActionableProducer<Action::Any> {
         .FileDialog = FileDialog,
         .PrimitiveQ = PrimitiveQ,
 
-        .RegisterWindow = [this](ID id) { return State.Core.Windows.RegisterWindow(id); },
+        .RegisterWindow = [this](ID id, bool dock = true) { return State.Core.Windows.Register(id, dock); },
+        .IsDock = [this](ID id) { return State.Core.Windows.IsDock(id); },
         .IsWindow = [this](ID id) { return State.Core.Windows.IsWindow(id); },
         .IsWindowVisible = [this](ID id) { return State.Core.Windows.IsVisible(id); },
         .DrawMenuItem = [this](const Component &c) { State.Core.Windows.DrawMenuItem(c); },

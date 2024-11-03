@@ -24,17 +24,15 @@ Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), I
 Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(Store &store, string_view name, const ::ProjectContext &project_context)
-    : _S(store), ProjectContext(project_context),
-      Parent(nullptr), PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
+Component::Component(Store &store, string_view name, const ProjectContext &ctx)
+    : _S(store), Ctx(ctx), Parent(nullptr),
+      PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IDs::ByPath.emplace(Path, Id);
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo info, ImGuiWindowFlags flags, Menu &&menu)
-    : _S(parent->_S),
-      ProjectContext(parent->ProjectContext),
-      Parent(parent),
+    : _S(parent->_S), Ctx(parent->Ctx), Parent(parent),
       PathSegment(path_segment),
       Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),
       Name(info.Name.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : info.Name),
@@ -157,9 +155,9 @@ void Component::UpdateGesturing() {
     if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
 }
 
-void Component::RegisterWindow(bool dock) const { ProjectContext.RegisterWindow(Id, dock); }
-bool Component::IsDock() const { return ProjectContext.IsDock(Id); }
-bool Component::IsWindow() const { return ProjectContext.IsWindow(Id); }
+void Component::RegisterWindow(bool dock) const { Ctx.RegisterWindow(Id, dock); }
+bool Component::IsDock() const { return Ctx.IsDock(Id); }
+bool Component::IsWindow() const { return Ctx.IsWindow(Id); }
 bool Component::HasWindows() const {
     // todo memoize in ctor, since children don't change after construction.
     return IsWindow() || any_of(Children, [](const auto *c) { return c->HasWindows(); });
@@ -257,7 +255,7 @@ void Component::RenderValueTree(bool annotate, bool auto_select) const {
 }
 
 void Component::DrawWindowsMenu() const {
-    if (IsWindow()) return ProjectContext.DrawMenuItem(*this);
+    if (IsWindow()) return Ctx.DrawMenuItem(*this);
 
     // todo memoize in ctor, since children don't change after construction.
     auto windows = Children | filter([](const auto *c) { return c->HasWindows(); });
@@ -279,10 +277,10 @@ void Component::FlashUpdateRecencyBackground(std::optional<StorePath> relative_p
     }
 }
 
-const ProjectStyle &Component::GetProjectStyle() const { return ProjectContext.GetProjectStyle(); }
+const ProjectStyle &Component::GetProjectStyle() const { return Ctx.GetProjectStyle(); }
 
 void Component::ToggleDebugMenuItem() const {
-    if (MenuItem(ImGuiLabel.c_str(), nullptr, ProjectContext.IsWindowVisible(Id))) {
-        ProjectContext.ToggleDemoWindow(Id);
+    if (MenuItem(ImGuiLabel.c_str(), nullptr, Ctx.IsWindowVisible(Id))) {
+        Ctx.ToggleDemoWindow(Id);
     }
 }

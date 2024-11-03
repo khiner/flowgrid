@@ -208,7 +208,7 @@ struct Component {
     // - Refers to the same store throughout each tick (won't switch out from under you during a single action pass).
     const Store &S{_S};
 
-    const ProjectContext &ProjectContext;
+    const ProjectContext &Ctx;
     Component *Parent; // Only null for the root component.
     std::vector<Component *> Children{};
     const std::string PathSegment;

@@ -122,12 +122,12 @@ void ProjectCore::RenderDebug() const {
 }
 
 void ProjectCore::Debug::StorePathUpdateFrequency::Render() const {
-    ProjectContext.RenderStorePathChangeFrequency();
+    Ctx.RenderStorePathChangeFrequency();
 }
 
 // todo only overriding to draw self in addition to children - refactor to avoid this
 void ProjectCore::Debug::DrawWindowsMenu() const {
-    const auto &item = ProjectContext.DrawMenuItem;
+    const auto &item = Ctx.DrawMenuItem;
     if (BeginMenu(Name.c_str())) {
         item(*this);
         item(StatePreview);
@@ -161,7 +161,7 @@ void ProjectCore::Debug::StatePreview::Render() const {
 
     Separator();
 
-    json project_json = ProjectContext.GetProjectJson(ProjectFormat(int(Format)));
+    json project_json = Ctx.GetProjectJson(ProjectFormat(int(Format)));
     if (Raw) {
         TextUnformatted(project_json.dump(4));
     } else {
@@ -175,5 +175,5 @@ void ProjectCore::Debug::Metrics::Render() const {
 }
 
 void ProjectCore::Debug::Metrics::ProjectMetrics::Render() const {
-    ProjectContext.RenderMetrics();
+    Ctx.RenderMetrics();
 }

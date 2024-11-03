@@ -68,7 +68,7 @@ void FaustGraphs::Apply(const ActionType &action) const {
         Match{
             // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.
             [this](const Action::Faust::Graph::ShowSaveSvgDialog &) {
-                ProjectContext.FileDialog.Set({
+                Ctx.FileDialog.Set({
                     .OwnerId = Id,
                     .Title = Action::Faust::Graph::ShowSaveSvgDialog::GetMenuLabel(),
                     .DefaultFileName = "faust_graph",
@@ -303,7 +303,7 @@ void FaustGraphs::Render() const {
     if (Empty()) return TextUnformatted("No Faust DSPs created yet.");
 
     static std::string PrevSelectedPath = "";
-    auto &file_dialog = ProjectContext.FileDialog;
+    auto &file_dialog = Ctx.FileDialog;
     if (PrevSelectedPath != file_dialog.SelectedFilePath && file_dialog.Data.OwnerId == Id && file_dialog.Data.SaveMode) {
         const fs::path selected_path = file_dialog.SelectedFilePath;
         PrevSelectedPath = file_dialog.SelectedFilePath = "";

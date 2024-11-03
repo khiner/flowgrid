@@ -834,7 +834,7 @@ void AudioGraph::Connections::Render() const {
 
             const auto cell_interaction_flags = flowgrid::InvisibleButton({cell_size, cell_size}, "Cell");
             if (cell_interaction_flags & InteractionFlags_Clicked) {
-                ProjectContext.PrimitiveQ(Action::AdjacencyList::ToggleConnection{Id, out_node->Id, in_node->Id});
+                Ctx.PrimitiveQ(Action::AdjacencyList::ToggleConnection{Id, out_node->Id, in_node->Id});
             }
 
             const bool is_connected = IsConnected(out_node->Id, in_node->Id);

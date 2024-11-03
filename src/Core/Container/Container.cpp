@@ -121,11 +121,11 @@ template struct Set<u32>;
 
 #include "Navigable.h"
 
-template<typename T> void Navigable<T>::IssueClear() const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::Clear{Id}); }
-template<typename T> void Navigable<T>::IssuePush(T value) const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::Push{Id, std::move(value)}); }
-template<typename T> void Navigable<T>::IssueMoveTo(u32 index) const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, index}); }
-template<typename T> void Navigable<T>::IssueStepForward() const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) + 1}); }
-template<typename T> void Navigable<T>::IssueStepBackward() const { ProjectContext.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) - 1}); }
+template<typename T> void Navigable<T>::IssueClear() const { Ctx.PrimitiveQ(typename Action::Navigable<T>::Clear{Id}); }
+template<typename T> void Navigable<T>::IssuePush(T value) const { Ctx.PrimitiveQ(typename Action::Navigable<T>::Push{Id, std::move(value)}); }
+template<typename T> void Navigable<T>::IssueMoveTo(u32 index) const { Ctx.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, index}); }
+template<typename T> void Navigable<T>::IssueStepForward() const { Ctx.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) + 1}); }
+template<typename T> void Navigable<T>::IssueStepBackward() const { Ctx.PrimitiveQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) - 1}); }
 
 // Explicit instantiations.
 template struct Navigable<u32>;
@@ -220,7 +220,7 @@ void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 xy = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, X.Min, X.Max, X.Format, flags);
     Component::UpdateGesturing();
-    if (edited) ProjectContext.PrimitiveQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
+    if (edited) Ctx.PrimitiveQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
     HelpMarker();
 }
 
@@ -235,7 +235,7 @@ Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, fl
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
     bool linked = Linked;
-    if (Checkbox(Linked.Name.c_str(), &linked)) ProjectContext.PrimitiveQ(Action::Vec2::ToggleLinked{Id});
+    if (Checkbox(Linked.Name.c_str(), &linked)) Ctx.PrimitiveQ(Action::Vec2::ToggleLinked{Id});
     PopID();
 
     SameLine();
@@ -245,9 +245,9 @@ void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     Component::UpdateGesturing();
     if (edited) {
         if (Linked) {
-            ProjectContext.PrimitiveQ(Action::Vec2::SetAll{Id, xy.x != X ? xy.x : xy.y});
+            Ctx.PrimitiveQ(Action::Vec2::SetAll{Id, xy.x != X ? xy.x : xy.y});
         } else {
-            ProjectContext.PrimitiveQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
+            Ctx.PrimitiveQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
         }
     }
     HelpMarker();

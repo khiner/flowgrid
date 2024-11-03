@@ -13,7 +13,7 @@ struct ProjectState : Component,
                       ActionableProducer<
                           Action::Combine<::ProjectCore::ActionType, ::FlowGrid::ActionType>,
                           Action::Combine<::ProjectCore::ProducedActionType, ::FlowGrid::ProducedActionType>> {
-    ProjectState(Store &, ActionProducer::Enqueue, const ::ProjectContext &);
+    ProjectState(Store &, ActionProducer::Enqueue, const ProjectContext &);
     ~ProjectState();
 
     void Apply(const ActionType &) const override;

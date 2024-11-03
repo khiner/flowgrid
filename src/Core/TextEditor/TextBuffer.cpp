@@ -228,7 +228,7 @@ void TextBuffer::Apply(const ActionType &action) const {
             },
             // Non-buffer actions
             [this](const ShowOpenDialog &) {
-                ProjectContext.FileDialog.Set({
+                Ctx.FileDialog.Set({
                     .OwnerId = Id,
                     .Title = "Open file",
                     .Filters = ".*", // No filter for opens. Go nuts :)
@@ -238,7 +238,7 @@ void TextBuffer::Apply(const ActionType &action) const {
             },
             [this](const ShowSaveDialog &) {
                 const std::string current_file_ext = fs::path(LastOpenedFilePath).extension();
-                ProjectContext.FileDialog.Set({
+                Ctx.FileDialog.Set({
                     .OwnerId = Id,
                     .Title = std::format("Save {} file", State->Syntax->GetLanguageName()),
                     .Filters = current_file_ext,
@@ -350,7 +350,7 @@ void TextBuffer::SetFilePath(const fs::path &file_path) const {
     const std::string extension = file_path.extension();
     State->Syntax->SetLanguage(
         !extension.empty() && Languages.ByFileExtension.contains(extension) ? Languages.ByFileExtension.at(extension) : LanguageID::None,
-        ProjectContext.Preferences
+        Ctx.Preferences
     );
 }
 
@@ -639,7 +639,7 @@ void TextBuffer::Refresh() {
 
 void TextBuffer::Render() const {
     static std::string PrevSelectedPath = "";
-    auto &file_dialog = ProjectContext.FileDialog;
+    auto &file_dialog = Ctx.FileDialog;
     if (file_dialog.Data.OwnerId == Id && PrevSelectedPath != file_dialog.SelectedFilePath) {
         const fs::path selected_path = file_dialog.SelectedFilePath;
         PrevSelectedPath = file_dialog.SelectedFilePath = "";

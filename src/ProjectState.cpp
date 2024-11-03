@@ -4,8 +4,8 @@
 
 #include "Project/ProjectContext.h"
 
-ProjectState::ProjectState(Store &store, ActionableProducer::Enqueue q, const ::ProjectContext &project_context)
-    : Component(store, "ProjectState", project_context), ActionableProducer(std::move(q)) {}
+ProjectState::ProjectState(Store &store, ActionableProducer::Enqueue q, const ProjectContext &ctx)
+    : Component(store, "ProjectState", ctx), ActionableProducer(std::move(q)) {}
 
 ProjectState::~ProjectState() = default;
 

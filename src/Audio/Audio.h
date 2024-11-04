@@ -2,11 +2,10 @@
 
 #include "AudioAction.h"
 #include "Core/ActionableComponent.h"
-#include "Core/TextEditor/TextBufferAction.h"
 #include "Faust/Faust.h"
 #include "Graph/AudioGraph.h"
 
-struct Audio : ActionableComponent<Action::Audio::Any, Action::Combine<Action::Audio::Any, Action::TextBuffer::Any>> {
+struct Audio : ActionableComponent<Action::Audio::Any> {
     Audio(ArgsT &&);
     ~Audio();
 

@@ -14,7 +14,7 @@ enum class ProjectFormat {
 struct Preferences;
 struct ProjectStyle;
 struct FileDialog;
-struct PrimitiveActionQueuer;
+struct CoreActionProducer;
 
 struct Component;
 
@@ -26,7 +26,7 @@ It doesn't know about any specific `Component` or `Store` (but it may be templat
 struct ProjectContext {
     const Preferences &Preferences;
     const FileDialog &FileDialog;
-    const PrimitiveActionQueuer &PrimitiveQ;
+    const CoreActionProducer &CoreQ;
 
     const std::function<void(ID, bool dock)> RegisterWindow;
     const std::function<bool(ID)> IsDock;

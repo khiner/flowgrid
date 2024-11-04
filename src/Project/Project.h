@@ -4,8 +4,8 @@
 
 #include "Core/Action/Actions.h"
 #include "Core/ActionableComponent.h"
+#include "Core/CoreActionProducer.h"
 #include "Core/FileDialog/FileDialog.h"
-#include "Core/Primitive/PrimitiveActionQueuer.h"
 #include "Core/Store/Store.h"
 
 #include "Preferences.h"
@@ -18,8 +18,7 @@
 #include "Core/TextEditor/TextBufferAction.h"
 #include "FlowGridAction.h"
 using AppActionType = Action::FlowGrid::Any;
-using AppProducedActionType = Action::Combine<Action::Audio::Any, Action::TextBuffer::Any>;
-using AppType = ActionableComponent<AppActionType, AppProducedActionType>;
+using AppType = ActionableComponent<AppActionType>;
 
 /**
 `ProjectState` is the root component of a project, and it fully describes the project state.
@@ -88,12 +87,12 @@ struct Project : ActionableProducer<Action::Any> {
 
     mutable Preferences Preferences;
     FileDialog FileDialog{FileDialog::EnqueueFn(CreateProducer<FileDialog::ProducedActionType>())};
-    PrimitiveActionQueuer PrimitiveQ{CreateProducer<PrimitiveActionQueuer::ActionType>()};
+    CoreActionProducer CoreQ{CreateProducer<Action::Core::Any>()};
 
     ProjectContext ProjectContext{
         .Preferences = Preferences,
         .FileDialog = FileDialog,
-        .PrimitiveQ = PrimitiveQ,
+        .CoreQ = CoreQ,
 
         .RegisterWindow = [this](ID id, bool dock = true) { return Core.Windows.Register(id, dock); },
         .IsDock = [this](ID id) { return Core.Windows.IsDock(id); },

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Action/ActionMenuItem.h"
-#include "Core/ActionableComponent.h"
+#include "Core/Action/Actionable.h"
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
@@ -13,12 +13,12 @@
 
 struct TextBufferState;
 
-struct TextBuffer : ActionableComponent<Action::TextBuffer::Any> {
+struct TextBuffer : Component, Actionable<Action::TextBuffer::Any> {
     using Line = TextBufferLine;
     using Lines = TextBufferLines;
     using Cursor = LineCharRange;
 
-    TextBuffer(ArgsT &&, const fs::path &);
+    TextBuffer(ComponentArgs &&, const fs::path &);
     ~TextBuffer();
 
     void Apply(const ActionType &) const override;
@@ -69,9 +69,11 @@ private:
 
     std::unique_ptr<TextBufferState> State; // PIMPL for rendering state.
 
+    ActionProducer<ActionType>::EnqueueFn Q;
+
     ActionMenuItem<ActionType>
-        ShowOpenDialogMenuItem{*this, Action::TextBuffer::ShowOpenDialog{Id}},
-        ShowSaveDialogMenuItem{*this, Action::TextBuffer::ShowSaveDialog{Id}};
+        ShowOpenDialogMenuItem{*this, Q, Action::TextBuffer::ShowOpenDialog{Id}},
+        ShowSaveDialogMenuItem{*this, Q, Action::TextBuffer::ShowSaveDialog{Id}};
 
     const Menu FileMenu{
         "File",

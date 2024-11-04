@@ -2,8 +2,8 @@
 
 #include "imgui.h"
 
-TextEditor::TextEditor(ArgsT &&args, const fs::path &file_path)
-    : ActionProducerComponent(std::move(args)), _LastOpenedFilePath(file_path) {
+TextEditor::TextEditor(ComponentArgs &&args, const fs::path &file_path)
+    : Component(std::move(args)), _LastOpenedFilePath(file_path) {
     WindowFlags |= ImGuiWindowFlags_MenuBar;
 }
 

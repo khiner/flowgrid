@@ -95,7 +95,7 @@ struct FaustDSPContainer {
     virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
 };
 
-using FaustDspProducedActionType = Action::Append<Action::Combine<Action::Faust::DSP::Any, Action::TextBuffer::Any>, typename Action::AudioGraph::CreateFaustNode>;
+using FaustDspProducedActionType = Action::Append<Action::Faust::DSP::Any, typename Action::AudioGraph::CreateFaustNode>;
 
 // `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
@@ -108,7 +108,7 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component
     inline static const std::string FaustDspFileExtension = ".dsp";
 
     FaustDSPContainer &Container;
-    ProducerProp(TextEditor, Editor, fs::path("./res") / "pitch_shifter.dsp");
+    Prop(TextEditor, Editor, fs::path("./res") / "pitch_shifter.dsp");
 
     Box Box{nullptr};
     dsp *Dsp{nullptr};
@@ -137,7 +137,7 @@ private:
 };
 
 struct Faust
-    : ActionProducerComponent<Action::Append<Action::Combine<Action::Faust::Any, TextEditor::ProducedActionType>, Action::AudioGraph::CreateFaustNode>>,
+    : ActionProducerComponent<Action::Append<Action::Faust::Any, Action::AudioGraph::CreateFaustNode>>,
       FaustDSPContainer {
     using ActionProducerComponent::ActionProducerComponent;
 

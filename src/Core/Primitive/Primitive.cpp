@@ -1,7 +1,8 @@
 #include "Primitive.h"
 
+#include "Core/CoreActionProducer.h"
 #include "Core/Store/Store.h"
-#include "PrimitiveActionQueuer.h"
+
 #include "Project/ProjectContext.h"
 
 template<typename T> bool Primitive<T>::Exists() const { return S.Count<T>(Id); }
@@ -19,10 +20,10 @@ template<typename T> void Primitive<T>::RenderValueTree(bool annotate, bool auto
     TreeNode(Name, false, std::format("{}", Value).c_str());
 }
 
-template<> void Primitive<u32>::IssueSet(const u32 &value) const { Ctx.PrimitiveQ(Action::Primitive::UInt::Set{Id, value}); };
-template<> void Primitive<s32>::IssueSet(const s32 &value) const { Ctx.PrimitiveQ(Action::Primitive::Int::Set{Id, value}); };
-template<> void Primitive<float>::IssueSet(const float &value) const { Ctx.PrimitiveQ(Action::Primitive::Float::Set{Id, value}); };
-template<> void Primitive<std::string>::IssueSet(const std::string &value) const { Ctx.PrimitiveQ(Action::Primitive::String::Set{Id, value}); };
+template<> void Primitive<u32>::IssueSet(const u32 &value) const { Ctx.CoreQ(Action::Primitive::UInt::Set{Id, value}); };
+template<> void Primitive<s32>::IssueSet(const s32 &value) const { Ctx.CoreQ(Action::Primitive::Int::Set{Id, value}); };
+template<> void Primitive<float>::IssueSet(const float &value) const { Ctx.CoreQ(Action::Primitive::Float::Set{Id, value}); };
+template<> void Primitive<std::string>::IssueSet(const std::string &value) const { Ctx.CoreQ(Action::Primitive::String::Set{Id, value}); };
 
 // Explicit instantiations.
 template struct Primitive<bool>;
@@ -40,7 +41,7 @@ template struct Primitive<std::string>;
 
 using namespace ImGui;
 
-void Bool::IssueToggle() const { Ctx.PrimitiveQ(Action::Primitive::Bool::Toggle{Id}); }
+void Bool::IssueToggle() const { Ctx.CoreQ(Action::Primitive::Bool::Toggle{Id}); }
 
 void Bool::Render(std::string_view label) const {
     if (bool value = Value; Checkbox(label.data(), &value)) IssueToggle();

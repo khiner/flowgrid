@@ -45,7 +45,7 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 
 Project::Project(CreateApp &&create_app)
     : ActionableProducer(EnqueueFn([this](auto &&a) { return Queue.enqueue(EnqueueToken, {std::move(a), Clock::now()}); })),
-      App(create_app({{&State, "App"}, CreateProducer<AppProducedActionType>()})),
+      App(create_app({{&State, "App"}, CreateProducer<AppActionType>()})),
       HistoryPtr(std::make_unique<StoreHistory>(S)), History(*HistoryPtr) {
     // Initialize the global canonical store with all values set during project initialization.
     _S.Commit();

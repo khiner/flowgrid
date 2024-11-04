@@ -8,8 +8,8 @@
 #include "ma_channel_converter_node/ma_channel_converter_node.h"
 #include "ma_data_passthrough_node/ma_data_passthrough_node.h"
 
+#include "Core/CoreActionProducer.h"
 #include "Core/Helper/String.h"
-#include "Core/Primitive/PrimitiveActionQueuer.h"
 #include "Core/Primitive/String.h"
 #include "Core/UI/HelpMarker.h"
 #include "Core/UI/InvisibleButton.h"
@@ -834,7 +834,7 @@ void AudioGraph::Connections::Render() const {
 
             const auto cell_interaction_flags = flowgrid::InvisibleButton({cell_size, cell_size}, "Cell");
             if (cell_interaction_flags & InteractionFlags_Clicked) {
-                Ctx.PrimitiveQ(Action::AdjacencyList::ToggleConnection{Id, out_node->Id, in_node->Id});
+                Ctx.CoreQ(Action::AdjacencyList::ToggleConnection{Id, out_node->Id, in_node->Id});
             }
 
             const bool is_connected = IsConnected(out_node->Id, in_node->Id);

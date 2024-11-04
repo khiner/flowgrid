@@ -1,11 +1,10 @@
 #pragma once
 
-#include "Core/ActionProducerComponent.h"
 #include "TextBuffer.h"
 
 // Will hold multiple text buffers.
-struct TextEditor : ActionProducerComponent<Action::TextBuffer::Any> {
-    TextEditor(ArgsT &&, const fs::path &);
+struct TextEditor : Component {
+    TextEditor(ComponentArgs &&, const fs::path &);
     ~TextEditor();
 
     void RenderDebug() const override;
@@ -14,7 +13,7 @@ struct TextEditor : ActionProducerComponent<Action::TextBuffer::Any> {
     std::string GetText() const;
 
     fs::path _LastOpenedFilePath;
-    ProducerProp(TextBuffer, Buffer, _LastOpenedFilePath);
+    Prop(TextBuffer, Buffer, _LastOpenedFilePath);
 
 private:
     void Render() const override;

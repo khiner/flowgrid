@@ -7,6 +7,7 @@
 #include "immer/flex_vector_transient.hpp"
 #include "immer/vector_transient.hpp"
 
+#include "Core/CoreActionProducer.h"
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
@@ -139,9 +140,12 @@ const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *byt
     return &line.front() + position.column;
 }
 
-TextBuffer::TextBuffer(ArgsT &&args, const fs::path &file_path)
-    : ActionableComponent(std::move(args)), _LastOpenedFilePath(file_path),
-      State(std::make_unique<TextBufferState>(this)) {
+TextBuffer::TextBuffer(ComponentArgs &&args, const fs::path &file_path)
+    : Component(std::move(args)), _LastOpenedFilePath(file_path),
+      State(std::make_unique<TextBufferState>(this)),
+      Q([this](auto &&action) {
+          return std::visit([this](auto &&a) { return Ctx.CoreQ(std::move(a)); }, std::move(action));
+      }) {
     SetFilePath(file_path);
     // if (Exists()) Refresh();
     Commit(TextBufferData{}.SetText(std::string(FileIO::read(file_path))));
@@ -674,7 +678,7 @@ void TextBuffer::Render() const {
         // We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
         const bool ignore_char_inputs = (io.KeyCtrl && !io.KeyAlt) || (io.ConfigMacOSXBehaviors && io.KeyCtrl);
         if (auto action = ProduceKeyboardAction(); action && CanApply(*action)) {
-            Q(*action);
+            Q(std::move(*action));
         } else if (!io.InputQueueCharacters.empty() && !ignore_char_inputs && !ReadOnly) {
             for (const auto ch : io.InputQueueCharacters) {
                 if (ch != 0 && (ch == '\n' || ch >= 32)) Q(Action::TextBuffer::EnterChar{.component_id = Id, .value = ch});
@@ -683,7 +687,7 @@ void TextBuffer::Render() const {
         }
     }
 
-    if (auto action = Render(b, is_focused)) Q(*action);
+    if (auto action = Render(b, is_focused)) Q(std::move(*action));
     if (font_changed) Fonts::Pop();
 
     EndChild();

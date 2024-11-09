@@ -11,10 +11,10 @@
 #include "Core/CoreActionProducer.h"
 #include "Core/Helper/String.h"
 #include "Core/Primitive/String.h"
+#include "Core/Project/ProjectContext.h"
 #include "Core/UI/HelpMarker.h"
 #include "Core/UI/InvisibleButton.h"
 #include "Core/UI/Styling.h"
-#include "Project/ProjectContext.h"
 
 #include "Audio/Device/AudioDevice.h"
 #include "Audio/Faust/FaustNode.h"

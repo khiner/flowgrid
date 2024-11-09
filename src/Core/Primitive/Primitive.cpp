@@ -1,9 +1,8 @@
 #include "Primitive.h"
 
 #include "Core/CoreActionProducer.h"
+#include "Core/Project/ProjectContext.h"
 #include "Core/Store/Store.h"
-
-#include "Project/ProjectContext.h"
 
 template<typename T> bool Primitive<T>::Exists() const { return S.Count<T>(Id); }
 template<typename T> T Primitive<T>::Get() const { return S.Get<T>(Id); }

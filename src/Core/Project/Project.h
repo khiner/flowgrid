@@ -2,23 +2,22 @@
 
 #include "concurrentqueue.h"
 
+#include "Core/Action/ActionMoment.h"
 #include "Core/ActionableComponent.h"
 #include "Core/CoreActionHandler.h"
 #include "Core/CoreActionProducer.h"
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Store/Store.h"
-
 #include "Preferences.h"
 #include "ProjectContext.h"
 #include "ProjectCore.h"
 
-#include "Core/Action/ActionMoment.h"
 #include "Core/CoreAction.h"
 #include "Core/FileDialog/FileDialogAction.h"
 #include "Core/Store/StoreAction.h"
 #include "Core/Style/StyleAction.h"
 #include "Core/WindowsAction.h"
-#include "Project/ProjectAction.h"
+#include "ProjectAction.h"
 
 // todo just need a little more finagling to finally be done w/ project/app decoupling...
 // This is the only remaining project knowledge of anything FlowGrid-specific (non-core).

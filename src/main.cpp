@@ -2,9 +2,9 @@
 #include "implot.h"
 
 #include "Core/FileDialog/FileDialogManager.h"
+#include "Core/Project/Project.h"
 #include "Core/UI/Fonts.h"
 #include "Core/UI/UIContext.h"
-#include "Project/Project.h"
 
 #include "FlowGrid.h"
 

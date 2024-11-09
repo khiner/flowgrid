@@ -4,7 +4,7 @@
 
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Helper/File.h"
-#include "Project/ProjectContext.h"
+#include "Core/Project/ProjectContext.h"
 
 void Faust::Render() const {}
 

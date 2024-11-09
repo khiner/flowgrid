@@ -6,10 +6,9 @@
 #include "Container/Vec2.h"
 #include "Container/Vector.h"
 #include "CoreActionProducer.h"
+#include "Project/ProjectContext.h"
 #include "Store/Store.h"
 #include "TextEditor/TextBuffer.h"
-
-#include "Project/ProjectContext.h"
 
 #include "imgui.h"
 #include "immer/flex_vector_transient.hpp"

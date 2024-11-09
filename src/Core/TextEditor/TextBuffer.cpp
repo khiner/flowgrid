@@ -12,11 +12,10 @@
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
 #include "Core/Helper/Time.h"
+#include "Core/Project/ProjectContext.h"
 #include "Core/Store/Store.h"
 #include "Core/UI/Fonts.h"
 #include "Core/Windows.h"
-
-#include "Project/ProjectContext.h"
 
 #include "SyntaxTree.h"
 

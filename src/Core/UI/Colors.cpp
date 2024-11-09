@@ -8,9 +8,10 @@
 
 #include "Core/CoreActionProducer.h"
 #include "Core/Helper/Hex.h"
+#include "Core/Project/ProjectContext.h"
+
 #include "HelpMarker.h"
 #include "InvisibleButton.h"
-#include "Project/ProjectContext.h"
 
 using namespace ImGui;
 

@@ -1,14 +1,121 @@
-#include "imgui.h"
+#include "CoreActionHandler.h"
 
-#include "Core/CoreActionProducer.h"
-#include "Core/Store/Store.h"
+#include "Container/AdjacencyList.h"
+#include "Container/Navigable.h"
+#include "Container/Set.h"
+#include "Container/Vec2.h"
+#include "Container/Vector.h"
+#include "CoreActionProducer.h"
+#include "Store/Store.h"
+#include "TextEditor/TextBuffer.h"
+
 #include "Project/ProjectContext.h"
 
-#include "Vector.h"
-
+#include "imgui.h"
 #include "immer/flex_vector_transient.hpp"
+#include "immer/set_transient.hpp"
 
-using namespace ImGui;
+void ApplyVectorSet(Store &s, const auto &a) {
+    s.Set(a.component_id, s.Get<immer::flex_vector<decltype(a.value)>>(a.component_id).set(a.i, a.value));
+}
+void ApplySetInsert(Store &s, const auto &a) {
+    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).insert(a.value));
+}
+void ApplySetErase(Store &s, const auto &a) {
+    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).erase(a.value));
+}
+
+CoreActionHandler::CoreActionHandler(Store &store) : _S(store) {}
+void CoreActionHandler::Apply(const ActionType &action) const {
+    std::visit(
+        Match{
+            /* Primitives */
+            [this](const Action::Primitive::Bool::Toggle &a) { _S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
+            [this](const Action::Primitive::Int::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::UInt::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Float::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Enum::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::Flags::Set &a) { _S.Set(a.component_id, a.value); },
+            [this](const Action::Primitive::String::Set &a) { _S.Set(a.component_id, a.value); },
+            [](const Action::TextBuffer::Any &a) {
+                const auto *c = Component::ById.at(a.GetComponentId());
+                static_cast<const TextBuffer *>(c)->Apply(a);
+            },
+            /* Containers */
+            [this](const Action::Container::Any &a) {
+                const auto *c = Component::ById.at(a.GetComponentId());
+                std::visit(
+                    Match{
+                        [c](const Action::AdjacencyList::ToggleConnection &a) {
+                            const auto *al = static_cast<const AdjacencyList *>(c);
+                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
+                            else al->Connect(a.source, a.destination);
+                        },
+                        [this, c](const Action::Vec2::Set &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(c);
+                            _S.Set(vec2->X.Id, a.value.first);
+                            _S.Set(vec2->Y.Id, a.value.second);
+                        },
+                        [this, c](const Action::Vec2::SetX &a) { _S.Set(static_cast<const Vec2 *>(c)->X.Id, a.value); },
+                        [this, c](const Action::Vec2::SetY &a) { _S.Set(static_cast<const Vec2 *>(c)->Y.Id, a.value); },
+                        [this, c](const Action::Vec2::SetAll &a) {
+                            const auto *vec2 = static_cast<const Vec2 *>(c);
+                            _S.Set(vec2->X.Id, a.value);
+                            _S.Set(vec2->Y.Id, a.value);
+                        },
+                        [this, c](const Action::Vec2::ToggleLinked &) {
+                            const auto *vec2 = static_cast<const Vec2Linked *>(c);
+                            _S.Set(vec2->Linked.Id, !S.Get<bool>(vec2->Linked.Id));
+                            const float x = S.Get<float>(vec2->X.Id);
+                            const float y = S.Get<float>(vec2->Y.Id);
+                            if (x < y) _S.Set(vec2->Y.Id, x);
+                            else if (y < x) _S.Set(vec2->X.Id, y);
+                        },
+                        [this](const Action::Vector<bool>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<int>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<u32>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<float>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Vector<std::string>::Set &a) { ApplyVectorSet(_S, a); },
+                        [this](const Action::Set<u32>::Insert &a) { ApplySetInsert(_S, a); },
+                        [this](const Action::Set<u32>::Erase &a) { ApplySetErase(_S, a); },
+                        [this, c](const Action::Navigable<u32>::Clear &) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(c);
+                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
+                            _S.Set(nav->Cursor.Id, 0);
+                        },
+                        [this, c](const Action::Navigable<u32>::Push &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(c);
+                            const auto vec = S.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
+                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
+                            _S.Set<u32>(nav->Cursor.Id, vec.size() - 1);
+                        },
+
+                        [this, c](const Action::Navigable<u32>::MoveTo &a) {
+                            const auto *nav = static_cast<const Navigable<u32> *>(c);
+                            auto cursor = u32(std::clamp(int(a.index), 0, int(S.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
+                            _S.Set(nav->Cursor.Id, std::move(cursor));
+                        },
+                    },
+                    a
+                );
+            },
+        },
+        action
+    );
+}
+
+bool CoreActionHandler::CanApply(const ActionType &action) const {
+    return std::visit(
+        Match{
+            [](const Action::TextBuffer::Any &a) {
+                const auto *c = Component::ById.at(a.GetComponentId());
+                static_cast<const TextBuffer *>(c)->CanApply(a);
+            },
+            [](auto &&) { return true; },
+        },
+        action
+    );
+}
 
 template<typename T> Vector<T>::ContainerT Vector<T>::Get() const { return S.Get<ContainerT>(Id); }
 template<typename T> bool Vector<T>::Exists() const { return S.Count<ContainerT>(Id); }
@@ -78,10 +185,6 @@ template struct Vector<u32>;
 template struct Vector<float>;
 template struct Vector<std::string>;
 
-#include "Set.h"
-
-#include "immer/set_transient.hpp"
-
 template<typename T> Set<T>::ContainerT Set<T>::Get() const { return S.Get<ContainerT>(Id); }
 template<typename T> bool Set<T>::Exists() const { return S.Count<ContainerT>(Id); }
 template<typename T> void Set<T>::Erase() const { _S.Erase<ContainerT>(Id); }
@@ -119,8 +222,6 @@ template<typename T> void Set<T>::RenderValueTree(bool annotate, bool auto_selec
 // Explicit instantiations.
 template struct Set<u32>;
 
-#include "Navigable.h"
-
 template<typename T> void Navigable<T>::IssueClear() const { Ctx.CoreQ(typename Action::Navigable<T>::Clear{Id}); }
 template<typename T> void Navigable<T>::IssuePush(T value) const { Ctx.CoreQ(typename Action::Navigable<T>::Push{Id, std::move(value)}); }
 template<typename T> void Navigable<T>::IssueMoveTo(u32 index) const { Ctx.CoreQ(typename Action::Navigable<T>::MoveTo{Id, index}); }
@@ -129,8 +230,6 @@ template<typename T> void Navigable<T>::IssueStepBackward() const { Ctx.CoreQ(ty
 
 // Explicit instantiations.
 template struct Navigable<u32>;
-
-#include "AdjacencyList.h"
 
 IdPairs AdjacencyList::Get() const { return S.Get<IdPairs>(Id); }
 
@@ -209,12 +308,12 @@ void AdjacencyList::SetJson(json &&j) const {
 // Using a string representation to flatten the JSON without worrying about non-object collection values.
 json AdjacencyList::ToJson() const { return json(Get()).dump(); }
 
-#include "Vec2.h"
-
 Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
     : Component(std::move(args)), X({this, "X"}, value.first, min, max, fmt), Y({this, "Y"}, value.second, min, max, fmt) {}
 
 Vec2::operator ImVec2() const { return {float(X), float(Y)}; }
+
+using namespace ImGui;
 
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 xy = *this;

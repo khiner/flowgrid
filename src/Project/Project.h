@@ -4,6 +4,7 @@
 
 #include "Core/Action/Actions.h"
 #include "Core/ActionableComponent.h"
+#include "Core/CoreActionHandler.h"
 #include "Core/CoreActionProducer.h"
 #include "Core/FileDialog/FileDialog.h"
 #include "Core/Store/Store.h"
@@ -117,6 +118,8 @@ private:
     std::unique_ptr<AppType> App;
     std::unique_ptr<StoreHistory> HistoryPtr;
     StoreHistory &History; // A reference to the above unique_ptr for convenience.
+
+    CoreActionHandler CoreHandler{_S};
 
     mutable SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     mutable std::optional<fs::path> CurrentProjectPath;

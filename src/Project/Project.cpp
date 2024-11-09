@@ -1,20 +1,17 @@
 
 #include "Project.h"
 
-#include "imgui_internal.h"
-
 #include <format>
 #include <ranges>
 #include <set>
 
+#include "imgui_internal.h"
+
 #include "Core/Action/ActionMenuItem.h"
-#include "Core/Container/AdjacencyList.h"
-#include "Core/Container/Navigable.h"
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
 #include "Core/Helper/Time.h"
 #include "Core/Store/StoreHistory.h"
-#include "Core/TextEditor/TextBuffer.h"
 
 #include "Preferences.h"
 
@@ -184,16 +181,6 @@ json Project::GetProjectJson(ProjectFormat format) const {
     }
 }
 
-void ApplyVectorSet(Store &s, const auto &a) {
-    s.Set(a.component_id, s.Get<immer::flex_vector<decltype(a.value)>>(a.component_id).set(a.i, a.value));
-}
-void ApplySetInsert(Store &s, const auto &a) {
-    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).insert(a.value));
-}
-void ApplySetErase(Store &s, const auto &a) {
-    s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).erase(a.value));
-}
-
 void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
@@ -235,76 +222,7 @@ void Project::Apply(const ActionType &action) const {
             [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
             [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
-            /* Primitives */
-            [this](const Action::Primitive::Bool::Toggle &a) { _S.Set(a.component_id, !S.Get<bool>(a.component_id)); },
-            [this](const Action::Primitive::Int::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::UInt::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Float::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Enum::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::Flags::Set &a) { _S.Set(a.component_id, a.value); },
-            [this](const Action::Primitive::String::Set &a) { _S.Set(a.component_id, a.value); },
-            [](const Action::TextBuffer::Any &a) {
-                const auto *buffer = Component::ById.at(a.GetComponentId());
-                static_cast<const TextBuffer *>(buffer)->Apply(a);
-            },
-            /* Containers */
-            [this](const Action::Container::Any &a) {
-                const auto *container = Component::ById.at(a.GetComponentId());
-                std::visit(
-                    Match{
-                        [container](const Action::AdjacencyList::ToggleConnection &a) {
-                            const auto *al = static_cast<const AdjacencyList *>(container);
-                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
-                            else al->Connect(a.source, a.destination);
-                        },
-                        [this, container](const Action::Vec2::Set &a) {
-                            const auto *vec2 = static_cast<const Vec2 *>(container);
-                            _S.Set(vec2->X.Id, a.value.first);
-                            _S.Set(vec2->Y.Id, a.value.second);
-                        },
-                        [this, container](const Action::Vec2::SetX &a) { _S.Set(static_cast<const Vec2 *>(container)->X.Id, a.value); },
-                        [this, container](const Action::Vec2::SetY &a) { _S.Set(static_cast<const Vec2 *>(container)->Y.Id, a.value); },
-                        [this, container](const Action::Vec2::SetAll &a) {
-                            const auto *vec2 = static_cast<const Vec2 *>(container);
-                            _S.Set(vec2->X.Id, a.value);
-                            _S.Set(vec2->Y.Id, a.value);
-                        },
-                        [this, container](const Action::Vec2::ToggleLinked &) {
-                            const auto *vec2 = static_cast<const Vec2Linked *>(container);
-                            _S.Set(vec2->Linked.Id, !S.Get<bool>(vec2->Linked.Id));
-                            const float x = S.Get<float>(vec2->X.Id);
-                            const float y = S.Get<float>(vec2->Y.Id);
-                            if (x < y) _S.Set(vec2->Y.Id, x);
-                            else if (y < x) _S.Set(vec2->X.Id, y);
-                        },
-                        [this](const Action::Vector<bool>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<int>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<u32>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<float>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Vector<std::string>::Set &a) { ApplyVectorSet(_S, a); },
-                        [this](const Action::Set<u32>::Insert &a) { ApplySetInsert(_S, a); },
-                        [this](const Action::Set<u32>::Erase &a) { ApplySetErase(_S, a); },
-                        [this, container](const Action::Navigable<u32>::Clear &) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, {});
-                            _S.Set(nav->Cursor.Id, 0);
-                        },
-                        [this, container](const Action::Navigable<u32>::Push &a) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            const auto vec = S.Get<immer::flex_vector<u32>>(nav->Value.Id).push_back(a.value);
-                            _S.Set<immer::flex_vector<u32>>(nav->Value.Id, vec);
-                            _S.Set<u32>(nav->Cursor.Id, vec.size() - 1);
-                        },
-
-                        [this, container](const Action::Navigable<u32>::MoveTo &a) {
-                            const auto *nav = static_cast<const Navigable<u32> *>(container);
-                            auto cursor = u32(std::clamp(int(a.index), 0, int(S.Get<immer::flex_vector<u32>>(nav->Value.Id).size()) - 1));
-                            _S.Set(nav->Cursor.Id, std::move(cursor));
-                        },
-                    },
-                    a
-                );
-            },
+            [this](const Action::Core::Any &a) { CoreHandler.Apply(a); },
             /* Store */
             [this](const Action::Store::ApplyPatch &a) {
                 for (const auto &[id, ops] : a.patch.Ops) {
@@ -351,18 +269,23 @@ void Project::Apply(const ActionType &action) const {
 bool Project::CanApply(const ActionType &action) const {
     return std::visit(
         Match{
+            [](const Action::Project::OpenEmpty &) { return true; },
+            [](const Action::Project::Open &a) { return fs::exists(a.file_path); },
+            [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
+            [](const Action::Project::ShowOpenDialog &) { return true; },
+            [this](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
             [this](const Action::Project::Undo &) { return !ActiveGestureActions.empty() || History.CanUndo(); },
             [this](const Action::Project::Redo &) { return History.CanRedo(); },
             [this](const Action::Project::SetHistoryIndex &a) { return a.index < History.Size(); },
             [this](const Action::Project::Save &) { return !History.Empty(); },
             [this](const Action::Project::SaveDefault &) { return !History.Empty(); },
-            [this](const Action::Project::ShowSaveDialog &) { return ProjectHasChanges; },
             [this](const Action::Project::SaveCurrent &) { return ProjectHasChanges; },
-            [](const Action::Project::OpenDefault &) { return fs::exists(DefaultProjectPath); },
             [this](const Action::FileDialog::Open &) { return !FileDialog.Visible; },
-            [this](ProjectCore::ActionType &&a) { return Core.CanApply(std::move(a)); },
-            [this](AppActionType &&a) { return App->CanApply(std::move(a)); },
-            [](auto &&) { return true; },
+            [](const Action::FileDialog::Select &) { return true; },
+            [this](const Action::Core::Any &a) { return CoreHandler.CanApply(a); },
+            [](const Action::Store::ApplyPatch &) { return true; },
+            [this](const ProjectCore::ActionType &a) { return Core.CanApply(a); },
+            [this](const AppActionType &a) { return App->CanApply(a); },
         },
         action
     );

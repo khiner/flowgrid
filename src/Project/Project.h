@@ -2,7 +2,6 @@
 
 #include "concurrentqueue.h"
 
-#include "Core/Action/Actions.h"
 #include "Core/ActionableComponent.h"
 #include "Core/CoreActionHandler.h"
 #include "Core/CoreActionProducer.h"
@@ -13,13 +12,35 @@
 #include "ProjectContext.h"
 #include "ProjectCore.h"
 
+#include "Core/Action/ActionMoment.h"
+#include "Core/CoreAction.h"
+#include "Core/FileDialog/FileDialogAction.h"
+#include "Core/Store/StoreAction.h"
+#include "Core/Style/StyleAction.h"
+#include "Core/WindowsAction.h"
+#include "Project/ProjectAction.h"
+
 // todo just need a little more finagling to finally be done w/ project/app decoupling...
-//   The only reason Project needs these currently is for delegating the two `Actionable` methods to the `App`.
-#include "Audio/AudioAction.h"
-#include "Core/TextEditor/TextBufferAction.h"
+// This is the only remaining project knowledge of anything FlowGrid-specific (non-core).
+// It's only needed for
+// - defining the `Action::Any` variant,
+// - delegating `AppActionType` actions to the `App` component,
 #include "FlowGridAction.h"
 using AppActionType = Action::FlowGrid::Any;
 using AppType = ActionableComponent<AppActionType>;
+
+namespace Action {
+// `Any` holds any action type.
+//  - Metrics->Project->'Action variant size' shows the byte size of `Action::Any`.
+using Any = Combine<Core::Any, Project::Any, FileDialog::Any, Style::Any, Windows::Any, Store::Any, AppActionType>;
+using Saved = Filter<Action::IsSaved, Any>;
+using NonSaved = Filter<Action::IsNotSaved, Any>;
+} // namespace Action
+
+using SavedActionMoment = ActionMoment<Action::Saved>;
+using SavedActionMoments = std::vector<SavedActionMoment>;
+
+struct Gesture;
 
 /**
 `ProjectState` is the root component of a project, and it fully describes the project state.

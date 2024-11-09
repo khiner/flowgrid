@@ -29,14 +29,14 @@ struct StoreHistory {
     StoreHistory(const Store &);
     ~StoreHistory();
 
-    void Clear(const Store &);
-    void AddGesture(Store, Gesture &&, ID component_id);
-    void SetIndex(u32);
-
     u32 Size() const;
-    bool Empty() const;
-    bool CanUndo() const;
-    bool CanRedo() const;
+    bool Empty() const { return Size() <= 1; } // There is always an initial store in the history records.
+    bool CanUndo() const { return Index > 0; }
+    bool CanRedo() const { return Index < Size() - 1; }
+
+    void AddGesture(Store, Gesture &&, ID component_id);
+    void Clear(const Store &);
+    void SetIndex(u32);
 
     const Store &CurrentStore() const;
     const Store &PrevStore() const;

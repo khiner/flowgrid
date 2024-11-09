@@ -10,12 +10,98 @@
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
-#include "Core/Helper/Time.h"
 #include "Core/Store/StoreHistory.h"
 
-#include "Preferences.h"
+struct Gesture {
+    SavedActionMoments Actions;
+    TimePoint CommitTime;
+};
 
-using std::ranges::to, std::views::join, std::views::keys, std::views::transform;
+namespace nlohmann {
+inline void to_json(json &j, const Action::Saved &action) {
+    action.to_json(j);
+}
+inline void from_json(const json &j, Action::Saved &action) {
+    Action::Saved::from_json(j, action);
+}
+
+Json(SavedActionMoment, Action, QueueTime);
+Json(Gesture, Actions, CommitTime);
+} // namespace nlohmann
+
+using std::ranges::to, std::views::drop, std::views::join, std::views::keys, std::views::transform;
+
+// Store history:
+// Defining this here instead of its own impl file to have a single place that depends on Store.h and the fully-defined `Action::Any` type.
+struct StoreHistory::Metrics {
+    immer::map<ID, immer::vector<TimePoint>> CommitTimesById;
+
+    void AddPatch(const Patch &patch, const TimePoint &commit_time) {
+        for (ID id : patch.GetIds()) {
+            auto commit_times = CommitTimesById.count(id) ? CommitTimesById.at(id).push_back(commit_time) : immer::vector<TimePoint>{commit_time};
+            CommitTimesById = CommitTimesById.set(id, std::move(commit_times));
+        }
+    }
+};
+
+struct Record {
+    Store Store;
+    Gesture Gesture;
+    StoreHistory::Metrics Metrics;
+};
+struct StoreHistory::Records {
+    Records(const ::Store &initial_store) : Value{{initial_store, Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
+
+    std::vector<Record> Value;
+};
+
+StoreHistory::StoreHistory(const ::Store &store)
+    : _Records(std::make_unique<Records>(store)), _Metrics(std::make_unique<Metrics>()) {}
+StoreHistory::~StoreHistory() = default;
+
+u32 StoreHistory::Size() const { return _Records->Value.size(); }
+
+void StoreHistory::AddGesture(Store store, Gesture &&gesture, ID component_id) {
+    const auto patch = store.CreatePatch(CurrentStore(), component_id);
+    if (patch.Empty()) return;
+
+    _Metrics->AddPatch(patch, gesture.CommitTime);
+
+    while (Size() > Index + 1) _Records->Value.pop_back(); // todo use an undo _tree_ and keep this history
+    _Records->Value.emplace_back(std::move(store), std::move(gesture), *_Metrics);
+    Index = Size() - 1;
+}
+void StoreHistory::Clear(const Store &store) {
+    Index = 0;
+    _Records = std::make_unique<Records>(store);
+    _Metrics = std::make_unique<Metrics>();
+}
+void StoreHistory::SetIndex(u32 new_index) {
+    if (new_index == Index || new_index < 0 || new_index >= Size()) return;
+
+    Index = new_index;
+    _Metrics = std::make_unique<Metrics>(_Records->Value[Index].Metrics);
+}
+
+const Store &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
+const Store &StoreHistory::PrevStore() const { return _Records->Value[Index - 1].Store; }
+
+std::map<ID, u32> StoreHistory::GetChangeCountById() const {
+    return _Records->Value[Index].Metrics.CommitTimesById |
+        transform([](const auto &entry) { return std::pair(entry.first, entry.second.size()); }) |
+        to<std::map<ID, u32>>();
+}
+u32 StoreHistory::GetChangedPathsCount() const { return _Records->Value[Index].Metrics.CommitTimesById.size(); }
+
+StoreHistory::ReferenceRecord StoreHistory::At(u32 index) const {
+    const auto &record = _Records->Value[index];
+    return {record.Store, record.Gesture};
+}
+
+Gestures StoreHistory::GetGestures() const {
+    // The first record only holds the initial store with no gestures.
+    return _Records->Value | drop(1) | transform([](const auto &record) { return record.Gesture; }) | to<std::vector>();
+}
 
 // Project constants:
 static const fs::path InternalPath = ".flowgrid";
@@ -129,6 +215,37 @@ void Project::MarkAllChanged(Patch &&patch) const {
     // Copy `ChangedPaths` over to `LatestChangedPaths`.
     // (`ChangedPaths` is cleared at the end of each action, while `LatestChangedPaths` is retained for the lifetime of the application.)
     for (const auto &[field_id, paths_moment] : ChangedPaths) Component::LatestChangedPaths[field_id] = paths_moment;
+}
+
+SavedActionMoments MergeActions(const SavedActionMoments &actions) {
+    SavedActionMoments merged_actions; // Mutable return value.
+
+    // `active` keeps track of which action we're merging into.
+    // It's either an action in `gesture` or the result of merging 2+ of its consecutive members.
+    std::optional<const SavedActionMoment> active;
+    for (u32 i = 0; i < actions.size(); i++) {
+        if (!active) active.emplace(actions[i]);
+        const auto &a = *active;
+        const auto &b = actions[i + 1];
+        const auto merge_result = a.Action.Merge(b.Action);
+        std::visit(
+            Match{
+                [&](const bool cancel_out) {
+                    if (cancel_out) i++; // The two actions (`a` and `b`) cancel out, so we add neither. (Skip over `b` entirely.)
+                    else merged_actions.emplace_back(a); //
+                    active.reset(); // No merge in either case. Move on to try compressing the next action.
+                },
+                [&](const Action::Saved &merged_action) {
+                    // The two actions were merged. Keep track of it but don't add it yet - maybe we can merge more actions into it.
+                    active.emplace(merged_action, b.QueueTime);
+                },
+            },
+            merge_result
+        );
+    }
+    if (active) merged_actions.emplace_back(*active);
+
+    return merged_actions;
 }
 
 void Project::CommitGesture() const {

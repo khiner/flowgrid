@@ -1,11 +1,10 @@
-#include "TypedStore.h"
+#include "Store.h"
 
 #include <ranges>
 
 #include "immer/algorithm.hpp"
 
-#include "Core/TextEditor/TextBufferData.h"
-#include "IdPairs.h"
+using std::ranges::reverse_view;
 
 // `AddOps` function definitions for all specialized `ValueTypes`, to fully implement the `CreatePatch` method.
 
@@ -108,7 +107,7 @@ template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, 
             for (auto v : added.second) ops[added.first].emplace_back(PatchOpType::PushBack, v, std::nullopt);
         },
         [&ops](const auto &removed) {
-            for (auto v : std::ranges::reverse_view(removed.second)) ops[removed.first].emplace_back(PatchOpType::PopBack, std::nullopt, v);
+            for (auto v : reverse_view(removed.second)) ops[removed.first].emplace_back(PatchOpType::PopBack, std::nullopt, v);
         },
         [&ops](const auto &o, const auto &n) {
             diff(
@@ -127,20 +126,14 @@ template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, 
     );
 }
 
-template<typename ValueType>
-void AddOps(const auto &before_maps, const auto &after_maps, PatchOps &ops) {
-    AddOps(std::get<StoreMap<ValueType>>(before_maps), std::get<StoreMap<ValueType>>(after_maps), ops);
-}
-
-template<typename... ValueTypes>
-Patch TypedStore<ValueTypes...>::CreatePatch(const TypedStore<ValueTypes...>::StoreMaps &before_maps, const TypedStore<ValueTypes...>::StoreMaps &after_maps, ID base_component_id) {
-    PatchOps ops{};
+Patch Store::CreatePatch(const StoreMaps &before_maps, const StoreMaps &after_maps, ID base_component_id) {
     // Use template lambda to call `AddOps` for each value type.
-    ([&]<typename T>() { AddOps<T>(before_maps, after_maps, ops); }.template operator()<ValueTypes>(), ...);
+    static constexpr auto apply_add_ops = []<typename... Ts>(std::tuple<Ts...>, const StoreMaps &before, const StoreMaps &after, PatchOps &ops) {
+        (AddOps(std::get<StoreMap<Ts>>(before), std::get<StoreMap<Ts>>(after), ops), ...);
+    };
+    static const auto value_types = ValueTypes{};
+
+    PatchOps ops{};
+    apply_add_ops(value_types, before_maps, after_maps, ops);
     return {base_component_id, ops};
 }
-
-// Explicit instantiation for the default value types.
-template struct TypedStore<
-    bool, u32, s32, float, std::string, IdPairs, TextBufferData, immer::set<u32>,
-    immer::flex_vector<bool>, immer::flex_vector<s32>, immer::flex_vector<u32>, immer::flex_vector<float>, immer::flex_vector<std::string>>;

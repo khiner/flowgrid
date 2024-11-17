@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include "Audio/AudioIO.h"
 #include "DeviceDataFormat.h"

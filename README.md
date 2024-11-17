@@ -222,7 +222,7 @@ If the build/run doesn't work for you, please [file an issue](https://github.com
 ## Development
 
 I try and keep all dependencies up to date.
-LLVM 18 is required to build.
+LLVM 19+ is required to build.
 
 ### Formatting
 

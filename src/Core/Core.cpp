@@ -1,4 +1,6 @@
 
+#include <stack> 
+
 #include "Primitive/Bool.h"
 #include "Primitive/Enum.h"
 #include "Primitive/Flags.h"

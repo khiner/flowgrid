@@ -2,6 +2,7 @@
 
 #include <format>
 #include <ranges>
+#include <stack>
 
 #include "imgui_internal.h"
 
@@ -20,9 +21,9 @@ DebugComponent::DebugComponent(ComponentArgs &&args, ImGuiWindowFlags flags, Men
     : Component(std::move(args), flags, std::move(menu)), SplitRatio(split_ratio) {}
 DebugComponent::~DebugComponent() {}
 
-Menu::Menu(string_view label, std::vector<const Item> &&items) : Label(label), Items(std::move(items)) {}
-Menu::Menu(std::vector<const Item> &&items) : Menu("", std::move(items)) {}
-Menu::Menu(std::vector<const Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
+Menu::Menu(string_view label, std::vector<Item> &&items) : Label(label), Items(std::move(items)) {}
+Menu::Menu(std::vector<Item> &&items) : Menu("", std::move(items)) {}
+Menu::Menu(std::vector<Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
 Component::Component(Store &store, string_view name, const ProjectContext &ctx)
     : _S(store), Ctx(ctx), Parent(nullptr),

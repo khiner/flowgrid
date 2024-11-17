@@ -4,8 +4,8 @@
 #include "Core/Container/Navigable.h"
 #include "FaustGraphAction.h"
 
-class CTree;
-typedef CTree *Box;
+class CTreeBase;
+typedef CTreeBase *Box;
 
 namespace flowgrid {
 struct Node;

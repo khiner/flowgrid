@@ -35,7 +35,7 @@ FaustGraphs::FaustGraphs(ArgsT &&args, const FaustGraphStyle &style, const Faust
           [this](auto &&child_args) {
               const auto *graphs = static_cast<const FaustGraphs *>(child_args.Parent);
               return std::make_unique<FaustGraph>(
-                  FaustGraph::ArgsT{std::move(child_args), SubProducer(*this)}, graphs->Style, graphs->Settings
+                  FaustGraph::ArgsT{std::move(child_args), SubProducer<FaustGraph::ProducedActionType>(*this)}, graphs->Style, graphs->Settings
               );
           }
       ),
@@ -173,7 +173,7 @@ FaustDSPs::FaustDSPs(ArgsT &&args)
     : ComponentVector(std::move(args.Args), [&](auto &&child_args) {
           auto *container = static_cast<Faust *>(child_args.Parent->Parent);
           return std::make_unique<FaustDSP>(
-              FaustDSP::ArgsT{std::move(child_args), SubProducer(*this)}, *container
+              FaustDSP::ArgsT{std::move(child_args), SubProducer<FaustDSP::ProducedActionType>(*this)}, *container
           );
       }),
       ActionProducer(std::move(args.Q)) {

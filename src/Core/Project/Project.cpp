@@ -112,6 +112,7 @@ static const std::map<ProjectFormat, std::string_view> ExtensionByProjectFormat{
 };
 static const auto ProjectFormatByExtension = ExtensionByProjectFormat | transform([](const auto &pe) { return std::pair(pe.second, pe.first); }) | to<std::map>();
 static const auto AllProjectExtensions = ProjectFormatByExtension | keys;
+// todo this works with a trailing comma, but use `std::views::join_with` when clang supports it.
 static const std::string AllProjectExtensionsDelimited = AllProjectExtensions | transform([](const auto &e) { return std::format("{}, ", e); }) | join | to<std::string>();
 
 static const fs::path EmptyProjectPath = InternalPath / ("empty" + string(ExtensionByProjectFormat.at(ProjectFormat::State)));

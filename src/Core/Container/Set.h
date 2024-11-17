@@ -12,19 +12,16 @@ template<typename T> struct Set : Component {
         Erase();
     }
 
+    ContainerT Get() const;
+
+    void Insert(T) const;
+    void Erase(T) const;
+    void Clear() const;
+
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
     void SetJson(json &&) const override;
     json ToJson() const override;
-
-    bool Contains(const T &value) const { return Get().count(value); }
-    bool Empty() const { return Get().empty(); }
-
-    void Insert(const T &) const;
-    void Erase(const T &) const;
-    void Clear() const;
-
-    ContainerT Get() const;
 
     void Erase() const override;
 };

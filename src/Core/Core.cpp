@@ -379,6 +379,7 @@ bool CoreActionHandler::CanApply(const ActionType &action) const {
     );
 }
 
+template<typename T> T Vector<T>::operator[](u32 i) const { return S.Get<ContainerT>(Id)[i]; }
 template<typename T> Vector<T>::ContainerT Vector<T>::Get() const { return S.Get<ContainerT>(Id); }
 template<typename T> void Vector<T>::Erase() const { _S.Erase<ContainerT>(Id); }
 template<typename T> void Vector<T>::Clear() const { _S.Clear<ContainerT>(Id); }
@@ -388,28 +389,20 @@ template<typename T> void Vector<T>::Set(const std::vector<T> &value) const {
     for (const auto &v : value) val.push_back(v);
     _S.Set(Id, val.persistent());
 }
-template<typename T> void Vector<T>::Set(size_t i, T value) const { _S.Set(Id, Get().set(i, std::move(value))); }
-template<typename T> void Vector<T>::PushBack(T value) const { _S.Set(Id, Get().push_back(std::move(value))); }
+template<typename T> void Vector<T>::Set(size_t i, T value) const { _S.Set(Id, S.Get<ContainerT>(Id).set(i, std::move(value))); }
+template<typename T> void Vector<T>::PushBack(T value) const { _S.Set(Id, S.Get<ContainerT>(Id).push_back(std::move(value))); }
 template<typename T> void Vector<T>::PopBack() const {
     const auto v = S.Get<ContainerT>(Id);
     _S.Set(Id, v.take(v.size() - 1));
 }
 
 template<typename T> void Vector<T>::Resize(size_t size) const {
-    auto val = Get().take(size).transient();
+    auto val = S.Get<ContainerT>(Id).take(size).transient();
     while (val.size() < size) val.push_back(T{});
     _S.Set(Id, val.persistent());
 }
-template<typename T> void Vector<T>::Erase(size_t i) const { _S.Set(Id, Get().erase(i)); }
+template<typename T> void Vector<T>::Erase(size_t i) const { _S.Set(Id, S.Get<ContainerT>(Id).erase(i)); }
 
-template<typename T> size_t Vector<T>::IndexOf(T value) const {
-    auto vec = Get();
-    return find(vec, std::move(value)) - vec.begin();
-}
-template<typename T> bool Vector<T>::Contains(T value) const {
-    auto vec = Get();
-    return find(vec, std::move(value)) != vec.end();
-}
 template<typename T> void Vector<T>::SetJson(json &&j) const {
     immer::flex_vector_transient<T> val{};
     for (const auto &v : json::parse(std::string(std::move(j)))) val.push_back(v);
@@ -417,7 +410,7 @@ template<typename T> void Vector<T>::SetJson(json &&j) const {
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
-template<typename T> json Vector<T>::ToJson() const { return json(Get()).dump(); }
+template<typename T> json Vector<T>::ToJson() const { return json(S.Get<ContainerT>(Id)).dump(); }
 
 template<typename T> void Vector<T>::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
@@ -447,8 +440,8 @@ template struct Vector<std::string>;
 template<typename T> Set<T>::ContainerT Set<T>::Get() const { return S.Get<ContainerT>(Id); }
 template<typename T> void Set<T>::Erase() const { _S.Erase<ContainerT>(Id); }
 template<typename T> void Set<T>::Clear() const { _S.Clear<ContainerT>(Id); }
-template<typename T> void Set<T>::Insert(const T &value) const { _S.Set(Id, Get().insert(value)); }
-template<typename T> void Set<T>::Erase(const T &value) const { _S.Set(Id, Get().erase(value)); }
+template<typename T> void Set<T>::Insert(T value) const { _S.Set(Id, S.Get<ContainerT>(Id).insert(std::move(value))); }
+template<typename T> void Set<T>::Erase(T value) const { _S.Set(Id, S.Get<ContainerT>(Id).erase(std::move(value))); }
 
 template<typename T> void Set<T>::SetJson(json &&j) const {
     immer::set_transient<T> val{};
@@ -457,12 +450,12 @@ template<typename T> void Set<T>::SetJson(json &&j) const {
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
-template<typename T> json Set<T>::ToJson() const { return json(Get()).dump(); }
+template<typename T> json Set<T>::ToJson() const { return json(S.Get<ContainerT>(Id)).dump(); }
 
 template<typename T> void Set<T>::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
-    auto value = Get();
+    auto value = S.Get<ContainerT>(Id);
     if (value.empty()) {
         TextUnformatted(std::format("{} (empty)", Name));
         return;
@@ -563,7 +556,7 @@ void AdjacencyList::SetJson(json &&j) const {
 }
 
 // Using a string representation to flatten the JSON without worrying about non-object collection values.
-json AdjacencyList::ToJson() const { return json(Get()).dump(); }
+json AdjacencyList::ToJson() const { return json(S.Get<IdPairs>(Id)).dump(); }
 
 Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, float max, const char *fmt)
     : Component(std::move(args)), X({this, "X"}, value.first, min, max, fmt), Y({this, "Y"}, value.second, min, max, fmt) {}
@@ -632,7 +625,7 @@ void Colors::Set(const std::vector<ImVec4> &values) const {
     _S.Set(Id, val.persistent());
 }
 void Colors::Set(const std::unordered_map<size_t, ImVec4> &entries) const {
-    auto val = Get().transient();
+    auto val = S.Get<ContainerT>(Id).transient();
     for (const auto &entry : entries) val.set(entry.first, Float4ToU32(entry.second));
     _S.Set(Id, val.persistent());
 }
@@ -655,7 +648,7 @@ void Colors::Render() const {
     BeginChild("##colors", ImVec2(0, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
     PushItemWidth(-160);
 
-    for (u32 i = 0; i < Size(); i++) {
+    for (u32 i = 0; i < Get().size(); ++i) {
         if (const std::string &color_name = GetName(i); filter.PassFilter(color_name.c_str())) {
             u32 color = (*this)[i];
             const bool is_auto = AllowAuto && color == AutoColor;

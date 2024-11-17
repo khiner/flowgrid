@@ -17,9 +17,12 @@ template<typename T> struct Navigable : Component {
     void IssueStepForward() const;
     void IssueStepBackward() const;
 
-    bool Empty() const { return Value.Empty(); }
+    bool Empty() const { return Value.Get().empty(); }
     bool CanStepBackward() const { return u32(Cursor) > 0; }
-    bool CanStepForward() const { return !Value.Empty() && u32(Cursor) < Value.Size() - 1u; }
+    bool CanStepForward() const {
+        const auto value = Value.Get();
+        return !value.empty() && u32(Cursor) < value.size() - 1u;
+    }
 
     auto operator[](u32 index) { return Value[index]; }
     T operator*() const { return Value[Cursor]; }

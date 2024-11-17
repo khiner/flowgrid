@@ -12,10 +12,10 @@ struct AdjacencyList : Component {
         Erase();
     }
 
+    IdPairs Get() const;
+
     void SetJson(json &&) const override;
     json ToJson() const override;
-
-    IdPairs Get() const;
 
     void Erase() const override;
     void RenderValueTree(bool annotate, bool auto_select) const override;

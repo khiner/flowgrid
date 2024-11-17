@@ -28,7 +28,7 @@ void ProjectCore::Apply(const ActionType &action) const {
         Match{
             [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
             [this](const Action::Windows::ToggleDebug &a) {
-                const bool toggling_on = !Windows.VisibleComponentIds.Contains(a.component_id);
+                const bool toggling_on = !Windows.VisibleComponentIds.Get().count(a.component_id);
                 Windows.ToggleVisible(a.component_id);
                 if (!toggling_on) return;
 

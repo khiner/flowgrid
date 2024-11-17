@@ -19,7 +19,7 @@ template<typename ComponentType> struct Optional : Component {
 
     operator bool() const { return bool(Value); }
     auto operator->() const { return Value.get(); }
-    inline auto Get() const { return Value.get(); }
+    auto Get() const { return Value.get(); }
 
     void Refresh() override {
         HasValue.Refresh();

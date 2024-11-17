@@ -8,6 +8,8 @@ inline std::pair<std::string, std::string> Split(fs::path relative_path) {
     return {it->string(), std::next(it)->string()};
 }
 
+using std::ranges::contains, std::ranges::find, std::ranges::find_if;
+
 /*
 A component whose children are created/destroyed dynamically, with vector-ish semantics.
 Wraps around an inner `Value` instance, which in this case is a `std::vector` of `std::unique_ptr<ChildType>`.
@@ -126,27 +128,28 @@ template<typename ChildType> struct ComponentVector : Component {
     ChildType *operator[](u32 i) const { return Value[i].get(); }
 
     ChildType *Find(ID id) const {
-        const auto it = std::ranges::find_if(Value, [id](const auto &child) { return child->Id == id; });
+        const auto it = find_if(Value, [id](const auto &child) { return child->Id == id; });
         return it == Value.end() ? nullptr : it->get();
     }
     auto FindIt(const StorePath &child_prefix) const {
-        return std::ranges::find_if(Value, [this, &child_prefix](const auto &child) { return GetChildPrefix(child.get()) == child_prefix; });
+        return find_if(Value, [this, &child_prefix](const auto &child) { return GetChildPrefix(child.get()) == child_prefix; });
     }
 
     void Refresh() override {
         ChildPrefixes.Refresh(); // xxx no-op now
 
-        auto size = ChildPrefixes.Size();
+        const auto child_prefixes = ChildPrefixes.Get();
+        auto size = child_prefixes.size();
         for (size_t i = 0; i < size; ++i) {
-            const auto &prefix = ChildPrefixes[i];
+            const auto &prefix = child_prefixes[i];
             if (const auto child_it = FindIt(prefix); child_it == Value.end()) {
                 const auto &[path_prefix, path_segment] = Split(prefix);
                 auto new_child = Creator({this, path_segment, "", path_prefix});
-                size_t index = ChildPrefixes.IndexOf(GetChildPrefix(new_child.get()));
+                size_t index = find(child_prefixes, std::string(GetChildPrefix(new_child.get()))) - child_prefixes.begin();
                 Value.insert(Value.begin() + index, std::move(new_child));
             }
         }
-        std::erase_if(Value, [this](const auto &child) { return !ChildPrefixes.Contains(GetChildPrefix(child.get())); });
+        std::erase_if(Value, [this, &child_prefixes](const auto &child) { return !contains(child_prefixes, std::string(GetChildPrefix(child.get()))); });
         for (auto &child : Value) child->Refresh();
     }
 
@@ -155,7 +158,9 @@ template<typename ChildType> struct ComponentVector : Component {
         if (!child) return;
 
         child->Erase();
-        ChildPrefixes.Erase(ChildPrefixes.IndexOf(GetChildPrefix(child)));
+        auto vec = ChildPrefixes.Get();
+        auto index = find(vec, std::string(GetChildPrefix(child))) - vec.begin();
+        ChildPrefixes.Erase(index);
     }
 
     void EraseId_(ID id) {

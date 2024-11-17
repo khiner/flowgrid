@@ -9,7 +9,6 @@ template<typename T> struct Primitive : Component {
     json ToJson() const override;
     void SetJson(json &&) const override;
 
-    // Refresh the cached value based on the main store. Should be called for each affected field after a state change.
     void Refresh() override;
 
     operator T() const { return Value; }

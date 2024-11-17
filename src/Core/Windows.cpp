@@ -10,9 +10,9 @@ void Windows::Register(ID id, bool dock) {
     if (dock) DockComponentIds.insert(id);
 }
 bool Windows::IsWindow(ID id) const { return WindowComponentIds.contains(id); }
-bool Windows::IsVisible(ID id) const { return VisibleComponentIds.Contains(id); }
+bool Windows::IsVisible(ID id) const { return VisibleComponentIds.Get().count(id); }
 void Windows::ToggleVisible(ID id) const {
-    if (!VisibleComponentIds.Contains(id)) VisibleComponentIds.Insert(id);
+    if (!VisibleComponentIds.Get().count(id)) VisibleComponentIds.Insert(id);
     else VisibleComponentIds.Erase(id);
 }
 

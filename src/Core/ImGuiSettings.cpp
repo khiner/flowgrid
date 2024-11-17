@@ -46,7 +46,7 @@ void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss) const {
 
 void DockNodeSettings::Update(ImGuiContext *ctx) const {
     // Assumes `DockSettingsHandler_ClearAll` has already been called.
-    const auto size = NodeId.Size();
+    const auto size = NodeId.Get().size();
     for (u32 i = 0; i < size; ++i) {
         ctx->DockContext.NodesSettings.push_back({
             NodeId[i],
@@ -90,7 +90,7 @@ void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss) const {
 // See `imgui.cpp::ApplyWindowSettings`
 void WindowSettings::Update(ImGuiContext *) const {
     const auto *main_viewport = GetMainViewport();
-    const auto size = Id.Size();
+    const auto size = Id.Get().size();
     for (u32 i = 0; i < size; ++i) {
         const auto id = Id[i];
         auto *window = FindWindowByID(id);
@@ -170,7 +170,7 @@ void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) {
 
 // Adapted from `imgui_tables.cpp::TableLoadSettings`
 void TableSettings::Update(ImGuiContext *) const {
-    const auto size = ID.Size();
+    const auto size = ID.Get().size();
     for (u32 i = 0; i < size; ++i) {
         const auto id = ID[i];
         const auto table = TableFindByID(id);

@@ -12,26 +12,21 @@ template<typename T> struct Vector : Component {
         Erase();
     }
 
-    void RenderValueTree(bool annotate, bool auto_select) const override;
-
-    void SetJson(json &&) const override;
-    json ToJson() const override;
-
-    bool Empty() const { return Get().empty(); }
-    T operator[](u32 i) const { return Get()[i]; }
-    u32 Size() const { return Get().size(); }
-
     ContainerT Get() const;
+    T operator[](u32 i) const;
+
     void Set(const std::vector<T> &) const;
     void Set(size_t i, T) const;
-
     void PushBack(T) const;
     void PopBack() const;
     void Resize(size_t) const;
     void Clear() const;
+    void Erase(size_t i) const;
+
     void Erase() const override;
 
-    size_t IndexOf(T) const;
-    bool Contains(T) const;
-    void Erase(size_t i) const;
+    void RenderValueTree(bool annotate, bool auto_select) const override;
+
+    void SetJson(json &&) const override;
+    json ToJson() const override;
 };

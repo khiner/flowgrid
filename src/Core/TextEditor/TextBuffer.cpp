@@ -100,7 +100,7 @@ inline static const std::unordered_map<TextBufferPaletteId, const PaletteT &> Pa
 const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *bytes_read);
 
 struct TextBufferState {
-    TextBufferState(TextBuffer *buffer) : Syntax(std::make_unique<SyntaxTree>(TSInput{buffer, TSReadText, TSInputEncodingUTF8})) {}
+    TextBufferState(TextBuffer *buffer) : Syntax(std::make_unique<SyntaxTree>(TSInput{buffer, TSReadText, TSInputEncodingUTF8, nullptr})) {}
 
     std::unique_ptr<SyntaxTree> Syntax;
     std::unique_ptr<SyntaxNodeAncestry> HoveredNode{};

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Action/Actionable.h"
 #include "Core/Primitive/Bool.h"

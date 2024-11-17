@@ -19,7 +19,7 @@ struct Store : StoreBase<
     // **Resets the transient store to the current persisent store.**
     Patch CreatePatchAndResetTransient(ID base_component_id) {
         const auto patch = CreatePatch(Maps, Persistent(), base_component_id);
-        TransientMaps = std::make_unique<TransientStoreMaps>(Transient());
+        TransientMaps = Transient();
         return patch;
     }
 

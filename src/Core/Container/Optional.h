@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "Core/Primitive/Bool.h"
 
 /*

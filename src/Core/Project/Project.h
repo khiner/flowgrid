@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "concurrentqueue.h"
 
 #include "Core/Action/ActionMoment.h"

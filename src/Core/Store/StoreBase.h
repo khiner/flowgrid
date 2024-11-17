@@ -26,9 +26,8 @@ template<typename... Ts> struct StoreBase {
     using StoreMaps = std::tuple<StoreMap<Ts>...>;
     using TransientStoreMaps = std::tuple<TransientStoreMap<Ts>...>;
 
-    // The store starts in transient mode.
-    StoreBase() : TransientMaps(std::make_unique<TransientStoreMaps>()) {}
-    StoreBase(const StoreBase &other) : Maps(other.Maps), TransientMaps(std::make_unique<TransientStoreMaps>(*other.TransientMaps)) {}
+    StoreBase() {}
+    StoreBase(const StoreBase &other) : Maps(other.Maps), TransientMaps(other.TransientMaps) {}
     ~StoreBase() = default;
 
     template<typename ValueType> const ValueType &At(ID id) const { return GetMap<ValueType>()[id]; }
@@ -41,23 +40,26 @@ template<typename... Ts> struct StoreBase {
 
     // Overwrite the persistent store with all changes since the last commit.
     void Commit() { Maps = Persistent(); }
-    // Overwrite the persistent store with the provided store.
+    // Overwrite persistent and transient stores with the provided store.
     void Commit(StoreMaps maps) {
         Maps = std::move(maps);
-        TransientMaps = std::make_unique<TransientStoreMaps>(Transient());
+        TransientMaps = Transient();
     }
 
-    StoreMaps Persistent() const {
-        return TransformTuple<StoreMaps>(*TransientMaps, [](auto &map) { return map.persistent(); });
+    StoreMaps Persistent() {
+        return TransformTuple<StoreMaps>(TransientMaps, [](auto &&map) { return map.persistent(); });
     }
     TransientStoreMaps Transient() const {
-        return TransformTuple<TransientStoreMaps>(Maps, [](auto &map) { return map.transient(); });
+        return TransformTuple<TransientStoreMaps>(Maps, [](auto &&map) { return map.transient(); });
     }
 
     StoreMaps Maps;
-    std::unique_ptr<TransientStoreMaps> TransientMaps; // In practice, this is always non-null. todo make this a value type and fix const issues
+    TransientStoreMaps TransientMaps;
 
 protected:
-    template<typename ValueType> auto GetMap() const { return std::get<StoreMap<ValueType>>(Maps); }
-    template<typename ValueType> auto &GetTransientMap() const { return std::get<TransientStoreMap<ValueType>>(*TransientMaps); }
+    template<typename ValueType> decltype(auto) GetMap() const { return std::get<StoreMap<ValueType>>(Maps); }
+    // Using deduced-this for const/non-const overloads.
+    template<typename ValueType> decltype(auto) GetTransientMap(this auto &&self) {
+        return std::get<TransientStoreMap<ValueType>>(self.TransientMaps);
+    }
 };

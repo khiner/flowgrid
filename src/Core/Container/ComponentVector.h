@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "Core/Container/Vector.h"
 #include "Core/Helper/Hex.h"
 

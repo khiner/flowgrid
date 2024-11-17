@@ -88,7 +88,6 @@ struct Project : ActionableProducer<Action::Any> {
     void Draw() const;
 
     void CommitGesture() const;
-    void AddGesture(Gesture &&) const;
 
     Plottable StorePathChangeFrequencyPlottable() const;
 

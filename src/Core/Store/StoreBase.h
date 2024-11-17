@@ -30,14 +30,13 @@ template<typename... Ts> struct StoreBase {
     StoreBase(const StoreBase &other) : Maps(other.Maps), TransientMaps(std::make_unique<TransientStoreMaps>(*other.TransientMaps)) {}
     ~StoreBase() = default;
 
-    template<typename ValueType> const ValueType &Get(ID id) const { return GetTransientMap<ValueType>()[id]; }
+    template<typename ValueType> ValueType At(ID id) const { return GetMap<ValueType>()[id]; }
+    template<typename ValueType> ValueType Get(ID id) const { return GetTransientMap<ValueType>()[id]; }
     template<typename ValueType> size_t Count(ID id) const { return GetTransientMap<ValueType>().count(id); }
 
-    template<typename ValueType> void Set(ID id, const ValueType &value) { GetTransientMap<ValueType>().set(id, value); }
+    template<typename ValueType> void Set(ID id, ValueType value) { GetTransientMap<ValueType>().set(id, std::move(value)); }
     template<typename ValueType> void Clear(ID id) { Set(id, ValueType{}); }
-    template<typename ValueType> void Erase(ID id) {
-        if (Count<ValueType>(id)) GetTransientMap<ValueType>().erase(id);
-    }
+    template<typename ValueType> void Erase(ID id) { GetTransientMap<ValueType>().erase(id); }
 
     // Overwrite the persistent store with all changes since the last commit.
     void Commit() { Maps = Persistent(); }
@@ -54,8 +53,10 @@ template<typename... Ts> struct StoreBase {
         return TransformTuple<TransientStoreMaps>(Maps, [](auto &map) { return map.transient(); });
     }
 
-    template<typename ValueType> TransientStoreMap<ValueType> &GetTransientMap() const { return std::get<TransientStoreMap<ValueType>>(*TransientMaps); }
-
     StoreMaps Maps;
     std::unique_ptr<TransientStoreMaps> TransientMaps; // In practice, this is always non-null. todo make this a value type and fix const issues
+
+protected:
+    template<typename ValueType> auto GetMap() const { return std::get<StoreMap<ValueType>>(Maps); }
+    template<typename ValueType> auto &GetTransientMap() const { return std::get<TransientStoreMap<ValueType>>(*TransientMaps); }
 };

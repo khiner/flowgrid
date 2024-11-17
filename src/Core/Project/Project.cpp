@@ -256,10 +256,8 @@ void Project::CommitGesture() const {
     ActiveGestureActions.clear();
     if (merged_actions.empty()) return;
 
-    AddGesture({merged_actions, Clock::now()});
+    History.AddGesture(S, {merged_actions, Clock::now()}, State.Id);
 }
-
-void Project::AddGesture(Gesture &&gesture) const { History.AddGesture(S, std::move(gesture), State.Id); }
 
 void Project::SetHistoryIndex(u32 index) const {
     if (index == History.Index) return;
@@ -524,7 +522,7 @@ void Project::Open(const fs::path &file_path) const {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
                 RefreshChanged(_S.CheckedCommit(State.Id));
             }
-            AddGesture(std::move(gesture));
+            History.AddGesture(S, std::move(gesture), State.Id);
         }
         SetHistoryIndex(indexed_gestures.Index);
         Component::LatestChangedPaths.clear();

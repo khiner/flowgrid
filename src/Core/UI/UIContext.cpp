@@ -291,11 +291,11 @@ static void PresentFrameVulkan() {
 
 UIContext::UIContext(std::function<void()> predraw, std::function<void()> draw)
     : Predraw(std::move(predraw)), Draw(std::move(draw)) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         throw std::runtime_error(std::format("SDL_Init error: {}", SDL_GetError()));
     }
 
-    const auto window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    const auto window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_MAXIMIZED;
     Window = SDL_CreateWindow("FlowGrid", 1280, 720, window_flags);
     if (Window == nullptr) throw std::runtime_error(std::format("SDL_CreateWindow error: {}", SDL_GetError()));
 
@@ -305,7 +305,7 @@ UIContext::UIContext(std::function<void()> predraw, std::function<void()> draw)
 
     // Create Window Surface
     VkSurfaceKHR surface;
-    if (SDL_Vulkan_CreateSurface(Window, g_Instance, g_Allocator, &surface)) throw std::runtime_error("Failed to create Vulkan surface.\n");
+    if (!SDL_Vulkan_CreateSurface(Window, g_Instance, g_Allocator, &surface)) throw std::runtime_error("Failed to create Vulkan surface.\n");
 
     // Create Framebuffers
     int w, h;

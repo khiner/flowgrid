@@ -30,8 +30,8 @@ template<typename... Ts> struct StoreBase {
     StoreBase(const StoreBase &other) : Maps(other.Maps), TransientMaps(std::make_unique<TransientStoreMaps>(*other.TransientMaps)) {}
     ~StoreBase() = default;
 
-    template<typename ValueType> ValueType At(ID id) const { return GetMap<ValueType>()[id]; }
-    template<typename ValueType> ValueType Get(ID id) const { return GetTransientMap<ValueType>()[id]; }
+    template<typename ValueType> const ValueType &At(ID id) const { return GetMap<ValueType>()[id]; }
+    template<typename ValueType> const ValueType &Get(ID id) const { return GetTransientMap<ValueType>()[id]; }
     template<typename ValueType> size_t Count(ID id) const { return GetTransientMap<ValueType>().count(id); }
 
     template<typename ValueType> void Set(ID id, ValueType value) { GetTransientMap<ValueType>().set(id, std::move(value)); }

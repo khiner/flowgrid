@@ -10,8 +10,8 @@
 
 #include "Core/CoreActionProducer.h"
 #include "Core/Helper/String.h"
-#include "Core/Primitive/String.h"
 #include "Core/Project/ProjectContext.h"
+#include "Core/String.h"
 #include "Core/UI/HelpMarker.h"
 #include "Core/UI/InvisibleButton.h"
 #include "Core/UI/Styling.h"
@@ -78,7 +78,7 @@ struct DeviceNode : AudioGraphNode {
         UpdateDeviceConfig();
 
         // The device may have a different configuration than what we requested. Update fields to reflect the actual device config.
-        Name.Set_(GetConfigName(Device->GetInfo()));
+        Name.Set(GetConfigName(Device->GetInfo()));
         UpdateFormat();
 
         const Component::References listening_to{Name, Format};

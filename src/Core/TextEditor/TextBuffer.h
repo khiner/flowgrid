@@ -5,7 +5,7 @@
 #include "Core/Primitive/Bool.h"
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Float.h"
-#include "Core/Primitive/String.h"
+#include "Core/String.h"
 
 #include "TextBufferAction.h"
 #include "TextBufferData.h"
@@ -36,7 +36,7 @@ struct TextBuffer : Component, Actionable<Action::TextBuffer::Any> {
     std::optional<ActionType> ProduceKeyboardAction() const;
 
     fs::path _LastOpenedFilePath;
-    Prop(String, LastOpenedFilePath, _LastOpenedFilePath);
+    Prop(String, LastOpenedFilePath, _LastOpenedFilePath.c_str());
     Prop_(DebugComponent, Debug, "Editor debug");
 
     Prop(Bool, ReadOnly, false);

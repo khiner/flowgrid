@@ -12,9 +12,9 @@ template<typename T> struct Primitive : Component {
     void Refresh() override;
 
     operator T() const { return Value; }
-    bool operator==(const T &value) const { return Value == value; }
+    bool operator==(T value) const { return Value == value; }
 
-    void IssueSet(const T &) const; // Queue a set action.
+    void IssueSet(T) const; // Queue a set action.
     void Set(T) const; // Update the store
     void Set_(T); // Updates both store and cached value.
 

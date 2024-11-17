@@ -4,8 +4,8 @@
 #include "Primitive/Flags.h"
 #include "Primitive/Float.h"
 #include "Primitive/Int.h"
-#include "Primitive/String.h"
 #include "Primitive/UInt.h"
+#include "String.h"
 
 #include "Container/AdjacencyList.h"
 #include "Container/Colors.h"
@@ -61,17 +61,15 @@ template<typename T> void Primitive<T>::RenderValueTree(bool annotate, bool auto
     TreeNode(Name, false, std::format("{}", Value).c_str());
 }
 
-template<> void Primitive<u32>::IssueSet(const u32 &value) const { Ctx.CoreQ(Action::Primitive::UInt::Set{Id, value}); };
-template<> void Primitive<s32>::IssueSet(const s32 &value) const { Ctx.CoreQ(Action::Primitive::Int::Set{Id, value}); };
-template<> void Primitive<float>::IssueSet(const float &value) const { Ctx.CoreQ(Action::Primitive::Float::Set{Id, value}); };
-template<> void Primitive<std::string>::IssueSet(const std::string &value) const { Ctx.CoreQ(Action::Primitive::String::Set{Id, value}); };
+template<> void Primitive<int>::IssueSet(int value) const { Ctx.CoreQ(Action::Primitive::Int::Set{Id, value}); };
+template<> void Primitive<u32>::IssueSet(u32 value) const { Ctx.CoreQ(Action::Primitive::UInt::Set{Id, value}); };
+template<> void Primitive<float>::IssueSet(float value) const { Ctx.CoreQ(Action::Primitive::Float::Set{Id, value}); };
 
 // Explicit instantiations.
 template struct Primitive<bool>;
 template struct Primitive<int>;
 template struct Primitive<u32>;
 template struct Primitive<float>;
-template struct Primitive<std::string>;
 
 using namespace ImGui;
 void Bool::Toggle_() {
@@ -256,15 +254,35 @@ void UInt::Render(const std::vector<u32> &options) const {
     HelpMarker();
 }
 
-String::String(ComponentArgs &&args, std::string_view value) : Primitive(std::move(args), std::string(value)) {}
-String::String(ComponentArgs &&args, fs::path value) : Primitive(std::move(args), std::string(value)) {}
+String::String(ComponentArgs &&args, std::string_view value) : Component(std::move(args)) {
+    if (!S.Count<std::string>(Id)) {
+        _S.Set(Id, std::string(value)); // We treat the provided value as a default store value.
+    }
+}
+String::~String() {
+    _S.Erase<std::string>(Id);
+}
 
-void String::Render() const { TextUnformatted(Value); }
+std::string_view String::Get() const { return S.Get<std::string>(Id); }
+json String::ToJson() const { return S.Get<std::string>(Id); }
+void String::SetJson(json &&j) const { _S.Set(Id, std::string{std::move(j)}); }
+
+void String::Set(std::string_view value) const { _S.Set(Id, std::string(value)); }
+void String::Erase() const { _S.Erase<std::string>(Id); }
+
+void String::RenderValueTree(bool annotate, bool auto_select) const {
+    FlashUpdateRecencyBackground();
+    TreeNode(Name, false, S.Get<std::string>(Id).c_str());
+}
+
+void String::IssueSet(std::string_view value) const { Ctx.CoreQ(Action::Primitive::String::Set{Id, std::string(value)}); };
+
+void String::Render() const { TextUnformatted(Get()); }
 
 void String::Render(const std::vector<std::string> &options) const {
     if (options.empty()) return;
 
-    if (const std::string value = *this; BeginCombo(ImGuiLabel.c_str(), value.c_str())) {
+    if (std::string_view value = *this; BeginCombo(ImGuiLabel.c_str(), value.data())) {
         for (const auto &option : options) {
             const bool is_selected = option == value;
             if (Selectable(option.c_str(), is_selected)) IssueSet(option);

@@ -225,7 +225,7 @@ void TextBuffer::Apply(const ActionType &action) const {
             [this](const ToggleLineComment &) { Commit(GetBuffer().ToggleLineComment(State->Syntax->GetLanguage().SingleLineComment)); },
             [this](const EnterChar &a) { Commit(GetBuffer().EnterChar(a.value, AutoIndent)); },
             [this](const Open &a) {
-                LastOpenedFilePath.Set(a.file_path);
+                LastOpenedFilePath.Set(a.file_path.c_str());
                 SetFilePath(a.file_path);
                 Commit(GetBuffer().SetText(FileIO::read(a.file_path)));
             },

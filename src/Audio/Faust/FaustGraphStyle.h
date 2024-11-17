@@ -7,8 +7,8 @@
 #include "Core/Primitive/Enum.h"
 #include "Core/Primitive/Flags.h"
 #include "Core/Primitive/Float.h"
-#include "Core/Primitive/String.h"
 #include "Core/Primitive/UInt.h"
+#include "Core/String.h"
 #include "Core/UI/Styling.h"
 
 #include "FaustGraphStyleAction.h"

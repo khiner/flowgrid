@@ -60,7 +60,7 @@ struct FaustGraphs
     void OnComponentChanged() override;
 
     ActionMenuItem<ActionType>
-        ShowSaveSvgDialogMenuItem{*this, CreateProducer<ActionType>(), Action::Faust::Graph::ShowSaveSvgDialog{}};
+        ShowSaveSvgDialogMenuItem{*this, SubProducer(*this), Action::Faust::Graph::ShowSaveSvgDialog{}};
 
     const FaustGraphStyle &Style;
     const FaustGraphSettings &Settings;

@@ -106,8 +106,8 @@ struct Project : ActionableProducer<Action::Any> {
     mutable ActionMoment<ActionType> DequeueActionMoment{};
 
     mutable Preferences Preferences;
-    FileDialog FileDialog{FileDialog::EnqueueFn(CreateProducer<FileDialog::ProducedActionType>())};
-    CoreActionProducer CoreQ{CreateProducer<Action::Core::Any>()};
+    FileDialog FileDialog{FileDialog::EnqueueFn(SubProducer<FileDialog::ProducedActionType>(*this))};
+    CoreActionProducer CoreQ{SubProducer<Action::Core::Any>(*this)};
 
     ProjectContext ProjectContext{
         .Preferences = Preferences,
@@ -131,7 +131,7 @@ struct Project : ActionableProducer<Action::Any> {
     mutable Store _S;
     const Store &S{_S};
     ProjectState State{_S, ProjectContext};
-    ProjectCore Core{{{&State, "Core"}, CreateProducer<ProjectCore::ProducedActionType>()}};
+    ProjectCore Core{{{&State, "Core"}, SubProducer<ProjectCore::ProducedActionType>(*this)}};
 
 private:
     std::unique_ptr<AppType> App;

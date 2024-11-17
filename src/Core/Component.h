@@ -16,13 +16,6 @@
 
 using json = nlohmann::json;
 
-struct Store;
-
-struct ProjectStyle;
-struct ProjectContext;
-
-template<typename T> struct ActionQueue;
-
 struct Menu {
     using Item = std::variant<Menu, std::reference_wrapper<const MenuItemDrawable>, std::function<void()>>;
 
@@ -52,6 +45,10 @@ enum WindowFlags_ {
     WindowFlags_NoScrollWithMouse = 1 << 4,
     WindowFlags_MenuBar = 1 << 10,
 };
+
+struct ProjectStyle;
+struct ProjectContext;
+struct Store;
 
 struct Component {
     using References = std::vector<std::reference_wrapper<const Component>>;
@@ -293,9 +290,9 @@ todo Try out replacing semicolon separators by e.g. commas.
 #define Prop_(PropType, PropName, MetaStr, ...) PropType PropName{{this, #PropName, MetaStr}, __VA_ARGS__};
 
 // Sub-producers produce a subset action type, so they need a new producer generated from the parent.
-#define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
-#define ProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, CreateProducer<PropType::ProducedActionType>()}, __VA_ARGS__};
+#define ProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName}, SubProducer<PropType::ProducedActionType>(*this)}, __VA_ARGS__};
+#define ProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, SubProducer<PropType::ProducedActionType>(*this)}, __VA_ARGS__};
 
-// Child producers produce the same action type as their parent, so they can simply use their parent's `q` function.
-#define ChildProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName}, q}, __VA_ARGS__};
-#define ChildProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, q}, __VA_ARGS__};
+// Child producers produce the same action type as their parent, so they can simply use their parent's `Q` function.
+#define ChildProducerProp(PropType, PropName, ...) PropType PropName{{{this, #PropName}, Q}, __VA_ARGS__};
+#define ChildProducerProp_(PropType, PropName, MetaStr, ...) PropType PropName{{{this, #PropName, MetaStr}, Q}, __VA_ARGS__};

@@ -5,5 +5,5 @@
 
 template<typename ProducedActionType> struct ProducerComponentArgs {
     ComponentArgs &&Args;
-    ActionProducer<ProducedActionType>::Enqueue Q;
+    ActionProducer<ProducedActionType>::EnqueueFn Q;
 };

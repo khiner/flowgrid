@@ -26,6 +26,5 @@ template<typename T> struct Set : Component {
 
     ContainerT Get() const;
 
-    bool Exists() const; // Check if exists in store.
     void Erase() const override;
 };

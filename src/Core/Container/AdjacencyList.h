@@ -17,7 +17,6 @@ struct AdjacencyList : Component {
 
     IdPairs Get() const;
 
-    bool Exists() const; // Check if exists in store.
     void Erase() const override;
     void RenderValueTree(bool annotate, bool auto_select) const override;
 

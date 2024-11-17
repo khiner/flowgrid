@@ -262,7 +262,6 @@ void TextBuffer::Commit(TextBufferData b) const {
     // b.Edits = {};
 }
 
-bool TextBuffer::Exists() const { return S.Count<Buffer>(Id); }
 Buffer TextBuffer::GetBuffer() const { return S.Get<Buffer>(Id); }
 std::string TextBuffer::GetText() const { return GetBuffer().GetText(); }
 bool TextBuffer::Empty() const { return GetBuffer().Empty(); }

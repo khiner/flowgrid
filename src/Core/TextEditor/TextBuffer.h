@@ -26,7 +26,6 @@ struct TextBuffer : Component, Actionable<Action::TextBuffer::Any> {
 
     TextBufferData GetBuffer() const;
     std::string GetText() const;
-    bool Exists() const;
     bool Empty() const;
 
     void Refresh() override;

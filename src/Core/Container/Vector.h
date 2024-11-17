@@ -23,17 +23,15 @@ template<typename T> struct Vector : Component {
 
     ContainerT Get() const;
     void Set(const std::vector<T> &) const;
-    void Set(size_t i, const T &) const;
-    void Set(const std::unordered_map<size_t, T> &) const;
+    void Set(size_t i, T) const;
 
-    void PushBack(const T &) const;
+    void PushBack(T) const;
     void PopBack() const;
     void Resize(size_t) const;
     void Clear() const;
-    bool Exists() const; // Check if exists in store.
     void Erase() const override;
 
-    size_t IndexOf(const T &) const;
-    bool Contains(const T &value) const { return IndexOf(value) != Size(); }
+    size_t IndexOf(T) const;
+    bool Contains(T) const;
     void Erase(size_t i) const;
 };

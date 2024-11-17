@@ -14,6 +14,8 @@
 #include "immer/flex_vector_transient.hpp"
 #include "immer/set_transient.hpp"
 
+using std::ranges::find, std::ranges::count_if;
+
 void ApplyVectorSet(Store &s, const auto &a) {
     s.Set(a.component_id, s.Get<immer::flex_vector<decltype(a.value)>>(a.component_id).set(a.i, a.value));
 }
@@ -117,7 +119,6 @@ bool CoreActionHandler::CanApply(const ActionType &action) const {
 }
 
 template<typename T> Vector<T>::ContainerT Vector<T>::Get() const { return S.Get<ContainerT>(Id); }
-template<typename T> bool Vector<T>::Exists() const { return S.Count<ContainerT>(Id); }
 template<typename T> void Vector<T>::Erase() const { _S.Erase<ContainerT>(Id); }
 template<typename T> void Vector<T>::Clear() const { _S.Clear<ContainerT>(Id); }
 
@@ -126,13 +127,8 @@ template<typename T> void Vector<T>::Set(const std::vector<T> &value) const {
     for (const auto &v : value) val.push_back(v);
     _S.Set(Id, val.persistent());
 }
-template<typename T> void Vector<T>::Set(size_t i, const T &value) const { _S.Set(Id, Get().set(i, value)); }
-template<typename T> void Vector<T>::Set(const std::unordered_map<size_t, T> &values) const {
-    auto val = Get().transient();
-    for (const auto &[i, value] : values) val.set(i, value);
-    _S.Set(Id, val.persistent());
-}
-template<typename T> void Vector<T>::PushBack(const T &value) const { _S.Set(Id, S.Get<ContainerT>(Id).push_back(value)); }
+template<typename T> void Vector<T>::Set(size_t i, T value) const { _S.Set(Id, Get().set(i, std::move(value))); }
+template<typename T> void Vector<T>::PushBack(T value) const { _S.Set(Id, Get().push_back(std::move(value))); }
 template<typename T> void Vector<T>::PopBack() const {
     const auto v = S.Get<ContainerT>(Id);
     _S.Set(Id, v.take(v.size() - 1));
@@ -145,11 +141,14 @@ template<typename T> void Vector<T>::Resize(size_t size) const {
 }
 template<typename T> void Vector<T>::Erase(size_t i) const { _S.Set(Id, Get().erase(i)); }
 
-template<typename T> size_t Vector<T>::IndexOf(const T &value) const {
+template<typename T> size_t Vector<T>::IndexOf(T value) const {
     auto vec = Get();
-    return std::ranges::find(vec, value) - vec.begin();
+    return find(vec, std::move(value)) - vec.begin();
 }
-
+template<typename T> bool Vector<T>::Contains(T value) const {
+    auto vec = Get();
+    return find(vec, std::move(value)) != vec.end();
+}
 template<typename T> void Vector<T>::SetJson(json &&j) const {
     immer::flex_vector_transient<T> val{};
     for (const auto &v : json::parse(std::string(std::move(j)))) val.push_back(v);
@@ -185,7 +184,6 @@ template struct Vector<float>;
 template struct Vector<std::string>;
 
 template<typename T> Set<T>::ContainerT Set<T>::Get() const { return S.Get<ContainerT>(Id); }
-template<typename T> bool Set<T>::Exists() const { return S.Count<ContainerT>(Id); }
 template<typename T> void Set<T>::Erase() const { _S.Erase<ContainerT>(Id); }
 template<typename T> void Set<T>::Clear() const { _S.Clear<ContainerT>(Id); }
 template<typename T> void Set<T>::Insert(const T &value) const { _S.Set(Id, Get().insert(value)); }
@@ -254,7 +252,6 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
     return false;
 }
 
-bool AdjacencyList::Exists() const { return S.Count<IdPairs>(Id); }
 bool AdjacencyList::IsConnected(ID source, ID destination) const { return S.Get<IdPairs>(Id).count({source, destination}) > 0; }
 void AdjacencyList::Disconnect(ID source, ID destination) const { _S.Set(Id, S.Get<IdPairs>(Id).erase({source, destination})); }
 void AdjacencyList::Add(IdPair &&id_pair) const { _S.Set(Id, S.Get<IdPairs>(Id).insert(std::move(id_pair))); }
@@ -267,10 +264,10 @@ void AdjacencyList::DisconnectOutput(ID id) const {
 }
 
 u32 AdjacencyList::SourceCount(ID destination) const {
-    return std::ranges::count_if(Get(), [destination](const auto &pair) { return pair.second == destination; });
+    return count_if(Get(), [destination](const auto &pair) { return pair.second == destination; });
 }
 u32 AdjacencyList::DestinationCount(ID source) const {
-    return std::ranges::count_if(Get(), [source](const auto &pair) { return pair.first == source; });
+    return count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
 void AdjacencyList::Erase() const { _S.Erase<IdPairs>(Id); }
@@ -311,6 +308,11 @@ Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, flo
     : Component(std::move(args)), X({this, "X"}, value.first, min, max, fmt), Y({this, "Y"}, value.second, min, max, fmt) {}
 
 Vec2::operator ImVec2() const { return {float(X), float(Y)}; }
+
+void Vec2::Set(std::pair<float, float> value) const {
+    _S.Set(X.Id, value.first);
+    _S.Set(Y.Id, value.second);
+}
 
 using namespace ImGui;
 

@@ -4,14 +4,25 @@
 #include "Core/Project/ProjectContext.h"
 #include "Core/Store/Store.h"
 
-template<typename T> bool Primitive<T>::Exists() const { return S.Count<T>(Id); }
-template<typename T> T Primitive<T>::Get() const { return S.Get<T>(Id); }
+template<typename T> Primitive<T>::Primitive(ComponentArgs &&args, T value) : Component(std::move(args)), Value(std::move(value)) {
+    if (S.Count<T>(Id)) Refresh();
+    else _S.Set(Id, Value); // We treat the provided value as a default store value.
+}
+template<typename T> Primitive<T>::~Primitive() {
+    _S.Erase<T>(Id);
+}
+
+template<typename T> void Primitive<T>::Refresh() { Value = S.Get<T>(Id); }
 
 template<typename T> json Primitive<T>::ToJson() const { return Value; }
-template<typename T> void Primitive<T>::SetJson(json &&j) const { Set(std::move(j)); }
+template<typename T> void Primitive<T>::SetJson(json &&j) const { _S.Set(Id, T{std::move(j)}); }
 
-template<typename T> void Primitive<T>::Set(const T &value) const { _S.Set(Id, value); }
-template<typename T> void Primitive<T>::Set(T &&value) const { _S.Set(Id, std::move(value)); }
+template<typename T> void Primitive<T>::Set(T value) const { _S.Set(Id, std::move(value)); }
+template<typename T> void Primitive<T>::Set_(T value) {
+    _S.Set(Id, value);
+    Value = value;
+}
+
 template<typename T> void Primitive<T>::Erase() const { _S.Erase<T>(Id); }
 
 template<typename T> void Primitive<T>::RenderValueTree(bool annotate, bool auto_select) const {
@@ -39,6 +50,10 @@ template struct Primitive<std::string>;
 #include "Core/UI/HelpMarker.h"
 
 using namespace ImGui;
+void Bool::Toggle_() {
+    Set_(!_S.Get<bool>(Id));
+    Refresh();
+}
 
 void Bool::IssueToggle() const { Ctx.CoreQ(Action::Primitive::Bool::Toggle{Id}); }
 

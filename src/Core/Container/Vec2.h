@@ -13,12 +13,7 @@ struct Vec2 : Component {
 
     operator ImVec2() const;
 
-    void SetX(float x) const { X.Set(x); }
-    void SetY(float y) const { Y.Set(y); }
-    void Set(const std::pair<float, float> &value) const {
-        SetX(value.first);
-        SetY(value.second);
-    }
+    void Set(std::pair<float, float>) const;
 
     Float X, Y;
 
@@ -34,8 +29,6 @@ struct Vec2Linked : Vec2 {
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value = {0, 0}, float min = 0, float max = 1, const char *fmt = nullptr);
     Vec2Linked(ComponentArgs &&, std::pair<float, float> &&value, float min, float max, bool linked, const char *fmt = nullptr);
     ~Vec2Linked() = default;
-
-    void SetLinked(bool linked) const { Linked.Set(linked); }
 
     Bool Linked;
 

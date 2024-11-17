@@ -1,36 +1,41 @@
 #include "Colors.h"
 
-#include <ranges>
-
 #include "imgui.h"
 #include "implot.h"
 #include "implot_internal.h"
 
+#include "immer/flex_vector_transient.hpp"
+
 #include "Core/CoreActionProducer.h"
 #include "Core/Helper/Hex.h"
 #include "Core/Project/ProjectContext.h"
+#include "Core/Store/Store.h"
 
 #include "HelpMarker.h"
 #include "InvisibleButton.h"
 
-using namespace ImGui;
-
-using std::views::transform, std::ranges::to;
-
 Colors::Colors(ComponentArgs &&args, u32 size, std::function<const char *(int)> get_name, const bool allow_auto)
     : Vector(std::move(args)), GetName(get_name), AllowAuto(allow_auto) {
-    Vector::Set(std::views::iota(0u, u32(size)) | to<std::vector>());
+    immer::flex_vector_transient<u32> val{};
+    for (auto v : std::views::iota(0u, u32(size))) val.push_back(std::move(v));
+    _S.Set(Id, val.persistent());
 }
 
 u32 Colors::Float4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
 ImVec4 Colors::U32ToFloat4(u32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
 void Colors::Set(const std::vector<ImVec4> &values) const {
-    Vector::Set(values | transform([](const auto &value) { return Float4ToU32(value); }) | to<std::vector>());
+    immer::flex_vector_transient<u32> val{};
+    for (const auto &v : values) val.push_back(Float4ToU32(v));
+    _S.Set(Id, val.persistent());
 }
 void Colors::Set(const std::unordered_map<size_t, ImVec4> &entries) const {
-    Vector::Set(entries | transform([](const auto &entry) { return std::pair(entry.first, Float4ToU32(entry.second)); }) | to<std::unordered_map>());
+    auto val = Get().transient();
+    for (const auto &entry : entries) val.set(entry.first, Float4ToU32(entry.second));
+    _S.Set(Id, val.persistent());
 }
+
+using namespace ImGui;
 
 void Colors::Render() const {
     static ImGuiTextFilter filter;

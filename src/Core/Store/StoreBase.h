@@ -5,7 +5,8 @@
 #include "immer/map.hpp"
 #include "immer/map_transient.hpp"
 
-#include "Core/Primitive/Scalar.h"
+#include "Core/ID.h"
+#include "Core/Scalar.h"
 
 // Utility to transform a tuple into another tuple, applying a function to each element.
 template<typename OutTuple, typename InTuple, std::size_t... I>

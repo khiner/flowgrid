@@ -2,8 +2,9 @@
 
 #include <optional>
 #include <string>
+#include <variant>
 
-#include "Core/Primitive/PrimitiveVariant.h"
+#include "Core/Scalar.h"
 
 enum class PatchOpType {
     // Primitive ops
@@ -18,6 +19,8 @@ enum class PatchOpType {
     Insert,
     Erase,
 };
+
+using PrimitiveVariant = std::variant<bool, u32, s32, float, std::string>;
 
 struct PatchOp {
     PatchOpType Op{};

@@ -12,7 +12,7 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
-#include "Core/Primitive/Scalar.h"
+#include "Core/Scalar.h"
 
 #ifdef TRACING_ENABLED
 #include <Tracy.hpp>

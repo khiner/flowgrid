@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <Core/Primitive/Scalar.h>
+#include <Core/Scalar.h>
 
 // Mirrors the anonymous struct in `ma_device_info::nativeDataFormats`, excluding `flags`.
 struct DeviceDataFormat {

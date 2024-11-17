@@ -2,7 +2,7 @@
 
 #include "Action.h"
 #include "Core/Json.h"
-#include "Core/Primitive/Scalar.h" // Not actually used in this file, but included as a convenience for action definitions.
+#include "Core/Scalar.h" // Not actually used in this file, but included as a convenience for action definitions.
 
 // Component actions hold the `component_id` of the component they act on.
 #define ComponentActionJson(ActionType, ...) Json(ActionType, component_id __VA_OPT__(, ) __VA_ARGS__);

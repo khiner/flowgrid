@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Core/ID.h"
 #include "PatchOp.h"
 
 using PatchOps = std::unordered_map<ID, std::vector<PatchOp>>;

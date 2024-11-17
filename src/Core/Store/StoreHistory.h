@@ -4,7 +4,7 @@
 
 #include "nlohmann/json_fwd.hpp"
 
-#include "Core/Primitive/Scalar.h"
+#include "Core/Scalar.h"
 
 using json = nlohmann::json;
 

@@ -4,7 +4,7 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "Primitive/ID.h"
+#include "ID.h"
 
 struct HelpInfo {
     const std::string Name, Help;

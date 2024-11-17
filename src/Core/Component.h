@@ -11,7 +11,7 @@
 #include "HelpInfo.h"
 #include "Helper/Time.h"
 #include "MenuItemDrawable.h"
-#include "Primitive/Scalar.h"
+#include "Scalar.h"
 #include "Store/IDs.h"
 
 using json = nlohmann::json;

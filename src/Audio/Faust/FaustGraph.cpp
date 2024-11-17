@@ -21,7 +21,7 @@
 using std::min, std::max, std::pair;
 using std::ranges::to, std::views::take, std::views::take_while;
 
-static const string_view SvgFileExtension{".svg"};
+static constexpr string_view SvgFileExtension{".svg"};
 
 enum DeviceType {
     DeviceType_ImGui,
@@ -321,7 +321,7 @@ struct ImGuiDevice : Device {
 
     // Basically `DrawList->AddLine(...)`, but avoiding extra vec2 math to cancel out the +0.5x ImGui adds to line points.
     void Line(const ImVec2 &start, const ImVec2 &end) override {
-        static const ImVec2 offset{0, 0.5};
+        static constexpr ImVec2 offset{0, 0.5};
         DrawList->PathLineTo(At(start) + offset);
         DrawList->PathLineTo(At(end) + offset);
         DrawList->PathStroke(Style.Colors[FlowGridGraphCol_Line], 0, Scale(Style.WireThickness));
@@ -405,7 +405,7 @@ static bool isBoxInverter(Box box) {
 }
 
 string PrintTree(Tree tree) {
-    static const int max_num_characters = 20;
+    static constexpr int max_num_characters = 20;
     const auto &str = printBox(tree, false, max_num_characters);
     return str.substr(0, str.size() - 1); // Last character is a newline.
 }
@@ -569,7 +569,7 @@ struct Node {
         device.Rect(*this, {.FillColor = BgColor, .StrokeColor = BorderColor, .StrokeWidth = 1});
     }
     void DrawType(Device &device) const {
-        static const float padding = 2;
+        static constexpr float padding = 2;
         const auto label = std::format("{}: {}", BoxTypeLabel, Descendents);
         device.Rect({{0, 0}, CalcTextSize(label) + padding * 2}, {.FillColor = TypeLabelBgColor});
         device.Text({padding, padding}, label, {.Color = TypeTextColor, .Justify = {HJustify_Left, VJustify_Top}});
@@ -932,7 +932,7 @@ struct BinaryNode : Node {
             u32 same_dir_count = 0;
             std::unordered_map<ImGuiDir, u32> max_group_size; // Store the size of the largest group for each direction.
             for (u32 i = 0; i < A->IoCount(IO_Out); i++) {
-                static const float Threshold = 0.1f;
+                static constexpr float Threshold = 0.1f;
                 const float yd = B->ChildPoint(IO_In, i).y - A->ChildPoint(IO_Out, i).y;
                 const auto dir = abs(yd) < Threshold ? ImGuiDir_None : (yd < 0 ? ImGuiDir_Up : ImGuiDir_Down);
                 same_dir_count = dir == prev_dir ? same_dir_count + 1 : 1;

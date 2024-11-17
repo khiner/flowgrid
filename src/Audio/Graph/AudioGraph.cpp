@@ -405,7 +405,7 @@ private:
 
 struct GraphMaNode : MaNode {
     GraphMaNode() {
-        static const u32 channels = 2; // The graph is always stereo.
+        static constexpr u32 channels = 2; // The graph is always stereo.
         auto config = ma_node_graph_config_init(channels);
         if (ma_result result = ma_node_graph_init(&config, nullptr, &_Graph); result != MA_SUCCESS) {
             throw std::runtime_error(std::format("Failed to initialize node graph: {}", int(result)));
@@ -765,7 +765,7 @@ void AudioGraph::Connections::Render() const {
     BeginGroup();
 
     // I/O header frames + labels on the left/top, respectively.
-    static const string_view InputsLabel{"Inputs"}, OutputsLabel{"Outputs"};
+    static constexpr string_view InputsLabel{"Inputs"}, OutputsLabel{"Outputs"};
     const IoVec io_header_w_no_padding = ImVec2{CalcTextSize(InputsLabel).x, CalcTextSize(OutputsLabel).x};
     const IoVec io_header_w = io_header_w_no_padding + label_padding.x * 2;
     IoVec io_frame_w = GetContentRegionAvail() - (node_label_w + fhws);

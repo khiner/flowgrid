@@ -88,7 +88,7 @@ enum NotificationType {
     Removed
 };
 
-inline static const std::string_view FaustDspPathSegment{"FaustDSP"};
+inline static constexpr std::string_view FaustDspPathSegment{"FaustDSP"};
 
 struct FaustDSP;
 struct FaustDSPContainer {

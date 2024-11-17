@@ -4,7 +4,7 @@
 
 #pragma once
 
-static const char IGFD_compressed_data_base85[3950 + 1] =
+static constexpr char IGFD_compressed_data_base85[3950 + 1] =
     "7])#######Dl_0_'/###O@?>#+lQS%Ql#v#X^@iFm,6TH$&(##/i(##[[S=B7Rm.L:^Ee-]br-$KQshF=I&##'h$##<L]w',>p0FSQM:L3/Uw02)[w'o;<RDQjUw#IPH_&8Jq-$Mu@['"
     "@c9*NbUD_&UKo-$fZIkESHP_?Xq&##a+(##n9?0Fb$'3^>Z%F7Acg--&OMkOQ&###U::d?odPirc[4gL_=$##+Yk>3;IGF%:=1?%+$-tL]em##PPL@-#VGs-Vi[+M4:T/Lr.TV-vtXR*"
     "?=th#@fNX($W3&+5OOX(uue+MQxSfLaH<mL(x$m/mEexFTP'##>Uu)NuDOd$nGZ(%/@$Z$3.5F%>Lqk+GN=_/)@v;%V8C5M$@,gL1F5gL$@,gLKoG8.'5>##<F`p&C./YcZwKv-$;d'&"

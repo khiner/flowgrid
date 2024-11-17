@@ -1,5 +1,5 @@
 
-#include <stack> 
+#include <stack>
 
 #include "Primitive/Bool.h"
 #include "Primitive/Enum.h"

@@ -202,7 +202,7 @@ void AudioGraphNode::MonitorNode::RenderWaveform() const {
 
 void AudioGraphNode::MonitorNode::RenderMagnitudeSpectrum() const {
     if (ImPlot::BeginPlot("Magnitude spectrum", {-1, 160})) {
-        static const float MIN_DB = -100;
+        static constexpr float MIN_DB = -100;
         const fft_data *fft = Monitor->fft;
         const u32 N = Monitor->config.buffer_frames;
         const u32 N_2 = N / 2;
@@ -237,7 +237,7 @@ void AudioGraphNode::MonitorNode::RenderMagnitudeSpectrum() const {
 }
 
 void AudioGraphNode::MonitorNode::Render() const {
-    static const std::vector<u32> WindowLengthOptions = {256, 512, 1024, 2048, 4096, 8192, 16384};
+    static const std::vector<u32> WindowLengthOptions{256, 512, 1024, 2048, 4096, 8192, 16384};
     SetNextItemWidth(GetFontSize() * 9);
     WindowLength.Render(WindowLengthOptions);
     SetNextItemWidth(GetFontSize() * 9);

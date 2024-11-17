@@ -138,7 +138,7 @@ void FaustDSP::Init() {
     Box = DSPToBoxes("FlowGrid", code, argc, argv.data(), &num_inputs, &num_outputs, ErrorMessage);
 
     if (Box && ErrorMessage.empty()) {
-        static const int optimize_level = -1;
+        static constexpr int optimize_level = -1;
         DspFactory = createDSPFactoryFromBoxes("FlowGrid", Box, argc, argv.data(), "", ErrorMessage, optimize_level);
         if (DspFactory) {
             if (ErrorMessage.empty()) {

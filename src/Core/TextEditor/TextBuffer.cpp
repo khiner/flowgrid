@@ -116,7 +116,7 @@ struct TextBufferState {
 
 const char *TSReadText(void *payload, u32 byte_index, TSPoint position, u32 *bytes_read) {
     (void)byte_index; // Unused.
-    static const char newline = '\n';
+    static constexpr char newline = '\n';
 
     const auto *buffer = static_cast<TextBuffer *>(payload);
     const auto buffer_data = buffer->GetBuffer();

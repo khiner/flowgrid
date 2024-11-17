@@ -610,7 +610,7 @@ void Project::RenderStorePathChangeFrequency() const {
         const auto c_labels = labels | transform([](const std::string &label) { return label.c_str(); }) | to<std::vector>();
         ImPlot::SetupAxisTicks(ImAxis_Y1, 0, double(labels.size() - 1), int(labels.size()), c_labels.data(), false);
 
-        static const char *ItemLabels[] = {"Committed updates", "Active updates"};
+        static const char *const ItemLabels[] = {"Committed updates", "Active updates"};
         const int item_count = HasGestureActions() ? 2 : 1;
         const int group_count = values.size() / item_count;
         ImPlot::PlotBarGroups(ItemLabels, values.data(), item_count, group_count, 0.75, 0, ImPlotBarGroupsFlags_Horizontal | ImPlotBarGroupsFlags_Stacked);

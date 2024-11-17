@@ -106,7 +106,7 @@ LanguageDefinitions::LanguageDefinitions()
 
 static ImU32 AnsiToRgb(u32 code) {
     // Standard ANSI colors in hex, mapped directly to ImU32
-    static const ImU32 StandardColors[16] = {
+    static constexpr ImU32 StandardColors[16] = {
         Col32(0, 0, 0), // Black
         Col32(128, 0, 0), // Red
         Col32(0, 128, 0), // Green
@@ -130,7 +130,7 @@ static ImU32 AnsiToRgb(u32 code) {
     // The following is a programmatic strategy to convert the >= 16 range to RGB.
     if (code < 232) {
         // 6x6x6 color cube
-        static const u32 step = 255 / 5;
+        static constexpr u32 step = 255 / 5;
         const u32 red = (code - 16) / 36, green = (code - 16) / 6 % 6, blue = (code - 16) % 6;
         return Col32(red * step, green * step, blue * step, 255);
     }

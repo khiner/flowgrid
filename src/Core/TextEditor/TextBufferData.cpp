@@ -529,7 +529,7 @@ TextBufferData TextBufferData::MoveCurrentLines(bool up) const {
 TextBufferData TextBufferData::ToggleLineComment(const std::string &comment) const {
     if (comment.empty()) return *this;
 
-    static const auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), find_if_not(line, isblank)); };
+    static constexpr auto FindFirstNonSpace = [](const Line &line) { return std::distance(line.begin(), find_if_not(line, isblank)); };
 
     std::unordered_set<u32> affected_lines;
     for (const auto &c : Cursors) {

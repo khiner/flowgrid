@@ -142,7 +142,7 @@ template<IsAction... T> struct ActionVariant : std::variant<T...> {
 
 private:
     // Call a function on the variant's active member type.
-    template<typename Callable> auto Call(Callable func) const {
+    auto Call(auto func) const {
         return std::visit([&func](const auto &action) { return func(action); }, *this);
     }
 };

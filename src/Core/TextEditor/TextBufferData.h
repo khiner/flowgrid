@@ -161,17 +161,14 @@ struct TextBufferData {
     TextBufferData SetCursor(Cursor, bool add = false) const;
     TextBufferData SetCursors(TextBufferCursors) const;
     TextBufferData EditCursor(u32 i, LineChar, bool select = false) const;
-    template<typename EditFunc> TextBufferData EditCursors(EditFunc f) const {
+    TextBufferData EditCursors(auto func) const {
         immer::vector_transient<Cursor> new_cursors;
-        for (const auto &c : Cursors) new_cursors.push_back(f(c));
+        for (const auto &c : Cursors) new_cursors.push_back(func(c));
         return SetCursors(new_cursors.persistent());
     }
-
-    template<typename EditFunc, typename FilterFunc>
-    TextBufferData EditCursors(EditFunc f, FilterFunc filter) const {
-        return EditCursors([f, filter](const auto &c) { return filter(c) ? f(c) : c; });
+    TextBufferData EditCursors(auto func, auto filter) const {
+        return EditCursors([func, filter](const auto &c) { return filter(c) ? func(c) : c; });
     }
-
     TextBufferData EditCursors(LineChar lc, bool select = false) const {
         return EditCursors([lc, select](const auto &c) { return c.To(lc, select); });
     }

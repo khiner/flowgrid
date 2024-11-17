@@ -10,8 +10,8 @@ using std::ranges::reverse_view;
 
 // Naive `diff` method for `immer::vector`s.
 // Callbacks receive an index and a value (for `add` and `remove`) or two values (for `change`).
-template<typename T, typename Add, typename Remove, typename Change>
-void diff(const immer::flex_vector<T> &before, const immer::flex_vector<T> &after, Add add, Remove remove, Change change) {
+template<typename T>
+void diff(const immer::flex_vector<T> &before, const immer::flex_vector<T> &after, auto add, auto remove, auto change) {
     size_t before_index = 0, after_index = 0;
     // Iterate over both vectors as long as both have elements remaining.
     while (before_index < before.size() && after_index < after.size()) {
@@ -41,17 +41,6 @@ void AddOps(const StoreMap<TextBufferData> &before, const StoreMap<TextBufferDat
         [&ops](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, "", std::nullopt); },
         [&ops](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, ""); },
         [&ops](const auto &o, const auto &) { ops[o.first].emplace_back(PatchOpType::Replace, "", ""); }
-    );
-}
-
-template<typename ValueType>
-void AddOps(const StoreMap<ValueType> &before, const StoreMap<ValueType> &after, PatchOps &ops) {
-    diff(
-        before,
-        after,
-        [&ops](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, added.second, std::nullopt); },
-        [&ops](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, removed.second); },
-        [&ops](const auto &o, const auto &n) { ops[o.first].emplace_back(PatchOpType::Replace, n.second, o.second); }
     );
 }
 
@@ -99,7 +88,8 @@ void AddOps(const StoreMap<immer::set<u32>> &before, const StoreMap<immer::set<u
     );
 }
 
-template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, const StoreMap<immer::flex_vector<T>> &after, PatchOps &ops) {
+template<typename T>
+void AddOps(const StoreMap<immer::flex_vector<T>> &before, const StoreMap<immer::flex_vector<T>> &after, PatchOps &ops) {
     diff(
         before,
         after,
@@ -123,6 +113,17 @@ template<typename T> void AddOps(const StoreMap<immer::flex_vector<T>> &before, 
                 [&ops, &o](size_t i, T o_el, T n_el) { ops[o.first].emplace_back(PatchOpType::Set, n_el, o_el, i); }
             );
         }
+    );
+}
+
+template<typename ValueType>
+void AddOps(const StoreMap<ValueType> &before, const StoreMap<ValueType> &after, PatchOps &ops) {
+    diff(
+        before,
+        after,
+        [&ops](const auto &added) { ops[added.first].emplace_back(PatchOpType::Add, added.second, std::nullopt); },
+        [&ops](const auto &removed) { ops[removed.first].emplace_back(PatchOpType::Remove, std::nullopt, removed.second); },
+        [&ops](const auto &o, const auto &n) { ops[o.first].emplace_back(PatchOpType::Replace, n.second, o.second); }
     );
 }
 

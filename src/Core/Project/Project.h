@@ -111,10 +111,10 @@ struct Project : ActionableProducer<Action::Any> {
     FileDialog FileDialog{FileDialog::EnqueueFn(SubProducer<FileDialog::ProducedActionType>(*this))};
     CoreActionProducer CoreQ{SubProducer<Action::Core::Any>(*this)};
 
-    ProjectContext ProjectContext{
+    ProjectContext Ctx{
         .Preferences = Preferences,
         .FileDialog = FileDialog,
-        .CoreQ = CoreQ,
+        .Q = CoreQ,
 
         .RegisterWindow = [this](ID id, bool dock = true) { return Core.Windows.Register(id, dock); },
         .IsDock = [this](ID id) { return Core.Windows.IsDock(id); },
@@ -128,11 +128,16 @@ struct Project : ActionableProducer<Action::Any> {
 
         .RenderMetrics = [this]() { RenderMetrics(); },
         .RenderStorePathChangeFrequency = [this]() { RenderStorePathChangeFrequency(); },
+
+        .UpdateWidgetGesturing = [this]() { UpdateWidgetGesturing(); },
+        .LatestUpdateTime = [this](ID id, std::optional<StorePath> relative_path) { return LatestUpdateTime(id, std::move(relative_path)); },
+        .IsChanged = [this](ID id) { return ChangedIds.contains(id); },
+        .IsDescendentChanged = [this](ID id) { return ChangedAncestorComponentIds.contains(id); },
     };
 
     mutable Store _S;
     const Store &S{_S};
-    ProjectState State{_S, ProjectContext};
+    ProjectState State{_S, Ctx};
     ProjectCore Core{{{&State, "Core"}, SubProducer<ProjectCore::ProducedActionType>(*this)}};
 
 private:
@@ -145,10 +150,13 @@ private:
     mutable SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     mutable std::optional<fs::path> CurrentProjectPath;
     mutable bool ProjectHasChanges{false}; // todo after store is fully value-oriented, this can be replaced with a comparison of the store and the last saved store.
+    mutable bool IsWidgetGesturing{};
     mutable std::string PrevSelectedPath;
 
+    using PathsMoment = std::pair<TimePoint, std::unordered_set<StorePath, PathHash>>;
+
     // Chronological vector of (unique-field-relative-paths, store-commit-time) pairs for each field that has been updated during the current gesture.
-    mutable std::unordered_map<ID, std::vector<Component::PathsMoment>> GestureChangedPaths{};
+    mutable std::unordered_map<ID, std::vector<PathsMoment>> GestureChangedPaths{};
     // IDs of all fields updated/added/removed during the latest action or undo/redo, mapped to all (field-relative) paths affected in the field.
     // For primitive fields, the paths will consist of only the root path.
     // For container fields, the paths will contain the container-relative paths of all affected elements.
@@ -156,7 +164,15 @@ private:
     // `ChangedPaths` is cleared after each action (after refreshing all affected fields), and can thus be used to determine which fields were affected by the latest action.
     // (`LatestChangedPaths` is retained for the lifetime of the application.)
     // These same key IDs are also stored in the `ChangedIds` set, which also includes IDs for all ancestor component of all changed components.
-    mutable std::unordered_map<ID, Component::PathsMoment> ChangedPaths;
+    mutable std::unordered_map<ID, PathsMoment> ChangedPaths;
+    // Latest (unique-field-relative-paths, store-commit-time) pair for each field over the lifetime of the application.
+    // This is updated by both the forward action pass, and by undo/redo.
+    mutable std::unordered_map<ID, PathsMoment> LatestChangedPaths{};
+    // IDs of all fields to which `ChangedPaths` are attributed.
+    // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
+    mutable std::unordered_set<ID> ChangedIds;
+    // Components with at least one descendent (excluding itself) updated during the latest action pass.
+    mutable std::unordered_set<ID> ChangedAncestorComponentIds;
 
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;
@@ -170,6 +186,9 @@ private:
 
     void RenderMetrics() const;
     void RenderStorePathChangeFrequency() const;
+
+    std::optional<TimePoint> LatestUpdateTime(ID, std::optional<StorePath> relative_path) noexcept;
+    void UpdateWidgetGesturing() const;
 
     // Refresh the cached values of all fields affected by the patch, and notify all listeners of the affected fields.
     // This is always called immediately after a store commit.

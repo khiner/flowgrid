@@ -9,7 +9,6 @@
 
 #include "ComponentArgs.h"
 #include "HelpInfo.h"
-#include "Helper/Time.h"
 #include "MenuItemDrawable.h"
 #include "Scalar.h"
 #include "Store/IDs.h"
@@ -52,10 +51,6 @@ struct Store;
 
 struct Component {
     using References = std::vector<std::reference_wrapper<const Component>>;
-    using UniquePaths = std::unordered_set<StorePath, PathHash>;
-    using PathsMoment = std::pair<TimePoint, UniquePaths>;
-
-    static int FrameCount(); // Signed int because that's what ImGui uses.
 
     struct ChangeListener {
         // Called when at least one of the listened components has changed.
@@ -66,8 +61,6 @@ struct Component {
 
     // todo these should be non-static members on the Project (root) component.
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
-    // Components with at least one descendent (excluding itself) updated during the latest action pass.
-    inline static std::unordered_set<ID> ChangedAncestorComponentIds;
 
     // Use when you expect a component with exactly this path to exist.
     static Component *ByPath(const StorePath &path) noexcept { return ById.at(IDs::ByPath.at(path)); }
@@ -91,25 +84,6 @@ struct Component {
         std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); });
     }
     void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
-
-    // Latest (unique-field-relative-paths, store-commit-time) pair for each field over the lifetime of the application.
-    // This is updated by both the forward action pass, and by undo/redo.
-    inline static std::unordered_map<ID, PathsMoment> LatestChangedPaths{};
-    // IDs of all fields to which `ChangedPaths` are attributed.
-    // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
-    inline static std::unordered_set<ID> ChangedIds;
-
-    static std::optional<TimePoint> LatestUpdateTime(ID field_id, std::optional<StorePath> relative_path = {}) noexcept {
-        if (!LatestChangedPaths.contains(field_id)) return {};
-
-        const auto &[update_time, paths] = LatestChangedPaths.at(field_id);
-        if (!relative_path) return update_time;
-        if (paths.contains(*relative_path)) return update_time;
-        return {};
-    }
-
-    inline static bool IsWidgetGesturing{};
-    static void UpdateGesturing();
 
     Component(Store &, std::string_view name, const ProjectContext &);
     Component(ComponentArgs &&);
@@ -160,7 +134,6 @@ struct Component {
     // Returns true if this component has changed directly (must me a leaf),
     // or if any of its descendent components have changed, if `include_descendents` is true.
     bool IsChanged(bool include_descendents = false) const noexcept;
-    bool IsDescendentChanged() const noexcept { return ChangedAncestorComponentIds.contains(Id); }
     bool HasAncestorContainer() const;
 
     // Override to return additional details to append to label in contexts with lots of horizontal room.

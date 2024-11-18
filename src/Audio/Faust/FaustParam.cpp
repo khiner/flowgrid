@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <ranges>
 
+#include "Core/Project/ProjectContext.h"
 #include "Core/UI/Widgets.h"
 #include "FaustParamsStyle.h"
 
@@ -123,7 +124,8 @@ void FaustParam::Render(float suggested_height, bool no_label) const {
             EndCombo();
         }
     }
-    UpdateGesturing();
+
+    Ctx.UpdateWidgetGesturing();
 
     if (Tooltip && IsItemHovered()) {
         // todo only leaf params, so group tooltips don't work.

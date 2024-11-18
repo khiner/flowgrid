@@ -143,7 +143,7 @@ TextBuffer::TextBuffer(ComponentArgs &&args, const fs::path &file_path)
     : Component(std::move(args)), _LastOpenedFilePath(file_path),
       State(std::make_unique<TextBufferState>(this)),
       Q([this](auto &&action) {
-          return std::visit([this](auto &&a) { return Ctx.CoreQ(std::move(a)); }, std::move(action));
+          return std::visit([this](auto &&a) { return Ctx.Q(std::move(a)); }, std::move(action));
       }) {
     SetFilePath(file_path);
     // if (Exists()) Refresh();

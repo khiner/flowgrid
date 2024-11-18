@@ -63,9 +63,9 @@ template<typename T> void Primitive<T>::RenderValueTree(bool annotate, bool auto
     TreeNode(Name, false, std::format("{}", Value).c_str());
 }
 
-template<> void Primitive<int>::IssueSet(int value) const { Ctx.CoreQ(Action::Primitive::Int::Set{Id, value}); };
-template<> void Primitive<u32>::IssueSet(u32 value) const { Ctx.CoreQ(Action::Primitive::UInt::Set{Id, value}); };
-template<> void Primitive<float>::IssueSet(float value) const { Ctx.CoreQ(Action::Primitive::Float::Set{Id, value}); };
+template<> void Primitive<int>::IssueSet(int value) const { Ctx.Q(Action::Primitive::Int::Set{Id, value}); };
+template<> void Primitive<u32>::IssueSet(u32 value) const { Ctx.Q(Action::Primitive::UInt::Set{Id, value}); };
+template<> void Primitive<float>::IssueSet(float value) const { Ctx.Q(Action::Primitive::Float::Set{Id, value}); };
 
 // Explicit instantiations.
 template struct Primitive<bool>;
@@ -79,7 +79,7 @@ void Bool::Toggle_() {
     Refresh();
 }
 
-void Bool::IssueToggle() const { Ctx.CoreQ(Action::Primitive::Bool::Toggle{Id}); }
+void Bool::IssueToggle() const { Ctx.Q(Action::Primitive::Bool::Toggle{Id}); }
 
 void Bool::Render(std::string_view label) const {
     if (bool value = Value; Checkbox(label.data(), &value)) IssueToggle();
@@ -194,7 +194,7 @@ void Float::Render() const {
         DragFloat(ImGuiLabel.c_str(), &value, DragSpeed, Min, Max, Format, Flags) :
         SliderFloat(ImGuiLabel.c_str(), &value, Min, Max, Format, Flags);
 
-    UpdateGesturing();
+    Ctx.UpdateWidgetGesturing();
     if (edited) IssueSet(value);
     HelpMarker();
 }
@@ -208,7 +208,7 @@ Int::Int(ComponentArgs &&args, int value, int min, int max)
 void Int::Render() const {
     int value = Value;
     const bool edited = SliderInt(ImGuiLabel.c_str(), &value, Min, Max, "%d", ImGuiSliderFlags_None);
-    UpdateGesturing();
+    Ctx.UpdateWidgetGesturing();
     if (edited) IssueSet(value);
     HelpMarker();
 }
@@ -238,7 +238,7 @@ std::string UInt::ValueName(u32 value) const { return GetName ? (*GetName)(value
 void UInt::Render() const {
     u32 value = Value;
     const bool edited = SliderScalar(ImGuiLabel.c_str(), ImGuiDataType_S32, &value, &Min, &Max, "%d");
-    UpdateGesturing();
+    Ctx.UpdateWidgetGesturing();
     if (edited) IssueSet(value);
     HelpMarker();
 }
@@ -277,7 +277,7 @@ void String::RenderValueTree(bool annotate, bool auto_select) const {
     TreeNode(Name, false, S.Get<std::string>(Id).c_str());
 }
 
-void String::IssueSet(std::string_view value) const { Ctx.CoreQ(Action::Primitive::String::Set{Id, std::string(value)}); };
+void String::IssueSet(std::string_view value) const { Ctx.Q(Action::Primitive::String::Set{Id, std::string(value)}); };
 
 void String::Render() const { TextUnformatted(Get()); }
 
@@ -493,11 +493,11 @@ template<typename T> void Set<T>::RenderValueTree(bool annotate, bool auto_selec
 // Explicit instantiations.
 template struct Set<u32>;
 
-template<typename T> void Navigable<T>::IssueClear() const { Ctx.CoreQ(typename Action::Navigable<T>::Clear{Id}); }
-template<typename T> void Navigable<T>::IssuePush(T value) const { Ctx.CoreQ(typename Action::Navigable<T>::Push{Id, std::move(value)}); }
-template<typename T> void Navigable<T>::IssueMoveTo(u32 index) const { Ctx.CoreQ(typename Action::Navigable<T>::MoveTo{Id, index}); }
-template<typename T> void Navigable<T>::IssueStepForward() const { Ctx.CoreQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) + 1}); }
-template<typename T> void Navigable<T>::IssueStepBackward() const { Ctx.CoreQ(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) - 1}); }
+template<typename T> void Navigable<T>::IssueClear() const { Ctx.Q(typename Action::Navigable<T>::Clear{Id}); }
+template<typename T> void Navigable<T>::IssuePush(T value) const { Ctx.Q(typename Action::Navigable<T>::Push{Id, std::move(value)}); }
+template<typename T> void Navigable<T>::IssueMoveTo(u32 index) const { Ctx.Q(typename Action::Navigable<T>::MoveTo{Id, index}); }
+template<typename T> void Navigable<T>::IssueStepForward() const { Ctx.Q(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) + 1}); }
+template<typename T> void Navigable<T>::IssueStepBackward() const { Ctx.Q(typename Action::Navigable<T>::MoveTo{Id, u32(Cursor) - 1}); }
 
 // Explicit instantiations.
 template struct Navigable<u32>;
@@ -593,8 +593,8 @@ using namespace ImGui;
 void Vec2::Render(ImGuiSliderFlags flags) const {
     ImVec2 xy = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, X.Min, X.Max, X.Format, flags);
-    Component::UpdateGesturing();
-    if (edited) Ctx.CoreQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
+    Ctx.UpdateWidgetGesturing();
+    if (edited) Ctx.Q(Action::Vec2::Set{Id, {xy.x, xy.y}});
     HelpMarker();
 }
 
@@ -609,19 +609,19 @@ Vec2Linked::Vec2Linked(ComponentArgs &&args, std::pair<float, float> &&value, fl
 void Vec2Linked::Render(ImGuiSliderFlags flags) const {
     PushID(ImGuiLabel.c_str());
     bool linked = Linked;
-    if (Checkbox(Linked.Name.c_str(), &linked)) Ctx.CoreQ(Action::Vec2::ToggleLinked{Id});
+    if (Checkbox(Linked.Name.c_str(), &linked)) Ctx.Q(Action::Vec2::ToggleLinked{Id});
     PopID();
 
     SameLine();
 
     ImVec2 xy = *this;
     const bool edited = SliderFloat2(ImGuiLabel.c_str(), (float *)&xy, X.Min, X.Max, X.Format, flags);
-    Component::UpdateGesturing();
+    Ctx.UpdateWidgetGesturing();
     if (edited) {
         if (Linked) {
-            Ctx.CoreQ(Action::Vec2::SetAll{Id, xy.x != X ? xy.x : xy.y});
+            Ctx.Q(Action::Vec2::SetAll{Id, xy.x != X ? xy.x : xy.y});
         } else {
-            Ctx.CoreQ(Action::Vec2::Set{Id, {xy.x, xy.y}});
+            Ctx.Q(Action::Vec2::Set{Id, {xy.x, xy.y}});
         }
     }
     HelpMarker();
@@ -681,7 +681,7 @@ void Colors::Render() const {
             // todo use auto for FG colors (link to ImGui colors)
             if (AllowAuto) {
                 if (!is_auto) PushStyleVar(ImGuiStyleVar_Alpha, 0.25);
-                if (Button("Auto")) Ctx.CoreQ(Action::Vector<u32>::Set{Id, i, is_auto ? mapped_value : AutoColor});
+                if (Button("Auto")) Ctx.Q(Action::Vector<u32>::Set{Id, i, is_auto ? mapped_value : AutoColor});
                 if (!is_auto) PopStyleVar();
                 SameLine();
             }
@@ -689,7 +689,7 @@ void Colors::Render() const {
             auto value = ColorConvertU32ToFloat4(mapped_value);
             if (is_auto) BeginDisabled();
             const bool changed = ImGui::ColorEdit4("", (float *)&value, flags | ImGuiColorEditFlags_AlphaBar | (AllowAuto ? ImGuiColorEditFlags_AlphaPreviewHalf : 0));
-            UpdateGesturing();
+            Ctx.UpdateWidgetGesturing();
             if (is_auto) EndDisabled();
 
             SameLine(0, GetStyle().ItemInnerSpacing.x);
@@ -697,7 +697,7 @@ void Colors::Render() const {
 
             PopID();
 
-            if (changed) Ctx.CoreQ(Action::Vector<u32>::Set{Id, i, ColorConvertFloat4ToU32(value)});
+            if (changed) Ctx.Q(Action::Vector<u32>::Set{Id, i, ColorConvertFloat4ToU32(value)});
         }
     }
     if (AllowAuto) {

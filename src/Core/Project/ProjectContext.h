@@ -4,6 +4,7 @@
 
 #include "nlohmann/json_fwd.hpp"
 
+#include "Core/Helper/Time.h"
 #include "Core/ID.h"
 
 enum class ProjectFormat {
@@ -26,7 +27,7 @@ It doesn't know about any specific `Component` or `Store` (but it may be templat
 struct ProjectContext {
     const Preferences &Preferences;
     const FileDialog &FileDialog;
-    const CoreActionProducer &CoreQ;
+    const CoreActionProducer &Q;
 
     const std::function<void(ID, bool dock)> RegisterWindow;
     const std::function<bool(ID)> IsDock;
@@ -40,4 +41,9 @@ struct ProjectContext {
 
     const std::function<void()> RenderMetrics;
     const std::function<void()> RenderStorePathChangeFrequency;
+
+    const std::function<void()> UpdateWidgetGesturing;
+    const std::function<std::optional<TimePoint>(ID, std::optional<StorePath> relative_path)> LatestUpdateTime;
+    const std::function<bool(ID)> IsChanged;
+    const std::function<bool(ID)> IsDescendentChanged;
 };

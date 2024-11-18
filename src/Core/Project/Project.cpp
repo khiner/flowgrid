@@ -6,11 +6,14 @@
 #include <set>
 
 #include "imgui_internal.h"
+#include "implot.h"
 
 #include "Core/Action/ActionMenuItem.h"
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
 #include "Core/Store/StoreHistory.h"
+#include "Core/UI/HelpMarker.h"
+#include "Core/UI/JsonTree.h"
 
 struct Gesture {
     SavedActionMoments Actions;
@@ -145,7 +148,7 @@ void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
     std::unordered_set<Component::ChangeListener *> affected_listeners;
 
     // Find listeners to notify.
-    for (const auto id : Component::ChangedIds) {
+    for (const auto id : ChangedIds) {
         if (!Component::ById.contains(id)) continue; // The component was deleted.
 
         Component::ById.at(id)->Refresh();
@@ -156,7 +159,7 @@ void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
 
     // Find ancestor listeners to notify.
     // (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
-    for (const auto id : Component::ChangedAncestorComponentIds) {
+    for (const auto id : ChangedAncestorComponentIds) {
         if (!Component::ById.contains(id)) continue; // The component was deleted.
 
         const auto &listeners = Component::ChangeListenersById[id];
@@ -191,8 +194,8 @@ Component *Project::FindChanged(ID component_id, const std::vector<PatchOp> &ops
 
 void Project::ClearChanged() const {
     ChangedPaths.clear();
-    Component::ChangedIds.clear();
-    Component::ChangedAncestorComponentIds.clear();
+    ChangedIds.clear();
+    ChangedAncestorComponentIds.clear();
 }
 
 void Project::MarkAllChanged(Patch &&patch) const {
@@ -206,16 +209,16 @@ void Project::MarkAllChanged(Patch &&patch) const {
             ChangedPaths.at(id).second.insert(changed->Path); // todo build path for containers from ops.
 
             // Mark the changed field and all its ancestors.
-            Component::ChangedIds.insert(id);
+            ChangedIds.insert(id);
             for (const auto *ancestor = changed->Parent; ancestor != nullptr; ancestor = ancestor->Parent) {
-                Component::ChangedAncestorComponentIds.insert(ancestor->Id);
+                ChangedAncestorComponentIds.insert(ancestor->Id);
             }
         }
     }
 
     // Copy `ChangedPaths` over to `LatestChangedPaths`.
     // (`ChangedPaths` is cleared at the end of each action, while `LatestChangedPaths` is retained for the lifetime of the application.)
-    for (const auto &[field_id, paths_moment] : ChangedPaths) Component::LatestChangedPaths[field_id] = paths_moment;
+    for (const auto &[field_id, paths_moment] : ChangedPaths) LatestChangedPaths[field_id] = paths_moment;
 }
 
 SavedActionMoments MergeActions(const SavedActionMoments &actions) {
@@ -441,10 +444,10 @@ bool Project::Save(const fs::path &path) const {
 }
 
 void Project::OnApplicationLaunch() const {
-    Component::IsWidgetGesturing = false;
+    IsWidgetGesturing = false;
     History.Clear(S);
     ClearChanged();
-    Component::LatestChangedPaths.clear();
+    LatestChangedPaths.clear();
 
     // When loading a new project, we always refresh all UI contexts.
     Core.Style.ImGui.IsChanged = true;
@@ -498,7 +501,7 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     // that have already been accounted for above.
     _S.Commit();
     ClearChanged();
-    Component::LatestChangedPaths.clear();
+    LatestChangedPaths.clear();
     for (auto *child : State.Children) child->Refresh();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
@@ -510,7 +513,7 @@ void Project::Open(const fs::path &file_path) const {
     const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 
-    Component::IsWidgetGesturing = false;
+    IsWidgetGesturing = false;
 
     if (format == ProjectFormat::State) {
         OpenStateFormatProject(file_path);
@@ -526,7 +529,7 @@ void Project::Open(const fs::path &file_path) const {
             History.AddGesture(S, std::move(gesture), State.Id);
         }
         SetHistoryIndex(indexed_gestures.Index);
-        Component::LatestChangedPaths.clear();
+        LatestChangedPaths.clear();
     }
 
     SetCurrentProjectPath(file_path);
@@ -586,10 +589,19 @@ void Project::OpenRecentProjectMenuItem() const {
     }
 }
 
-#include "implot.h"
+void Project::UpdateWidgetGesturing() const {
+    if (ImGui::IsItemActivated()) IsWidgetGesturing = true;
+    if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
+}
 
-#include "Core/UI/HelpMarker.h"
-#include "Core/UI/JsonTree.h"
+std::optional<TimePoint> Project::LatestUpdateTime(ID id, std::optional<StorePath> relative_path) noexcept {
+    if (!LatestChangedPaths.contains(id)) return {};
+
+    const auto &[update_time, paths] = LatestChangedPaths.at(id);
+    if (!relative_path) return update_time;
+    if (paths.contains(*relative_path)) return update_time;
+    return {};
+}
 
 void Project::RenderStorePathChangeFrequency() const {
     auto [labels, values] = StorePathChangeFrequencyPlottable();
@@ -680,7 +692,7 @@ void Project::Draw() const {
     MainMenu.Draw();
     {
         auto dockspace_id = ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
-        if (Component::FrameCount() == 1) State.Dock(&dockspace_id);
+        if (ImGui::GetFrameCount() == 1) State.Dock(&dockspace_id);
 
         const auto &windows = Core.Windows;
         for (const auto *child : Core.Children) {
@@ -688,7 +700,7 @@ void Project::Draw() const {
         }
         windows.Draw();
 
-        if (Component::FrameCount() == 1) State.FocusDefault(); // todo default focus no longer working
+        if (ImGui::GetFrameCount() == 1) State.FocusDefault(); // todo default focus no longer working
     }
 
     FileDialog.Render();
@@ -723,7 +735,7 @@ void ShowActions(const SavedActionMoments &actions) {
 void Project::RenderMetrics() const {
     {
         // Active (uncompressed) gesture
-        if (const bool is_gesturing = Component::IsWidgetGesturing, has_gesture_actions = HasGestureActions();
+        if (const bool is_gesturing = IsWidgetGesturing, has_gesture_actions = HasGestureActions();
             is_gesturing || has_gesture_actions) {
             // Gesture completion progress bar (full-width to empty).
             const float time_remaining_sec = GestureTimeRemainingSec();
@@ -861,7 +873,7 @@ void Project::ApplyQueuedActions(bool force_commit_gesture) {
         );
     }
 
-    if (force_commit_gesture || (!Component::IsWidgetGesturing && has_gesture_actions && GestureTimeRemainingSec() <= 0)) {
+    if (force_commit_gesture || (!IsWidgetGesturing && has_gesture_actions && GestureTimeRemainingSec() <= 0)) {
         CommitGesture();
     }
 }

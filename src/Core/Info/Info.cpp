@@ -22,7 +22,7 @@ void Info::Render() const {
 
     auto &g = *GetCurrentContext();
     auto *tool = &g.DebugIDStackTool;
-    tool->LastActiveFrame = FrameCount();
+    tool->LastActiveFrame = ImGui::GetFrameCount();
 
     PushTextWrapPos(0);
     static constexpr bool ShowId = false;

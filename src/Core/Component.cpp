@@ -66,10 +66,8 @@ Component::~Component() {
     ChangeListenersById.erase(Id);
 }
 
-int Component::FrameCount() { return ImGui::GetFrameCount(); }
-
 bool Component::IsChanged(bool include_descendents) const noexcept {
-    return ChangedIds.contains(Id) || (include_descendents && IsDescendentChanged());
+    return Ctx.IsChanged(Id) || (include_descendents && Ctx.IsDescendentChanged(Id));
 }
 bool Component::HasAncestorContainer() const {
     for (const auto *ancestor = Parent; ancestor != nullptr; ancestor = ancestor->Parent) {
@@ -149,11 +147,6 @@ void Menu::Render() const {
         else if (is_menu_bar) EndMenuBar();
         else EndMenu();
     }
-}
-
-void Component::UpdateGesturing() {
-    if (ImGui::IsItemActivated()) IsWidgetGesturing = true;
-    if (ImGui::IsItemDeactivated()) IsWidgetGesturing = false;
 }
 
 void Component::RegisterWindow(bool dock) const { Ctx.RegisterWindow(Id, dock); }
@@ -269,7 +262,7 @@ void Component::DrawWindowsMenu() const {
 }
 
 void Component::FlashUpdateRecencyBackground(std::optional<StorePath> relative_path) const {
-    if (const auto latest_update_time = LatestUpdateTime(Id, relative_path)) {
+    if (const auto latest_update_time = Ctx.LatestUpdateTime(Id, relative_path)) {
         const auto &style = GetProjectStyle();
         const float flash_elapsed_ratio = fsec(Clock::now() - *latest_update_time).count() / style.FlashDurationSec;
         ImColor flash_color = style.Colors[ProjectCol_Flash];

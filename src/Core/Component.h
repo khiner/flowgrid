@@ -7,11 +7,12 @@
 
 #include "nlohmann/json.hpp"
 
+#include "ChangeListener.h"
 #include "ComponentArgs.h"
 #include "HelpInfo.h"
+#include "Helper/Path.h"
 #include "MenuItemDrawable.h"
 #include "Scalar.h"
-#include "Store/IDs.h"
 
 using json = nlohmann::json;
 
@@ -52,38 +53,13 @@ struct Store;
 struct Component {
     using References = std::vector<std::reference_wrapper<const Component>>;
 
-    struct ChangeListener {
-        // Called when at least one of the listened components has changed.
-        // Changed component(s) are not passed to the callback, but it's called while the components are still marked as changed,
-        // so listeners can use `component.IsChanged()` to check which listened components were changed if they wish.
-        virtual void OnComponentChanged() = 0;
-    };
-
     // todo these should be non-static members on the Project (root) component.
     inline static std::unordered_map<ID, Component *> ById; // Access any component by its ID.
-
-    // Use when you expect a component with exactly this path to exist.
-    static Component *ByPath(const StorePath &path) noexcept { return ById.at(IDs::ByPath.at(path)); }
-    static Component *ByPath(StorePath &&path) noexcept { return ById.at(IDs::ByPath.at(std::move(path))); }
-
-    static Component *Find(const StorePath &search_path) noexcept {
-        if (IDs::ByPath.contains(search_path)) return ByPath(search_path);
-        return nullptr;
-    }
+    inline static std::unordered_map<StorePath, ID, PathHash> IdByPath;
 
     // Component containers are fields that dynamically create/destroy child components.
     // Each component container has a single auxiliary field as a direct child which tracks the presence/ordering of its child component(s).
     inline static std::unordered_set<ID> ContainerIds, ContainerAuxiliaryIds;
-    inline static std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
-
-    static void RegisterChangeListener(ChangeListener *listener, const Component &component) noexcept {
-        ChangeListenersById[component.Id].insert(listener);
-    }
-    static void UnregisterChangeListener(ChangeListener *listener) noexcept {
-        for (auto &[component_id, listeners] : ChangeListenersById) listeners.erase(listener);
-        std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); });
-    }
-    void RegisterChangeListener(ChangeListener *listener) const noexcept { RegisterChangeListener(listener, *this); }
 
     Component(Store &, std::string_view name, const ProjectContext &);
     Component(ComponentArgs &&);
@@ -130,6 +106,10 @@ struct Component {
     ImGuiWindow *FindDockWindow() const; // Find the nearest ancestor window with a `DockId` (including itself).
     ImGuiWindow *FindWindow() const;
     bool Focus() const; // If this is a window, focus it and return true.
+
+    void RegisterChangeListener(ChangeListener *) const;
+    void RegisterChangeListener(ChangeListener *, ID) const;
+    void UnregisterChangeListener(ChangeListener *) const;
 
     // Returns true if this component has changed directly (must me a leaf),
     // or if any of its descendent components have changed, if `include_descendents` is true.

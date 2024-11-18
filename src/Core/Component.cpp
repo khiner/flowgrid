@@ -29,7 +29,7 @@ Component::Component(Store &store, string_view name, const ProjectContext &ctx)
     : _S(store), Ctx(ctx), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
-    IDs::ByPath.emplace(Path, Id);
+    IdByPath.emplace(Path, Id);
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo info, ImGuiWindowFlags flags, Menu &&menu)
@@ -43,7 +43,7 @@ Component::Component(Component *parent, string_view path_segment, string_view pa
       WindowMenu(std::move(menu)),
       WindowFlags(flags) {
     ById.emplace(Id, this);
-    IDs::ByPath.emplace(Path, Id);
+    IdByPath.emplace(Path, Id);
     HelpInfo::ById.emplace(Id, HelpInfo{Name, Help});
     parent->Children.emplace_back(this);
 }
@@ -61,10 +61,13 @@ Component::Component(ComponentArgs &&args, ImGuiWindowFlags flags, Menu &&menu)
 Component::~Component() {
     if (Parent) std::erase_if(Parent->Children, [this](const auto *child) { return child == this; });
     ById.erase(Id);
-    IDs::ByPath.erase(Path);
+    IdByPath.erase(Path);
     HelpInfo::ById.erase(Id);
-    ChangeListenersById.erase(Id);
 }
+
+void Component::RegisterChangeListener(ChangeListener *listener) const { Ctx.RegisterChangeListener(listener, Id); }
+void Component::RegisterChangeListener(ChangeListener *listener, ID id) const { Ctx.RegisterChangeListener(listener, id); }
+void Component::UnregisterChangeListener(ChangeListener *listener) const { Ctx.UnregisterChangeListener(listener); }
 
 bool Component::IsChanged(bool include_descendents) const noexcept {
     return Ctx.IsChanged(Id) || (include_descendents && Ctx.IsDescendentChanged(Id));
@@ -100,9 +103,9 @@ json Component::ToJson() const {
 }
 
 void Component::SetJson(json &&j) const {
-    auto &&flattened = std::move(j).flatten(); // Don't inline this - it breaks `SetJson`.
+    auto flattened = std::move(j).flatten(); // Don't inline this.
     for (auto &&[key, value] : flattened.items()) {
-        ByPath(std::move(key))->SetJson(std::move(value));
+        ById.at(IdByPath.at(key))->SetJson(std::move(value));
     }
 }
 

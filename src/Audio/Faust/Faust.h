@@ -46,7 +46,7 @@ protected:
 struct FaustGraphs
     : ComponentVector<FaustGraph>,
       ActionableProducer<Action::Faust::Graph::Any, FaustGraph::ProducedActionType>,
-      Component::ChangeListener {
+      ChangeListener {
     using ArgsT = ProducerComponentArgs<ProducedActionType>;
 
     FaustGraphs(ArgsT &&, const FaustGraphStyle &, const FaustGraphSettings &);
@@ -99,7 +99,7 @@ using FaustDspProducedActionType = Action::Append<Action::Faust::DSP::Any, typen
 
 // `FaustDSP` is a wrapper around a Faust DSP and Box.
 // It owns a Faust DSP code buffer, and updates its DSP and Box instances to reflect the current code.
-struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, Component::ChangeListener {
+struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, ChangeListener {
     FaustDSP(ArgsT &&, FaustDSPContainer &);
     ~FaustDSP();
 

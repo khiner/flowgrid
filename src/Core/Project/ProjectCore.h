@@ -29,7 +29,7 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
     void Dock(ID *) const override;
     void FocusDefault() const override;
 
-    struct Debug : DebugComponent, Component::ChangeListener {
+    struct Debug : DebugComponent, ChangeListener {
         Debug(ComponentArgs &&args, ImGuiWindowFlags flags = WindowFlags_None)
             : DebugComponent(
                   std::move(args), flags,

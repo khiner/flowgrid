@@ -145,7 +145,7 @@ Project::~Project() = default;
 void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
     MarkAllChanged(std::move(patch));
 
-    std::unordered_set<Component::ChangeListener *> affected_listeners;
+    std::unordered_set<ChangeListener *> affected_listeners;
 
     // Find listeners to notify.
     for (const auto id : ChangedIds) {
@@ -153,7 +153,7 @@ void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
 
         Component::ById.at(id)->Refresh();
 
-        const auto &listeners = Component::ChangeListenersById[id];
+        const auto &listeners = ChangeListenersById[id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 
@@ -162,7 +162,7 @@ void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
     for (const auto id : ChangedAncestorComponentIds) {
         if (!Component::ById.contains(id)) continue; // The component was deleted.
 
-        const auto &listeners = Component::ChangeListenersById[id];
+        const auto &listeners = ChangeListenersById[id];
         affected_listeners.insert(listeners.begin(), listeners.end());
     }
 

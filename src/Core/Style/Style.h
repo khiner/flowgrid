@@ -23,7 +23,7 @@ namespace flowgrid {
 struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
     using ActionProducerComponent::ActionProducerComponent;
 
-    struct ImGuiStyle : ActionProducerComponent<ProducedActionType>, Component::ChangeListener {
+    struct ImGuiStyle : ActionProducerComponent<ProducedActionType>, ChangeListener {
         ImGuiStyle(ArgsT &&);
         ~ImGuiStyle();
 
@@ -106,7 +106,7 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
         void Render() const override;
     };
 
-    struct ImPlotStyle : ActionProducerComponent<ProducedActionType>, Component::ChangeListener {
+    struct ImPlotStyle : ActionProducerComponent<ProducedActionType>, ChangeListener {
         ImPlotStyle(ArgsT &&);
         ~ImPlotStyle();
 

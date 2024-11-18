@@ -17,8 +17,8 @@ using namespace ImGui;
 
 AudioGraphNode::GainerNode::GainerNode(ComponentArgs &&args)
     : Component(std::move(args)), ParentNode(static_cast<AudioGraphNode *>(Parent->Parent)), SampleRate(ParentNode->Graph->SampleRate) {
-    Component::References listening_to = {Muted, Level, Smooth};
-    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
+    Component::References listening_to{Muted, Level, Smooth};
+    for (const auto &component : listening_to) RegisterChangeListener(this, component.get().Id);
 
     Gainer = std::make_unique<ma_gainer_node>();
     Init();
@@ -129,8 +129,8 @@ static WindowFunctionType GetWindowFunction(WindowType type) {
 AudioGraphNode::MonitorNode::MonitorNode(ComponentArgs &&args)
     : Component(std::move(args)), ParentNode(static_cast<AudioGraphNode *>(Parent->Parent)),
       Type(PathSegment.starts_with(to_string(IO_In)) ? IO_In : IO_Out) {
-    Component::References listening_to = {WindowType, WindowLength};
-    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
+    Component::References listening_to{WindowType, WindowLength};
+    for (const auto &component : listening_to) RegisterChangeListener(this, component.get().Id);
 
     Monitor = std::make_unique<ma_monitor_node>();
     Init();
@@ -265,8 +265,8 @@ private:
 
 AudioGraphNode::AudioGraphNode(ComponentArgs &&args, CreateNodeFunction create_node)
     : Component(std::move(args)), Graph(static_cast<AudioGraph *>(Name == "Audio graph" ? this : Parent->Parent)), Node(create_node()) {
-    Component::References listening_to = {Graph->SampleRate, InputGainer, OutputGainer, Panner, InputMonitor, OutputMonitor};
-    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
+    Component::References listening_to{Graph->SampleRate, InputGainer, OutputGainer, Panner, InputMonitor, OutputMonitor};
+    for (const auto &component : listening_to) RegisterChangeListener(this, component.get().Id);
 }
 
 AudioGraphNode::~AudioGraphNode() {

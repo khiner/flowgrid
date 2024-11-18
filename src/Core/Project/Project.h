@@ -111,42 +111,6 @@ struct Project : ActionableProducer<Action::Any> {
     FileDialog FileDialog{FileDialog::EnqueueFn(SubProducer<FileDialog::ProducedActionType>(*this))};
     CoreActionProducer CoreQ{SubProducer<Action::Core::Any>(*this)};
 
-    ProjectContext Ctx{
-        .Preferences = Preferences,
-        .FileDialog = FileDialog,
-        .Q = CoreQ,
-
-        .RegisterWindow = [this](ID id, bool dock = true) { return Core.Windows.Register(id, dock); },
-        .IsDock = [this](ID id) { return Core.Windows.IsDock(id); },
-        .IsWindow = [this](ID id) { return Core.Windows.IsWindow(id); },
-        .IsWindowVisible = [this](ID id) { return Core.Windows.IsVisible(id); },
-        .DrawMenuItem = [this](const Component &c) { Core.Windows.DrawMenuItem(c); },
-        .ToggleDemoWindow = [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
-
-        .GetProjectJson = [this](ProjectFormat format) { return GetProjectJson(format); },
-        .GetProjectStyle = [this]() -> const ProjectStyle & { return Core.Style.Project; },
-
-        .RenderMetrics = [this]() { RenderMetrics(); },
-        .RenderStorePathChangeFrequency = [this]() { RenderStorePathChangeFrequency(); },
-
-        .UpdateWidgetGesturing = [this]() { UpdateWidgetGesturing(); },
-        .LatestUpdateTime = [this](ID id, std::optional<StorePath> relative_path) { return LatestUpdateTime(id, std::move(relative_path)); },
-        .IsChanged = [this](ID id) { return ChangedIds.contains(id); },
-        .IsDescendentChanged = [this](ID id) { return ChangedAncestorComponentIds.contains(id); },
-    };
-
-    mutable Store _S;
-    const Store &S{_S};
-    ProjectState State{_S, Ctx};
-    ProjectCore Core{{{&State, "Core"}, SubProducer<ProjectCore::ProducedActionType>(*this)}};
-
-private:
-    std::unique_ptr<AppType> App;
-    std::unique_ptr<StoreHistory> HistoryPtr;
-    StoreHistory &History; // A reference to the above unique_ptr for convenience.
-
-    CoreActionHandler CoreHandler{_S};
-
     mutable SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     mutable std::optional<fs::path> CurrentProjectPath;
     mutable bool ProjectHasChanges{false}; // todo after store is fully value-oriented, this can be replaced with a comparison of the store and the last saved store.
@@ -173,6 +137,48 @@ private:
     mutable std::unordered_set<ID> ChangedIds;
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
     mutable std::unordered_set<ID> ChangedAncestorComponentIds;
+    mutable std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
+
+    ProjectContext Ctx{
+        .Preferences = Preferences,
+        .FileDialog = FileDialog,
+        .Q = CoreQ,
+
+        .RegisterWindow = [this](ID id, bool dock = true) { return Core.Windows.Register(id, dock); },
+        .IsDock = [this](ID id) { return Core.Windows.IsDock(id); },
+        .IsWindow = [this](ID id) { return Core.Windows.IsWindow(id); },
+        .IsWindowVisible = [this](ID id) { return Core.Windows.IsVisible(id); },
+        .DrawMenuItem = [this](const Component &c) { Core.Windows.DrawMenuItem(c); },
+        .ToggleDemoWindow = [this](ID id) { Q(Action::Windows::ToggleDebug{id}); },
+
+        .GetProjectJson = [this](ProjectFormat format) { return GetProjectJson(format); },
+        .GetProjectStyle = [this]() -> const ProjectStyle & { return Core.Style.Project; },
+
+        .RenderMetrics = [this]() { RenderMetrics(); },
+        .RenderStorePathChangeFrequency = [this]() { RenderStorePathChangeFrequency(); },
+
+        .UpdateWidgetGesturing = [this]() { UpdateWidgetGesturing(); },
+        .LatestUpdateTime = [this](ID id, std::optional<StorePath> relative_path) { return LatestUpdateTime(id, std::move(relative_path)); },
+
+        .IsChanged = [this](ID id) { return ChangedIds.contains(id); },
+        .IsDescendentChanged = [this](ID id) { return ChangedAncestorComponentIds.contains(id); },
+        .RegisterChangeListener = [this](ChangeListener *listener, ID id) noexcept { ChangeListenersById[id].insert(listener); },
+        .UnregisterChangeListener = [this](ChangeListener *listener) noexcept {
+            for (auto &[component_id, listeners] : ChangeListenersById) listeners.erase(listener);
+            std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); }); },
+    };
+
+    mutable Store _S;
+    const Store &S{_S};
+    ProjectState State{_S, Ctx};
+    ProjectCore Core{{{&State, "Core"}, SubProducer<ProjectCore::ProducedActionType>(*this)}};
+
+private:
+    std::unique_ptr<AppType> App;
+    std::unique_ptr<StoreHistory> HistoryPtr;
+    StoreHistory &History; // A reference to the above unique_ptr for convenience.
+
+    CoreActionHandler CoreHandler{_S};
 
     void Open(const fs::path &) const;
     bool Save(const fs::path &) const;

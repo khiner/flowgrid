@@ -52,7 +52,7 @@ struct MaNode {
 
 // Corresponds to `ma_node`.
 // This base `Node` can either be specialized or instantiated on its own.
-struct AudioGraphNode : Component, Component::ChangeListener {
+struct AudioGraphNode : Component, ChangeListener {
     using CreateNodeFunction = std::function<std::unique_ptr<MaNode>()>;
 
     AudioGraphNode(ComponentArgs &&, CreateNodeFunction);
@@ -106,7 +106,7 @@ struct AudioGraphNode : Component, Component::ChangeListener {
     // As a special case, the graph endpoint node is always considered active, since it is always "connected" to itself.
     void SetActive(bool is_active) noexcept { IsActive = IsGraphEndpoint() || is_active; }
 
-    struct GainerNode : Component, Component::ChangeListener {
+    struct GainerNode : Component, ChangeListener {
         GainerNode(ComponentArgs &&);
         ~GainerNode();
 
@@ -139,7 +139,7 @@ struct AudioGraphNode : Component, Component::ChangeListener {
         u32 SampleRate;
     };
 
-    struct PannerNode : Component, Component::ChangeListener {
+    struct PannerNode : Component, ChangeListener {
         PannerNode(ComponentArgs &&);
         ~PannerNode();
 
@@ -174,7 +174,7 @@ struct AudioGraphNode : Component, Component::ChangeListener {
         std::unique_ptr<ma_panner_node> Panner;
     };
 
-    struct MonitorNode : Component, Component::ChangeListener {
+    struct MonitorNode : Component, ChangeListener {
         MonitorNode(ComponentArgs &&);
         ~MonitorNode();
 

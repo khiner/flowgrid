@@ -82,7 +82,7 @@ struct DeviceNode : AudioGraphNode {
         UpdateFormat();
 
         const Component::References listening_to{Name, Format};
-        for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
+        for (const auto &component : listening_to) RegisterChangeListener(this, component.get().Id);
     }
 
     virtual ~DeviceNode() = default;
@@ -452,8 +452,8 @@ AudioGraph::AudioGraph(ProducerComponentArgs<ProducedActionType> &&args)
     if (SampleRate == 0u) SampleRate.Set_(GetDefaultSampleRate());
     Nodes.EmplaceBack_(WaveformNodeTypeId);
 
-    const Component::References listening_to = {Nodes, Connections};
-    for (const auto &component : listening_to) component.get().RegisterChangeListener(this);
+    const Component::References listening_to{Nodes, Connections};
+    for (const auto &component : listening_to) RegisterChangeListener(this, component.get().Id);
 
     // Set up default connections.
     // The device output -> graph endpoint node connection is handled in `UpdateConnections`.

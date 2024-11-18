@@ -18,6 +18,7 @@ struct FileDialog;
 struct CoreActionProducer;
 
 struct Component;
+struct ChangeListener;
 
 /*
 `ProjectContext` is essentially the public slice of a `Project`.
@@ -46,4 +47,7 @@ struct ProjectContext {
     const std::function<std::optional<TimePoint>(ID, std::optional<StorePath> relative_path)> LatestUpdateTime;
     const std::function<bool(ID)> IsChanged;
     const std::function<bool(ID)> IsDescendentChanged;
+
+    const std::function<void(ChangeListener *, ID)> RegisterChangeListener;
+    const std::function<void(ChangeListener *)> UnregisterChangeListener;
 };

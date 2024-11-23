@@ -100,7 +100,7 @@ template<typename ChildType> struct ComponentVector : Component {
     }
 
     void EmplaceBack(std::string_view path_segment) const {
-        ChildPrefixes.PushBack(StorePath(GenerateNextPrefix(path_segment)) / path_segment);
+        ChildPrefixes.PushBack(StorePath{GenerateNextPrefix(path_segment)} / path_segment);
     }
 
     void EmplaceBack_(std::string_view path_segment, ChildInitializerFunction &&initializer = {}) {
@@ -111,6 +111,14 @@ template<typename ChildType> struct ComponentVector : Component {
         ChildPrefixes.PushBack(child_prefix);
     }
 
+    void Resize_(u32 size) {
+        if (size > Value.size()) {
+            for (u32 i = Value.size(); i < size; ++i) EmplaceBack_(std::to_string(i));
+        } else if (size < Value.size()) {
+            Value.resize(size);
+            ChildPrefixes.Resize(size);
+        }
+    }
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
         using Base = std::vector<std::unique_ptr<ChildType>>::const_iterator;
 
@@ -138,8 +146,6 @@ template<typename ChildType> struct ComponentVector : Component {
     }
 
     void Refresh() override {
-        ChildPrefixes.Refresh(); // xxx no-op now
-
         const auto child_prefixes = ChildPrefixes.Get();
         auto size = child_prefixes.size();
         for (size_t i = 0; i < size; ++i) {
@@ -147,11 +153,11 @@ template<typename ChildType> struct ComponentVector : Component {
             if (const auto child_it = FindIt(prefix); child_it == Value.end()) {
                 const auto &[path_prefix, path_segment] = Split(prefix);
                 auto new_child = Creator({this, path_segment, "", path_prefix});
-                size_t index = find(child_prefixes, std::string(GetChildPrefix(new_child.get()))) - child_prefixes.begin();
+                size_t index = find(child_prefixes, std::string{GetChildPrefix(new_child.get())}) - child_prefixes.begin();
                 Value.insert(Value.begin() + index, std::move(new_child));
             }
         }
-        std::erase_if(Value, [this, &child_prefixes](const auto &child) { return !contains(child_prefixes, std::string(GetChildPrefix(child.get()))); });
+        std::erase_if(Value, [this, &child_prefixes](const auto &child) { return !contains(child_prefixes, std::string{GetChildPrefix(child.get())}); });
         for (auto &child : Value) child->Refresh();
     }
 
@@ -161,7 +167,7 @@ template<typename ChildType> struct ComponentVector : Component {
 
         child->Erase();
         auto vec = ChildPrefixes.Get();
-        auto index = find(vec, std::string(GetChildPrefix(child))) - vec.begin();
+        auto index = find(vec, std::string{GetChildPrefix(child)}) - vec.begin();
         ChildPrefixes.Erase(index);
     }
 

@@ -74,9 +74,8 @@ struct Component {
 
     virtual void SetJson(json &&) const;
     virtual json ToJson() const;
-    json::json_pointer JsonPointer() const {
-        return json::json_pointer(Path.string()); // Implicit `json_pointer` constructor is disabled.
-    }
+    // Implicit `json_pointer` constructor is disabled.
+    auto JsonPointer() const { return json::json_pointer(Path.string()); }
 
     // Refresh the component's cached value(s) based on the main store.
     // Should be called for each affected component after a state change to avoid stale values.

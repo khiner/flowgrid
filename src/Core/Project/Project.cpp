@@ -470,12 +470,7 @@ void Project::Tick() {
         }
         io.WantSaveIniSettings = false;
     }
-    if (FileDialog.Visible) {
-        // Drain action queue. All actions are no-ops while the file dialog is open.
-        while (Queue.try_dequeue(DequeueToken, DequeueActionMoment)) {}
-    } else {
-        ApplyQueuedActions(false);
-    }
+    ApplyQueuedActions(false);
 }
 
 static json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(file_path)); }
@@ -845,6 +840,13 @@ void Project::ApplyQueuedActions(bool force_commit_gesture) {
         if (!CanApply(action)) continue;
 
         // Special cases:
+        // * All actions except store patches are no-ops while the file dialog is open.
+        //   - Store patches are allowed because they may include ImGui settings changes belonging to the file dialog.
+        //   - TODO a better approach would be to exclude the filedialog window settings and everything belonging to it from the saved ImGuiSettings.
+        //     As is, we try to restore saved file dialog window settings even when the file dialog is not open.
+        if (FileDialog.Visible && !std::holds_alternative<Action::Store::ApplyPatch>(action)) {
+            continue;
+        }
         // * If saving the current project where there is none, open the save project dialog so the user can choose the save file:
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:

@@ -128,7 +128,8 @@ void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) {
     ColumnsCountMax.Resize(size);
     WantApply.Resize(size);
     // xxx this is the only non-const operation in all of `ImGuiSettings::CreatePatch`
-    for (u32 i = Columns.Size(); i < size; ++i) Columns.EmplaceBack_(std::to_string(i));
+    //  since it potentially needs to create new child components
+    Columns.Resize_(size);
 
     u32 i = 0;
     for (auto *ts_it = tss.begin(); ts_it != nullptr; ts_it = tss.next_chunk(ts_it)) {
@@ -190,7 +191,7 @@ void TableSettings::Update(ImGuiContext *) const {
             const int column_n = settings.Index[j];
             if (column_n < 0 || column_n >= table->ColumnsCount) continue;
 
-            ImGuiTableColumn *column = &table->Columns[column_n];
+            auto *column = &table->Columns[column_n];
             if (ImGuiTableFlags(SaveFlags[i]) & ImGuiTableFlags_Resizable) {
                 const float width_or_weight = settings.WidthOrWeight[j];
                 if (settings.IsStretch[j]) column->StretchWeight = width_or_weight;

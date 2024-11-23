@@ -252,7 +252,7 @@ Most submodules are not forked.
 Here is my process for updating to the tip of all the submodule branches:
 
 ```sh
-$ git submodule update --remote
+$ git submodule update --remote lib/{submodule}
 $ git add .
 $ git cm -m "Update libs"
 ```

@@ -85,14 +85,28 @@ void FileDialogDemo::Render() const {
         Indent();
         CheckboxFlags("Overwrite", &flags, ImGuiFileDialogFlags_ConfirmOverwrite, "Overwrite verification before dialog closing");
         CheckboxFlags("Hide hidden files", &flags, ImGuiFileDialogFlags_DontShowHiddenFiles, "Hide hidden files");
-        CheckboxFlags("Case-insensitive extensions", &flags, ImGuiFileDialogFlags_CaseInsensitiveExtention, "Don't take into account the case of file extensions");
         CheckboxFlags("Disable directory creation", &flags, ImGuiFileDialogFlags_DisableCreateDirectoryButton, "Disable directory creation button in dialog");
-#ifdef USE_THUMBNAILS
-        CheckboxFlags("Disable thumbnails mode", &flags, ImGuiFileDialogFlags_DisableThumbnailMode, "Disable thumbnails display in dialog");
-#endif
-#ifdef USE_BOOKMARK
-        CheckboxFlags("Disable bookmark mode", &flags, ImGuiFileDialogFlags_DisableBookmarkMode, "Disable bookmark display in dialog");
-#endif
+#ifdef USE_PLACES_FEATURE
+        CheckboxFlags("Disable place mode", &flags, ImGuiFileDialogFlags_DisablePlaceMode, "Disable place display in dialog");
+#endif // USE_PLACES_FEATURE
+
+        SeparatorText("Default-hidden columns");
+        CheckboxFlags("Type", &flags, ImGuiFileDialogFlags_HideColumnType, "Hide Type column by default");
+        CheckboxFlags("Size", &flags, ImGuiFileDialogFlags_HideColumnSize, "Hide Size column by default");
+        CheckboxFlags("Date", &flags, ImGuiFileDialogFlags_HideColumnDate, "Hide Date column by default");
+
+        Separator();
+        CheckboxFlags("Case insensitive extentions filtering", &flags, ImGuiFileDialogFlags_CaseInsensitiveExtentionFiltering, "Ignore file extention case for filtering");
+        CheckboxFlags("Disable quick path selection", &flags, ImGuiFileDialogFlags_DisableQuickPathSelection, nullptr);
+        CheckboxFlags("Show devices button", &flags, ImGuiFileDialogFlags_ShowDevicesButton, nullptr);
+        CheckboxFlags("Natural sorting", &flags, ImGuiFileDialogFlags_NaturalSorting, nullptr);
+
+        Separator();
+        Text("Result modes for GetFilePathName and GetSelection");
+        static IGFD_ResultMode resultMode = IGFD_ResultMode_AddIfNoFileExt;
+        CheckboxFlags("Add if no file ext", &resultMode, IGFD_ResultMode_::IGFD_ResultMode_AddIfNoFileExt, nullptr);
+        CheckboxFlags("Overwrite file ext", &resultMode, IGFD_ResultMode_::IGFD_ResultMode_OverwriteFileExt, nullptr);
+        CheckboxFlags("Keep input file", &resultMode, IGFD_ResultMode_::IGFD_ResultMode_KeepInputFile, nullptr);
         Unindent();
     }
 
@@ -101,6 +115,7 @@ void FileDialogDemo::Render() const {
     static std::string FilePathName; // Keep track of the last chosen file. There's an option below to open this path.
 
     Text("Singleton access:");
+    // todo update to bring in anything relevant that's new in https://github.com/aiekick/ImGuiFileDialog/blob/DemoApp/src/gui/DemoDialog.cpp#L595
     if (Button(ICON_IGFD_FOLDER_OPEN " Open file dialog")) {
         OpenDialog({Id, ChooseFileOpen, ".*,.cpp,.h,.hpp", ".", "", false, 1, flags});
     }
@@ -208,35 +223,116 @@ void FileDialogManager::Init() {
     Dialog = ImGuiFileDialog::Instance();
 
     // Singleton access
-    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {1, 1, 0, 0.9f}); // use a regex
+    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "(Custom.+[.]h)", {0.1, 0.9, 0.1, 0.9f}); // use a regex
     Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".cpp", {1, 1, 0, 0.9f});
     Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".hpp", {0, 0, 1, 0.9f});
     Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".md", {1, 0, 1, 0.9f});
-    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", {0, 1, 1, 0.9f}, ICON_IGFD_FILE_PIC); // add an icon for the filter type
+    Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".png", {0, 1, 1, 0.9f}, ICON_IGFD_FILE_PIC);
     Dialog->SetFileStyle(IGFD_FileStyleByExtention, ".gif", {0, 1, 0.5f, 0.9f}, "[GIF]"); // add an text for a filter type
     Dialog->SetFileStyle(IGFD_FileStyleByTypeDir, nullptr, {0.5f, 1, 0.9f, 0.9f}, ICON_IGFD_FOLDER); // for all dirs
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", {0.1f, 0.5f, 0.5f, 0.9f}, ICON_IGFD_ADD);
-    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_FILE_PIC);
-    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, {0.2f, 0.9f, 0.2f, 0.9f}, ICON_IGFD_FILE); // for all link files
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, "CMakeLists.txt", {0.1, 0.5, 0.5, 0.9f}, ICON_IGFD_ADD);
+    Dialog->SetFileStyle(IGFD_FileStyleByFullName, "doc", {0.9, 0.2, 0, 0.9f}, ICON_IGFD_FILE_PIC);
+    Dialog->SetFileStyle(IGFD_FileStyleByTypeFile, nullptr, {0.2, 0.9, 0.2, 0.9f}, ICON_IGFD_FILE); // for all link files
     Dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FOLDER); // for all link dirs
     Dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByTypeLink, nullptr, {0.8f, 0.8f, 0.8f, 0.8f}, ICON_IGFD_FILE); // for all link files
     Dialog->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", {0.9f, 0.2f, 0, 0.9f}, ICON_IGFD_BOOKMARK);
     Dialog->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", {0.5f, 0.8f, 0.5f, 0.9f}, ICON_IGFD_SAVE);
 
-#ifdef USE_BOOKMARK
-    // Load bookmarks
-    if (fs::exists("bookmarks.conf")) Dialog->DeserializeBookmarks(FileIO::read("bookmarks.conf"));
-    Dialog->AddBookmark("Current dir", ".");
+#ifdef USE_PLACES_FEATURE
+    // load place
+    std::ifstream docFile_1("places_1.conf", std::ios::in);
+    if (docFile_1.is_open()) {
+        std::stringstream strStream;
+        strStream << docFile_1.rdbuf(); // read the file
+        Dialog->DeserializePlaces(strStream.str());
+        docFile_1.close();
+    }
+
+    std::ifstream docFile_2("places_2.conf", std::ios::in);
+    if (docFile_2.is_open()) {
+        std::stringstream strStream;
+        strStream << docFile_2.rdbuf(); // read the file
+        fileDialog2.DeserializePlaces(strStream.str());
+        docFile_2.close();
+    }
+
+    // c interface
+    std::ifstream docFile_c("places_c.conf", std::ios::in);
+    if (docFile_c.is_open()) {
+        std::stringstream strStream;
+        strStream << docFile_c.rdbuf(); // read the file
+        IGFD_DeserializePlaces(cFileDialogPtr, strStream.str().c_str());
+        docFile_c.close();
+    }
+
+    // add places :
+    const char *group_name = ICON_IGFD_SHORTCUTS " Places";
+    Dialog->AddPlacesGroup(group_name, 1, false);
+    IGFD_AddPlacesGroup(cFileDialogPtr, group_name, 1, false);
+
+    // Places :
+    auto places_ptr = Dialog->GetPlacesGroupPtr(group_name);
+    if (places_ptr != nullptr) {
+#if defined(__WIN32__) || defined(WIN32) || defined(_WIN32) || defined(__WIN64__) || defined(WIN64) || defined(_WIN64) || defined(_MSC_VER)
+#define addKnownFolderAsPlace(knownFolder, folderLabel, folderIcon)                                        \
+    {                                                                                                      \
+        PWSTR path = NULL;                                                                                 \
+        HRESULT hr = SHGetKnownFolderPath(knownFolder, 0, NULL, &path);                                    \
+        if (SUCCEEDED(hr)) {                                                                               \
+            IGFD::FileStyle style;                                                                         \
+            style.icon = folderIcon;                                                                       \
+            auto place_path = IGFD::Utils::UTF8Encode(path);                                               \
+            places_ptr->AddPlace(folderLabel, place_path, false, style);                                   \
+            IGFD_AddPlace(cFileDialogPtr, group_name, folderLabel, place_path.c_str(), false, folderIcon); \
+        }                                                                                                  \
+        CoTaskMemFree(path);                                                                               \
+    }
+        addKnownFolderAsPlace(FOLDERID_Desktop, "Desktop", ICON_IGFD_DESKTOP);
+        addKnownFolderAsPlace(FOLDERID_Startup, "Startup", ICON_IGFD_HOME);
+        places_ptr->AddPlaceSeparator(3.0f); // add a separator
+        addKnownFolderAsPlace(FOLDERID_Downloads, "Downloads", ICON_IGFD_DOWNLOADS);
+        addKnownFolderAsPlace(FOLDERID_Pictures, "Pictures", ICON_IGFD_PICTURE);
+        addKnownFolderAsPlace(FOLDERID_Music, "Music", ICON_IGFD_MUSIC);
+        addKnownFolderAsPlace(FOLDERID_Videos, "Videos", ICON_IGFD_FILM);
+#undef addKnownFolderAsPlace
+#else
 #endif
+        places_ptr = nullptr;
+    }
+
+    // add place by code (why ? because we can :-) )
+    // ImGuiFileDialog->
+    // todo : do the code
+    // Dialog->AddPlace("Current Dir", ".");
+#endif // USE_PLACES_FEATURE
 }
 
 void FileDialogManager::Uninit() {
-#ifdef USE_THUMBNAILS
-    Dialog->ManageGPUThumbnails();
-#endif
+#ifdef USE_PLACES_FEATURE
+    // remove place
+    // todo : do the code
+    // Dialog->RemovePlace("Current Dir");
 
-#ifdef USE_BOOKMARK
-    Dialog->RemoveBookmark("Current dir");
-    FileIO::write("bookmarks_1.conf", Dialog->SerializeBookmarks());
+    // save place dialog 1
+    std::ofstream configFileWriter_1("places_1.conf", std::ios::out);
+    if (!configFileWriter_1.bad()) {
+        configFileWriter_1 << Dialog->SerializePlaces();
+        configFileWriter_1.close();
+    }
+    // save place dialog 2
+    std::ofstream configFileWriter_2("places_2.conf", std::ios::out);
+    if (!configFileWriter_2.bad()) {
+        configFileWriter_2 << fileDialog2.SerializePlaces();
+        configFileWriter_2.close();
+    }
+    // save place dialog c interface
+    std::ofstream configFileWriter_c("places_c.conf", std::ios::out);
+    if (!configFileWriter_c.bad()) {
+        char *s = IGFD_SerializePlaces(cFileDialogPtr, true);
+        if (s) {
+            configFileWriter_c << std::string(s);
+            configFileWriter_c.close();
+        }
+    }
 #endif
 }

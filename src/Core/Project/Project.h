@@ -17,6 +17,7 @@
 #include "Core/CoreAction.h"
 #include "Core/FileDialog/FileDialogAction.h"
 #include "Core/Store/StoreAction.h"
+#include "Core/Store/StorePatch.h"
 #include "Core/Style/StyleAction.h"
 #include "Core/WindowsAction.h"
 #include "ProjectAction.h"
@@ -50,7 +51,7 @@ which is composed of an `immer::map<Path, {Type}>` for each stored type).
 **Both the `ProjectCore` and `App` components get injected into it by the owning `Project`.**
 */
 struct ProjectState : Component {
-    ProjectState(Store &store, const ProjectContext &ctx) : Component(store, "Project", ctx) {}
+    ProjectState(TransientStore &store, const ProjectContext &ctx) : Component(store, "Project", ctx) {}
 
     void FocusDefault() const override {
         for (const auto *c : Children) c->FocusDefault();
@@ -168,8 +169,8 @@ struct Project : ActionableProducer<Action::Any> {
             std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); }); },
     };
 
-    mutable Store _S;
-    const Store &S{_S};
+    mutable PersistentStore S;
+    mutable TransientStore _S;
     ProjectState State{_S, Ctx};
     ProjectCore Core{{{&State, "Core"}, SubProducer<ProjectCore::ProducedActionType>(*this)}};
 
@@ -204,4 +205,13 @@ private:
     // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
     void MarkAllChanged(Patch &&) const;
     void ClearChanged() const;
+
+    // Overwrite persistent and transient stores with the provided store, and return the resulting patch.
+    Patch CheckedCommit(ID base_id) const {
+        PersistentStore new_store{_S.Persistent()};
+        const auto patch = CreatePatch(S, new_store, base_id);
+        S = std::move(new_store);
+        _S = S.Transient();
+        return patch;
+    }
 };

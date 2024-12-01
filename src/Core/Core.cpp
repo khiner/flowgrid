@@ -297,17 +297,17 @@ void String::Render(const std::vector<std::string> &options) const {
 
 /*** Containers ***/
 
-void ApplyVectorSet(Store &s, const auto &a) {
+void ApplyVectorSet(TransientStore &s, const auto &a) {
     s.Set(a.component_id, s.Get<immer::flex_vector<decltype(a.value)>>(a.component_id).set(a.i, a.value));
 }
-void ApplySetInsert(Store &s, const auto &a) {
+void ApplySetInsert(TransientStore &s, const auto &a) {
     s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).insert(a.value));
 }
-void ApplySetErase(Store &s, const auto &a) {
+void ApplySetErase(TransientStore &s, const auto &a) {
     s.Set(a.component_id, s.Get<immer::set<decltype(a.value)>>(a.component_id).erase(a.value));
 }
 
-CoreActionHandler::CoreActionHandler(Store &store) : _S(store) {}
+CoreActionHandler::CoreActionHandler(TransientStore &store) : _S(store) {}
 void CoreActionHandler::Apply(const ActionType &action) const {
     std::visit(
         Match{

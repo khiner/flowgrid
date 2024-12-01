@@ -4,13 +4,13 @@
 
 #include "Action/Actionable.h"
 
-struct Store;
+struct TransientStore;
 
 struct CoreActionHandler : Actionable<Action::Core::Any> {
-    CoreActionHandler(Store &);
+    CoreActionHandler(TransientStore &);
     void Apply(const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
-    Store &_S;
-    const Store &S{_S};
+    TransientStore &_S;
+    const TransientStore &S{_S};
 };

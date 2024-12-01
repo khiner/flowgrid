@@ -48,24 +48,24 @@ struct StoreHistory::Metrics {
 };
 
 struct Record {
-    Store Store;
+    PersistentStore Store;
     Gesture Gesture;
     StoreHistory::Metrics Metrics;
 };
 struct StoreHistory::Records {
-    Records(const ::Store &initial_store) : Value{{initial_store, Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
+    Records(const PersistentStore &initial_store) : Value{{initial_store, Gesture{{}, Clock::now()}, StoreHistory::Metrics{{}}}} {}
 
     std::vector<Record> Value;
 };
 
-StoreHistory::StoreHistory(const ::Store &store)
+StoreHistory::StoreHistory(const PersistentStore &store)
     : _Records(std::make_unique<Records>(store)), _Metrics(std::make_unique<Metrics>()) {}
 StoreHistory::~StoreHistory() = default;
 
 u32 StoreHistory::Size() const { return _Records->Value.size(); }
 
-void StoreHistory::AddGesture(Store store, Gesture &&gesture, ID component_id) {
-    const auto patch = store.CreatePatch(CurrentStore(), component_id);
+void StoreHistory::AddGesture(PersistentStore store, Gesture &&gesture, ID component_id) {
+    const auto patch = CreatePatch(store, CurrentStore(), component_id);
     if (patch.Empty()) return;
 
     _Metrics->AddPatch(patch, gesture.CommitTime);
@@ -74,7 +74,7 @@ void StoreHistory::AddGesture(Store store, Gesture &&gesture, ID component_id) {
     _Records->Value.emplace_back(std::move(store), std::move(gesture), *_Metrics);
     Index = Size() - 1;
 }
-void StoreHistory::Clear(const Store &store) {
+void StoreHistory::Clear(const PersistentStore &store) {
     Index = 0;
     _Records = std::make_unique<Records>(store);
     _Metrics = std::make_unique<Metrics>();
@@ -86,8 +86,8 @@ void StoreHistory::SetIndex(u32 new_index) {
     _Metrics = std::make_unique<Metrics>(_Records->Value[Index].Metrics);
 }
 
-const Store &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
-const Store &StoreHistory::PrevStore() const { return _Records->Value[Index - 1].Store; }
+const PersistentStore &StoreHistory::CurrentStore() const { return _Records->Value[Index].Store; }
+const PersistentStore &StoreHistory::PrevStore() const { return _Records->Value[Index - 1].Store; }
 
 std::map<ID, u32> StoreHistory::GetChangeCountById() const {
     return _Records->Value[Index].Metrics.CommitTimesById |
@@ -135,7 +135,7 @@ Project::Project(CreateApp &&create_app)
       App(create_app({{&State, "App"}, SubProducer<AppActionType>(*this)})),
       HistoryPtr(std::make_unique<StoreHistory>(S)), History(*HistoryPtr) {
     // Initialize the global canonical store with all values set during project initialization.
-    _S.Commit();
+    S = _S.Persistent();
     // Ensure all store values set during initialization are reflected in cached field/collection values, and any side effects are run.
     State.Refresh();
 }
@@ -270,8 +270,11 @@ void Project::SetHistoryIndex(u32 index) const {
     ActiveGestureActions.clear(); // In case we're mid-gesture, revert before navigating.
     History.SetIndex(index);
     const auto &store = History.CurrentStore();
-    auto patch = _S.CreatePatch(store, State.Id);
-    _S.Commit(store.Maps);
+
+    auto patch = CreatePatch(S, store, State.Id);
+    // Overwrite persistent and transient stores with the provided store.
+    S = store;
+    _S = S.Transient();
     RefreshChanged(std::move(patch));
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
@@ -349,7 +352,7 @@ void Project::Apply(const ActionType &action) const {
                         if (op.Op == PatchOpType::PopBack) {
                             std::visit(
                                 [&](auto &&v) {
-                                    const auto vec = S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id);
+                                    const auto vec = _S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id);
                                     _S.Set(id, vec.take(vec.size() - 1));
                                 },
                                 *op.Old
@@ -359,16 +362,16 @@ void Project::Apply(const ActionType &action) const {
                         } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
                             std::visit([&](auto &&v) { _S.Set(id, std::move(v)); }, *op.Value);
                         } else if (op.Op == PatchOpType::PushBack) {
-                            std::visit([&](auto &&v) { _S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).push_back(std::move(v))); }, *op.Value);
+                            std::visit([&](auto &&v) { _S.Set(id, _S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).push_back(std::move(v))); }, *op.Value);
                         } else if (op.Op == PatchOpType::Set) {
-                            std::visit([&](auto &&v) { _S.Set(id, S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).set(*op.Index, std::move(v))); }, *op.Value);
+                            std::visit([&](auto &&v) { _S.Set(id, _S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).set(*op.Index, std::move(v))); }, *op.Value);
                         } else {
                             // `set` ops - currently, u32 is the only set value type.
                             std::visit(
                                 Match{
                                     [&](u32 v) {
-                                        if (op.Op == PatchOpType::Insert) _S.Set(id, S.Get<immer::set<decltype(v)>>(id).insert(v));
-                                        else if (op.Op == PatchOpType::Erase) _S.Set(id, S.Get<immer::set<decltype(v)>>(id).erase(v));
+                                        if (op.Op == PatchOpType::Insert) _S.Set(id, _S.Get<immer::set<decltype(v)>>(id).insert(v));
+                                        else if (op.Op == PatchOpType::Erase) _S.Set(id, _S.Get<immer::set<decltype(v)>>(id).erase(v));
                                     },
                                     [](auto &&) {},
                                 },
@@ -459,13 +462,21 @@ void Project::OnApplicationLaunch() const {
     Save(EmptyProjectPath);
 }
 
+// Create a patch comparing the current transient store with the current persistent store.
+// **Resets the transient store to the current persisent store.**
+Patch CreatePatchAndResetTransient(const PersistentStore &persistent, TransientStore &transient, ID base_id) {
+    const auto patch = CreatePatch(persistent, transient.Persistent(), base_id);
+    transient = persistent.Transient();
+    return patch;
+}
+
 void Project::Tick() {
     auto &io = ImGui::GetIO();
     if (io.WantSaveIniSettings) {
         ImGui::SaveIniSettingsToMemory(); // Populate ImGui's `Settings...` context members.
         auto &imgui_settings = Core.ImGuiSettings;
         imgui_settings.Set(ImGui::GetCurrentContext());
-        if (auto patch = _S.CreatePatchAndResetTransient(imgui_settings.Id); !patch.Empty()) {
+        if (auto patch = CreatePatchAndResetTransient(S, _S, imgui_settings.Id); !patch.Empty()) {
             Q(Action::Store::ApplyPatch{std::move(patch)});
         }
         io.WantSaveIniSettings = false;
@@ -491,10 +502,10 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     // Now, every flattened JSON pointer is 1:1 with an instance path.
     State.SetJson(std::move(j));
 
-    // We could do `RefreshChanged(S.CheckedCommit(Id))`, and only refresh the changed components,
+    // We could do `RefreshChanged(_S.CheckedCommit(Id))`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
     // that have already been accounted for above.
-    _S.Commit();
+    S = _S.Persistent();
     ClearChanged();
     LatestChangedPaths.clear();
     for (auto *child : State.Children) child->Refresh();
@@ -519,7 +530,7 @@ void Project::Open(const fs::path &file_path) const {
         for (auto &&gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
-                RefreshChanged(_S.CheckedCommit(State.Id));
+                RefreshChanged(CheckedCommit(State.Id));
             }
             History.AddGesture(S, std::move(gesture), State.Id);
         }
@@ -778,7 +789,7 @@ void Project::RenderMetrics() const {
                     }
                     if (TreeNode("Patch")) {
                         // We compute patches as we need them rather than memoizing.
-                        const auto &patch = Store::CreatePatch(history.PrevStore().Maps, history.CurrentStore().Maps, State.Id);
+                        const auto &patch = CreatePatch(history.PrevStore(), history.CurrentStore(), State.Id);
                         for (const auto &[id, ops] : patch.Ops) {
                             const auto &path = Component::ById.at(id)->Path;
                             if (TreeNodeEx(path.string().c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -861,8 +872,8 @@ void Project::ApplyQueuedActions(bool force_commit_gesture) {
 
         std::visit(
             Match{
-                [this, &store = _S, &queue_time](const Action::Saved &a) {
-                    if (auto patch = store.CheckedCommit(State.Id); !patch.Empty()) {
+                [this, &queue_time](const Action::Saved &a) {
+                    if (auto patch = CheckedCommit(State.Id); !patch.Empty()) {
                         RefreshChanged(std::move(patch), true);
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;

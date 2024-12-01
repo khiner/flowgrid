@@ -48,7 +48,7 @@ enum WindowFlags_ {
 
 struct ProjectStyle;
 struct ProjectContext;
-struct Store;
+struct TransientStore;
 
 struct Component {
     using References = std::vector<std::reference_wrapper<const Component>>;
@@ -61,7 +61,7 @@ struct Component {
     // Each component container has a single auxiliary field as a direct child which tracks the presence/ordering of its child component(s).
     inline static std::unordered_set<ID> ContainerIds, ContainerAuxiliaryIds;
 
-    Component(Store &, std::string_view name, const ProjectContext &);
+    Component(TransientStore &, std::string_view name, const ProjectContext &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -138,12 +138,6 @@ struct Component {
 
     /* todo next up: make `S` a const ref, and reassign to the (single, initially) root store in `main` during action
     application, making state updates fully value-oriented.
-    ```
-    Store store;
-    Project project(store); // Passed as a const ref to the root project component.
-    // In main action loop:
-    store = project.Apply(action); // Note that we don't need to pass the store to the project,
-    because the project already has a reference to it.
     */
 
     // `_S` is a mutable reference to the current tick's mutable transient store.
@@ -151,11 +145,11 @@ struct Component {
     // - It is only written to inside action `Apply` methods.
     // - It starts with the value of `S` at the beginning of each tick.
     //   (If no actions have been applied during the current tick, `_S == S.transient()`.)
-    Store &_S; // Read-only access to the store at the root of this component's tree (of type `ProjectState`).
+    TransientStore &_S; // Read-only access to the store at the root of this component's tree (of type `ProjectState`).
     // `S` is a read-only access to the store at the root of this component's tree (of type `ProjectState`).
     // Guarantees:
     // - Refers to the same store throughout each tick (won't switch out from under you during a single action pass).
-    const Store &S{_S};
+    const TransientStore &S{_S};
 
     const ProjectContext &Ctx;
     Component *Parent; // Only null for the root component.

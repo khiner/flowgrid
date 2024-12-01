@@ -1,3 +1,4 @@
+#include "StorePatch.h"
 #include "Store.h"
 
 #include <ranges>
@@ -6,7 +7,7 @@
 
 using std::ranges::reverse_view;
 
-// `AddOps` function definitions for all specialized `ValueTypes`, to fully implement the `CreatePatch` method.
+// `AddOps` function definitions for all specialized `ValuesT`, to fully implement the `CreatePatch` method.
 
 // Naive `diff` method for `immer::vector`s.
 // Callbacks receive an index and a value (for `add` and `remove`) or two values (for `change`).
@@ -109,7 +110,7 @@ void AddOps(const StoreMap<immer::flex_vector<T>> &before, const StoreMap<immer:
                 [&ops, &o](size_t, T removed) { ops[o.first].emplace_back(PatchOpType::PopBack, std::nullopt, removed); },
                 // `PatchOpType::Set` op type is used to distinguish between primitive value changes and vector element changes.
                 // (Primitive value changes are of type `PatchOpType::Replace`.)
-                // This is also the only patch op path that does _not_ point straight to the component.
+                // This is also the only patch op path that does _not_ point straight to the ID.
                 [&ops, &o](size_t i, T o_el, T n_el) { ops[o.first].emplace_back(PatchOpType::Set, n_el, o_el, i); }
             );
         }
@@ -127,14 +128,14 @@ void AddOps(const StoreMap<ValueType> &before, const StoreMap<ValueType> &after,
     );
 }
 
-Patch Store::CreatePatch(const StoreMaps &before_maps, const StoreMaps &after_maps, ID base_component_id) {
+Patch CreatePatch(const PersistentStore &before, const PersistentStore &after, ID base_id) {
     // Use template lambda to call `AddOps` for each value type.
-    static constexpr auto apply_add_ops = []<typename... Ts>(std::tuple<Ts...>, const StoreMaps &before, const StoreMaps &after, PatchOps &ops) {
-        (AddOps(std::get<StoreMap<Ts>>(before), std::get<StoreMap<Ts>>(after), ops), ...);
+    static constexpr auto apply_add_ops = []<typename... Ts>(std::tuple<Ts...>, const PersistentStore &before, const PersistentStore &after, PatchOps &ops) {
+        (AddOps(before.GetMap<Ts>(), after.GetMap<Ts>(), ops), ...);
     };
-    static const auto value_types = ValueTypes{};
+    static const auto value_types = PersistentStore::ValuesT{};
 
     PatchOps ops{};
-    apply_add_ops(value_types, before_maps, after_maps, ops);
-    return {base_component_id, ops};
+    apply_add_ops(value_types, before, after, ops);
+    return {base_id, ops};
 }

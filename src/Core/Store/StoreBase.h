@@ -6,7 +6,6 @@
 #include "immer/map_transient.hpp"
 
 #include "Core/ID.h"
-#include "Core/Scalar.h"
 
 // Utility to transform a tuple into another tuple, applying a function to each element.
 template<typename OutTuple, typename InTuple, std::size_t... I>
@@ -21,45 +20,41 @@ OutTuple TransformTuple(InTuple &in, auto &&func) {
 template<typename T> using StoreMap = immer::map<ID, T>;
 template<typename T> using TransientStoreMap = immer::map_transient<ID, T>;
 
-template<typename... Ts> struct StoreBase {
-    using ValueTypes = std::tuple<Ts...>;
-    using StoreMaps = std::tuple<StoreMap<Ts>...>;
-    using TransientStoreMaps = std::tuple<TransientStoreMap<Ts>...>;
+template<typename... Ts> struct TransientStoreMaps;
 
-    StoreBase() {}
-    StoreBase(const StoreBase &other) : Maps(other.Maps), TransientMaps(other.TransientMaps) {}
-    ~StoreBase() = default;
+template<typename... Ts> struct StoreMaps {
+    using MapsT = std::tuple<StoreMap<Ts>...>;
+    using ValuesT = std::tuple<Ts...>;
 
-    template<typename ValueType> const ValueType &At(ID id) const { return GetMap<ValueType>()[id]; }
-    template<typename ValueType> const ValueType &Get(ID id) const { return GetTransientMap<ValueType>()[id]; }
-    template<typename ValueType> size_t Count(ID id) const { return GetTransientMap<ValueType>().count(id); }
+    template<typename T> const T &Get(ID id) const { return GetMap<T>()[id]; }
 
-    template<typename ValueType> void Set(ID id, ValueType value) { GetTransientMap<ValueType>().set(id, std::move(value)); }
-    template<typename ValueType> void Clear(ID id) { Set(id, ValueType{}); }
-    template<typename ValueType> void Erase(ID id) { GetTransientMap<ValueType>().erase(id); }
+    template<typename T> decltype(auto) GetMap() const { return std::get<StoreMap<T>>(Maps); }
 
-    // Overwrite the persistent store with all changes since the last commit.
-    void Commit() { Maps = Persistent(); }
-    // Overwrite persistent and transient stores with the provided store.
-    void Commit(StoreMaps maps) {
-        Maps = std::move(maps);
-        TransientMaps = Transient();
+    TransientStoreMaps<Ts...> Transient() const {
+        return {TransformTuple<std::tuple<TransientStoreMap<Ts>...>>(Maps, [](auto &&map) { return map.transient(); })};
     }
 
-    StoreMaps Persistent() {
-        return TransformTuple<StoreMaps>(TransientMaps, [](auto &&map) { return map.persistent(); });
-    }
-    TransientStoreMaps Transient() const {
-        return TransformTuple<TransientStoreMaps>(Maps, [](auto &&map) { return map.transient(); });
+    MapsT Maps;
+};
+
+template<typename... Ts> struct TransientStoreMaps {
+    using MapsT = std::tuple<TransientStoreMap<Ts>...>;
+
+    template<typename T> const T &Get(ID id) const { return GetMap<T>()[id]; }
+    template<typename T> size_t Count(ID id) const { return GetMap<T>().count(id); }
+
+    template<typename T> void Set(ID id, T value) { GetMap<T>().set(id, std::move(value)); }
+    template<typename T> void Clear(ID id) { Set(id, T{}); }
+    template<typename T> void Erase(ID id) { GetMap<T>().erase(id); }
+
+    // Deduced-this for const/non-const overloads.
+    template<typename T> decltype(auto) GetMap(this auto &&self) {
+        return std::get<TransientStoreMap<T>>(self.Maps);
     }
 
-    StoreMaps Maps;
-    TransientStoreMaps TransientMaps;
-
-protected:
-    template<typename ValueType> decltype(auto) GetMap() const { return std::get<StoreMap<ValueType>>(Maps); }
-    // Using deduced-this for const/non-const overloads.
-    template<typename ValueType> decltype(auto) GetTransientMap(this auto &&self) {
-        return std::get<TransientStoreMap<ValueType>>(self.TransientMaps);
+    StoreMaps<Ts...> Persistent() {
+        return {TransformTuple<std::tuple<StoreMap<Ts>...>>(Maps, [](auto &&map) { return map.persistent(); })};
     }
+
+    MapsT Maps;
 };

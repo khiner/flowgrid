@@ -9,7 +9,7 @@
 
 using json = nlohmann::json;
 
-struct Store;
+struct PersistentStore;
 struct Gesture;
 using Gestures = std::vector<Gesture>;
 
@@ -23,11 +23,11 @@ struct StoreHistory {
     struct Metrics;
 
     struct ReferenceRecord {
-        const Store &Store; // Reference to the store as it was at `GestureCommitTime`.
+        const PersistentStore &Store; // Reference to the store as it was at `GestureCommitTime`.
         const Gesture &Gesture; // Reference to the (compressed) gesture that caused the store change.
     };
 
-    StoreHistory(const Store &);
+    StoreHistory(const PersistentStore &);
     ~StoreHistory();
 
     u32 Size() const;
@@ -35,12 +35,12 @@ struct StoreHistory {
     bool CanUndo() const { return Index > 0; }
     bool CanRedo() const { return Index < Size() - 1; }
 
-    void AddGesture(Store, Gesture &&, ID component_id);
-    void Clear(const Store &);
+    void AddGesture(PersistentStore, Gesture &&, ID component_id);
+    void Clear(const PersistentStore &);
     void SetIndex(u32);
 
-    const Store &CurrentStore() const;
-    const Store &PrevStore() const;
+    const PersistentStore &CurrentStore() const;
+    const PersistentStore &PrevStore() const;
 
     ReferenceRecord At(u32 index) const;
     Gestures GetGestures() const;

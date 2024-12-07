@@ -41,7 +41,7 @@ struct ProjectContext {
     const std::function<const ProjectStyle &()> GetProjectStyle;
 
     const std::function<void()> RenderMetrics;
-    const std::function<void()> RenderStorePathChangeFrequency;
+    const std::function<void()> RenderPathChangeFrequency;
 
     const std::function<void()> UpdateWidgetGesturing;
     const std::function<std::optional<TimePoint>(ID, std::optional<StorePath> relative_path)> LatestUpdateTime;

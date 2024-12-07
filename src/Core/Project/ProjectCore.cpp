@@ -17,7 +17,7 @@ ProjectCore::ProjectCore(ArgsT &&args) : ActionableComponent(std::move(args)) {
 
     Debug.RegisterWindow();
     Debug.StatePreview.RegisterWindow();
-    Debug.StorePathUpdateFrequency.RegisterWindow();
+    Debug.PathUpdateFrequency.RegisterWindow();
     Debug.DebugLog.RegisterWindow();
     Debug.StackTool.RegisterWindow();
     Debug.Metrics.RegisterWindow();
@@ -108,7 +108,7 @@ void ProjectCore::Dock(ID *node_id) const {
     Settings.Dock(&settings_node_id);
     Debug.Dock(&debug_node_id);
     Debug.StatePreview.Dock(&debug_node_id);
-    Debug.StorePathUpdateFrequency.Dock(&debug_node_id);
+    Debug.PathUpdateFrequency.Dock(&debug_node_id);
     Debug.DebugLog.Dock(&debug_node_id);
     Debug.StackTool.Dock(&debug_node_id);
     Debug.Metrics.Dock(&metrics_node_id);
@@ -121,8 +121,8 @@ void ProjectCore::RenderDebug() const {
     if (auto_select) EndDisabled();
 }
 
-void ProjectCore::Debug::StorePathUpdateFrequency::Render() const {
-    Ctx.RenderStorePathChangeFrequency();
+void ProjectCore::Debug::PathUpdateFrequency::Render() const {
+    Ctx.RenderPathChangeFrequency();
 }
 
 // todo only overriding to draw self in addition to children - refactor to avoid this
@@ -131,7 +131,7 @@ void ProjectCore::Debug::DrawWindowsMenu() const {
     if (BeginMenu(Name.c_str())) {
         item(*this);
         item(StatePreview);
-        item(StorePathUpdateFrequency);
+        item(PathUpdateFrequency);
         item(DebugLog);
         item(StackTool);
         item(Metrics);

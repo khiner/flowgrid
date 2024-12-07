@@ -90,7 +90,7 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
             void Render() const override;
         };
 
-        struct StorePathUpdateFrequency : Component {
+        struct PathUpdateFrequency : Component {
             using Component::Component;
 
         protected:
@@ -127,7 +127,7 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
               true);
 
         Prop(StatePreview, StatePreview);
-        Prop(StorePathUpdateFrequency, StorePathUpdateFrequency);
+        Prop(PathUpdateFrequency, PathUpdateFrequency);
         Prop(DebugLog, DebugLog);
         Prop(StackTool, StackTool);
         Prop(Metrics, Metrics);

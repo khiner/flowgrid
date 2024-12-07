@@ -92,7 +92,7 @@ struct Project : ActionableProducer<Action::Any> {
 
     void CommitGesture() const;
 
-    Plottable StorePathChangeFrequencyPlottable() const;
+    Plottable PathChangeFrequencyPlottable() const;
 
     json GetProjectJson(ProjectFormat) const;
 
@@ -156,7 +156,7 @@ struct Project : ActionableProducer<Action::Any> {
         .GetProjectStyle = [this]() -> const ProjectStyle & { return Core.Style.Project; },
 
         .RenderMetrics = [this]() { RenderMetrics(); },
-        .RenderStorePathChangeFrequency = [this]() { RenderStorePathChangeFrequency(); },
+        .RenderPathChangeFrequency = [this]() { RenderPathChangeFrequency(); },
 
         .UpdateWidgetGesturing = [this]() { UpdateWidgetGesturing(); },
         .LatestUpdateTime = [this](ID id, std::optional<StorePath> relative_path) { return LatestUpdateTime(id, std::move(relative_path)); },
@@ -192,7 +192,7 @@ private:
     void OpenRecentProjectMenuItem() const;
 
     void RenderMetrics() const;
-    void RenderStorePathChangeFrequency() const;
+    void RenderPathChangeFrequency() const;
 
     std::optional<TimePoint> LatestUpdateTime(ID, std::optional<StorePath> relative_path) noexcept;
     void UpdateWidgetGesturing() const;

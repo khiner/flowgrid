@@ -548,7 +548,7 @@ float Project::GestureTimeRemainingSec() const {
     return std::max(0.f, gesture_duration_sec - fsec(Clock::now() - ActiveGestureActions.back().QueueTime).count());
 }
 
-Plottable Project::StorePathChangeFrequencyPlottable() const {
+Plottable Project::PathChangeFrequencyPlottable() const {
     if (History.GetChangedPathsCount() == 0 && GestureChangedPaths.empty()) return {};
 
     std::map<StorePath, u32> gesture_change_counts;
@@ -609,8 +609,8 @@ std::optional<TimePoint> Project::LatestUpdateTime(ID id, std::optional<StorePat
     return {};
 }
 
-void Project::RenderStorePathChangeFrequency() const {
-    auto [labels, values] = StorePathChangeFrequencyPlottable();
+void Project::RenderPathChangeFrequency() const {
+    auto [labels, values] = PathChangeFrequencyPlottable();
     if (labels.empty()) {
         Text("No state updates yet.");
         return;

@@ -133,9 +133,9 @@ static std::optional<ProjectFormat> GetProjectFormat(const fs::path &path) {
 Project::Project(CreateApp &&create_app)
     : ActionableProducer(EnqueueFn([this](auto a) { return Queue.enqueue(EnqueueToken, {std::move(a), Clock::now()}); })),
       App(create_app({{&State, "App"}, SubProducer<AppActionType>(*this)})),
-      HistoryPtr(std::make_unique<StoreHistory>(S)), History(*HistoryPtr) {
+      HistoryPtr(std::make_unique<StoreHistory>(PS)), History(*HistoryPtr) {
     // Initialize the global canonical store with all values set during project initialization.
-    S = _S.Persistent();
+    PS = _S.Persistent();
     // Ensure all store values set during initialization are reflected in cached field/collection values, and any side effects are run.
     State.Refresh();
 }
@@ -260,7 +260,7 @@ void Project::CommitGesture() const {
     ActiveGestureActions.clear();
     if (merged_actions.empty()) return;
 
-    History.AddGesture(S, {merged_actions, Clock::now()}, State.Id);
+    History.AddGesture(PS, {merged_actions, Clock::now()}, State.Id);
 }
 
 void Project::SetHistoryIndex(u32 index) const {
@@ -271,10 +271,10 @@ void Project::SetHistoryIndex(u32 index) const {
     History.SetIndex(index);
     const auto &store = History.CurrentStore();
 
-    auto patch = CreatePatch(S, store, State.Id);
+    auto patch = CreatePatch(PS, store, State.Id);
     // Overwrite persistent and transient stores with the provided store.
-    S = store;
-    _S = S.Transient();
+    PS = store;
+    _S = PS.Transient();
     RefreshChanged(std::move(patch));
     // ImGui settings are cheched separately from style since we don't need to re-apply ImGui settings state to ImGui context
     // when it initially changes, since ImGui has already updated its own context.
@@ -448,7 +448,7 @@ bool Project::Save(const fs::path &path) const {
 
 void Project::OnApplicationLaunch() const {
     IsWidgetGesturing = false;
-    History.Clear(S);
+    History.Clear(PS);
     ClearChanged();
     LatestChangedPaths.clear();
 
@@ -476,7 +476,7 @@ void Project::Tick() {
         ImGui::SaveIniSettingsToMemory(); // Populate ImGui's `Settings...` context members.
         auto &imgui_settings = Core.ImGuiSettings;
         imgui_settings.Set(ImGui::GetCurrentContext());
-        if (auto patch = CreatePatchAndResetTransient(S, _S, imgui_settings.Id); !patch.Empty()) {
+        if (auto patch = CreatePatchAndResetTransient(PS, _S, imgui_settings.Id); !patch.Empty()) {
             Q(Action::Store::ApplyPatch{std::move(patch)});
         }
         io.WantSaveIniSettings = false;
@@ -505,14 +505,14 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     // We could do `RefreshChanged(_S.CheckedCommit(Id))`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
     // that have already been accounted for above.
-    S = _S.Persistent();
+    PS = _S.Persistent();
     ClearChanged();
     LatestChangedPaths.clear();
     for (auto *child : State.Children) child->Refresh();
 
     // Always update the ImGui context, regardless of the patch, to avoid expensive sifting through paths and just to be safe.
     Core.ImGuiSettings.IsChanged = true;
-    History.Clear(S);
+    History.Clear(PS);
 }
 
 void Project::Open(const fs::path &file_path) const {
@@ -532,7 +532,7 @@ void Project::Open(const fs::path &file_path) const {
                 std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
                 RefreshChanged(CheckedCommit(State.Id));
             }
-            History.AddGesture(S, std::move(gesture), State.Id);
+            History.AddGesture(PS, std::move(gesture), State.Id);
         }
         SetHistoryIndex(indexed_gestures.Index);
         LatestChangedPaths.clear();

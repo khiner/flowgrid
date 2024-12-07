@@ -48,6 +48,7 @@ enum WindowFlags_ {
 
 struct ProjectStyle;
 struct ProjectContext;
+struct PersistentStore;
 struct TransientStore;
 
 struct Component {
@@ -61,7 +62,7 @@ struct Component {
     // Each component container has a single auxiliary field as a direct child which tracks the presence/ordering of its child component(s).
     inline static std::unordered_set<ID> ContainerIds, ContainerAuxiliaryIds;
 
-    Component(TransientStore &, std::string_view name, const ProjectContext &);
+    Component(const PersistentStore &, TransientStore &, std::string_view name, const ProjectContext &);
     Component(ComponentArgs &&);
     Component(ComponentArgs &&, ImGuiWindowFlags flags);
     Component(ComponentArgs &&, Menu &&menu);
@@ -140,15 +141,20 @@ struct Component {
     application, making state updates fully value-oriented.
     */
 
-    // `_S` is a mutable reference to the current tick's mutable transient store.
-    // Guarantees:
-    // - It is only written to inside action `Apply` methods.
-    // - It starts with the value of `S` at the beginning of each tick.
-    //   (If no actions have been applied during the current tick, `_S == S.transient()`.)
-    TransientStore &_S; // Read-only access to the store at the root of this component's tree (of type `ProjectState`).
-    // `S` is a read-only access to the store at the root of this component's tree (of type `ProjectState`).
+    // `PS` is a read-only reference to the persistent store.
+    // It's used for rendering and other read-only ops (everything outside of action application).
     // Guarantees:
     // - Refers to the same store throughout each tick (won't switch out from under you during a single action pass).
+    const PersistentStore &PS;
+    // `_S` is a mutable reference to the current tick's transient store.
+    // Guarantees:
+    // - Only written to within action `Apply` methods.
+    // - Equal to the persistent store at the beginning of each tick.
+    //   (If no actions have been applied during the current tick, `_S == PS.transient()`.)
+    // TODO move this out of `Component` and instead pass it through `Apply` methods to Component methods that need it.
+    TransientStore &_S;
+    // `S` is a read-only reference to the transient store.
+    //  It's used for clarity and `const` typing for intermediate reads that depend on transient writes during complex action application.
     const TransientStore &S{_S};
 
     const ProjectContext &Ctx;

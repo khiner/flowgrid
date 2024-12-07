@@ -25,15 +25,15 @@ Menu::Menu(string_view label, std::vector<Item> &&items) : Label(label), Items(s
 Menu::Menu(std::vector<Item> &&items) : Menu("", std::move(items)) {}
 Menu::Menu(std::vector<Item> &&items, const bool is_main) : Label(""), Items(std::move(items)), IsMain(is_main) {}
 
-Component::Component(TransientStore &store, string_view name, const ProjectContext &ctx)
-    : _S(store), Ctx(ctx), Parent(nullptr),
+Component::Component(const PersistentStore &ps, TransientStore &s, string_view name, const ProjectContext &ctx)
+    : PS(ps), _S(s), Ctx(ctx), Parent(nullptr),
       PathSegment(""), Path(RootPath), Name(name), Help(""), ImGuiLabel(name), Id(ImHashStr("", 0, 0)) {
     ById.emplace(Id, this);
     IdByPath.emplace(Path, Id);
 }
 
 Component::Component(Component *parent, string_view path_segment, string_view path_prefix_segment, HelpInfo info, ImGuiWindowFlags flags, Menu &&menu)
-    : _S(parent->_S), Ctx(parent->Ctx), Parent(parent),
+    : PS(parent->PS), _S(parent->_S), Ctx(parent->Ctx), Parent(parent),
       PathSegment(path_segment),
       Path(path_prefix_segment.empty() ? Parent->Path / PathSegment : Parent->Path / path_prefix_segment / PathSegment),
       Name(info.Name.empty() ? PathSegment.empty() ? "" : StringHelper::PascalToSentenceCase(PathSegment) : info.Name),

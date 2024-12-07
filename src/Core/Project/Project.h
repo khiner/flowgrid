@@ -51,7 +51,7 @@ which is composed of an `immer::map<Path, {Type}>` for each stored type).
 **Both the `ProjectCore` and `App` components get injected into it by the owning `Project`.**
 */
 struct ProjectState : Component {
-    ProjectState(TransientStore &store, const ProjectContext &ctx) : Component(store, "Project", ctx) {}
+    ProjectState(const PersistentStore &ps, TransientStore &s, const ProjectContext &ctx) : Component(ps, s, "Project", ctx) {}
 
     void FocusDefault() const override {
         for (const auto *c : Children) c->FocusDefault();
@@ -169,9 +169,9 @@ struct Project : ActionableProducer<Action::Any> {
             std::erase_if(ChangeListenersById, [](const auto &entry) { return entry.second.empty(); }); },
     };
 
-    mutable PersistentStore S;
+    mutable PersistentStore PS;
     mutable TransientStore _S;
-    ProjectState State{_S, Ctx};
+    ProjectState State{PS, _S, Ctx};
     ProjectCore Core{{{&State, "Core"}, SubProducer<ProjectCore::ProducedActionType>(*this)}};
 
 private:
@@ -209,9 +209,9 @@ private:
     // Overwrite persistent and transient stores with the provided store, and return the resulting patch.
     Patch CheckedCommit(ID base_id) const {
         PersistentStore new_store{_S.Persistent()};
-        const auto patch = CreatePatch(S, new_store, base_id);
-        S = std::move(new_store);
-        _S = S.Transient();
+        const auto patch = CreatePatch(PS, new_store, base_id);
+        PS = std::move(new_store);
+        _S = PS.Transient();
         return patch;
     }
 };

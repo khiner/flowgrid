@@ -8,7 +8,7 @@ struct TransientStore;
 
 struct CoreActionHandler : Actionable<Action::Core::Any> {
     CoreActionHandler(TransientStore &);
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
     TransientStore &_S;

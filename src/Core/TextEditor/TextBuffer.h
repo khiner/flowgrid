@@ -23,7 +23,7 @@ struct TextBuffer : Component, Actionable<Action::TextBuffer::Any> {
     TextBuffer(ComponentArgs &&, const fs::path &);
     ~TextBuffer();
 
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
     TextBufferData GetBuffer() const;
@@ -53,7 +53,7 @@ struct TextBuffer : Component, Actionable<Action::TextBuffer::Any> {
     Prop(Enum, PaletteId, {"Dark", "Light", "Mariana", "RetroBlue"}, int(TextBufferPaletteId::Dark));
 
 private:
-    void Commit(TextBufferData) const;
+    void Commit(TransientStore &, TextBufferData) const;
 
     std::optional<TextBuffer::ActionType> Render(const TextBufferData &, bool is_focused) const;
     std::optional<TextBuffer::ActionType> HandleMouseInputs(const TextBufferData &, ImVec2 char_advance, float text_start_x) const;

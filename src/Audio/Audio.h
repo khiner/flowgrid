@@ -9,7 +9,7 @@ struct Audio : ActionableComponent<Action::Audio::Any> {
     Audio(ArgsT &&);
     ~Audio();
 
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
     void Dock(ID *) const override;

@@ -36,7 +36,7 @@ struct AudioGraph : AudioGraphNode, ActionableProducer<Action::AudioGraph::Any>,
 
     std::unique_ptr<MaNode> CreateNode() const;
 
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override { return true; }
 
     void OnComponentChanged() override;

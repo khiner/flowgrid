@@ -303,13 +303,13 @@ json Project::GetProjectJson(ProjectFormat format) const {
     }
 }
 
-void Project::Apply(const ActionType &action) const {
+void Project::Apply(TransientStore &s, const ActionType &action) const {
     std::visit(
         Match{
             /* Project */
-            [this](const Action::Project::OpenEmpty &) { Open(_S, EmptyProjectPath); },
-            [this](const Action::Project::Open &a) { Open(_S, a.file_path); },
-            [this](const Action::Project::OpenDefault &) { Open(_S, DefaultProjectPath); },
+            [this, &s](const Action::Project::OpenEmpty &) { Open(s, EmptyProjectPath); },
+            [this, &s](const Action::Project::Open &a) { Open(s, a.file_path); },
+            [this, &s](const Action::Project::OpenDefault &) { Open(s, DefaultProjectPath); },
 
             [this](const Action::Project::Save &a) { Save(a.file_path); },
             [this](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
@@ -341,37 +341,37 @@ void Project::Apply(const ActionType &action) const {
             },
             [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({State.Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             /* File dialog */
-            [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(_S, json::parse(a.dialog_json)); },
+            [this, &s](const Action::FileDialog::Open &a) { FileDialog.SetJson(s, json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
             [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
-            [this](const Action::Core::Any &a) { CoreHandler.Apply(a); },
+            [this, &s](const Action::Core::Any &a) { CoreHandler.Apply(s, a); },
             /* Store */
-            [this](const Action::Store::ApplyPatch &a) {
+            [&s](const Action::Store::ApplyPatch &a) {
                 for (const auto &[id, ops] : a.patch.Ops) {
                     for (const auto &op : ops) {
                         if (op.Op == PatchOpType::PopBack) {
                             std::visit(
                                 [&](auto &&v) {
-                                    const auto vec = _S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id);
-                                    _S.Set(id, vec.take(vec.size() - 1));
+                                    const auto vec = s.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id);
+                                    s.Set(id, vec.take(vec.size() - 1));
                                 },
                                 *op.Old
                             );
                         } else if (op.Op == PatchOpType::Remove) {
-                            std::visit([&](auto &&v) { _S.Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
+                            std::visit([&](auto &&v) { s.Erase<std::decay_t<decltype(v)>>(id); }, *op.Old);
                         } else if (op.Op == PatchOpType::Add || op.Op == PatchOpType::Replace) {
-                            std::visit([&](auto &&v) { _S.Set(id, std::move(v)); }, *op.Value);
+                            std::visit([&](auto &&v) { s.Set(id, std::move(v)); }, *op.Value);
                         } else if (op.Op == PatchOpType::PushBack) {
-                            std::visit([&](auto &&v) { _S.Set(id, _S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).push_back(std::move(v))); }, *op.Value);
+                            std::visit([&](auto &&v) { s.Set(id, s.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).push_back(std::move(v))); }, *op.Value);
                         } else if (op.Op == PatchOpType::Set) {
-                            std::visit([&](auto &&v) { _S.Set(id, _S.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).set(*op.Index, std::move(v))); }, *op.Value);
+                            std::visit([&](auto &&v) { s.Set(id, s.Get<immer::flex_vector<std::decay_t<decltype(v)>>>(id).set(*op.Index, std::move(v))); }, *op.Value);
                         } else {
                             // `set` ops - currently, u32 is the only set value type.
                             std::visit(
                                 Match{
                                     [&](u32 v) {
-                                        if (op.Op == PatchOpType::Insert) _S.Set(id, _S.Get<immer::set<decltype(v)>>(id).insert(v));
-                                        else if (op.Op == PatchOpType::Erase) _S.Set(id, _S.Get<immer::set<decltype(v)>>(id).erase(v));
+                                        if (op.Op == PatchOpType::Insert) s.Set(id, s.Get<immer::set<decltype(v)>>(id).insert(v));
+                                        else if (op.Op == PatchOpType::Erase) s.Set(id, s.Get<immer::set<decltype(v)>>(id).erase(v));
                                     },
                                     [](auto &&) {},
                                 },
@@ -381,8 +381,8 @@ void Project::Apply(const ActionType &action) const {
                     }
                 }
             },
-            [this](ProjectCore::ActionType &&a) { Core.Apply(std::move(a)); },
-            [this](AppActionType &&a) { App->Apply(std::move(a)); },
+            [this, &s](ProjectCore::ActionType &&a) { Core.Apply(s, std::move(a)); },
+            [this, &s](AppActionType &&a) { App->Apply(s, std::move(a)); },
         },
         action
     );
@@ -533,7 +533,7 @@ void Project::Open(TransientStore &s, const fs::path &file_path) const {
         IndexedGestures indexed_gestures = ReadFileJson(file_path);
         for (auto &&gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
-                std::visit(Match{[this](const Project::ActionType &a) { Apply(a); }}, action_moment.Action);
+                std::visit(Match{[this, &s](const Project::ActionType &a) { Apply(s, a); }}, action_moment.Action);
                 RefreshChanged(CheckedCommit(State.Id));
             }
             History.AddGesture(PS, std::move(gesture), State.Id);
@@ -859,7 +859,7 @@ void Project::ApplyQueuedActions() {
         // * All actions except store patches are no-ops while the file dialog is open.
         //   - Store patches are allowed because they may include ImGui settings changes belonging to the file dialog.
         //   - TODO a better approach would be to exclude the filedialog window settings and everything belonging to it from the saved ImGuiSettings.
-        //     As is, we try to restore saved file dialog window settings even when the file dialog is not open.
+        //     As-is, we erroneously try to restore saved file dialog window settings even when the file dialog is not open.
         if (FileDialog.Visible && !std::holds_alternative<Action::Store::ApplyPatch>(action)) {
             continue;
         }
@@ -873,7 +873,7 @@ void Project::ApplyQueuedActions() {
             std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
             std::holds_alternative<Action::FileDialog::Select>(action);
 
-        Apply(action);
+        Apply(_S, action);
 
         std::visit(
             Match{
@@ -884,7 +884,6 @@ void Project::ApplyQueuedActions() {
                         ProjectHasChanges = true;
                     }
                 },
-                // Note: `const auto &` capture does not work when the other type is itself a variant group - must be exhaustive.
                 [](const Action::NonSaved &) {},
             },
             action

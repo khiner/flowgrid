@@ -52,7 +52,7 @@ struct FaustGraphs
     FaustGraphs(ArgsT &&, const FaustGraphStyle &, const FaustGraphSettings &);
     ~FaustGraphs();
 
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
     FaustGraph *FindGraph(ID dsp_id) const;
@@ -141,10 +141,10 @@ struct Faust
       FaustDSPContainer {
     using ActionProducerComponent::ActionProducerComponent;
 
-    void RegisterDspChangeListener(FaustDSPListener *listener) const noexcept {
+    void RegisterDspChangeListener(TransientStore &s, FaustDSPListener *listener) const noexcept {
         DspChangeListeners.insert(listener);
         for (auto *faust_dsp : FaustDsps) {
-            listener->OnFaustDspAdded(_S, faust_dsp->Id, faust_dsp->Dsp);
+            listener->OnFaustDspAdded(s, faust_dsp->Id, faust_dsp->Dsp);
         }
     }
     void UnregisterDspChangeListener(FaustDSPListener *listener) const noexcept {

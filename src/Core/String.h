@@ -18,7 +18,7 @@ struct String : Component {
     void SetJson(TransientStore &, json &&) const override;
 
     void IssueSet(std::string_view) const;
-    void Set(std::string_view) const;
+    void Set(TransientStore &, std::string_view) const;
 
     void RenderValueTree(bool annotate, bool auto_select) const override;
 

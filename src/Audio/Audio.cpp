@@ -11,34 +11,34 @@ Audio::Audio(ArgsT &&args) : ActionableComponent(std::move(args)) {
     Faust.Paramss.RegisterWindow();
     Style.RegisterWindow();
 
-    Faust.RegisterDspChangeListener(&Graph);
+    Faust.RegisterDspChangeListener(_S, &Graph);
 }
 
 Audio::~Audio() {
     Faust.UnregisterDspChangeListener(&Graph);
 }
 
-void Audio::Apply(const ActionType &action) const {
+void Audio::Apply(TransientStore &s, const ActionType &action) const {
     std::visit(
         Match{
-            [this](const Action::AudioGraph::Any &a) { Graph.Apply(a); },
-            [this](const Action::Faust::DSP::Create &) { Faust.FaustDsps.EmplaceBack(_S, FaustDspPathSegment); },
-            [this](const Action::Faust::DSP::Delete &a) { Faust.FaustDsps.EraseId(_S, a.id); },
-            [this](const Action::Faust::Graph::Any &a) { Faust.Graphs.Apply(a); },
-            [this](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
+            [this, &s](const Action::AudioGraph::Any &a) { Graph.Apply(s, a); },
+            [this, &s](const Action::Faust::DSP::Create &) { Faust.FaustDsps.EmplaceBack(s, FaustDspPathSegment); },
+            [this, &s](const Action::Faust::DSP::Delete &a) { Faust.FaustDsps.EraseId(s, a.id); },
+            [this, &s](const Action::Faust::Graph::Any &a) { Faust.Graphs.Apply(s, a); },
+            [this, &s](const Action::Faust::GraphStyle::ApplyColorPreset &a) {
                 const auto &colors = Faust.Graphs.Style.Colors;
                 switch (a.id) {
-                    case 0: return colors.Set(_S, FaustGraphStyle::ColorsDark);
-                    case 1: return colors.Set(_S, FaustGraphStyle::ColorsLight);
-                    case 2: return colors.Set(_S, FaustGraphStyle::ColorsClassic);
-                    case 3: return colors.Set(_S, FaustGraphStyle::ColorsFaust);
+                    case 0: return colors.Set(s, FaustGraphStyle::ColorsDark);
+                    case 1: return colors.Set(s, FaustGraphStyle::ColorsLight);
+                    case 2: return colors.Set(s, FaustGraphStyle::ColorsClassic);
+                    case 3: return colors.Set(s, FaustGraphStyle::ColorsFaust);
                 }
             },
-            [this](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
+            [this, &s](const Action::Faust::GraphStyle::ApplyLayoutPreset &a) {
                 const auto &style = Faust.Graphs.Style;
                 switch (a.id) {
-                    case 0: return style.LayoutFlowGrid(_S);
-                    case 1: return style.LayoutFaust(_S);
+                    case 0: return style.LayoutFlowGrid(s);
+                    case 1: return style.LayoutFaust(s);
                 }
             },
 

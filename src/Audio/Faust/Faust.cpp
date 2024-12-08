@@ -63,7 +63,7 @@ void FaustGraphs::OnComponentChanged() {
     }
 }
 
-void FaustGraphs::Apply(const ActionType &action) const {
+void FaustGraphs::Apply(TransientStore &, const ActionType &action) const {
     std::visit(
         Match{
             // Multiple SVG files are saved in a directory, to support navigation via SVG file hrefs.

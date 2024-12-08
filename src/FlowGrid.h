@@ -9,7 +9,7 @@
 struct FlowGrid : ActionableComponent<Action::FlowGrid::Any, Audio::ProducedActionType> {
     using ActionableComponent::ActionableComponent;
 
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
     void FocusDefault() const override;

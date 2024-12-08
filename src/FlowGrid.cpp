@@ -1,9 +1,9 @@
 #include "FlowGrid.h"
 
-void FlowGrid::Apply(const ActionType &action) const {
+void FlowGrid::Apply(TransientStore &s, const ActionType &action) const {
     std::visit(
         Match{
-            [this](Action::Audio::Any &&a) { Audio.Apply(std::move(a)); },
+            [this, &s](Action::Audio::Any &&a) { Audio.Apply(s, std::move(a)); },
         },
         action
     );

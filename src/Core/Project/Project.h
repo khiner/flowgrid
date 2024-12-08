@@ -85,7 +85,7 @@ struct Project : ActionableProducer<Action::Any> {
     void Init();
     void Tick();
 
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
     void Draw() const;

@@ -23,7 +23,7 @@ struct ProjectCore : ActionableComponent<Action::ProjectCore::Any, Action::Combi
     using ActionableComponent::ActionableComponent;
     ProjectCore(ArgsT &&);
 
-    void Apply(const ActionType &) const override;
+    void Apply(TransientStore &, const ActionType &) const override;
     bool CanApply(const ActionType &) const override;
 
     void Dock(ID *) const override;

@@ -23,13 +23,13 @@ ProjectCore::ProjectCore(ArgsT &&args) : ActionableComponent(std::move(args)) {
     Debug.Metrics.RegisterWindow();
 }
 
-void ProjectCore::Apply(const ActionType &action) const {
+void ProjectCore::Apply(TransientStore &s, const ActionType &action) const {
     std::visit(
         Match{
-            [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(_S, a.component_id); },
-            [this](const Action::Windows::ToggleDebug &a) {
+            [this, &s](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(s, a.component_id); },
+            [this, &s](const Action::Windows::ToggleDebug &a) {
                 const bool toggling_on = !Windows.VisibleComponentIds.Get().count(a.component_id);
-                Windows.ToggleVisible(_S, a.component_id);
+                Windows.ToggleVisible(s, a.component_id);
                 if (!toggling_on) return;
 
                 auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
@@ -39,39 +39,39 @@ void ProjectCore::Apply(const ActionType &action) const {
                     debug_component->Dock(&debug_node_id);
                 }
             },
-            [this](const Action::Style::SetImGuiColorPreset &a) {
+            [this, &s](const Action::Style::SetImGuiColorPreset &a) {
                 const auto &colors = Style.ImGui.Colors;
                 // todo enum types instead of raw int keys
                 switch (a.id) {
-                    case 0: return colors.Set(_S, Style::ImGuiStyle::ColorsDark);
-                    case 1: return colors.Set(_S, Style::ImGuiStyle::ColorsLight);
-                    case 2: return colors.Set(_S, Style::ImGuiStyle::ColorsClassic);
+                    case 0: return colors.Set(s, Style::ImGuiStyle::ColorsDark);
+                    case 1: return colors.Set(s, Style::ImGuiStyle::ColorsLight);
+                    case 2: return colors.Set(s, Style::ImGuiStyle::ColorsClassic);
                 }
             },
-            [this](const Action::Style::SetImPlotColorPreset &a) {
+            [this, &s](const Action::Style::SetImPlotColorPreset &a) {
                 const auto &style = Style.ImPlot;
                 const auto &colors = style.Colors;
                 switch (a.id) {
                     case 0:
-                        colors.Set(_S, Style::ImPlotStyle::ColorsAuto);
-                        return style.MinorAlpha.Set(_S, 0.25f);
+                        colors.Set(s, Style::ImPlotStyle::ColorsAuto);
+                        return style.MinorAlpha.Set(s, 0.25f);
                     case 1:
-                        colors.Set(_S, Style::ImPlotStyle::ColorsDark);
-                        return style.MinorAlpha.Set(_S, 0.25f);
+                        colors.Set(s, Style::ImPlotStyle::ColorsDark);
+                        return style.MinorAlpha.Set(s, 0.25f);
                     case 2:
-                        colors.Set(_S, Style::ImPlotStyle::ColorsLight);
-                        return style.MinorAlpha.Set(_S, 1);
+                        colors.Set(s, Style::ImPlotStyle::ColorsLight);
+                        return style.MinorAlpha.Set(s, 1);
                     case 3:
-                        colors.Set(_S, Style::ImPlotStyle::ColorsClassic);
-                        return style.MinorAlpha.Set(_S, 0.5f);
+                        colors.Set(s, Style::ImPlotStyle::ColorsClassic);
+                        return style.MinorAlpha.Set(s, 0.5f);
                 }
             },
-            [this](const Action::Style::SetProjectColorPreset &a) {
+            [this, &s](const Action::Style::SetProjectColorPreset &a) {
                 const auto &colors = Style.Project.Colors;
                 switch (a.id) {
-                    case 0: return colors.Set(_S, ProjectStyle::ColorsDark);
-                    case 1: return colors.Set(_S, ProjectStyle::ColorsLight);
-                    case 2: return colors.Set(_S, ProjectStyle::ColorsClassic);
+                    case 0: return colors.Set(s, ProjectStyle::ColorsDark);
+                    case 1: return colors.Set(s, ProjectStyle::ColorsLight);
+                    case 2: return colors.Set(s, ProjectStyle::ColorsClassic);
                 }
             },
         },

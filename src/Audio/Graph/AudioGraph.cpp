@@ -78,7 +78,7 @@ struct DeviceNode : AudioGraphNode {
         UpdateDeviceConfig(_S);
 
         // The device may have a different configuration than what we requested. Update fields to reflect the actual device config.
-        Name.Set(GetConfigName(Device->GetInfo()));
+        Name.Set(_S, GetConfigName(Device->GetInfo()));
         UpdateFormat(_S);
 
         const Component::References listening_to{Name, Format};
@@ -504,25 +504,25 @@ std::unique_ptr<AudioGraphNode> AudioGraph::CreateAudioGraphNode(ComponentArgs &
     return nullptr;
 }
 
-void AudioGraph::Apply(const ActionType &action) const {
+void AudioGraph::Apply(TransientStore &s, const ActionType &action) const {
     std::visit(
         Match{
-            [this](const Action::AudioGraph::CreateNode &a) {
-                Nodes.EmplaceBack(_S, a.node_type_id);
+            [this, &s](const Action::AudioGraph::CreateNode &a) {
+                Nodes.EmplaceBack(s, a.node_type_id);
             },
-            [this](const Action::AudioGraph::CreateFaustNode &a) {
+            [this, &s](const Action::AudioGraph::CreateFaustNode &a) {
                 latest_dsp_id = a.dsp_id;
-                Nodes.EmplaceBack(_S, FaustNodeTypeId);
+                Nodes.EmplaceBack(s, FaustNodeTypeId);
             },
-            [this](const Action::AudioGraph::DeleteNode &a) {
-                Nodes.EraseId(_S, a.id);
-                Connections.DisconnectOutput(_S, a.id);
+            [this, &s](const Action::AudioGraph::DeleteNode &a) {
+                Nodes.EraseId(s, a.id);
+                Connections.DisconnectOutput(s, a.id);
             },
-            [this](const Action::AudioGraph::SetDeviceDataFormat &a) {
+            [&s](const Action::AudioGraph::SetDeviceDataFormat &a) {
                 if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device data format with id {} exists.", a.id));
 
                 auto *format = static_cast<const DeviceNode::DataFormat *>(Component::ById.at(a.id));
-                format->Set(_S, {a.sample_format, a.channels, a.sample_rate});
+                format->Set(s, {a.sample_format, a.channels, a.sample_rate});
             },
         },
         action

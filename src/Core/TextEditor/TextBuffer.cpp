@@ -147,7 +147,7 @@ TextBuffer::TextBuffer(ComponentArgs &&args, const fs::path &file_path)
       }) {
     SetFilePath(file_path);
     // if (Exists()) Refresh();
-    Commit(TextBufferData{}.SetText(std::string(FileIO::read(file_path))));
+    Commit(_S, TextBufferData{}.SetText(std::string(FileIO::read(file_path))));
 }
 
 TextBuffer::~TextBuffer() {
@@ -189,45 +189,45 @@ static Lines GetClipboardLines() {
     return text.persistent();
 }
 
-void TextBuffer::Apply(const ActionType &action) const {
+void TextBuffer::Apply(TransientStore &s, const ActionType &action) const {
     using namespace Action::TextBuffer;
 
     std::visit(
         Match{
             // Buffer-affecting actions
-            [this](const SetCursor &a) { Commit(GetBuffer().SetCursor(a.lc, a.add)); },
-            [this](const SetCursorRange &a) { Commit(GetBuffer().SetCursor(a.lcr, a.add)); },
-            [this](const MoveCursorsLines &a) { Commit(GetBuffer().MoveCursorsLines(a.amount, a.select)); },
-            [this](const PageCursorsLines &a) { Commit(GetBuffer().MoveCursorsLines((State->ContentCoordDims.L - 2) * (a.up ? -1 : 1), a.select)); },
-            [this](const MoveCursorsChar &a) { Commit(GetBuffer().MoveCursorsChar(a.right, a.select, a.word)); },
-            [this](const MoveCursorsTop &a) { Commit(GetBuffer().MoveCursorsTop(a.select)); },
-            [this](const MoveCursorsBottom &a) { Commit(GetBuffer().MoveCursorsBottom(a.select)); },
-            [this](const MoveCursorsStartLine &a) { Commit(GetBuffer().MoveCursorsStartLine(a.select)); },
-            [this](const MoveCursorsEndLine &a) { Commit(GetBuffer().MoveCursorsEndLine(a.select)); },
-            [this](const SelectAll &) { Commit(GetBuffer().SelectAll()); },
-            [this](const SelectNextOccurrence &) { Commit(GetBuffer().SelectNextOccurrence()); },
-            [this](const SetText &a) { Commit(GetBuffer().SetText(a.value)); },
+            [this, &s](const SetCursor &a) { Commit(s, GetBuffer().SetCursor(a.lc, a.add)); },
+            [this, &s](const SetCursorRange &a) { Commit(s, GetBuffer().SetCursor(a.lcr, a.add)); },
+            [this, &s](const MoveCursorsLines &a) { Commit(s, GetBuffer().MoveCursorsLines(a.amount, a.select)); },
+            [this, &s](const PageCursorsLines &a) { Commit(s, GetBuffer().MoveCursorsLines((State->ContentCoordDims.L - 2) * (a.up ? -1 : 1), a.select)); },
+            [this, &s](const MoveCursorsChar &a) { Commit(s, GetBuffer().MoveCursorsChar(a.right, a.select, a.word)); },
+            [this, &s](const MoveCursorsTop &a) { Commit(s, GetBuffer().MoveCursorsTop(a.select)); },
+            [this, &s](const MoveCursorsBottom &a) { Commit(s, GetBuffer().MoveCursorsBottom(a.select)); },
+            [this, &s](const MoveCursorsStartLine &a) { Commit(s, GetBuffer().MoveCursorsStartLine(a.select)); },
+            [this, &s](const MoveCursorsEndLine &a) { Commit(s, GetBuffer().MoveCursorsEndLine(a.select)); },
+            [this, &s](const SelectAll &) { Commit(s, GetBuffer().SelectAll()); },
+            [this, &s](const SelectNextOccurrence &) { Commit(s, GetBuffer().SelectNextOccurrence()); },
+            [this, &s](const SetText &a) { Commit(s, GetBuffer().SetText(a.value)); },
             [this](const Copy &) {
                 const auto str = GetBuffer().GetSelectedText();
                 ImGui::SetClipboardText(str.c_str());
             },
-            [this](const Cut &) {
+            [this, &s](const Cut &) {
                 const auto str = GetBuffer().GetSelectedText();
                 ImGui::SetClipboardText(str.c_str());
-                Commit(GetBuffer().DeleteSelections());
+                Commit(s, GetBuffer().DeleteSelections());
             },
-            [this](const Paste &) { Commit(GetBuffer().Paste(GetClipboardLines())); },
-            [this](const Delete &a) { Commit(GetBuffer().Delete(a.word)); },
-            [this](const Backspace &a) { Commit(GetBuffer().Backspace(a.word)); },
-            [this](const DeleteCurrentLines &) { Commit(GetBuffer().DeleteCurrentLines()); },
-            [this](const ChangeCurrentLinesIndentation &a) { Commit(GetBuffer().ChangeCurrentLinesIndentation(a.increase)); },
-            [this](const MoveCurrentLines &a) { Commit(GetBuffer().MoveCurrentLines(a.up)); },
-            [this](const ToggleLineComment &) { Commit(GetBuffer().ToggleLineComment(State->Syntax->GetLanguage().SingleLineComment)); },
-            [this](const EnterChar &a) { Commit(GetBuffer().EnterChar(a.value, AutoIndent)); },
-            [this](const Open &a) {
-                LastOpenedFilePath.Set(a.file_path.c_str());
+            [this, &s](const Paste &) { Commit(s, GetBuffer().Paste(GetClipboardLines())); },
+            [this, &s](const Delete &a) { Commit(s, GetBuffer().Delete(a.word)); },
+            [this, &s](const Backspace &a) { Commit(s, GetBuffer().Backspace(a.word)); },
+            [this, &s](const DeleteCurrentLines &) { Commit(s, GetBuffer().DeleteCurrentLines()); },
+            [this, &s](const ChangeCurrentLinesIndentation &a) { Commit(s, GetBuffer().ChangeCurrentLinesIndentation(a.increase)); },
+            [this, &s](const MoveCurrentLines &a) { Commit(s, GetBuffer().MoveCurrentLines(a.up)); },
+            [this, &s](const ToggleLineComment &) { Commit(s, GetBuffer().ToggleLineComment(State->Syntax->GetLanguage().SingleLineComment)); },
+            [this, &s](const EnterChar &a) { Commit(s, GetBuffer().EnterChar(a.value, AutoIndent)); },
+            [this, &s](const Open &a) {
+                LastOpenedFilePath.Set(s, a.file_path.c_str());
                 SetFilePath(a.file_path);
-                Commit(GetBuffer().SetText(FileIO::read(a.file_path)));
+                Commit(s, GetBuffer().SetText(FileIO::read(a.file_path)));
             },
             // Non-buffer actions
             [this](const ShowOpenDialog &) {
@@ -256,8 +256,8 @@ void TextBuffer::Apply(const ActionType &action) const {
 }
 
 // todo: Need a way to merge cursor-only edits, and skip over cursor-only buffer changes when undoing/redoing.
-void TextBuffer::Commit(TextBufferData b) const {
-    _S.Set(Id, b);
+void TextBuffer::Commit(TransientStore &s, TextBufferData b) const {
+    s.Set(Id, b);
     State->Syntax->ApplyEdits(b.Edits);
     // b.Edits = {};
 }

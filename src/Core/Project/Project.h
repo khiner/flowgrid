@@ -90,14 +90,10 @@ struct Project : ActionableProducer<Action::Any> {
 
     void Draw() const;
 
-    void CommitGesture() const;
-
-    Plottable PathChangeFrequencyPlottable() const;
-
-    json GetProjectJson(ProjectFormat) const;
-
     // Provided queue is drained.
-    void ApplyQueuedActions(bool force_commit_gesture = false);
+    void ApplyQueuedActions();
+
+    void CommitGesture() const;
     bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
     const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
     float GestureTimeRemainingSec() const;
@@ -186,6 +182,9 @@ private:
 
     void SetCurrentProjectPath(const fs::path &) const;
     void OpenStateFormatProject(TransientStore &, const fs::path &file_path) const;
+
+    json GetProjectJson(ProjectFormat) const;
+    Plottable PathChangeFrequencyPlottable() const;
 
     void SetHistoryIndex(u32) const;
 

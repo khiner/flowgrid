@@ -47,7 +47,7 @@ int main() {
         ImGui::GetIO().WantSaveIniSettings = true; // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
         ui.Tick(); // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
         project.Tick();
-        project.ApplyQueuedActions(true);
+        project.CommitGesture();
     }
 
     project.OnApplicationLaunch();

@@ -186,7 +186,7 @@ FaustDSPs::~FaustDSPs() {
     destroyLibContext();
 }
 
-void Faust::NotifyListeners(TransientStore &s,  NotificationType type, FaustDSP &faust_dsp) {
+void Faust::NotifyListeners(TransientStore &s, NotificationType type, FaustDSP &faust_dsp) {
     const ID id = faust_dsp.Id;
     dsp *dsp = faust_dsp.Dsp;
     Box box = faust_dsp.Box;

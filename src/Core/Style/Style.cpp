@@ -187,7 +187,7 @@ void Style::ImGuiStyle::Render() const {
 
     const auto &io = GetIO();
     if (const auto *font_current = GetFont(); BeginCombo("Fonts", font_current->GetDebugName())) {
-        for (int n = 0; n < io.Fonts->Fonts.Size; n++) {
+        for (u32 n = 0; n < u32(io.Fonts->Fonts.Size); ++n) {
             const auto *font = io.Fonts->Fonts[n];
             PushID(font);
             if (Selectable(font->GetDebugName(), font == font_current)) FontIndex.IssueSet(n);

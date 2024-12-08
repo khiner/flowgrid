@@ -12,6 +12,8 @@ enum class FontFamily {
     Monospace,
 };
 
+using u32 = unsigned int;
+
 struct ImFont;
 
 struct Fonts {
@@ -20,7 +22,8 @@ struct Fonts {
     inline static ImFont *Main{nullptr}, *MainBold{nullptr}, *MainItalic{nullptr}, *MainBoldItalic{nullptr};
     inline static ImFont *Monospace{nullptr}, *MonospaceBold{nullptr}, *MonospaceItalic{nullptr}, *MonospaceBoldItalic{nullptr};
 
-    static void Init(); // Must be called after ImGui context is created.
+    static void Init(float scale); // Call after creating ImGui context.
+    static void Tick(float scale, u32 index); // Check if new font settings need to be applied.
 
     static ImFont *Get(FontFamily family, FontStyle style = FontStyle_Regular) {
         if (family == FontFamily::Main) {
@@ -40,6 +43,6 @@ struct Fonts {
 
     // Returns true if the font was changed.
     // **Only call `PopFont` if `PushFont` returned true.**
-    static bool Push(FontFamily family, FontStyle style = FontStyle_Regular);
+    static bool Push(FontFamily, FontStyle style = FontStyle_Regular);
     static void Pop();
 };

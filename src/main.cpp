@@ -10,48 +10,33 @@
 
 int main() {
     Project project{[](auto app_args) { return std::make_unique<FlowGrid>(std::move(app_args)); }};
-    auto &core = project.Core;
+    const auto &core = project.Core;
 
     auto predraw = [&core]() {
         // Check if new UI settings need to be applied.
-        auto &settings = core.ImGuiSettings;
         auto &style = core.Style;
-        settings.UpdateIfChanged(ImGui::GetCurrentContext());
+        core.ImGuiSettings.UpdateIfChanged(ImGui::GetCurrentContext());
         style.ImGui.UpdateIfChanged(ImGui::GetCurrentContext());
         style.ImPlot.UpdateIfChanged(ImPlot::GetCurrentContext());
 
-        // Check if new font settings need to be applied.
-        auto &io = ImGui::GetIO();
-        static int PrevFontIndex = 0;
-        static float PrevFontScale = 1.0;
-        if (PrevFontIndex != style.ImGui.FontIndex) {
-            io.FontDefault = io.Fonts->Fonts[style.ImGui.FontIndex];
-            PrevFontIndex = style.ImGui.FontIndex;
-        }
-        if (PrevFontScale != style.ImGui.FontScale) {
-            io.FontGlobalScale = style.ImGui.FontScale / Fonts::AtlasScale;
-            PrevFontScale = style.ImGui.FontScale;
-        }
+        Fonts::Tick(style.ImGui.FontScale, style.ImGui.FontIndex);
     };
+
     auto draw = [&project]() { project.Draw(); };
     const UIContext ui{std::move(predraw), std::move(draw)};
-    Fonts::Init(); // Must be done after initializing ImGui.
-    ImGui::GetIO().FontGlobalScale = core.Style.ImGui.FontScale / Fonts::AtlasScale;
-
+    Fonts::Init(core.Style.ImGui.FontScale);
     FileDialogManager::Init();
 
+    // Initial rendering has state-modifying (action-producing) side effects.
     {
-        // Relying on these rendering side effects up front is not great.
-        ui.Tick(); // First frame creates dockspaces & windows.
-        project.Tick();
-        // Make sure the project state reflects the fully initialized ImGui UI state (at the end of the next frame).
-        ImGui::GetIO().WantSaveIniSettings = true;
-        // Another frame is needed for ImGui to update its Window->DockNode relationships after creating the windows in the first frame.
+        // First frame creates dockspaces & windows.
         ui.Tick();
-        project.Tick();
+        // After creating the windows, another frame is needed for ImGui to update its Window->DockNode relationships.
+        ImGui::GetIO().WantSaveIniSettings = true; // Ensure project state reflects the fully-initialized ImGui state at the end of the next frame.
+        ui.Tick();
     }
 
-    project.OnApplicationLaunch();
+    project.Init();
     while (ui.Tick()) {
         project.Tick();
     }

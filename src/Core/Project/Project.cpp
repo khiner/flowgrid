@@ -446,8 +446,11 @@ bool Project::Save(const fs::path &path) const {
     return true;
 }
 
-void Project::OnApplicationLaunch() const {
+void Project::Init() {
+    // Consume and commit any pending actions.
+    Tick();
     CommitGesture();
+
     IsWidgetGesturing = false;
     History.Clear(PS);
     ClearChanged();

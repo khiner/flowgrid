@@ -22,7 +22,7 @@ void FileDialog::Set(FileDialogData &&data) const {
     Data = std::move(data);
 }
 
-void FileDialog::SetJson(TransientStore &s, json &&j) const { Set(std::move(j)); }
+void FileDialog::SetJson(TransientStore &, json &&j) const { Set(std::move(j)); }
 
 using namespace ImGui;
 

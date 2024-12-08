@@ -366,9 +366,9 @@ void PrepareFrame() {
 
 void RenderFrame() {
     ImGui::Render();
-    ImDrawData *main_draw_data = ImGui::GetDrawData();
+    auto *main_draw_data = ImGui::GetDrawData();
     const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color{0.45, 0.55, 0.60, 1.f};
     VulkanWindow->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
     VulkanWindow->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
     VulkanWindow->ClearValue.color.float32[2] = clear_color.z * clear_color.w;

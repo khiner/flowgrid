@@ -82,7 +82,7 @@ struct Project : ActionableProducer<Action::Any> {
     // Find the field whose `Refresh()` should be called in response to a patch with this component ID and op type.
     static Component *FindChanged(ID, const std::vector<PatchOp> &ops);
 
-    void OnApplicationLaunch() const;
+    void Init();
     void Tick();
 
     void Apply(const ActionType &) const override;

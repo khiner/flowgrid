@@ -2,8 +2,8 @@
 
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Enum.h"
-#include "Core/Primitive/Int.h"
 #include "Core/Primitive/PrimitiveAction.h"
+#include "Core/Primitive/UInt.h"
 #include "Core/UI/Styling.h"
 
 #include "ProjectStyle.h"
@@ -90,7 +90,7 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
         Prop_(Float, DisabledAlpha, "?Additional alpha multiplier for disabled items (multiply over current value of Alpha).", 0.6, 0, 1, "%.2f", SliderFlags_None, 0.005);
 
         // Fonts
-        Prop(Int, FontIndex);
+        Prop(UInt, FontIndex);
         Prop_(Float, FontScale, "?Global font scale (low-quality!)", 1, 0.3, 2, "%.2f", SliderFlags_AlwaysClamp, 0.005f);
 
         // Not editable todo delete?
@@ -164,7 +164,7 @@ struct Style : ActionProducerComponent<ProjectStyle::ProducedActionType> {
         Prop(Bool, UseISO8601);
         Prop(Bool, Use24HourClock);
 
-        Prop(Int, Marker, 0); // Not editable todo delete?
+        Prop(UInt, Marker, 0); // Not editable todo delete?
 
     protected:
         void Render() const override;

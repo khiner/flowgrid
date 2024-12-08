@@ -8,7 +8,7 @@ template<typename T> struct Navigable : Component {
         Refresh();
     }
     ~Navigable() {
-        Erase();
+        Erase(_S);
     }
 
     void IssueClear() const;

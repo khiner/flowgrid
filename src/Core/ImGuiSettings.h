@@ -19,7 +19,7 @@ struct ImGuiTableSettings;
 struct DockNodeSettings : Component {
     using Component::Component;
 
-    void Set(const ImVector<ImGuiDockNodeSettings> &) const;
+    void Set(TransientStore &, const ImVector<ImGuiDockNodeSettings> &) const;
     void Update(ImGuiContext *) const;
 
     Prop(Vector<ID>, NodeId);
@@ -37,7 +37,7 @@ struct DockNodeSettings : Component {
 struct WindowSettings : Component {
     using Component::Component;
 
-    void Set(ImChunkStream<ImGuiWindowSettings> &) const;
+    void Set(TransientStore &, ImChunkStream<ImGuiWindowSettings> &) const;
     void Update(ImGuiContext *) const;
 
     Prop(Vector<ID>, Id);
@@ -67,7 +67,7 @@ struct TableColumnSettings : Component {
 struct TableSettings : Component {
     using Component::Component;
 
-    void Set(ImChunkStream<ImGuiTableSettings> &);
+    void Set(TransientStore &, ImChunkStream<ImGuiTableSettings> &);
     void Update(ImGuiContext *) const;
 
     Prop(Vector<::ID>, ID);
@@ -89,7 +89,7 @@ struct ImGuiSettings : Component {
     // in this struct instead of the serialized `.ini` text format.
     void UpdateIfChanged(ImGuiContext *) const;
     // Basically `this = imgui_context.settings`.
-    void Set(ImGuiContext *);
+    void Set(TransientStore &, ImGuiContext *);
 
     Prop(DockNodeSettings, Nodes);
     Prop(WindowSettings, Windows);

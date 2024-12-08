@@ -13,7 +13,7 @@ struct Vec2 : Component {
 
     operator ImVec2() const;
 
-    void Set(std::pair<float, float>) const;
+    void Set(TransientStore &, std::pair<float, float>) const;
 
     Float X, Y;
 

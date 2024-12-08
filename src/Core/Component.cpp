@@ -102,10 +102,10 @@ json Component::ToJson() const {
     return j;
 }
 
-void Component::SetJson(json &&j) const {
+void Component::SetJson(TransientStore &s, json &&j) const {
     auto flattened = std::move(j).flatten(); // Don't inline this.
     for (auto &&[key, value] : flattened.items()) {
-        ById.at(IdByPath.at(key))->SetJson(std::move(value));
+        ById.at(IdByPath.at(key))->SetJson(s, std::move(value));
     }
 }
 

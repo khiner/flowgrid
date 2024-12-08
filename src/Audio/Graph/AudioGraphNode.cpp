@@ -54,8 +54,8 @@ void AudioGraphNode::GainerNode::UpdateLevel() {
     ma_gainer_node_set_gain(Get(), Muted ? 0.f : float(Level));
 }
 
-void AudioGraphNode::GainerNode::SetMuted(bool muted) {
-    Muted.Set_(muted);
+void AudioGraphNode::GainerNode::SetMuted(TransientStore &s, bool muted) {
+    Muted.Set_(s, muted);
     UpdateLevel();
 }
 

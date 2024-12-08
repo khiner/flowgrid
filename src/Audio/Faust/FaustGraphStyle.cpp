@@ -3,8 +3,8 @@
 #include "imgui.h"
 
 FaustGraphStyle::FaustGraphStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
-    Colors.Set(ColorsDark);
-    LayoutFlowGrid();
+    Colors.Set(_S, ColorsDark);
+    LayoutFlowGrid(_S);
 }
 
 const char *FaustGraphStyle::GetColorName(FlowGridGraphCol idx) {
@@ -86,50 +86,50 @@ std::unordered_map<size_t, ImVec4> FaustGraphStyle::ColorsFaust = {
     {FlowGridGraphCol_Number, {0.96, 0.28, 0, 1}},
 };
 
-void FaustGraphStyle::LayoutFlowGrid() const {
-    SequentialConnectionZigzag.Set(false);
-    OrientationMark.Set(false);
-    DecorateRootNode.Set(true);
-    DecorateMargin.Set({10, 10});
-    DecoratePadding.Set({10, 10});
-    DecorateLineWidth.Set(1);
-    DecorateCornerRadius.Set(0);
-    GroupMargin.Set({8, 8});
-    GroupPadding.Set({8, 8});
-    GroupLineWidth.Set(2);
-    GroupCornerRadius.Set(5);
-    BoxCornerRadius.Set(4);
-    BinaryHorizontalGapRatio.Set(0.25);
-    WireThickness.Set(1);
-    WireGap.Set(16);
-    NodeMargin.Set({8, 8});
-    NodePadding.Set({8, 0});
-    NodeMinSize.Set({48, 48});
-    ArrowSize.Set({3, 2});
-    InverterRadius.Set(3);
+void FaustGraphStyle::LayoutFlowGrid(TransientStore &s) const {
+    SequentialConnectionZigzag.Set(s, false);
+    OrientationMark.Set(s, false);
+    DecorateRootNode.Set(s, true);
+    DecorateMargin.Set(s, {10, 10});
+    DecoratePadding.Set(s, {10, 10});
+    DecorateLineWidth.Set(s, 1);
+    DecorateCornerRadius.Set(s, 0);
+    GroupMargin.Set(s, {8, 8});
+    GroupPadding.Set(s, {8, 8});
+    GroupLineWidth.Set(s, 2);
+    GroupCornerRadius.Set(s, 5);
+    BoxCornerRadius.Set(s, 4);
+    BinaryHorizontalGapRatio.Set(s, 0.25);
+    WireThickness.Set(s, 1);
+    WireGap.Set(s, 16);
+    NodeMargin.Set(s, {8, 8});
+    NodePadding.Set(s, {8, 0});
+    NodeMinSize.Set(s, {48, 48});
+    ArrowSize.Set(s, {3, 2});
+    InverterRadius.Set(s, 3);
 }
 
-void FaustGraphStyle::LayoutFaust() const {
-    SequentialConnectionZigzag.Set(true);
-    OrientationMark.Set(true);
-    DecorateRootNode.Set(true);
-    DecorateMargin.Set({10, 10});
-    DecoratePadding.Set({10, 10});
-    DecorateLineWidth.Set(1);
-    DecorateCornerRadius.Set(0);
-    GroupMargin.Set({10, 10});
-    GroupPadding.Set({10, 10});
-    GroupLineWidth.Set(1);
-    GroupCornerRadius.Set(0);
-    BoxCornerRadius.Set(0);
-    BinaryHorizontalGapRatio.Set(0.25f);
-    WireThickness.Set(1);
-    WireGap.Set(16);
-    NodeMargin.Set({8, 8});
-    NodePadding.Set({8, 0});
-    NodeMinSize.Set({48, 48});
-    ArrowSize.Set({3, 2});
-    InverterRadius.Set(3);
+void FaustGraphStyle::LayoutFaust(TransientStore &s) const {
+    SequentialConnectionZigzag.Set(s, true);
+    OrientationMark.Set(s, true);
+    DecorateRootNode.Set(s, true);
+    DecorateMargin.Set(s, {10, 10});
+    DecoratePadding.Set(s, {10, 10});
+    DecorateLineWidth.Set(s, 1);
+    DecorateCornerRadius.Set(s, 0);
+    GroupMargin.Set(s, {10, 10});
+    GroupPadding.Set(s, {10, 10});
+    GroupLineWidth.Set(s, 1);
+    GroupCornerRadius.Set(s, 0);
+    BoxCornerRadius.Set(s, 0);
+    BinaryHorizontalGapRatio.Set(s, 0.25f);
+    WireThickness.Set(s, 1);
+    WireGap.Set(s, 16);
+    NodeMargin.Set(s, {8, 8});
+    NodePadding.Set(s, {8, 0});
+    NodeMinSize.Set(s, {48, 48});
+    ArrowSize.Set(s, {3, 2});
+    InverterRadius.Set(s, 3);
 }
 
 using namespace ImGui;

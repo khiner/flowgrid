@@ -15,14 +15,14 @@ struct String : Component {
     void Render(const std::vector<std::string> &options) const;
 
     json ToJson() const override;
-    void SetJson(json &&) const override;
+    void SetJson(TransientStore &, json &&) const override;
 
     void IssueSet(std::string_view) const;
     void Set(std::string_view) const;
 
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
-    void Erase() const override;
+    void Erase(TransientStore &) const override;
 
 private:
     void Render() const override;

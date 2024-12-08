@@ -307,9 +307,9 @@ void Project::Apply(const ActionType &action) const {
     std::visit(
         Match{
             /* Project */
-            [this](const Action::Project::OpenEmpty &) { Open(EmptyProjectPath); },
-            [this](const Action::Project::Open &a) { Open(a.file_path); },
-            [this](const Action::Project::OpenDefault &) { Open(DefaultProjectPath); },
+            [this](const Action::Project::OpenEmpty &) { Open(_S, EmptyProjectPath); },
+            [this](const Action::Project::Open &a) { Open(_S, a.file_path); },
+            [this](const Action::Project::OpenDefault &) { Open(_S, DefaultProjectPath); },
 
             [this](const Action::Project::Save &a) { Save(a.file_path); },
             [this](const Action::Project::SaveDefault &) { Save(DefaultProjectPath); },
@@ -341,7 +341,7 @@ void Project::Apply(const ActionType &action) const {
             },
             [this](const Action::Project::ShowSaveDialog &) { FileDialog.Set({State.Id, "Choose file", AllProjectExtensionsDelimited, ".", "my_flowgrid_project", true, 1}); },
             /* File dialog */
-            [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(json::parse(a.dialog_json)); },
+            [this](const Action::FileDialog::Open &a) { FileDialog.SetJson(_S, json::parse(a.dialog_json)); },
             // `SelectedFilePath` mutations are non-stateful side effects.
             [this](const Action::FileDialog::Select &a) { FileDialog.SelectedFilePath = a.file_path; },
             [this](const Action::Core::Any &a) { CoreHandler.Apply(a); },
@@ -475,7 +475,7 @@ void Project::Tick() {
     if (io.WantSaveIniSettings) {
         ImGui::SaveIniSettingsToMemory(); // Populate ImGui's `Settings...` context members.
         auto &imgui_settings = Core.ImGuiSettings;
-        imgui_settings.Set(ImGui::GetCurrentContext());
+        imgui_settings.Set(_S, ImGui::GetCurrentContext());
         if (auto patch = CreatePatchAndResetTransient(PS, _S, imgui_settings.Id); !patch.Empty()) {
             Q(Action::Store::ApplyPatch{std::move(patch)});
         }
@@ -488,19 +488,19 @@ static json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO:
 
 // Helper function used in `Project::Open`.
 // Modifies the active transient store.
-void Project::OpenStateFormatProject(const fs::path &file_path) const {
+void Project::OpenStateFormatProject(TransientStore &s, const fs::path &file_path) const {
     auto j = ReadFileJson(file_path);
     // First, refresh all component containers to ensure the dynamically managed component instances match the JSON.
     for (const ID auxiliary_id : Component::ContainerAuxiliaryIds) {
         if (auto *auxiliary_field = Component::ById.at(auxiliary_id); j.contains(auxiliary_field->JsonPointer())) {
-            auxiliary_field->SetJson(std::move(j.at(auxiliary_field->JsonPointer())));
+            auxiliary_field->SetJson(s, std::move(j.at(auxiliary_field->JsonPointer())));
             auxiliary_field->Refresh();
             auxiliary_field->Parent->Refresh();
         }
     }
 
     // Now, every flattened JSON pointer is 1:1 with an instance path.
-    State.SetJson(std::move(j));
+    State.SetJson(s, std::move(j));
 
     // We could do `RefreshChanged(_S.CheckedCommit(Id))`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
@@ -515,16 +515,16 @@ void Project::OpenStateFormatProject(const fs::path &file_path) const {
     History.Clear(PS);
 }
 
-void Project::Open(const fs::path &file_path) const {
+void Project::Open(TransientStore &s, const fs::path &file_path) const {
     const auto format = GetProjectFormat(file_path);
     if (!format) return; // TODO log
 
     IsWidgetGesturing = false;
 
     if (format == ProjectFormat::State) {
-        OpenStateFormatProject(file_path);
+        OpenStateFormatProject(s, file_path);
     } else if (format == ProjectFormat::Action) {
-        OpenStateFormatProject(EmptyProjectPath);
+        OpenStateFormatProject(s, EmptyProjectPath);
 
         IndexedGestures indexed_gestures = ReadFileJson(file_path);
         for (auto &&gesture : indexed_gestures.Gestures) {

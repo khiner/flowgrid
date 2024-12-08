@@ -26,10 +26,10 @@ ProjectCore::ProjectCore(ArgsT &&args) : ActionableComponent(std::move(args)) {
 void ProjectCore::Apply(const ActionType &action) const {
     std::visit(
         Match{
-            [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(a.component_id); },
+            [this](const Action::Windows::ToggleVisible &a) { Windows.ToggleVisible(_S, a.component_id); },
             [this](const Action::Windows::ToggleDebug &a) {
                 const bool toggling_on = !Windows.VisibleComponentIds.Get().count(a.component_id);
-                Windows.ToggleVisible(a.component_id);
+                Windows.ToggleVisible(_S, a.component_id);
                 if (!toggling_on) return;
 
                 auto *debug_component = static_cast<DebugComponent *>(Component::ById.at(a.component_id));
@@ -43,9 +43,9 @@ void ProjectCore::Apply(const ActionType &action) const {
                 const auto &colors = Style.ImGui.Colors;
                 // todo enum types instead of raw int keys
                 switch (a.id) {
-                    case 0: return colors.Set(Style::ImGuiStyle::ColorsDark);
-                    case 1: return colors.Set(Style::ImGuiStyle::ColorsLight);
-                    case 2: return colors.Set(Style::ImGuiStyle::ColorsClassic);
+                    case 0: return colors.Set(_S, Style::ImGuiStyle::ColorsDark);
+                    case 1: return colors.Set(_S, Style::ImGuiStyle::ColorsLight);
+                    case 2: return colors.Set(_S, Style::ImGuiStyle::ColorsClassic);
                 }
             },
             [this](const Action::Style::SetImPlotColorPreset &a) {
@@ -53,25 +53,25 @@ void ProjectCore::Apply(const ActionType &action) const {
                 const auto &colors = style.Colors;
                 switch (a.id) {
                     case 0:
-                        colors.Set(Style::ImPlotStyle::ColorsAuto);
-                        return style.MinorAlpha.Set(0.25f);
+                        colors.Set(_S, Style::ImPlotStyle::ColorsAuto);
+                        return style.MinorAlpha.Set(_S, 0.25f);
                     case 1:
-                        colors.Set(Style::ImPlotStyle::ColorsDark);
-                        return style.MinorAlpha.Set(0.25f);
+                        colors.Set(_S, Style::ImPlotStyle::ColorsDark);
+                        return style.MinorAlpha.Set(_S, 0.25f);
                     case 2:
-                        colors.Set(Style::ImPlotStyle::ColorsLight);
-                        return style.MinorAlpha.Set(1);
+                        colors.Set(_S, Style::ImPlotStyle::ColorsLight);
+                        return style.MinorAlpha.Set(_S, 1);
                     case 3:
-                        colors.Set(Style::ImPlotStyle::ColorsClassic);
-                        return style.MinorAlpha.Set(0.5f);
+                        colors.Set(_S, Style::ImPlotStyle::ColorsClassic);
+                        return style.MinorAlpha.Set(_S, 0.5f);
                 }
             },
             [this](const Action::Style::SetProjectColorPreset &a) {
                 const auto &colors = Style.Project.Colors;
                 switch (a.id) {
-                    case 0: return colors.Set(ProjectStyle::ColorsDark);
-                    case 1: return colors.Set(ProjectStyle::ColorsLight);
-                    case 2: return colors.Set(ProjectStyle::ColorsClassic);
+                    case 0: return colors.Set(_S, ProjectStyle::ColorsDark);
+                    case 1: return colors.Set(_S, ProjectStyle::ColorsLight);
+                    case 2: return colors.Set(_S, ProjectStyle::ColorsClassic);
                 }
             },
         },

@@ -15,8 +15,8 @@ struct Colors : Vector<u32> {
     // Similar to ImPlot's usage of [`IMPLOT_AUTO_COL = ImVec4(0,0,0,-1)`](https://github.com/epezent/implot/blob/master/implot.h#L67).
     static constexpr u32 AutoColor = 0X00010101;
 
-    void Set(const std::vector<ImVec4> &) const;
-    void Set(const std::unordered_map<size_t, ImVec4> &) const;
+    void Set(TransientStore &, const std::vector<ImVec4> &) const;
+    void Set(TransientStore &, const std::unordered_map<size_t, ImVec4> &) const;
 
     void RenderValueTree(bool annotate, bool auto_select) const override;
 

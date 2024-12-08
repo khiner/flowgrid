@@ -75,11 +75,11 @@ struct DeviceNode : AudioGraphNode {
         // At this point, they are initialized, so we need to update the device appropriately.
         // (It's unfortunate that this technicality leads to potentially restarting the device after its initial creation.)
         // TODO there's a way to do this - make `DeviceMaNode` a component. See `FaustNode` for an example (and its `DspId` field).
-        UpdateDeviceConfig();
+        UpdateDeviceConfig(_S);
 
         // The device may have a different configuration than what we requested. Update fields to reflect the actual device config.
         Name.Set(GetConfigName(Device->GetInfo()));
-        UpdateFormat();
+        UpdateFormat(_S);
 
         const Component::References listening_to{Name, Format};
         for (const auto &component : listening_to) RegisterChangeListener(this, component.get().Id);
@@ -92,10 +92,10 @@ struct DeviceNode : AudioGraphNode {
 
     DeviceMaNode *GetDeviceMaNode() const { return static_cast<DeviceMaNode *>(Node.get()); }
 
-    void UpdateDeviceConfig() {
+    void UpdateDeviceConfig(TransientStore &s) {
         auto target_native_format = Format ? std::optional<DeviceDataFormat>(Format->ToDeviceDataFormat()) : std::nullopt;
         GetDeviceMaNode()->UpdateDeviceConfig({Graph->GetDeviceClientFormat(Device->Type), std::move(target_native_format), Name});
-        UpdateFormat();
+        UpdateFormat(s);
     }
 
     string GetLabelDetailSuffix() const override { return Device->GetName(); }
@@ -104,7 +104,7 @@ struct DeviceNode : AudioGraphNode {
         AudioGraphNode::OnSampleRateChanged();
         if (auto new_client_format = Graph->GetDeviceClientFormat(Device->Type);
             Device->GetClientFormat() != new_client_format) {
-            UpdateDeviceConfig();
+            UpdateDeviceConfig(_S);
         }
     }
 
@@ -114,15 +114,15 @@ struct DeviceNode : AudioGraphNode {
             // If format-follow was just toggled on and the format values have never been set,
             // update `Format` to reflect the current native device format.
             // This does not require a device restart, since the format has not changed.
-            if (Format.IsChanged() && Format && Format->SampleRate == 0u) UpdateFormat();
-            else UpdateDeviceConfig();
+            if (Format.IsChanged() && Format && Format->SampleRate == 0u) UpdateFormat(_S);
+            else UpdateDeviceConfig(_S);
         }
     }
 
     // If `Format` is set (if the native device format has been explicitly chosen by the user),
     // update its fields to reflect the current native device config.
-    void UpdateFormat() {
-        if (Format) Format->Set_(Device->GetNativeFormat());
+    void UpdateFormat(TransientStore &s) {
+        if (Format) Format->Set_(s, Device->GetNativeFormat());
     }
 
     // Mirrors `DeviceDataFormat`, as a component.
@@ -131,16 +131,16 @@ struct DeviceNode : AudioGraphNode {
 
         static string GetFormatName(int format) { return DeviceDataFormat::GetFormatName(format); }
 
-        void Set(DeviceDataFormat &&format) const {
-            SampleFormat.Set(format.SampleFormat);
-            Channels.Set(format.Channels);
-            SampleRate.Set(format.SampleRate);
+        void Set(TransientStore &s, DeviceDataFormat &&format) const {
+            SampleFormat.Set(s, format.SampleFormat);
+            Channels.Set(s, format.Channels);
+            SampleRate.Set(s, format.SampleRate);
         }
 
-        void Set_(DeviceDataFormat &&format) {
-            SampleFormat.Set_(format.SampleFormat);
-            Channels.Set_(format.Channels);
-            SampleRate.Set_(format.SampleRate);
+        void Set_(TransientStore &s, DeviceDataFormat &&format) {
+            SampleFormat.Set_(s, format.SampleFormat);
+            Channels.Set_(s, format.Channels);
+            SampleRate.Set_(s, format.SampleRate);
         }
 
         DeviceDataFormat ToDeviceDataFormat() const { return {SampleFormat, Channels, SampleRate}; }
@@ -446,19 +446,19 @@ AudioGraph::AudioGraph(ProducerComponentArgs<ProducedActionType> &&args)
     IsActive = true; // The graph is always active, since it is always connected to itself.
     this->RegisterListener(this); // The graph listens to itself _as an audio graph node_.
 
-    Nodes.EmplaceBack_(InputDeviceNodeTypeId);
-    Nodes.EmplaceBack_(OutputDeviceNodeTypeId);
+    Nodes.EmplaceBack_(_S, InputDeviceNodeTypeId);
+    Nodes.EmplaceBack_(_S, OutputDeviceNodeTypeId);
 
-    if (SampleRate == 0u) SampleRate.Set_(GetDefaultSampleRate());
-    Nodes.EmplaceBack_(WaveformNodeTypeId);
+    if (SampleRate == 0u) SampleRate.Set_(_S, GetDefaultSampleRate());
+    Nodes.EmplaceBack_(_S, WaveformNodeTypeId);
 
     const Component::References listening_to{Nodes, Connections};
     for (const auto &component : listening_to) RegisterChangeListener(this, component.get().Id);
 
     // Set up default connections.
     // The device output -> graph endpoint node connection is handled in `UpdateConnections`.
-    // Connections.Connect(GetInputDeviceNodes().front()->Id, GetOutputDeviceNodes().front()->Id);
-    // UpdateConnections();
+    // Connections.Connect(_S, GetInputDeviceNodes().front()->Id, GetOutputDeviceNodes().front()->Id);
+    // UpdateConnections(_S);
 }
 
 AudioGraph::~AudioGraph() {
@@ -471,7 +471,7 @@ void AudioGraph::OnComponentChanged() {
     AudioGraphNode::OnComponentChanged();
 
     if (Nodes.IsChanged() || Connections.IsChanged()) {
-        UpdateConnections();
+        UpdateConnections(_S);
     }
 }
 
@@ -508,21 +508,21 @@ void AudioGraph::Apply(const ActionType &action) const {
     std::visit(
         Match{
             [this](const Action::AudioGraph::CreateNode &a) {
-                Nodes.EmplaceBack(a.node_type_id);
+                Nodes.EmplaceBack(_S, a.node_type_id);
             },
             [this](const Action::AudioGraph::CreateFaustNode &a) {
                 latest_dsp_id = a.dsp_id;
-                Nodes.EmplaceBack(FaustNodeTypeId);
+                Nodes.EmplaceBack(_S, FaustNodeTypeId);
             },
             [this](const Action::AudioGraph::DeleteNode &a) {
-                Nodes.EraseId(a.id);
-                Connections.DisconnectOutput(a.id);
+                Nodes.EraseId(_S, a.id);
+                Connections.DisconnectOutput(_S, a.id);
             },
-            [](const Action::AudioGraph::SetDeviceDataFormat &a) {
+            [this](const Action::AudioGraph::SetDeviceDataFormat &a) {
                 if (!Component::ById.contains(a.id)) throw std::runtime_error(std::format("No audio device data format with id {} exists.", a.id));
 
                 auto *format = static_cast<const DeviceNode::DataFormat *>(Component::ById.at(a.id));
-                format->Set({a.sample_format, a.channels, a.sample_rate});
+                format->Set(_S, {a.sample_format, a.channels, a.sample_rate});
             },
         },
         action
@@ -572,23 +572,23 @@ u32 AudioGraph::GetBufferFrames() const {
     return 0;
 }
 
-void AudioGraph::OnFaustDspChanged(ID id, dsp *) {
+void AudioGraph::OnFaustDspChanged(TransientStore &s, ID id, dsp *) {
     for (auto &node : FindAllByPathSegment(FaustNodeTypeId)) {
         if (auto *faust_node = reinterpret_cast<FaustNode *>(node.get()); faust_node->GetDspId() == id) {
-            faust_node->SetDsp(id);
+            faust_node->SetDsp(s, id);
         }
     }
 }
-void AudioGraph::OnFaustDspAdded(ID id, dsp *dsp) {
+void AudioGraph::OnFaustDspAdded(TransientStore &s, ID id, dsp *dsp) {
     DspById[id] = dsp;
-    OnFaustDspChanged(id, dsp);
+    OnFaustDspChanged(s, id, dsp);
 }
-void AudioGraph::OnFaustDspRemoved(ID id) {
+void AudioGraph::OnFaustDspRemoved(TransientStore &s, ID id) {
     DspById.erase(id);
-    OnFaustDspChanged(id, nullptr);
+    OnFaustDspChanged(s, id, nullptr);
 }
 
-void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(); }
+void AudioGraph::OnNodeConnectionsChanged(AudioGraphNode *) { UpdateConnections(_S); }
 
 std::unordered_set<AudioGraphNode *> AudioGraph::GetSourceNodes(const AudioGraphNode *node) const {
     std::unordered_set<AudioGraphNode *> nodes;
@@ -612,16 +612,16 @@ std::unordered_set<AudioGraphNode *> AudioGraph::GetDestinationNodes(const Audio
     return nodes;
 }
 
-void AudioGraph::UpdateConnections() {
+void AudioGraph::UpdateConnections(TransientStore &s) {
     ChannelConverterNodes.clear();
 
     // Always connect the primary device to the graph endpoint, and connect secondary devices with at least one input node.
     // This is the only section in the method that modifies `Connections`.
     for (auto *output_device_node : GetOutputDeviceNodes()) {
         if (output_device_node->IsPrimary() || Connections.SourceCount(output_device_node->Id) > 0) {
-            Connections.Connect(output_device_node->Id, Id);
+            Connections.Connect(s, output_device_node->Id, Id);
         } else {
-            Connections.Disconnect(output_device_node->Id, Id);
+            Connections.Disconnect(s, output_device_node->Id, Id);
         }
     }
 

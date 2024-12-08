@@ -12,7 +12,7 @@ struct FileDialog : ActionProducer<Action::FileDialog::Any> {
     using ActionProducer::ActionProducer;
 
     void Set(FileDialogData &&) const;
-    void SetJson(json &&) const;
+    void SetJson(TransientStore &, json &&) const;
 
     inline static bool Visible;
     inline static FileDialogData Data;

@@ -33,8 +33,8 @@ template<typename ComponentType> struct Optional : Component {
         }
     }
 
-    void Toggle_() {
-        HasValue.Toggle_();
+    void Toggle_(TransientStore &s) {
+        HasValue.Toggle_(s);
         Refresh();
     }
 
@@ -42,9 +42,9 @@ template<typename ComponentType> struct Optional : Component {
         HasValue.IssueToggle();
     }
 
-    void Erase() const override {
-        HasValue.Set(false);
-        if (Value) Value->Erase();
+    void Erase(TransientStore &s) const override {
+        HasValue.Set(s, false);
+        if (Value) Value->Erase(s);
     }
 
     void Reset() { Value.reset(); }

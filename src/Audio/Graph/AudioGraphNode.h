@@ -114,7 +114,7 @@ struct AudioGraphNode : Component, ChangeListener {
 
         ma_gainer_node *Get();
 
-        void SetMuted(bool muted);
+        void SetMuted(TransientStore &, bool muted);
         void SetSampleRate(u32 sample_rate);
 
         Prop_(Bool, Muted, "?This does not affect CPU load.", false);

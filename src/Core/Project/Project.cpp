@@ -12,6 +12,7 @@
 #include "Core/Helper/File.h"
 #include "Core/Helper/String.h"
 #include "Core/Store/StoreHistory.h"
+#include "Core/Store/StorePatch.h"
 #include "Core/UI/HelpMarker.h"
 #include "Core/UI/JsonTree.h"
 
@@ -143,27 +144,27 @@ Project::Project(CreateApp &&create_app)
 Project::~Project() = default;
 
 void Project::RefreshChanged(Patch &&patch, bool add_to_gesture) const {
-    MarkAllChanged(std::move(patch));
-
-    std::unordered_set<ChangeListener *> affected_listeners;
+    MarkChanged(std::move(patch));
 
     // Find listeners to notify.
+    std::unordered_set<ChangeListener *> affected_listeners;
     for (const auto id : ChangedIds) {
         if (!Component::ById.contains(id)) continue; // The component was deleted.
 
         Component::ById.at(id)->Refresh();
 
-        const auto &listeners = ChangeListenersById[id];
-        affected_listeners.insert(listeners.begin(), listeners.end());
+        if (auto it = ChangeListenersById.find(id); it != ChangeListenersById.end()) {
+            affected_listeners.insert(it->second.begin(), it->second.end());
+        }
     }
-
     // Find ancestor listeners to notify.
     // (Listeners can disambiguate by checking `IsChanged(bool include_descendents = false)` and `IsDescendentChanged()`.)
     for (const auto id : ChangedAncestorComponentIds) {
         if (!Component::ById.contains(id)) continue; // The component was deleted.
 
-        const auto &listeners = ChangeListenersById[id];
-        affected_listeners.insert(listeners.begin(), listeners.end());
+        if (auto it = ChangeListenersById.find(id); it != ChangeListenersById.end()) {
+            affected_listeners.insert(it->second.begin(), it->second.end());
+        }
     }
 
     for (auto *listener : affected_listeners) listener->OnComponentChanged();
@@ -198,7 +199,7 @@ void Project::ClearChanged() const {
     ChangedAncestorComponentIds.clear();
 }
 
-void Project::MarkAllChanged(Patch &&patch) const {
+void Project::MarkChanged(Patch &&patch) const {
     const auto change_time = Clock::now();
     ClearChanged();
 
@@ -261,6 +262,18 @@ void Project::CommitGesture() const {
     if (merged_actions.empty()) return;
 
     History.AddGesture(PS, {merged_actions, Clock::now()}, State.Id);
+}
+
+bool Project::CheckedCommit(bool add_to_gesture) const {
+    PersistentStore new_store{_S.Persistent()};
+    auto patch = CreatePatch(PS, new_store, State.Id);
+    if (patch.Empty()) return false;
+
+    PS = std::move(new_store);
+    _S = PS.Transient();
+
+    RefreshChanged(std::move(patch), add_to_gesture);
+    return true;
 }
 
 void Project::SetHistoryIndex(u32 index) const {
@@ -506,7 +519,7 @@ void Project::OpenStateFormatProject(TransientStore &s, const fs::path &file_pat
     // Now, every flattened JSON pointer is 1:1 with an instance path.
     State.SetJson(s, std::move(j));
 
-    // We could do `RefreshChanged(_S.CheckedCommit(Id))`, and only refresh the changed components,
+    // We could do `CheckedCommit()`, and only refresh the changed components,
     // but this gets tricky with component containers, since the store patch will contain added/removed paths
     // that have already been accounted for above.
     PS = _S.Persistent();
@@ -534,7 +547,7 @@ void Project::Open(TransientStore &s, const fs::path &file_path) const {
         for (auto &&gesture : indexed_gestures.Gestures) {
             for (const auto &action_moment : gesture.Actions) {
                 std::visit(Match{[this, &s](const Project::ActionType &a) { Apply(s, a); }}, action_moment.Action);
-                RefreshChanged(CheckedCommit(State.Id));
+                CheckedCommit();
             }
             History.AddGesture(PS, std::move(gesture), State.Id);
         }
@@ -878,8 +891,7 @@ void Project::ApplyQueuedActions() {
         std::visit(
             Match{
                 [this, &queue_time](const Action::Saved &a) {
-                    if (auto patch = CheckedCommit(State.Id); !patch.Empty()) {
-                        RefreshChanged(std::move(patch), true);
+                    if (CheckedCommit(true)) {
                         ActiveGestureActions.emplace_back(a, queue_time);
                         ProjectHasChanges = true;
                     }

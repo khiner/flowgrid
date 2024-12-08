@@ -16,8 +16,8 @@
 
 #include "Core/CoreAction.h"
 #include "Core/FileDialog/FileDialogAction.h"
+#include "Core/Store/Patch/PatchOp.h"
 #include "Core/Store/StoreAction.h"
-#include "Core/Store/StorePatch.h"
 #include "Core/Style/StyleAction.h"
 #include "Core/WindowsAction.h"
 #include "ProjectAction.h"
@@ -90,19 +90,11 @@ struct Project : ActionableProducer<Action::Any> {
 
     void Draw() const;
 
-    // Provided queue is drained.
-    void ApplyQueuedActions();
-
-    void CommitGesture() const;
-    bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
-    const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
-    float GestureTimeRemainingSec() const;
-
     using QueueType = moodycamel::ConcurrentQueue<ActionMoment<ActionType>, moodycamel::ConcurrentQueueDefaultTraits>;
     QueueType Queue{};
     moodycamel::ProducerToken EnqueueToken{Queue};
     moodycamel::ConsumerToken DequeueToken{Queue};
-    mutable ActionMoment<ActionType> DequeueActionMoment{};
+    ActionMoment<ActionType> DequeueActionMoment{};
 
     mutable Preferences Preferences;
     FileDialog FileDialog{FileDialog::EnqueueFn(SubProducer<FileDialog::ProducedActionType>(*this))};
@@ -110,7 +102,7 @@ struct Project : ActionableProducer<Action::Any> {
 
     mutable SavedActionMoments ActiveGestureActions{}; // uncompressed, uncommitted
     mutable std::optional<fs::path> CurrentProjectPath;
-    mutable bool ProjectHasChanges{false}; // todo after store is fully value-oriented, this can be replaced with a comparison of the store and the last saved store.
+    mutable bool ProjectHasChanges{false}; // todo after store is fully value-oriented, replace with a comparison of the store and the last saved store.
     mutable bool IsWidgetGesturing{};
     mutable std::string PrevSelectedPath;
 
@@ -125,16 +117,16 @@ struct Project : ActionableProducer<Action::Any> {
     // `ChangedPaths` is cleared after each action (after refreshing all affected fields), and can thus be used to determine which fields were affected by the latest action.
     // (`LatestChangedPaths` is retained for the lifetime of the application.)
     // These same key IDs are also stored in the `ChangedIds` set, which also includes IDs for all ancestor component of all changed components.
-    mutable std::unordered_map<ID, PathsMoment> ChangedPaths;
+    mutable std::unordered_map<ID, PathsMoment> ChangedPaths{};
     // Latest (unique-field-relative-paths, store-commit-time) pair for each field over the lifetime of the application.
     // This is updated by both the forward action pass, and by undo/redo.
     mutable std::unordered_map<ID, PathsMoment> LatestChangedPaths{};
     // IDs of all fields to which `ChangedPaths` are attributed.
     // These are the fields that should have their `Refresh()` called to update their cached values to synchronize with their backing store.
-    mutable std::unordered_set<ID> ChangedIds;
+    mutable std::unordered_set<ID> ChangedIds{};
     // Components with at least one descendent (excluding itself) updated during the latest action pass.
-    mutable std::unordered_set<ID> ChangedAncestorComponentIds;
-    mutable std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById;
+    mutable std::unordered_set<ID> ChangedAncestorComponentIds{};
+    std::unordered_map<ID, std::unordered_set<ChangeListener *>> ChangeListenersById{};
 
     ProjectContext Ctx{
         .Preferences = Preferences,
@@ -202,15 +194,17 @@ private:
     // Find and mark fields that are made stale with the provided patch.
     // If `Refresh()` is called on every field marked in `ChangedIds`, the component tree will be fully refreshed.
     // This method also updates the following static fields for monitoring: ChangedAncestorComponentIds, ChangedPaths, LatestChangedPaths
-    void MarkAllChanged(Patch &&) const;
+    void MarkChanged(Patch &&) const;
     void ClearChanged() const;
 
-    // Overwrite persistent and transient stores with the provided store, and return the resulting patch.
-    Patch CheckedCommit(ID base_id) const {
-        PersistentStore new_store{_S.Persistent()};
-        const auto patch = CreatePatch(PS, new_store, base_id);
-        PS = std::move(new_store);
-        _S = PS.Transient();
-        return patch;
-    }
+    void ApplyQueuedActions(); // Queue is drained.
+
+    void CommitGesture() const;
+    bool HasGestureActions() const { return !ActiveGestureActions.empty(); }
+    const SavedActionMoments &GetGestureActions() const { return ActiveGestureActions; }
+    float GestureTimeRemainingSec() const;
+
+    // If the persistent and transient store are equal, return false.
+    // Otherwise, update the persistent store with the transient store and refresh any changed components.
+    bool CheckedCommit(bool add_to_gesture = false) const;
 };

@@ -33,7 +33,7 @@
 #include "immer/flex_vector_transient.hpp"
 #include "immer/set_transient.hpp"
 
-using std::ranges::find, std::ranges::count_if, std::ranges::to;
+using std::ranges::count_if, std::ranges::to;
 
 /*** Primitives ***/
 

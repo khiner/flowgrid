@@ -447,6 +447,7 @@ bool Project::Save(const fs::path &path) const {
 }
 
 void Project::OnApplicationLaunch() const {
+    CommitGesture();
     IsWidgetGesturing = false;
     History.Clear(PS);
     ClearChanged();
@@ -481,7 +482,7 @@ void Project::Tick() {
         }
         io.WantSaveIniSettings = false;
     }
-    ApplyQueuedActions(false);
+    ApplyQueuedActions();
 }
 
 static json ReadFileJson(const fs::path &file_path) { return json::parse(FileIO::read(file_path)); }
@@ -844,8 +845,9 @@ void Project::RenderMetrics() const {
     }
 }
 
-void Project::ApplyQueuedActions(bool force_commit_gesture) {
+void Project::ApplyQueuedActions() {
     const bool has_gesture_actions = HasGestureActions();
+    bool commit_gesture = false;
     while (Queue.try_dequeue(DequeueToken, DequeueActionMoment)) {
         auto &[action, queue_time] = DequeueActionMoment;
         if (!CanApply(action)) continue;
@@ -862,7 +864,7 @@ void Project::ApplyQueuedActions(bool force_commit_gesture) {
         if (std::holds_alternative<Action::Project::SaveCurrent>(action) && !CurrentProjectPath) action = Action::Project::ShowSaveDialog{};
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
         // todo this should be an action option
-        force_commit_gesture |=
+        commit_gesture |=
             std::holds_alternative<Action::Primitive::Bool::Toggle>(action) ||
             std::holds_alternative<Action::Vec2::ToggleLinked>(action) ||
             std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
@@ -886,7 +888,7 @@ void Project::ApplyQueuedActions(bool force_commit_gesture) {
         );
     }
 
-    if (force_commit_gesture || (!IsWidgetGesturing && has_gesture_actions && GestureTimeRemainingSec() <= 0)) {
+    if (commit_gesture || (!IsWidgetGesturing && has_gesture_actions && GestureTimeRemainingSec() <= 0)) {
         CommitGesture();
     }
 }

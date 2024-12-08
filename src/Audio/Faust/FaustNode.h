@@ -12,7 +12,7 @@ struct FaustNode : AudioGraphNode {
     void OnSampleRateChanged() override;
 
     ID GetDspId() const;
-    void SetDsp(ID);
+    void SetDsp(TransientStore &, ID);
 
 private:
     std::unique_ptr<MaNode> CreateNode(ID dsp_id = 0);

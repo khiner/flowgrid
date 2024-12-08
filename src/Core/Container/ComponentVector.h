@@ -49,7 +49,7 @@ template<typename ChildType> struct ComponentVector : Component {
         Refresh();
     }
     ~ComponentVector() {
-        Erase();
+        Erase(_S);
         ContainerAuxiliaryIds.erase(ChildPrefixes.Id);
         ContainerIds.erase(Id);
     }
@@ -99,24 +99,24 @@ template<typename ChildType> struct ComponentVector : Component {
         return U32ToHex(prefix_id);
     }
 
-    void EmplaceBack(std::string_view path_segment) const {
-        ChildPrefixes.PushBack(StorePath{GenerateNextPrefix(path_segment)} / path_segment);
+    void EmplaceBack(TransientStore &s, std::string_view path_segment) const {
+        ChildPrefixes.PushBack(s, StorePath{GenerateNextPrefix(path_segment)} / path_segment);
     }
 
-    void EmplaceBack_(std::string_view path_segment, ChildInitializerFunction &&initializer = {}) {
+    void EmplaceBack_(TransientStore &s, std::string_view path_segment, ChildInitializerFunction &&initializer = {}) {
         auto child = Creator({this, path_segment, "", GenerateNextPrefix(path_segment)});
         if (initializer) initializer(child.get());
         const auto child_prefix = GetChildPrefix(child.get());
         Value.emplace_back(std::move(child));
-        ChildPrefixes.PushBack(child_prefix);
+        ChildPrefixes.PushBack(s, child_prefix);
     }
 
-    void Resize_(u32 size) {
+    void Resize_(TransientStore &s, u32 size) {
         if (size > Value.size()) {
-            for (u32 i = Value.size(); i < size; ++i) EmplaceBack_(std::to_string(i));
+            for (u32 i = Value.size(); i < size; ++i) EmplaceBack_(s, std::to_string(i));
         } else if (size < Value.size()) {
             Value.resize(size);
-            ChildPrefixes.Resize(size);
+            ChildPrefixes.Resize(s, size);
         }
     }
     struct Iterator : std::vector<std::unique_ptr<ChildType>>::const_iterator {
@@ -161,18 +161,18 @@ template<typename ChildType> struct ComponentVector : Component {
         for (auto &child : Value) child->Refresh();
     }
 
-    void EraseId(ID id) const {
+    void EraseId(TransientStore &s, ID id) const {
         auto *child = Find(id);
         if (!child) return;
 
-        child->Erase();
+        child->Erase(s);
         auto vec = ChildPrefixes.Get();
         auto index = find(vec, std::string{GetChildPrefix(child)}) - vec.begin();
-        ChildPrefixes.Erase(index);
+        ChildPrefixes.Erase(s, index);
     }
 
-    void EraseId_(ID id) {
-        EraseId(id);
+    void EraseId_(TransientStore &s, ID id) {
+        EraseId(s, id);
         Refresh();
     }
 

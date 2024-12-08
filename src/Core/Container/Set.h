@@ -9,19 +9,19 @@ template<typename T> struct Set : Component {
     using ContainerT = immer::set<T>;
 
     ~Set() {
-        Erase();
+        Erase(_S);
     }
 
     ContainerT Get() const;
 
-    void Insert(T) const;
-    void Erase(T) const;
-    void Clear() const;
+    void Insert(TransientStore &, T) const;
+    void Erase(TransientStore &, T) const;
+    void Clear(TransientStore &) const;
 
     void RenderValueTree(bool annotate, bool auto_select) const override;
 
-    void SetJson(json &&) const override;
+    void SetJson(TransientStore &, json &&) const override;
     json ToJson() const override;
 
-    void Erase() const override;
+    void Erase(TransientStore &) const override;
 };

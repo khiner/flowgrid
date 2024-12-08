@@ -151,7 +151,7 @@ TextBuffer::TextBuffer(ComponentArgs &&args, const fs::path &file_path)
 }
 
 TextBuffer::~TextBuffer() {
-    Erase();
+    Erase(_S);
 }
 
 bool TextBuffer::CanApply(const ActionType &action) const {

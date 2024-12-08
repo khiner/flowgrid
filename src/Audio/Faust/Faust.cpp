@@ -102,16 +102,16 @@ bool FaustGraphs::CanApply(const ActionType &action) const {
 FaustDSP::FaustDSP(ArgsT &&args, FaustDSPContainer &container)
     : ActionProducerComponent(std::move(args)), Container(container) {
     Editor.RegisterChangeListener(this);
-    Init();
+    Init(_S);
 }
 
 FaustDSP::~FaustDSP() {
-    Uninit();
+    Uninit(_S);
     UnregisterChangeListener(this);
 }
 
 void FaustDSP::OnComponentChanged() {
-    if (Editor.IsChanged()) Update();
+    if (Editor.IsChanged()) Update(_S);
 }
 
 void FaustDSP::DestroyDsp() {
@@ -125,7 +125,7 @@ void FaustDSP::DestroyDsp() {
     }
 }
 
-void FaustDSP::Init() {
+void FaustDSP::Init(TransientStore &s) {
     if (Editor.Empty()) return;
 
     static const std::string libraries_path = fs::relative("../lib/faust/libraries");
@@ -152,11 +152,11 @@ void FaustDSP::Init() {
     } else if (!Box && ErrorMessage.empty()) {
         ErrorMessage = "`DSPToBoxes` returned no error but did not produce a result.";
     }
-    if (Box && Dsp) Container.NotifyListeners(Added, *this);
+    if (Box && Dsp) Container.NotifyListeners(s, Added, *this);
 }
 
-void FaustDSP::Uninit() {
-    Container.NotifyListeners(Removed, *this);
+void FaustDSP::Uninit(TransientStore &s) {
+    Container.NotifyListeners(s, Removed, *this);
     if (Dsp || Box) {
         if (Dsp) DestroyDsp();
         if (Box) Box = nullptr;
@@ -164,9 +164,9 @@ void FaustDSP::Uninit() {
     ErrorMessage = "";
 }
 
-void FaustDSP::Update() {
-    Uninit();
-    Init();
+void FaustDSP::Update(TransientStore &s) {
+    Uninit(s);
+    Init(s);
 }
 
 FaustDSPs::FaustDSPs(ArgsT &&args)
@@ -179,14 +179,14 @@ FaustDSPs::FaustDSPs(ArgsT &&args)
       ActionProducer(std::move(args.Q)) {
     createLibContext();
     WindowFlags |= ImGuiWindowFlags_MenuBar;
-    EmplaceBack_(FaustDspPathSegment);
+    EmplaceBack_(_S, FaustDspPathSegment);
 }
 
 FaustDSPs::~FaustDSPs() {
     destroyLibContext();
 }
 
-void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
+void Faust::NotifyListeners(TransientStore &s, NotificationType type, FaustDSP &faust_dsp) {
     const ID id = faust_dsp.Id;
     dsp *dsp = faust_dsp.Dsp;
     Box box = faust_dsp.Box;
@@ -194,7 +194,7 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         if (auto *ui = Paramss.FindUi(id)) ui->SetDsp(dsp);
         if (auto *graph = Graphs.FindGraph(id)) graph->SetBox(box);
         Logs.ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
-        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(id, dsp);
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspChanged(s, id, dsp);
     } else if (type == Added) {
         // Params
         static const auto ParamsPrefixSegment{"Params"};
@@ -203,8 +203,8 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
             params_it != Paramss.end()) {
             (*params_it)->SetDsp(dsp);
         } else {
-            Paramss.EmplaceBack_(ParamsPrefixSegment, [id, dsp](auto *child) {
-                child->DspId.Set_(id);
+            Paramss.EmplaceBack_(s, ParamsPrefixSegment, [&s, id, dsp](auto *child) {
+                child->DspId.Set_(s, id);
                 child->SetDsp(dsp);
             });
         }
@@ -216,8 +216,8 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
             graph_it != Graphs.end()) {
             (*graph_it)->SetBox(box);
         } else {
-            Graphs.EmplaceBack_(GraphPrefixSegment, [id, box](auto *child) {
-                child->DspId.Set_(id);
+            Graphs.EmplaceBack_(s, GraphPrefixSegment, [&s, id, box](auto *child) {
+                child->DspId.Set_(s, id);
                 child->SetBox(box);
             });
         }
@@ -226,12 +226,12 @@ void Faust::NotifyListeners(NotificationType type, FaustDSP &faust_dsp) {
         Logs.ErrorMessageByFaustDspId[id] = faust_dsp.ErrorMessage;
 
         // External listeners
-        for (auto *listener : DspChangeListeners) listener->OnFaustDspAdded(id, dsp);
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspAdded(s, id, dsp);
     } else if (type == Removed) {
-        for (auto *listener : DspChangeListeners) listener->OnFaustDspRemoved(id);
+        for (auto *listener : DspChangeListeners) listener->OnFaustDspRemoved(s, id);
         Logs.ErrorMessageByFaustDspId.erase(id);
-        if (auto *graph = Graphs.FindGraph(id)) Graphs.EraseId_(graph->Id);
-        if (auto *ui = Paramss.FindUi(id)) Paramss.EraseId_(ui->Id);
+        if (auto *graph = Graphs.FindGraph(id)) Graphs.EraseId_(s, graph->Id);
+        if (auto *ui = Paramss.FindUi(id)) Paramss.EraseId_(s, ui->Id);
     }
 }
 

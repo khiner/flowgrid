@@ -18,29 +18,29 @@ struct ImGuiDockNodeSettings { // NOLINT(cppcoreguidelines-pro-type-member-init)
     ImVec2ih Pos, Size, SizeRef;
 };
 
-void DockNodeSettings::Set(const ImVector<ImGuiDockNodeSettings> &dss) const {
-    NodeId.Clear();
-    ParentNodeId.Clear();
-    ParentWindowId.Clear();
-    SelectedTabId.Clear();
-    SplitAxis.Clear();
-    Depth.Clear();
-    Flags.Clear();
-    Pos.Clear();
-    Size.Clear();
-    SizeRef.Clear();
+void DockNodeSettings::Set(TransientStore &s, const ImVector<ImGuiDockNodeSettings> &dss) const {
+    NodeId.Clear(s);
+    ParentNodeId.Clear(s);
+    ParentWindowId.Clear(s);
+    SelectedTabId.Clear(s);
+    SplitAxis.Clear(s);
+    Depth.Clear(s);
+    Flags.Clear(s);
+    Pos.Clear(s);
+    Size.Clear(s);
+    SizeRef.Clear(s);
 
     for (const auto &ds : dss) {
-        NodeId.PushBack(ds.NodeId);
-        ParentNodeId.PushBack(ds.ParentNodeId);
-        ParentWindowId.PushBack(ds.ParentWindowId);
-        SelectedTabId.PushBack(ds.SelectedTabId);
-        SplitAxis.PushBack(ds.SplitAxis);
-        Depth.PushBack(ds.Depth);
-        Flags.PushBack(ds.Flags);
-        Pos.PushBack(PackImVec2ih(ds.Pos));
-        Size.PushBack(PackImVec2ih(ds.Size));
-        SizeRef.PushBack(PackImVec2ih(ds.SizeRef));
+        NodeId.PushBack(s, ds.NodeId);
+        ParentNodeId.PushBack(s, ds.ParentNodeId);
+        ParentWindowId.PushBack(s, ds.ParentWindowId);
+        SelectedTabId.PushBack(s, ds.SelectedTabId);
+        SplitAxis.PushBack(s, ds.SplitAxis);
+        Depth.PushBack(s, ds.Depth);
+        Flags.PushBack(s, ds.Flags);
+        Pos.PushBack(s, PackImVec2ih(ds.Pos));
+        Size.PushBack(s, PackImVec2ih(ds.Size));
+        SizeRef.PushBack(s, PackImVec2ih(ds.SizeRef));
     }
 }
 
@@ -63,27 +63,27 @@ void DockNodeSettings::Update(ImGuiContext *ctx) const {
     }
 }
 
-void WindowSettings::Set(ImChunkStream<ImGuiWindowSettings> &wss) const {
-    Id.Clear();
-    ClassId.Clear();
-    ViewportId.Clear();
-    DockId.Clear();
-    DockOrder.Clear();
-    Pos.Clear();
-    Size.Clear();
-    ViewportPos.Clear();
-    Collapsed.Clear();
+void WindowSettings::Set(TransientStore &s, ImChunkStream<ImGuiWindowSettings> &wss) const {
+    Id.Clear(s);
+    ClassId.Clear(s);
+    ViewportId.Clear(s);
+    DockId.Clear(s);
+    DockOrder.Clear(s);
+    Pos.Clear(s);
+    Size.Clear(s);
+    ViewportPos.Clear(s);
+    Collapsed.Clear(s);
 
     for (auto *ws = wss.begin(); ws != nullptr; ws = wss.next_chunk(ws)) {
-        Id.PushBack(ws->ID);
-        ClassId.PushBack(ws->ClassId);
-        ViewportId.PushBack(ws->ViewportId);
-        DockId.PushBack(ws->DockId);
-        DockOrder.PushBack(ws->DockOrder);
-        Pos.PushBack(PackImVec2ih(ws->Pos));
-        Size.PushBack(PackImVec2ih(ws->Size));
-        ViewportPos.PushBack(PackImVec2ih(ws->ViewportPos));
-        Collapsed.PushBack(ws->Collapsed);
+        Id.PushBack(s, ws->ID);
+        ClassId.PushBack(s, ws->ClassId);
+        ViewportId.PushBack(s, ws->ViewportId);
+        DockId.PushBack(s, ws->DockId);
+        DockOrder.PushBack(s, ws->DockOrder);
+        Pos.PushBack(s, PackImVec2ih(ws->Pos));
+        Size.PushBack(s, PackImVec2ih(ws->Size));
+        ViewportPos.PushBack(s, PackImVec2ih(ws->ViewportPos));
+        Collapsed.PushBack(s, ws->Collapsed);
     }
 }
 
@@ -117,53 +117,53 @@ void WindowSettings::Update(ImGuiContext *) const {
     }
 }
 
-void TableSettings::Set(ImChunkStream<ImGuiTableSettings> &tss) {
+void TableSettings::Set(TransientStore &s, ImChunkStream<ImGuiTableSettings> &tss) {
     u32 size = 0;
     for (auto *ts_it = tss.begin(); ts_it != nullptr; ts_it = tss.next_chunk(ts_it)) ++size;
     // Table settings
-    ID.Resize(size);
-    SaveFlags.Resize(size);
-    RefScale.Resize(size);
-    ColumnsCount.Resize(size);
-    ColumnsCountMax.Resize(size);
-    WantApply.Resize(size);
+    ID.Resize(s, size);
+    SaveFlags.Resize(s, size);
+    RefScale.Resize(s, size);
+    ColumnsCount.Resize(s, size);
+    ColumnsCountMax.Resize(s, size);
+    WantApply.Resize(s, size);
     // xxx this is the only non-const operation in all of `ImGuiSettings::CreatePatch`
     //  since it potentially needs to create new child components
-    Columns.Resize_(size);
+    Columns.Resize_(s, size);
 
     u32 i = 0;
     for (auto *ts_it = tss.begin(); ts_it != nullptr; ts_it = tss.next_chunk(ts_it)) {
         auto &ts = *ts_it;
         const u32 columns_count = ts.ColumnsCount;
-        ID.Set(i, ts.ID);
-        SaveFlags.Set(i, ts.SaveFlags);
-        RefScale.Set(i, ts.RefScale);
-        ColumnsCount.Set(i, columns_count);
-        ColumnsCountMax.Set(i, ts.ColumnsCountMax);
-        WantApply.Set(i, ts.WantApply);
+        ID.Set(s, i, ts.ID);
+        SaveFlags.Set(s, i, ts.SaveFlags);
+        RefScale.Set(s, i, ts.RefScale);
+        ColumnsCount.Set(s, i, columns_count);
+        ColumnsCountMax.Set(s, i, ts.ColumnsCountMax);
+        WantApply.Set(s, i, ts.WantApply);
 
         const auto *column = Columns[i];
-        column->WidthOrWeight.Clear();
-        column->UserID.Clear();
-        column->Index.Clear();
-        column->DisplayOrder.Clear();
-        column->SortOrder.Clear();
-        column->SortDirection.Clear();
-        column->IsEnabled.Clear();
-        column->IsStretch.Clear();
+        column->WidthOrWeight.Clear(s);
+        column->UserID.Clear(s);
+        column->Index.Clear(s);
+        column->DisplayOrder.Clear(s);
+        column->SortOrder.Clear(s);
+        column->SortDirection.Clear(s);
+        column->IsEnabled.Clear(s);
+        column->IsStretch.Clear(s);
 
         for (u32 j = 0; j < columns_count; j++) {
             const auto &cs = ts.GetColumnSettings()[j];
             // todo these nans show up when we start with a default layout showing a table and then switch the tab so that the table is hidden.
             //   should probably handle this more robustly.
-            column->WidthOrWeight.PushBack(std::isnan(cs.WidthOrWeight) ? 0 : cs.WidthOrWeight);
-            column->UserID.PushBack(cs.UserID);
-            column->Index.PushBack(cs.Index);
-            column->DisplayOrder.PushBack(cs.DisplayOrder);
-            column->SortOrder.PushBack(cs.SortOrder);
-            column->SortDirection.PushBack(cs.SortDirection);
-            column->IsEnabled.PushBack(cs.IsEnabled);
-            column->IsStretch.PushBack(cs.IsStretch);
+            column->WidthOrWeight.PushBack(s, std::isnan(cs.WidthOrWeight) ? 0 : cs.WidthOrWeight);
+            column->UserID.PushBack(s, cs.UserID);
+            column->Index.PushBack(s, cs.Index);
+            column->DisplayOrder.PushBack(s, cs.DisplayOrder);
+            column->SortOrder.PushBack(s, cs.SortOrder);
+            column->SortDirection.PushBack(s, cs.SortDirection);
+            column->IsEnabled.PushBack(s, cs.IsEnabled);
+            column->IsStretch.PushBack(s, cs.IsStretch);
         }
         ++i;
     }
@@ -235,8 +235,8 @@ void ImGuiSettings::UpdateIfChanged(ImGuiContext *ctx) const {
     ctx->SettingsDirty = false;
 }
 
-void ImGuiSettings::Set(ImGuiContext *ctx) {
-    Nodes.Set(ctx->DockContext.NodesSettings);
-    Windows.Set(ctx->SettingsWindows);
-    Tables.Set(ctx->SettingsTables);
+void ImGuiSettings::Set(TransientStore &s, ImGuiContext *ctx) {
+    Nodes.Set(s, ctx->DockContext.NodesSettings);
+    Windows.Set(s, ctx->SettingsWindows);
+    Tables.Set(s, ctx->SettingsTables);
 }

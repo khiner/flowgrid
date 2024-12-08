@@ -145,7 +145,7 @@ struct Project : ActionableProducer<Action::Any> {
         .FileDialog = FileDialog,
         .Q = CoreQ,
 
-        .RegisterWindow = [this](ID id, bool dock = true) { return Core.Windows.Register(id, dock); },
+        .RegisterWindow = [this](ID id, bool dock = true) { return Core.Windows.Register(_S, id, dock); },
         .IsDock = [this](ID id) { return Core.Windows.IsDock(id); },
         .IsWindow = [this](ID id) { return Core.Windows.IsWindow(id); },
         .IsWindowVisible = [this](ID id) { return Core.Windows.IsVisible(id); },
@@ -181,11 +181,11 @@ private:
 
     CoreActionHandler CoreHandler{_S};
 
-    void Open(const fs::path &) const;
+    void Open(TransientStore &, const fs::path &) const;
     bool Save(const fs::path &) const;
 
     void SetCurrentProjectPath(const fs::path &) const;
-    void OpenStateFormatProject(const fs::path &file_path) const;
+    void OpenStateFormatProject(TransientStore &, const fs::path &file_path) const;
 
     void SetHistoryIndex(u32) const;
 

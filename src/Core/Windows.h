@@ -9,13 +9,13 @@
 struct Windows : ActionProducerComponent<Action::Windows::Any> {
     using ActionProducerComponent::ActionProducerComponent;
 
-    void Register(ID, bool dock = true);
+    void Register(TransientStore &, ID, bool dock = true);
 
     bool IsDock(ID) const;
 
     bool IsWindow(ID) const;
     bool IsVisible(ID) const;
-    void ToggleVisible(ID) const;
+    void ToggleVisible(TransientStore &, ID) const;
 
     void DrawMenuItem(const Component &) const;
 

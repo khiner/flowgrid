@@ -8,7 +8,7 @@
 using namespace ImGui;
 
 ProjectStyle::ProjectStyle(ArgsT &&args) : ActionProducerComponent(std::move(args)) {
-    Colors.Set(ColorsDark);
+    Colors.Set(_S, ColorsDark);
 }
 
 std::unordered_map<size_t, ImVec4> ProjectStyle::ColorsDark = {
@@ -66,7 +66,7 @@ Style::ImGuiStyle::ImGuiStyle(ArgsT &&args) : ActionProducerComponent(std::move(
     ImGui::StyleColorsDark(ColorsDark.data());
     ImGui::StyleColorsLight(ColorsLight.data());
     ImGui::StyleColorsClassic(ColorsClassic.data());
-    Colors.Set(ColorsDark);
+    Colors.Set(_S, ColorsDark);
 }
 Style::ImGuiStyle::~ImGuiStyle() {
     UnregisterChangeListener(this);
@@ -79,7 +79,7 @@ Style::ImPlotStyle::ImPlotStyle(ArgsT &&args) : ActionProducerComponent(std::mov
     ImPlot::StyleColorsDark(ColorsDark.data());
     ImPlot::StyleColorsLight(ColorsLight.data());
     ImPlot::StyleColorsClassic(ColorsClassic.data());
-    Colors.Set(ColorsAuto);
+    Colors.Set(_S, ColorsAuto);
 }
 Style::ImPlotStyle::~ImPlotStyle() {
     UnregisterChangeListener(this);

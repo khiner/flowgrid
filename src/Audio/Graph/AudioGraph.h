@@ -14,6 +14,8 @@ struct ma_node_graph;
 struct InputDeviceNode;
 struct OutputDeviceNode;
 
+using std::views::filter, std::views::transform;
+
 inline const std::string
     InputDeviceNodeTypeId = "Input",
     OutputDeviceNodeTypeId = "Output",
@@ -39,9 +41,9 @@ struct AudioGraph : AudioGraphNode, ActionableProducer<Action::AudioGraph::Any>,
 
     void OnComponentChanged() override;
 
-    void OnFaustDspChanged(ID, dsp *) override;
-    void OnFaustDspAdded(ID, dsp *) override;
-    void OnFaustDspRemoved(ID) override;
+    void OnFaustDspChanged(TransientStore &, ID, dsp *) override;
+    void OnFaustDspAdded(TransientStore &, ID, dsp *) override;
+    void OnFaustDspRemoved(TransientStore &, ID) override;
 
     void OnNodeConnectionsChanged(AudioGraphNode *) override;
 
@@ -132,7 +134,7 @@ private:
     void Render() const override;
     void RenderNodeCreateSelector() const;
 
-    void UpdateConnections();
+    void UpdateConnections(TransientStore &);
     void Connect(ma_node *source, u32 source_output_bus, ma_node *destination, u32 destination_input_bus);
 
     AudioGraphNode *FindByPathSegment(std::string_view path_segment) const {
@@ -140,17 +142,17 @@ private:
         return node_it != Nodes.end() ? node_it->get() : nullptr;
     }
     auto FindAllByPathSegment(std::string_view path_segment) const {
-        return Nodes.View() | std::views::filter([path_segment](const auto &node) { return node->PathSegment == path_segment; });
+        return Nodes.View() | filter([path_segment](const auto &node) { return node->PathSegment == path_segment; });
     }
 
     // We don't support creating multiple input/output nodes yet, so in reality there will be at most one of each for now.
     auto GetInputDeviceNodes() const {
         return FindAllByPathSegment(InputDeviceNodeTypeId) |
-            std::views::transform([](const auto &node) { return reinterpret_cast<InputDeviceNode *>(node.get()); });
+            transform([](const auto &node) { return reinterpret_cast<InputDeviceNode *>(node.get()); });
     }
     auto GetOutputDeviceNodes() const {
         return FindAllByPathSegment(OutputDeviceNodeTypeId) |
-            std::views::transform([](const auto &node) { return reinterpret_cast<OutputDeviceNode *>(node.get()); });
+            transform([](const auto &node) { return reinterpret_cast<OutputDeviceNode *>(node.get()); });
     }
 
     std::vector<std::unique_ptr<ChannelConverterNode>> ChannelConverterNodes;

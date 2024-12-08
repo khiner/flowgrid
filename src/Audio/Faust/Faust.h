@@ -92,7 +92,7 @@ inline static constexpr std::string_view FaustDspPathSegment{"FaustDSP"};
 
 struct FaustDSP;
 struct FaustDSPContainer {
-    virtual void NotifyListeners(NotificationType, FaustDSP &) = 0;
+    virtual void NotifyListeners(TransientStore &, NotificationType, FaustDSP &) = 0;
 };
 
 using FaustDspProducedActionType = Action::Append<Action::Faust::DSP::Any, typename Action::AudioGraph::CreateFaustNode>;
@@ -117,9 +117,9 @@ struct FaustDSP : ActionProducerComponent<FaustDspProducedActionType>, ChangeLis
 private:
     void Render() const override;
 
-    void Init();
-    void Uninit();
-    void Update(); // Sets `Box`, `Dsp`, and `ErrorMessage` based on the current `Code`.
+    void Init(TransientStore &);
+    void Uninit(TransientStore &);
+    void Update(TransientStore &); // Sets `Box`, `Dsp`, and `ErrorMessage` based on the current `Code`.
 
     void DestroyDsp();
 
@@ -144,14 +144,14 @@ struct Faust
     void RegisterDspChangeListener(FaustDSPListener *listener) const noexcept {
         DspChangeListeners.insert(listener);
         for (auto *faust_dsp : FaustDsps) {
-            listener->OnFaustDspAdded(faust_dsp->Id, faust_dsp->Dsp);
+            listener->OnFaustDspAdded(_S, faust_dsp->Id, faust_dsp->Dsp);
         }
     }
     void UnregisterDspChangeListener(FaustDSPListener *listener) const noexcept {
         DspChangeListeners.erase(listener);
     }
 
-    void NotifyListeners(NotificationType type, FaustDSP &faust_dsp) override;
+    void NotifyListeners(TransientStore &, NotificationType, FaustDSP &) override;
 
     inline static std::unordered_set<FaustDSPListener *> DspChangeListeners;
 

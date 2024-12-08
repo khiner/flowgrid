@@ -48,17 +48,17 @@ template<typename T> Primitive<T>::~Primitive() {
 template<typename T> void Primitive<T>::Refresh() { Value = S.Get<T>(Id); }
 
 template<typename T> json Primitive<T>::ToJson() const { return Value; }
-template<typename T> void Primitive<T>::SetJson(json &&j) const { _S.Set(Id, T{std::move(j)}); }
+template<typename T> void Primitive<T>::SetJson(TransientStore &s, json &&j) const { s.Set(Id, T{std::move(j)}); }
 
-template<typename T> void Primitive<T>::Set(T value) const { _S.Set(Id, std::move(value)); }
-template<typename T> void Primitive<T>::Set_(T value) {
-    _S.Set(Id, value);
+template<typename T> void Primitive<T>::Set(TransientStore &s, T value) const { s.Set(Id, std::move(value)); }
+template<typename T> void Primitive<T>::Set_(TransientStore &s, T value) {
+    s.Set(Id, value);
     Value = value;
 }
 
-template<typename T> void Primitive<T>::Erase() const { _S.Erase<T>(Id); }
+template<typename T> void Primitive<T>::Erase(TransientStore &s) const { s.Erase<T>(Id); }
 
-template<typename T> void Primitive<T>::RenderValueTree(bool annotate, bool auto_select) const {
+template<typename T> void Primitive<T>::RenderValueTree(bool /* annotate */, bool /* auto_select */) const {
     FlashUpdateRecencyBackground();
     TreeNode(Name, false, std::format("{}", Value).c_str());
 }
@@ -74,8 +74,8 @@ template struct Primitive<u32>;
 template struct Primitive<float>;
 
 using namespace ImGui;
-void Bool::Toggle_() {
-    Set_(!_S.Get<bool>(Id));
+void Bool::Toggle_(TransientStore &s) {
+    Set_(s, !s.Get<bool>(Id));
     Refresh();
 }
 
@@ -267,12 +267,12 @@ String::~String() {
 
 std::string_view String::Get() const { return S.Get<std::string>(Id); }
 json String::ToJson() const { return S.Get<std::string>(Id); }
-void String::SetJson(json &&j) const { _S.Set(Id, std::string{std::move(j)}); }
+void String::SetJson(TransientStore &s, json &&j) const { s.Set(Id, std::string{std::move(j)}); }
 
 void String::Set(std::string_view value) const { _S.Set(Id, std::string(value)); }
-void String::Erase() const { _S.Erase<std::string>(Id); }
+void String::Erase(TransientStore &s) const { s.Erase<std::string>(Id); }
 
-void String::RenderValueTree(bool annotate, bool auto_select) const {
+void String::RenderValueTree(bool /* annotate */, bool /* auto_select */) const {
     FlashUpdateRecencyBackground();
     TreeNode(Name, false, S.Get<std::string>(Id).c_str());
 }
@@ -328,10 +328,10 @@ void CoreActionHandler::Apply(const ActionType &action) const {
                 const auto *c = Component::ById.at(a.GetComponentId());
                 std::visit(
                     Match{
-                        [c](const Action::AdjacencyList::ToggleConnection &a) {
+                        [this, c](const Action::AdjacencyList::ToggleConnection &a) {
                             const auto *al = static_cast<const AdjacencyList *>(c);
-                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(a.source, a.destination);
-                            else al->Connect(a.source, a.destination);
+                            if (al->IsConnected(a.source, a.destination)) al->Disconnect(_S, a.source, a.destination);
+                            else al->Connect(_S, a.source, a.destination);
                         },
                         [this, c](const Action::Vec2::Set &a) {
                             const auto *vec2 = static_cast<const Vec2 *>(c);
@@ -401,38 +401,38 @@ bool CoreActionHandler::CanApply(const ActionType &action) const {
 
 template<typename T> T Vector<T>::operator[](u32 i) const { return S.Get<ContainerT>(Id)[i]; }
 template<typename T> Vector<T>::ContainerT Vector<T>::Get() const { return S.Get<ContainerT>(Id); }
-template<typename T> void Vector<T>::Erase() const { _S.Erase<ContainerT>(Id); }
-template<typename T> void Vector<T>::Clear() const { _S.Clear<ContainerT>(Id); }
+template<typename T> void Vector<T>::Erase(TransientStore &s) const { s.Erase<ContainerT>(Id); }
+template<typename T> void Vector<T>::Clear(TransientStore &s) const { s.Clear<ContainerT>(Id); }
 
-template<typename T> void Vector<T>::Set(const std::vector<T> &value) const {
+template<typename T> void Vector<T>::Set(TransientStore &s, const std::vector<T> &value) const {
     immer::flex_vector_transient<T> val{};
     for (const auto &v : value) val.push_back(v);
-    _S.Set(Id, val.persistent());
+    s.Set(Id, val.persistent());
 }
-template<typename T> void Vector<T>::Set(size_t i, T value) const { _S.Set(Id, S.Get<ContainerT>(Id).set(i, std::move(value))); }
-template<typename T> void Vector<T>::PushBack(T value) const { _S.Set(Id, S.Get<ContainerT>(Id).push_back(std::move(value))); }
-template<typename T> void Vector<T>::PopBack() const {
-    const auto v = S.Get<ContainerT>(Id);
-    _S.Set(Id, v.take(v.size() - 1));
+template<typename T> void Vector<T>::Set(TransientStore &s, size_t i, T value) const { s.Set(Id, S.Get<ContainerT>(Id).set(i, std::move(value))); }
+template<typename T> void Vector<T>::PushBack(TransientStore &s, T value) const { s.Set(Id, S.Get<ContainerT>(Id).push_back(std::move(value))); }
+template<typename T> void Vector<T>::PopBack(TransientStore &s) const {
+    const auto v = s.Get<ContainerT>(Id);
+    s.Set(Id, v.take(v.size() - 1));
 }
 
-template<typename T> void Vector<T>::Resize(size_t size) const {
+template<typename T> void Vector<T>::Resize(TransientStore &s, size_t size) const {
     auto val = S.Get<ContainerT>(Id).take(size).transient();
     while (val.size() < size) val.push_back(T{});
-    _S.Set(Id, val.persistent());
+    s.Set(Id, val.persistent());
 }
-template<typename T> void Vector<T>::Erase(size_t i) const { _S.Set(Id, S.Get<ContainerT>(Id).erase(i)); }
+template<typename T> void Vector<T>::Erase(TransientStore &s, size_t i) const { s.Set(Id, S.Get<ContainerT>(Id).erase(i)); }
 
-template<typename T> void Vector<T>::SetJson(json &&j) const {
+template<typename T> void Vector<T>::SetJson(TransientStore &s, json &&j) const {
     immer::flex_vector_transient<T> val{};
     for (const auto &v : json::parse(std::string(std::move(j)))) val.push_back(v);
-    _S.Set(Id, val.persistent());
+    s.Set(Id, val.persistent());
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
 template<typename T> json Vector<T>::ToJson() const { return json(S.Get<ContainerT>(Id)).dump(); }
 
-template<typename T> void Vector<T>::RenderValueTree(bool annotate, bool auto_select) const {
+template<typename T> void Vector<T>::RenderValueTree(bool /* annotate */, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
     auto value = Get();
@@ -458,21 +458,21 @@ template struct Vector<float>;
 template struct Vector<std::string>;
 
 template<typename T> Set<T>::ContainerT Set<T>::Get() const { return S.Get<ContainerT>(Id); }
-template<typename T> void Set<T>::Erase() const { _S.Erase<ContainerT>(Id); }
-template<typename T> void Set<T>::Clear() const { _S.Clear<ContainerT>(Id); }
-template<typename T> void Set<T>::Insert(T value) const { _S.Set(Id, S.Get<ContainerT>(Id).insert(std::move(value))); }
-template<typename T> void Set<T>::Erase(T value) const { _S.Set(Id, S.Get<ContainerT>(Id).erase(std::move(value))); }
+template<typename T> void Set<T>::Erase(TransientStore &s) const { s.Erase<ContainerT>(Id); }
+template<typename T> void Set<T>::Clear(TransientStore &s) const { s.Clear<ContainerT>(Id); }
+template<typename T> void Set<T>::Insert(TransientStore &s, T value) const { s.Set(Id, S.Get<ContainerT>(Id).insert(std::move(value))); }
+template<typename T> void Set<T>::Erase(TransientStore &s, T value) const { s.Set(Id, S.Get<ContainerT>(Id).erase(std::move(value))); }
 
-template<typename T> void Set<T>::SetJson(json &&j) const {
+template<typename T> void Set<T>::SetJson(TransientStore &s, json &&j) const {
     immer::set_transient<T> val{};
     for (const auto &v : json::parse(std::string(std::move(j)))) val.insert(v);
-    _S.Set(Id, val.persistent());
+    s.Set(Id, val.persistent());
 }
 
 // Using a string representation so we can flatten the JSON without worrying about non-object collection values.
 template<typename T> json Set<T>::ToJson() const { return json(S.Get<ContainerT>(Id)).dump(); }
 
-template<typename T> void Set<T>::RenderValueTree(bool annotate, bool auto_select) const {
+template<typename T> void Set<T>::RenderValueTree(bool /* annotate */, bool auto_select) const {
     FlashUpdateRecencyBackground();
 
     auto value = S.Get<ContainerT>(Id);
@@ -527,13 +527,13 @@ bool AdjacencyList::HasPath(ID from_id, ID to_id) const {
 }
 
 bool AdjacencyList::IsConnected(ID source, ID destination) const { return S.Get<IdPairs>(Id).count({source, destination}) > 0; }
-void AdjacencyList::Disconnect(ID source, ID destination) const { _S.Set(Id, S.Get<IdPairs>(Id).erase({source, destination})); }
-void AdjacencyList::Add(IdPair &&id_pair) const { _S.Set(Id, S.Get<IdPairs>(Id).insert(std::move(id_pair))); }
-void AdjacencyList::Connect(ID source, ID destination) const { Add({source, destination}); }
+void AdjacencyList::Disconnect(TransientStore &s, ID source, ID destination) const { s.Set(Id, S.Get<IdPairs>(Id).erase({source, destination})); }
+void AdjacencyList::Add(TransientStore &s, IdPair &&id_pair) const { s.Set(Id, S.Get<IdPairs>(Id).insert(std::move(id_pair))); }
+void AdjacencyList::Connect(TransientStore &s, ID source, ID destination) const { Add(s, {source, destination}); }
 
-void AdjacencyList::DisconnectOutput(ID id) const {
+void AdjacencyList::DisconnectOutput(TransientStore &s, ID id) const {
     for (const auto &[source_id, destination_id] : Get()) {
-        if (source_id == id || destination_id == id) Disconnect(source_id, destination_id);
+        if (source_id == id || destination_id == id) Disconnect(s, source_id, destination_id);
     }
 }
 
@@ -544,7 +544,7 @@ u32 AdjacencyList::DestinationCount(ID source) const {
     return count_if(Get(), [source](const auto &pair) { return pair.first == source; });
 }
 
-void AdjacencyList::Erase() const { _S.Erase<IdPairs>(Id); }
+void AdjacencyList::Erase(TransientStore &s) const { s.Erase<IdPairs>(Id); }
 
 void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     FlashUpdateRecencyBackground();
@@ -570,9 +570,9 @@ void AdjacencyList::RenderValueTree(bool annotate, bool auto_select) const {
     }
 }
 
-void AdjacencyList::SetJson(json &&j) const {
-    Erase();
-    for (IdPair id_pair : json::parse(std::string(std::move(j)))) Add(std::move(id_pair));
+void AdjacencyList::SetJson(TransientStore &s, json &&j) const {
+    Erase(s);
+    for (IdPair id_pair : json::parse(std::string(std::move(j)))) Add(s, std::move(id_pair));
 }
 
 // Using a string representation to flatten the JSON without worrying about non-object collection values.
@@ -583,9 +583,9 @@ Vec2::Vec2(ComponentArgs &&args, std::pair<float, float> &&value, float min, flo
 
 Vec2::operator ImVec2() const { return {float(X), float(Y)}; }
 
-void Vec2::Set(std::pair<float, float> value) const {
-    _S.Set(X.Id, value.first);
-    _S.Set(Y.Id, value.second);
+void Vec2::Set(TransientStore &s, std::pair<float, float> value) const {
+    s.Set(X.Id, value.first);
+    s.Set(Y.Id, value.second);
 }
 
 using namespace ImGui;
@@ -639,15 +639,15 @@ Colors::Colors(ComponentArgs &&args, u32 size, std::function<const char *(int)> 
 u32 Colors::Float4ToU32(const ImVec4 &value) { return value == IMPLOT_AUTO_COL ? AutoColor : ImGui::ColorConvertFloat4ToU32(value); }
 ImVec4 Colors::U32ToFloat4(u32 value) { return value == AutoColor ? IMPLOT_AUTO_COL : ImGui::ColorConvertU32ToFloat4(value); }
 
-void Colors::Set(const std::vector<ImVec4> &values) const {
+void Colors::Set(TransientStore &s, const std::vector<ImVec4> &values) const {
     immer::flex_vector_transient<u32> val{};
     for (const auto &v : values) val.push_back(Float4ToU32(v));
-    _S.Set(Id, val.persistent());
+    s.Set(Id, val.persistent());
 }
-void Colors::Set(const std::unordered_map<size_t, ImVec4> &entries) const {
+void Colors::Set(TransientStore &s, const std::unordered_map<size_t, ImVec4> &entries) const {
     auto val = S.Get<ContainerT>(Id).transient();
     for (const auto &entry : entries) val.set(entry.first, Float4ToU32(entry.second));
-    _S.Set(Id, val.persistent());
+    s.Set(Id, val.persistent());
 }
 
 void Colors::Render() const {
@@ -712,7 +712,7 @@ void Colors::Render() const {
     EndChild();
 }
 
-void Colors::RenderValueTree(bool annotate, bool auto_select) const {
+void Colors::RenderValueTree(bool annotate, bool /* auto_select */) const {
     FlashUpdateRecencyBackground();
 
     if (TreeNode(Name)) {

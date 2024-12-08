@@ -73,7 +73,7 @@ struct Component {
     Component(const Component &) = delete; // Copying not allowed.
     Component &operator=(const Component &) = delete; // Assignment not allowed.
 
-    virtual void SetJson(json &&) const;
+    virtual void SetJson(TransientStore &, json &&) const;
     virtual json ToJson() const;
     // Implicit `json_pointer` constructor is disabled.
     auto JsonPointer() const { return json::json_pointer(Path.string()); }
@@ -87,8 +87,8 @@ struct Component {
 
     // Erase the component's cached value(s) from the main store.
     // This is overriden by leaf containers to update the stored values.
-    virtual void Erase() const {
-        for (const auto *child : Children) child->Erase();
+    virtual void Erase(TransientStore &s) const {
+        for (const auto *child : Children) child->Erase(s);
     }
 
     // Render a nested tree of components, with leaf components displaying their values as text.

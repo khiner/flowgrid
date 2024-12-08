@@ -9,7 +9,7 @@
 struct FaustMaNode : MaNode, Component, ChangeListener {
     FaustMaNode(ComponentArgs &&args, AudioGraph *graph, ID dsp_id = 0)
         : MaNode(), Component(std::move(args)), Graph(graph), ParentNode(static_cast<AudioGraphNode *>(Parent)) {
-        if (dsp_id != 0 && DspId == 0u) DspId.Set_(dsp_id);
+        if (dsp_id != 0 && DspId == 0u) DspId.Set_(_S, dsp_id);
         Init(Graph->GetFaustDsp(DspId), Graph->SampleRate);
         DspId.RegisterChangeListener(this);
     }
@@ -51,8 +51,8 @@ struct FaustMaNode : MaNode, Component, ChangeListener {
         }
     }
 
-    void SetDsp(ID dsp_id) {
-        DspId.Set_(dsp_id);
+    void SetDsp(TransientStore &s, ID dsp_id) {
+        DspId.Set_(s, dsp_id);
         UpdateDsp();
     }
 
@@ -74,4 +74,4 @@ void FaustNode::OnSampleRateChanged() {
 }
 
 ID FaustNode::GetDspId() const { return reinterpret_cast<FaustMaNode *>(Node.get())->DspId; }
-void FaustNode::SetDsp(ID id) { reinterpret_cast<FaustMaNode *>(Node.get())->SetDsp(id); }
+void FaustNode::SetDsp(TransientStore &s, ID id) { reinterpret_cast<FaustMaNode *>(Node.get())->SetDsp(s, id); }

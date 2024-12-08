@@ -44,8 +44,8 @@ using FlowGridGraphCol = int;
 struct FaustGraphStyle : ActionProducerComponent<Action::Faust::GraphStyle::Any> {
     FaustGraphStyle(ArgsT &&);
 
-    void LayoutFlowGrid() const;
-    void LayoutFaust() const; // Emulate Faust SVG rendering layout.
+    void LayoutFlowGrid(TransientStore &) const;
+    void LayoutFaust(TransientStore &) const; // Emulate Faust SVG rendering layout.
 
     Prop_(
         UInt, FoldComplexity,

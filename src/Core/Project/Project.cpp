@@ -881,7 +881,7 @@ void Project::ApplyQueuedActions() {
         // * Treat all toggles as immediate actions. Otherwise, performing two toggles in a row compresses into nothing:
         // todo this should be an action option
         commit_gesture |=
-            std::holds_alternative<Action::Primitive::Bool::Toggle>(action) ||
+            std::holds_alternative<Action::Bool::Toggle>(action) ||
             std::holds_alternative<Action::Vec2::ToggleLinked>(action) ||
             std::holds_alternative<Action::AdjacencyList::ToggleConnection>(action) ||
             std::holds_alternative<Action::FileDialog::Select>(action);

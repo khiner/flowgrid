@@ -2,8 +2,8 @@
 
 #include "Core/Action/DefineAction.h"
 
-DefineNestedActionType(
-    Primitive, UInt,
+DefineActionType(
+    UInt,
     DefineComponentAction(Set, "", unsigned int value;);
     ComponentActionJson(Set, value);
 

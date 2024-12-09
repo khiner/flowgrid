@@ -2,7 +2,6 @@
 
 #include "Core/Container/Vec2.h"
 #include "Core/Primitive/Enum.h"
-#include "Core/Primitive/PrimitiveAction.h"
 #include "Core/Primitive/UInt.h"
 #include "Core/UI/Styling.h"
 

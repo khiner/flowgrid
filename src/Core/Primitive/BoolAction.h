@@ -2,8 +2,8 @@
 
 #include "Core/Action/DefineAction.h"
 
-DefineNestedActionType(
-    Primitive, Bool,
+DefineActionType(
+    Bool,
     DefineComponentAction(Toggle, "");
     ComponentActionJson(Toggle);
 

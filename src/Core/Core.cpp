@@ -63,9 +63,9 @@ template<typename T> void Primitive<T>::RenderValueTree(bool /* annotate */, boo
     TreeNode(Name, false, std::format("{}", Value).c_str());
 }
 
-template<> void Primitive<int>::IssueSet(int value) const { Ctx.Q(Action::Primitive::Int::Set{Id, value}); };
-template<> void Primitive<u32>::IssueSet(u32 value) const { Ctx.Q(Action::Primitive::UInt::Set{Id, value}); };
-template<> void Primitive<float>::IssueSet(float value) const { Ctx.Q(Action::Primitive::Float::Set{Id, value}); };
+template<> void Primitive<int>::IssueSet(int value) const { Ctx.Q(Action::Int::Set{Id, value}); };
+template<> void Primitive<u32>::IssueSet(u32 value) const { Ctx.Q(Action::UInt::Set{Id, value}); };
+template<> void Primitive<float>::IssueSet(float value) const { Ctx.Q(Action::Float::Set{Id, value}); };
 
 // Explicit instantiations.
 template struct Primitive<bool>;
@@ -79,7 +79,7 @@ void Bool::Toggle_(TransientStore &s) {
     Refresh();
 }
 
-void Bool::IssueToggle() const { Ctx.Q(Action::Primitive::Bool::Toggle{Id}); }
+void Bool::IssueToggle() const { Ctx.Q(Action::Bool::Toggle{Id}); }
 
 void Bool::Render(std::string_view label) const {
     if (bool value = Value; Checkbox(label.data(), &value)) IssueToggle();
@@ -277,7 +277,7 @@ void String::RenderValueTree(bool /* annotate */, bool /* auto_select */) const 
     TreeNode(Name, false, S.Get<std::string>(Id).c_str());
 }
 
-void String::IssueSet(std::string_view value) const { Ctx.Q(Action::Primitive::String::Set{Id, std::string(value)}); };
+void String::IssueSet(std::string_view value) const { Ctx.Q(Action::String::Set{Id, std::string(value)}); };
 
 void String::Render() const { TextUnformatted(Get()); }
 
@@ -312,13 +312,13 @@ void CoreActionHandler::Apply(TransientStore &s, const ActionType &action) const
     std::visit(
         Match{
             /* Primitives */
-            [&s](const Action::Primitive::Bool::Toggle &a) { s.Set(a.component_id, !s.Get<bool>(a.component_id)); },
-            [&s](const Action::Primitive::Int::Set &a) { s.Set(a.component_id, a.value); },
-            [&s](const Action::Primitive::UInt::Set &a) { s.Set(a.component_id, a.value); },
-            [&s](const Action::Primitive::Float::Set &a) { s.Set(a.component_id, a.value); },
-            [&s](const Action::Primitive::Enum::Set &a) { s.Set(a.component_id, a.value); },
-            [&s](const Action::Primitive::Flags::Set &a) { s.Set(a.component_id, a.value); },
-            [&s](const Action::Primitive::String::Set &a) { s.Set(a.component_id, a.value); },
+            [&s](const Action::Bool::Toggle &a) { s.Set(a.component_id, !s.Get<bool>(a.component_id)); },
+            [&s](const Action::Int::Set &a) { s.Set(a.component_id, a.value); },
+            [&s](const Action::UInt::Set &a) { s.Set(a.component_id, a.value); },
+            [&s](const Action::Float::Set &a) { s.Set(a.component_id, a.value); },
+            [&s](const Action::Enum::Set &a) { s.Set(a.component_id, a.value); },
+            [&s](const Action::Flags::Set &a) { s.Set(a.component_id, a.value); },
+            [&s](const Action::String::Set &a) { s.Set(a.component_id, a.value); },
             [&s](const Action::TextBuffer::Any &a) {
                 const auto *c = Component::ById.at(a.GetComponentId());
                 static_cast<const TextBuffer *>(c)->Apply(s, a);
@@ -404,10 +404,8 @@ template<typename T> Vector<T>::ContainerT Vector<T>::Get() const { return S.Get
 template<typename T> void Vector<T>::Erase(TransientStore &s) const { s.Erase<ContainerT>(Id); }
 template<typename T> void Vector<T>::Clear(TransientStore &s) const { s.Clear<ContainerT>(Id); }
 
-template<typename T> void Vector<T>::Set(TransientStore &s, const std::vector<T> &value) const {
-    immer::flex_vector_transient<T> val{};
-    for (const auto &v : value) val.push_back(v);
-    s.Set(Id, val.persistent());
+template<typename T> void Vector<T>::Set(TransientStore &s, ContainerT value) const {
+    s.Set(Id, std::move(value));
 }
 template<typename T> void Vector<T>::Set(TransientStore &s, size_t i, T value) const { s.Set(Id, S.Get<ContainerT>(Id).set(i, std::move(value))); }
 template<typename T> void Vector<T>::PushBack(TransientStore &s, T value) const { s.Set(Id, S.Get<ContainerT>(Id).push_back(std::move(value))); }

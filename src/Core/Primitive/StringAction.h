@@ -2,8 +2,8 @@
 
 #include "Core/Action/DefineAction.h"
 
-DefineNestedActionType(
-    Primitive, String,
+DefineActionType(
+    String,
     DefineComponentAction(Set, "", std::string value;);
     ComponentActionJson(Set, value);
 

@@ -5,9 +5,9 @@
 DefineActionType(
     Style,
 
-    DefineAction(SetImGuiColorPreset, Merge, "", int id;);
-    DefineAction(SetImPlotColorPreset, Merge, "", int id;);
-    DefineAction(SetProjectColorPreset, Merge, "", int id;);
+    DefineAction(SetImGuiColorPreset, Saved, Merge, "", int id;);
+    DefineAction(SetImPlotColorPreset, Saved, Merge, "", int id;);
+    DefineAction(SetProjectColorPreset, Saved, Merge, "", int id;);
 
     Json(SetImGuiColorPreset, id);
     Json(SetImPlotColorPreset, id);

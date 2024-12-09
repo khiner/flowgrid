@@ -9,35 +9,35 @@ template<typename T> struct Vector {
 
 DefineTemplatedActionType(
     Vector, Bool, bool,
-    DefineComponentAction(Set, "", u32 i; bool value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", u32 i; bool value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
     Vector, Int, int,
-    DefineComponentAction(Set, "", u32 i; int value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", u32 i; int value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
     Vector, UInt, u32,
-    DefineComponentAction(Set, "", u32 i; u32 value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", u32 i; u32 value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
     Vector, Float, float,
-    DefineComponentAction(Set, "", u32 i; float value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", u32 i; float value;);
 
     using Any = ActionVariant<Set>;
 );
 
 DefineTemplatedActionType(
     Vector, String, std::string,
-    DefineComponentAction(Set, "", u32 i; std::string value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", u32 i; std::string value;);
 
     using Any = ActionVariant<Set>;
 );

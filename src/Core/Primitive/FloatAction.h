@@ -4,7 +4,7 @@
 
 DefineActionType(
     Float,
-    DefineComponentAction(Set, "", float value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", float value;);
     ComponentActionJson(Set, value);
 
     using Any = ActionVariant<Set>;

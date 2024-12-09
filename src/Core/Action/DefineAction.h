@@ -27,64 +27,43 @@ template<class...> constexpr bool always_false_v = false;
   - `Merge`: Can be merged with any other action of the same type.
   - `CustomMerge`: Override the action type's `Merge` function with a custom implementation.
 */
-#define DefineActionInternal(ActionType, is_savable, merge_type, meta_str, ...) \
-    struct ActionType {                                                         \
-        inline static const Metadata _Meta{#ActionType, meta_str};              \
-        static constexpr bool IsSaved = is_savable;                             \
-        static void MenuItem();                                                 \
-        static fs::path GetPath() { return _TypePath / _Meta.PathLeaf; }        \
-        static const std::string &GetName() { return _Meta.Name; }              \
-        static const std::string &GetMenuLabel() { return _Meta.MenuLabel; }    \
-        MergeType_##merge_type(ActionType);                                     \
-        __VA_ARGS__;                                                            \
+#define DefineAction(ActionType, is_savable, merge_type, meta_str, ...)      \
+    struct ActionType {                                                      \
+        inline static const Metadata _Meta{#ActionType, meta_str};           \
+        static constexpr bool IsSaved = is_savable;                          \
+        static void MenuItem();                                              \
+        static fs::path GetPath() { return _TypePath / _Meta.PathLeaf; }     \
+        static const std::string &GetName() { return _Meta.Name; }           \
+        static const std::string &GetMenuLabel() { return _Meta.MenuLabel; } \
+        MergeType_##merge_type(ActionType);                                  \
+        __VA_ARGS__;                                                         \
     };
 
-#define DefineAction(ActionType, merge_type, meta_str, ...) \
-    DefineActionInternal(ActionType, 1, merge_type, meta_str, __VA_ARGS__)
+inline static constexpr bool Saved = true, Unsaved = false;
 
-#define DefineUnmergableAction(ActionType, ...) \
-    DefineActionInternal(ActionType, 1, NoMerge, "", __VA_ARGS__)
-
-#define DefineUnsavedAction(ActionType, merge_type, meta_str, ...) \
-    DefineActionInternal(ActionType, 0, merge_type, meta_str, __VA_ARGS__)
-
-#define DefineComponentAction(ActionType, meta_str, ...)               \
-    DefineActionInternal(                                              \
-        ActionType, 1, SameIdMerge, meta_str,                          \
-        ID component_id;                                               \
-        ID GetComponentId() const { return component_id; } __VA_ARGS__ \
+#define DefineComponentAction(ActionType, is_savable, merge_type, meta_str, ...) \
+    DefineAction(                                                                \
+        ActionType, is_savable, merge_type, meta_str,                            \
+        ID component_id;                                                         \
+        ID GetComponentId() const { return component_id; } __VA_ARGS__           \
     )
 
-#define DefineUnsavedComponentAction(ActionType, merge_type, meta_str, ...) \
-    DefineActionInternal(                                                   \
-        ActionType, 0, merge_type, meta_str,                                \
-        ID component_id;                                                    \
-        ID GetComponentId() const { return component_id; } __VA_ARGS__      \
-    )
-
-#define DefineUnmergableComponentAction(ActionType, ...)               \
-    DefineActionInternal(                                              \
-        ActionType, 1, NoMerge, "",                                    \
-        ID component_id;                                               \
-        ID GetComponentId() const { return component_id; } __VA_ARGS__ \
-    )
-
-#define DefineActionType(TypePath, ...)         \
-    namespace Action {                          \
-    namespace TypePath {                        \
-    inline const fs::path _TypePath{#TypePath}; \
-    __VA_ARGS__;                                \
-    }                                           \
+#define DefineActionType(TypePath, ...)                \
+    namespace Action {                                 \
+    namespace TypePath {                               \
+    inline static const fs::path _TypePath{#TypePath}; \
+    __VA_ARGS__;                                       \
+    }                                                  \
     }
 
-#define DefineNestedActionType(ParentType, InnerType, ...)               \
-    namespace Action {                                                   \
-    namespace ParentType {                                               \
-    namespace InnerType {                                                \
-    inline const fs::path _TypePath{fs::path{#ParentType} / #InnerType}; \
-    __VA_ARGS__;                                                         \
-    }                                                                    \
-    }                                                                    \
+#define DefineNestedActionType(ParentType, InnerType, ...)                      \
+    namespace Action {                                                          \
+    namespace ParentType {                                                      \
+    namespace InnerType {                                                       \
+    inline static const fs::path _TypePath{fs::path{#ParentType} / #InnerType}; \
+    __VA_ARGS__;                                                                \
+    }                                                                           \
+    }                                                                           \
     }
 
 #define DefineTemplatedActionType(ParentType, InnerType, TemplateType, ...)         \

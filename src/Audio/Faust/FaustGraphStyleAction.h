@@ -4,8 +4,8 @@
 
 DefineNestedActionType(
     Faust, GraphStyle,
-    DefineAction(ApplyColorPreset, Merge, "", int id;);
-    DefineAction(ApplyLayoutPreset, Merge, "", int id;);
+    DefineAction(ApplyColorPreset, Saved, Merge, "", int id;);
+    DefineAction(ApplyLayoutPreset, Saved, Merge, "", int id;);
 
     Json(ApplyColorPreset, id);
     Json(ApplyLayoutPreset, id);

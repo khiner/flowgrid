@@ -4,11 +4,11 @@
 
 DefineActionType(
     Vec2,
-    DefineComponentAction(Set, "", std::pair<float, float> value;);
-    DefineComponentAction(SetX, "", float value;);
-    DefineComponentAction(SetY, "", float value;);
-    DefineComponentAction(SetAll, "", float value;);
-    DefineComponentAction(ToggleLinked, ""); // No effect for non-linked `Vec2` fields.
+    DefineComponentAction(Set, Saved, SameIdMerge, "", std::pair<float, float> value;);
+    DefineComponentAction(SetX, Saved, SameIdMerge, "", float value;);
+    DefineComponentAction(SetY, Saved, SameIdMerge, "", float value;);
+    DefineComponentAction(SetAll, Saved, SameIdMerge, "", float value;);
+    DefineComponentAction(ToggleLinked, Saved, SameIdMerge, ""); // No effect for non-linked `Vec2` fields.
 
     ComponentActionJson(Set, value);
     ComponentActionJson(SetX, value);

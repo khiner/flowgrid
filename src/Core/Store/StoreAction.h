@@ -5,7 +5,7 @@
 
 DefineActionType(
     Store,
-    DefineAction(ApplyPatch, CustomMerge, "", Patch patch;);
+    DefineAction(ApplyPatch, Saved, CustomMerge, "", Patch patch;);
     Json(ApplyPatch, patch);
 
     using Any = ActionVariant<ApplyPatch>;

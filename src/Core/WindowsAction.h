@@ -4,8 +4,8 @@
 
 DefineActionType(
     Windows,
-    DefineUnmergableAction(ToggleVisible, ID component_id;);
-    DefineUnmergableAction(ToggleDebug, ID component_id;);
+    DefineAction(ToggleVisible, Saved, NoMerge, "", ID component_id;);
+    DefineAction(ToggleDebug, Saved, NoMerge, "", ID component_id;);
 
     Json(ToggleVisible, component_id);
     Json(ToggleDebug, component_id);

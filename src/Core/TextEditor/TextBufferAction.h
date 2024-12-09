@@ -8,35 +8,35 @@ Json(LineCharRange, Start, End);
 
 DefineActionType(
     TextBuffer,
-    DefineUnsavedComponentAction(ShowOpenDialog, Merge, "~Open");
-    DefineUnsavedComponentAction(ShowSaveDialog, Merge, "~Save as...");
-    DefineComponentAction(Open, "", fs::path file_path;);
-    DefineUnsavedComponentAction(Save, NoMerge, "", fs::path file_path;);
+    DefineComponentAction(ShowOpenDialog, Unsaved, Merge, "~Open");
+    DefineComponentAction(ShowSaveDialog, Unsaved, Merge, "~Save as...");
+    DefineComponentAction(Open, Saved, SameIdMerge, "", fs::path file_path;);
+    DefineComponentAction(Save, Unsaved, NoMerge, "", fs::path file_path;);
 
-    DefineUnsavedComponentAction(SetCursor, Merge, "", LineChar lc; bool add;);
-    DefineUnsavedComponentAction(SetCursorRange, Merge, "", LineCharRange lcr; bool add;);
-    DefineUnsavedComponentAction(MoveCursorsLines, Merge, "", int amount; bool select;);
-    DefineUnsavedComponentAction(PageCursorsLines, Merge, "", bool up; bool select;);
-    DefineUnsavedComponentAction(MoveCursorsChar, Merge, "", bool right; bool select; bool word;);
-    DefineUnsavedComponentAction(MoveCursorsTop, Merge, "", bool select;);
-    DefineUnsavedComponentAction(MoveCursorsBottom, Merge, "", bool select;);
-    DefineUnsavedComponentAction(MoveCursorsStartLine, Merge, "", bool select;);
-    DefineUnsavedComponentAction(MoveCursorsEndLine, Merge, "", bool select;);
-    DefineUnsavedComponentAction(SelectAll, Merge, "");
-    DefineUnsavedComponentAction(SelectNextOccurrence, Merge, "");
+    DefineComponentAction(SetCursor, Unsaved, Merge, "", LineChar lc; bool add;);
+    DefineComponentAction(SetCursorRange, Unsaved, Merge, "", LineCharRange lcr; bool add;);
+    DefineComponentAction(MoveCursorsLines, Unsaved, Merge, "", int amount; bool select;);
+    DefineComponentAction(PageCursorsLines, Unsaved, Merge, "", bool up; bool select;);
+    DefineComponentAction(MoveCursorsChar, Unsaved, Merge, "", bool right; bool select; bool word;);
+    DefineComponentAction(MoveCursorsTop, Unsaved, Merge, "", bool select;);
+    DefineComponentAction(MoveCursorsBottom, Unsaved, Merge, "", bool select;);
+    DefineComponentAction(MoveCursorsStartLine, Unsaved, Merge, "", bool select;);
+    DefineComponentAction(MoveCursorsEndLine, Unsaved, Merge, "", bool select;);
+    DefineComponentAction(SelectAll, Unsaved, Merge, "");
+    DefineComponentAction(SelectNextOccurrence, Unsaved, Merge, "");
 
-    DefineComponentAction(SetText, "", std::string value;);
+    DefineComponentAction(SetText, Saved, SameIdMerge, "", std::string value;);
 
-    DefineUnsavedComponentAction(Copy, NoMerge, "");
-    DefineUnmergableComponentAction(Cut);
-    DefineUnmergableComponentAction(Paste);
-    DefineUnmergableComponentAction(Delete, bool word;);
-    DefineUnmergableComponentAction(Backspace, bool word;);
-    DefineUnmergableComponentAction(DeleteCurrentLines);
-    DefineUnmergableComponentAction(ChangeCurrentLinesIndentation, bool increase;);
-    DefineUnmergableComponentAction(MoveCurrentLines, bool up;);
-    DefineUnmergableComponentAction(ToggleLineComment);
-    DefineUnmergableComponentAction(EnterChar, unsigned short value;); // Corresponds to `ImWchar`
+    DefineComponentAction(Copy, Unsaved, NoMerge, "");
+    DefineComponentAction(Cut, Saved, NoMerge, "");
+    DefineComponentAction(Paste, Saved, NoMerge, "");
+    DefineComponentAction(Delete, Saved, NoMerge, "", bool word;);
+    DefineComponentAction(Backspace, Saved, NoMerge, "", bool word;);
+    DefineComponentAction(DeleteCurrentLines, Saved, NoMerge, "");
+    DefineComponentAction(ChangeCurrentLinesIndentation, Saved, NoMerge, "", bool increase;);
+    DefineComponentAction(MoveCurrentLines, Saved, NoMerge, "", bool up;);
+    DefineComponentAction(ToggleLineComment, Saved, NoMerge, "");
+    DefineComponentAction(EnterChar, Saved, NoMerge, "", unsigned short value;); // Corresponds to `ImWchar`
 
     ComponentActionJson(Open, file_path);
     ComponentActionJson(Save, file_path);

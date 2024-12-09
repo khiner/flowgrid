@@ -4,8 +4,8 @@
 
 DefineNestedActionType(
     Faust, DSP,
-    DefineUnmergableAction(Create);
-    DefineUnmergableAction(Delete, ID id;);
+    DefineAction(Create, Saved, NoMerge, "");
+    DefineAction(Delete, Saved, NoMerge, "", ID id;);
 
     Json(Create);
     Json(Delete, id);

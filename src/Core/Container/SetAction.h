@@ -9,8 +9,8 @@ template<typename T> struct Set {
 
 DefineTemplatedActionType(
     Set, UInt, u32,
-    DefineComponentAction(Insert, "", u32 value;);
-    DefineComponentAction(Erase, "", u32 value;);
+    DefineComponentAction(Insert, Saved, SameIdMerge, "", u32 value;);
+    DefineComponentAction(Erase, Saved, SameIdMerge, "", u32 value;);
 
     using Any = ActionVariant<Insert, Erase>;
 );

@@ -4,7 +4,7 @@
 
 DefineActionType(
     UInt,
-    DefineComponentAction(Set, "", unsigned int value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", unsigned int value;);
     ComponentActionJson(Set, value);
 
     using Any = ActionVariant<Set>;

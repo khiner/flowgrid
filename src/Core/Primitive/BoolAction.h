@@ -4,7 +4,7 @@
 
 DefineActionType(
     Bool,
-    DefineComponentAction(Toggle, "");
+    DefineComponentAction(Toggle, Saved, SameIdMerge, "");
     ComponentActionJson(Toggle);
 
     using Any = ActionVariant<Toggle>;

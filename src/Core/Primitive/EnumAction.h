@@ -4,7 +4,7 @@
 
 DefineActionType(
     Enum,
-    DefineComponentAction(Set, "", int value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", int value;);
     ComponentActionJson(Set, value);
 
     using Any = ActionVariant<Set>;

@@ -4,10 +4,10 @@
 
 DefineNestedActionType(
     Faust, Graph,
-    DefineAction(ShowSaveSvgDialog, Merge, "~Export SVG");
+    DefineAction(ShowSaveSvgDialog, Saved, Merge, "~Export SVG");
     Json(ShowSaveSvgDialog);
 
-    DefineUnsavedAction(SaveSvgFile, NoMerge, "", ID dsp_id; fs::path dir_path;);
+    DefineAction(SaveSvgFile, Unsaved, NoMerge, "", ID dsp_id; fs::path dir_path;);
 
     using Any = ActionVariant<ShowSaveSvgDialog, SaveSvgFile>;
 );

@@ -4,7 +4,7 @@
 
 DefineActionType(
     String,
-    DefineComponentAction(Set, "", std::string value;);
+    DefineComponentAction(Set, Saved, SameIdMerge, "", std::string value;);
     ComponentActionJson(Set, value);
 
     using Any = ActionVariant<Set>;

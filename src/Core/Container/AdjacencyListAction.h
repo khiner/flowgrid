@@ -4,7 +4,7 @@
 
 DefineActionType(
     AdjacencyList,
-    DefineUnmergableComponentAction(ToggleConnection, ID source; ID destination;);
+    DefineComponentAction(ToggleConnection, Saved, NoMerge, "", ID source; ID destination;);
 
     ComponentActionJson(ToggleConnection, source, destination);
 

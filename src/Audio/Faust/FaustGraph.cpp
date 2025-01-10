@@ -21,7 +21,8 @@
 using std::min, std::max, std::pair;
 using std::ranges::to, std::views::take, std::views::take_while;
 
-static constexpr string_view SvgFileExtension{".svg"};
+namespace {
+constexpr string_view SvgFileExtension{".svg"};
 
 enum DeviceType {
     DeviceType_ImGui,
@@ -58,7 +59,7 @@ struct TextStyle {
 struct Device {
     static constexpr float RectLabelPaddingLeft = 3;
 
-    Device(const FaustGraph &context, const ImVec2 &position = {0, 0}) : Context(context), Style(Context.Style), Position(position) {}
+    Device(const FaustGraph &context, ImVec2 position = {0, 0}) : Context(context), Style(Context.Style), Position(position) {}
     virtual ~Device() = default;
 
     virtual DeviceType Type() = 0;
@@ -69,20 +70,20 @@ struct Device {
     // Rect with a break in the top-left (to the right of rounding) for a label.
     virtual void LabeledRect(const ImRect &, string_view label, const RectStyle &, const TextStyle &) = 0;
 
-    virtual void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 color) = 0;
-    virtual void Circle(const ImVec2 &pos, float radius, u32 fill_color, u32 stroke_color) = 0;
-    virtual void Arrow(const ImVec2 &pos, GraphOrientation) = 0;
-    virtual void Line(const ImVec2 &start, const ImVec2 &end) = 0;
-    virtual void Text(const ImVec2 &pos, string_view text, const TextStyle &) = 0;
-    virtual void Dot(const ImVec2 &pos, u32 fill_color) = 0;
+    virtual void Triangle(ImVec2 p1, ImVec2 p2, ImVec2 p3, u32 color) = 0;
+    virtual void Circle(ImVec2 pos, float radius, u32 fill_color, u32 stroke_color) = 0;
+    virtual void Arrow(ImVec2 pos, GraphOrientation) = 0;
+    virtual void Line(ImVec2 start, ImVec2 end) = 0;
+    virtual void Text(ImVec2 pos, string_view text, const TextStyle &) = 0;
+    virtual void Dot(ImVec2 pos, u32 fill_color) = 0;
 
-    virtual void SetCursorPos(const ImVec2 &scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
-    void AdvanceCursor(const ImVec2 &unscaled_pos) { SetCursorPos(CursorPosition + Scale(unscaled_pos)); }
+    virtual void SetCursorPos(ImVec2 scaled_cursor_pos) { CursorPosition = scaled_cursor_pos; }
+    void AdvanceCursor(ImVec2 unscaled_pos) { SetCursorPos(CursorPosition + Scale(unscaled_pos)); }
 
-    ImVec2 At(const ImVec2 &local_pos) const { return Position + CursorPosition + Scale(local_pos); }
+    ImVec2 At(ImVec2 local_pos) const { return Position + CursorPosition + Scale(local_pos); }
     ImRect At(const ImRect &local_rect) const { return {At(local_rect.Min), At(local_rect.Max)}; }
 
-    ImVec2 Scale(const ImVec2 &p) const { return p * Context.GetScale(); }
+    ImVec2 Scale(ImVec2 p) const { return p * Context.GetScale(); }
     float Scale(const float f) const { return f * Context.GetScale(); }
 
     const FaustGraph &Context;
@@ -149,14 +150,14 @@ struct SVGDevice : Device {
     }
 
     // Render an arrow. 'pos' is position of the arrow tip. half_sz.x is length from base to tip. half_sz.y is length on each side.
-    string ArrowPointingAt(const ImVec2 &pos, ImVec2 half_sz, GraphOrientation orientation, u32 color) const {
+    string ArrowPointingAt(ImVec2 pos, ImVec2 half_sz, GraphOrientation orientation, u32 color) const {
         const float d = IsLr(Style, orientation) ? -1 : 1;
-        return CreateTriangle(ImVec2{pos.x + d * half_sz.x, pos.y - d * half_sz.y}, ImVec2{pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
+        return CreateTriangle({pos.x + d * half_sz.x, pos.y - d * half_sz.y}, {pos.x + d * half_sz.x, pos.y + d * half_sz.y}, pos, color, color);
     }
     static string RgbColor(u32 c) {
         return std::format("rgb({}, {}, {}, {})", GetRed(c), GetGreen(c), GetBlue(c), GetAlpha(c));
     }
-    static string CreateTriangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 fill_color, u32 stroke_color) {
+    static string CreateTriangle(ImVec2 p1, ImVec2 p2, ImVec2 p3, u32 fill_color, u32 stroke_color) {
         return std::format(R"(<polygon fill="{}" stroke="{}" stroke-width=".5" points="{},{} {},{} {},{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
     }
     // Scale factor to convert between ImGui font pixel height and SVG `font-size` attr value.
@@ -185,7 +186,7 @@ struct SVGDevice : Device {
         const auto &tr = rect.GetTR();
         const float label_offset = Scale(max(8.f, rect_style.CornerRadius) + text_style.Padding.Left);
         const float text_x = tl.x + label_offset;
-        const ImVec2 &text_right = {min(text_x + CalcTextSize(label_view).x, tr.x), tr.y};
+        const ImVec2 text_right{min(text_x + CalcTextSize(label_view).x, tr.x), tr.y};
         const float r = Scale(rect_style.CornerRadius);
         // Going counter-clockwise instead of clockwise, like in the ImGui implementation, since that's what paths expect for corner rounding to work.
         Stream << std::format(
@@ -201,32 +202,32 @@ struct SVGDevice : Device {
         Stream << std::format(R"(<text x="{}" y="{}" font-family="{}" font-size="{}" fill="{}" dominant-baseline="middle">{}</text>)", text_x, tl.y, GetFontName(), GetFontSize(), RgbColor(text_style.Color), label);
     }
 
-    void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 color) override {
+    void Triangle(ImVec2 p1, ImVec2 p2, ImVec2 p3, u32 color) override {
         Stream << CreateTriangle(At(p1), At(p2), At(p3), Col32(0, 0, 0, 0), color);
     }
 
-    void Circle(const ImVec2 &pos, float radius, u32 fill_color, u32 stroke_color) override {
+    void Circle(ImVec2 pos, float radius, u32 fill_color, u32 stroke_color) override {
         const auto [x, y] = At(pos);
         Stream << std::format(R"(<circle fill="{}" stroke="{}" stroke-width=".5" cx="{}" cy="{}" r="{}"/>)", RgbColor(fill_color), RgbColor(stroke_color), x, y, radius);
     }
 
-    void Arrow(const ImVec2 &pos, GraphOrientation orientation) override {
+    void Arrow(ImVec2 pos, GraphOrientation orientation) override {
         Stream << ArrowPointingAt(At(pos), Scale(Style.ArrowSize), orientation, Style.Colors[FlowGridGraphCol_Line]);
     }
 
-    void Line(const ImVec2 &start, const ImVec2 &end) override {
-        const string line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
+    void Line(ImVec2 start, ImVec2 end) override {
+        const string_view line_cap = start.x == end.x || start.y == end.y ? "butt" : "round";
         const auto start_scaled = At(start), end_scaled = At(end);
         const auto color = RgbColor(Style.Colors[FlowGridGraphCol_Line]);
         const auto width = Scale(Style.WireThickness);
         Stream << std::format(R"(<line x1="{}" y1="{}" x2="{}" y2="{}"  style="stroke:{}; stroke-linecap:{}; stroke-width:{};"/>)", start_scaled.x, start_scaled.y, end_scaled.x, end_scaled.y, color, line_cap, width);
     }
 
-    void Text(const ImVec2 &pos, string_view text_view, const TextStyle &style) override {
+    void Text(ImVec2 pos, string_view text_view, const TextStyle &style) override {
         const auto &[color, justify, padding, font] = style;
-        const string anchor = justify.h == HJustify_Left ? "start" : (justify.h == HJustify_Middle ? "middle" : "end");
-        const string font_formatted = font == FontStyle_Italic ? "italic" : "normal";
-        const string weight = font == FontStyle_Bold ? "bold" : "normal";
+        const string_view anchor = justify.h == HJustify_Left ? "start" : (justify.h == HJustify_Middle ? "middle" : "end");
+        const string_view font_formatted = font == FontStyle_Italic ? "italic" : "normal";
+        const string_view weight = font == FontStyle_Bold ? "bold" : "normal";
         const auto &p = At(pos - ImVec2{style.Padding.Right, style.Padding.Bottom});
         string text{text_view};
         XmlSanitize(text);
@@ -234,7 +235,7 @@ struct SVGDevice : Device {
     }
 
     // Only SVG device has a text-with-link method
-    void Text(const ImVec2 &pos, string_view str, const TextStyle &style, string_view link_view) {
+    void Text(ImVec2 pos, string_view str, const TextStyle &style, string_view link_view) {
         string link{link_view};
         XmlSanitize(link);
         if (!link.empty()) Stream << std::format(R"(<a href="{}">)", link);
@@ -242,7 +243,7 @@ struct SVGDevice : Device {
         if (!link.empty()) Stream << "</a>";
     }
 
-    void Dot(const ImVec2 &pos, u32 fill_color) override {
+    void Dot(ImVec2 pos, u32 fill_color) override {
         const auto &p = At(pos);
         const float radius = Scale(Style.OrientationMarkRadius);
         Stream << std::format(R"(<circle cx="{}" cy="{}" r="{}" fill="{}"/>)", p.x, p.y, radius, RgbColor(fill_color));
@@ -261,7 +262,7 @@ struct ImGuiDevice : Device {
 
     DeviceType Type() override { return DeviceType_ImGui; }
 
-    void SetCursorPos(const ImVec2 &scaled_cursor_pos) override {
+    void SetCursorPos(ImVec2 scaled_cursor_pos) override {
         Device::SetCursorPos(scaled_cursor_pos);
         DC.CursorPos = At({0, 0});
     }
@@ -306,28 +307,28 @@ struct ImGuiDevice : Device {
         DrawList->AddText(text_top_left, text_style.Color, ellipsified_label.c_str());
     }
 
-    void Triangle(const ImVec2 &p1, const ImVec2 &p2, const ImVec2 &p3, u32 color) override {
+    void Triangle(ImVec2 p1, ImVec2 p2, ImVec2 p3, u32 color) override {
         DrawList->AddTriangle(At(p1), At(p2), At(p3), color);
     }
 
-    void Circle(const ImVec2 &p, float radius, u32 fill_color, u32 stroke_color) override {
+    void Circle(ImVec2 p, float radius, u32 fill_color, u32 stroke_color) override {
         if (GetAlpha(fill_color) != 0) DrawList->AddCircleFilled(At(p), Scale(radius), fill_color);
         if (GetAlpha(stroke_color) != 0) DrawList->AddCircle(At(p), Scale(radius), stroke_color);
     }
 
-    void Arrow(const ImVec2 &p, GraphOrientation orientation) override {
+    void Arrow(ImVec2 p, GraphOrientation orientation) override {
         RenderArrowPointingAt(DrawList, At(p) + ImVec2{0, 0.5f}, Scale(Style.ArrowSize), GlobalDirection(Style, orientation), Style.Colors[FlowGridGraphCol_Line]);
     }
 
     // Basically `DrawList->AddLine(...)`, but avoiding extra vec2 math to cancel out the +0.5x ImGui adds to line points.
-    void Line(const ImVec2 &start, const ImVec2 &end) override {
+    void Line(ImVec2 start, ImVec2 end) override {
         static constexpr ImVec2 offset{0, 0.5};
         DrawList->PathLineTo(At(start) + offset);
         DrawList->PathLineTo(At(end) + offset);
         DrawList->PathStroke(Style.Colors[FlowGridGraphCol_Line], 0, Scale(Style.WireThickness));
     }
 
-    void Text(const ImVec2 &p, string_view text, const TextStyle &style) override {
+    void Text(ImVec2 p, string_view text, const TextStyle &style) override {
         const auto &[color, justify, padding, font_style] = style;
         const auto &size = CalcTextSize(text);
         const bool change_font = style.Font != FontStyle_Regular;
@@ -343,7 +344,7 @@ struct ImGuiDevice : Device {
         if (change_font) Fonts::Pop();
     }
 
-    void Dot(const ImVec2 &p, u32 fill_color) override {
+    void Dot(ImVec2 p, u32 fill_color) override {
         const float radius = Scale(Style.OrientationMarkRadius);
         DrawList->AddCircleFilled(At(p), radius, fill_color);
     }
@@ -352,23 +353,23 @@ struct ImGuiDevice : Device {
     ImDrawList *DrawList;
 };
 
-static string GetTreeName(Tree tree) {
+string GetTreeName(Tree tree) {
     Tree name;
     return getDefNameProperty(tree, name) ? tree2str(name) : "";
 }
 
-static string GetBoxType(Box t);
+string GetBoxType(Box t);
 
 // Hex address (without the '0x' prefix)
-static string UniqueId(const void *instance) { return std::format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
+string UniqueId(const void *instance) { return std::format("{:x}", reinterpret_cast<std::uintptr_t>(instance)); }
 
 using StringHelper::Capitalize;
 
-static bool isBoxBinary(Box box, Box &x, Box &y) {
+bool isBoxBinary(Box box, Box &x, Box &y) {
     return isBoxPar(box, x, y) || isBoxSeq(box, x, y) || isBoxSplit(box, x, y) || isBoxMerge(box, x, y) || isBoxRec(box, x, y);
 }
 
-static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
+std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
     prim0 p0;
     if (isBoxPrim0(box, &p0)) return pair(0, prim0name(p0));
 
@@ -392,7 +393,7 @@ static std::optional<pair<u32, string>> GetBoxPrimCountAndName(Box box) {
 
 // Returns `true` if `t == '*(-1)'`.
 // This test is used to simplify graph by using a special symbol for inverters.
-static bool isBoxInverter(Box box) {
+bool isBoxInverter(Box box) {
     static const Tree inverters[]{
         boxSeq(boxPar(boxWire(), boxInt(-1)), boxPrim2(sigMul)),
         boxSeq(boxPar(boxInt(-1), boxWire()), boxPrim2(sigMul)),
@@ -451,6 +452,7 @@ string GetBoxType(Box t) {
 
     return "Unknown type";
 }
+} // namespace
 
 namespace flowgrid {
 // An abstract block graph node.
@@ -478,7 +480,7 @@ struct Node {
     ImVec2 Position; // Relative to parent.
     GraphOrientation Orientation = GraphForward;
 
-    Node(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string text = "", bool is_block = false)
+    Node(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, Node *a = nullptr, Node *b = nullptr, string_view text = "", bool is_block = false)
         : Context(context), Style(context.Style), FaustTree(tree), Id(UniqueId(FaustTree)), Text(!text.empty() ? std::move(text) : GetTreeName(FaustTree)),
           BoxTypeLabel(GetBoxType(FaustTree)), InCount(in_count), OutCount(out_count),
           Descendents((is_block ? 1 : 0) + (a ? a->Descendents : 0) + (b ? b->Descendents : 0)), A(a), B(b) {
@@ -608,9 +610,9 @@ struct Node {
         if (!FaustTree) return "";
 
         const string tree_name = GetTreeName(FaustTree);
-        if (tree_name == "process") return tree_name + string(SvgFileExtension);
+        if (tree_name == "process") return std::format("{}{}", tree_name, SvgFileExtension);
 
-        const string name_limited = take_while(tree_name, [](char c) { return std::isalnum(c); }) | take(16) | to<string>();
+        const auto name_limited = take_while(tree_name, [](char c) { return std::isalnum(c); }) | take(16) | to<string>();
         return std::format("{}-{}{}", name_limited, Id, SvgFileExtension);
     }
 
@@ -639,12 +641,13 @@ protected:
 };
 } // namespace flowgrid
 
+namespace {
 using Node = flowgrid::Node;
 
 // A simple rectangular box with text and inputs/outputs.
 struct BlockNode : Node {
-    BlockNode(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, string text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
-        : Node(context, tree, in_count, out_count, nullptr, nullptr, std::move(text), true), Color(color), Inner(inner) {
+    BlockNode(const FaustGraph &context, Tree tree, u32 in_count, u32 out_count, string_view text, FlowGridGraphCol color = FlowGridGraphCol_Normal, Node *inner = nullptr)
+        : Node(context, tree, in_count, out_count, nullptr, nullptr, text, true), Color(color), Inner(inner) {
         if (Inner) Inner->Index = 0;
     }
 
@@ -731,8 +734,8 @@ struct InverterNode : BlockNode {
 
     void Render(Device &device, InteractionFlags) const override {
         const float radius = Style.InverterRadius;
-        const ImVec2 p1 = {W() - 2 * XMargin(), 1 + (H() - 1) / 2};
-        const auto tri_a = ImVec2{XMargin() + (IsLr() ? 0 : p1.x), 0};
+        const ImVec2 p1{W() - 2 * XMargin(), 1 + (H() - 1) / 2};
+        const ImVec2 tri_a{XMargin() + (IsLr() ? 0 : p1.x), 0};
         const auto tri_b = tri_a + ImVec2{DirUnit() * (p1.x - 2 * radius) + (IsLr() ? 0 : W()), p1.y};
         const auto tri_c = tri_a + ImVec2{0, H()};
         device.Circle(tri_b + ImVec2{DirUnit() * radius, 0}, radius, Col32(0, 0, 0, 0), Style.Colors[Color]);
@@ -848,17 +851,17 @@ struct BinaryNode : Node {
             const float dw = OrientationUnit() * WireGap();
             // out_a->in_b feedback connections
             for (u32 i = 0; i < B->IoCount(IO_In); i++) {
-                const auto &in_b = B->ChildPoint(IO_In, i);
-                const auto &out_a = A->ChildPoint(IO_Out, i);
-                const auto &from = ImVec2{IsLr() ? max(in_b.x, out_a.x) : min(in_b.x, out_a.x), out_a.y} + ImVec2{float(i) * dw, 0};
+                const auto in_b = B->ChildPoint(IO_In, i);
+                const auto out_a = A->ChildPoint(IO_Out, i);
+                const auto from = ImVec2{IsLr() ? max(in_b.x, out_a.x) : min(in_b.x, out_a.x), out_a.y} + ImVec2{float(i) * dw, 0};
                 // Draw the delay sign of a feedback connection (three sides of a square centered around the feedback source point).
-                const auto &corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
-                const auto &corner2 = from + ImVec2{dw, -dw} / ImVec2{4, 2};
+                const auto corner1 = from - ImVec2{dw, dw} / ImVec2{4, 2};
+                const auto corner2 = from + ImVec2{dw, -dw} / ImVec2{4, 2};
                 device.Line(from - ImVec2{dw / 4, 0}, corner1);
                 device.Line(corner1, corner2);
                 device.Line(corner2, from + ImVec2{dw / 4, 0});
                 // Draw the feedback line
-                const ImVec2 &bend = {from.x, in_b.y};
+                const ImVec2 bend{from.x, in_b.y};
                 device.Line(from - ImVec2{0, dw / 2}, bend);
                 device.Line(bend, in_b);
             }
@@ -868,12 +871,12 @@ struct BinaryNode : Node {
             for (u32 i = 0; i < InCount; i++) device.Line(Point(IO_In, i), A->ChildPoint(IO_In, i + B->OutCount));
             // out_b->in_a feedfront connections
             for (u32 i = 0; i < B->IoCount(IO_Out); i++) {
-                const auto &from = B->ChildPoint(IO_Out, i);
-                const auto &from_dx = from - ImVec2{dw * float(i), 0};
-                const auto &to = A->ChildPoint(IO_In, i);
-                const ImVec2 &corner1 = {to.x, from_dx.y};
-                const ImVec2 &corner2 = {from_dx.x, to.y};
-                const ImVec2 &bend = IsLr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
+                const auto from = B->ChildPoint(IO_Out, i);
+                const auto from_dx = from - ImVec2{dw * float(i), 0};
+                const auto to = A->ChildPoint(IO_In, i);
+                const ImVec2 corner1{to.x, from_dx.y};
+                const ImVec2 corner2{from_dx.x, to.y};
+                const ImVec2 bend = IsLr() ? (from_dx.x > to.x ? corner1 : corner2) : (from_dx.x > to.x ? corner2 : corner1);
                 device.Line(from, from_dx);
                 device.Line(from_dx, bend);
                 device.Line(bend, to);
@@ -994,8 +997,8 @@ and additional half-text-height Y-offset to center top border line with label.
     * To: My right
 */
 struct GroupNode : Node {
-    GroupNode(const FaustGraph &context, NodeType type, Tree tree, Node *inner, string text = "")
-        : Node(context, tree, inner->InCount, inner->OutCount, inner, nullptr, std::move(text)), Type(type) {}
+    GroupNode(const FaustGraph &context, NodeType type, Tree tree, Node *inner, string_view text = "")
+        : Node(context, tree, inner->InCount, inner->OutCount, inner, nullptr, text), Type(type) {}
     ~GroupNode() override = default;
 
     void Place(const DeviceType type) override {
@@ -1030,8 +1033,8 @@ struct GroupNode : Node {
             const float arrow_width = has_arrow ? Style.ArrowSize.X : 0.f;
             for (u32 channel = 0; channel < IoCount(io); channel++) {
                 const auto &channel_point = A->ChildPoint(io, channel);
-                const ImVec2 &a = {in ? 0 : (Size - offset).x, channel_point.y};
-                const ImVec2 &b = {in ? offset.x : Size.x - arrow_width, channel_point.y};
+                const ImVec2 a{in ? 0 : (Size - offset).x, channel_point.y};
+                const ImVec2 b{in ? offset.x : Size.x - arrow_width, channel_point.y};
                 if (ShouldDecorate()) device.Line(a, b);
                 if (has_arrow) device.Arrow(b + ImVec2{arrow_width, 0}, Orientation);
             }
@@ -1069,7 +1072,7 @@ struct RouteNode : Node {
             for (u32 i = 0; i < IoCount(IO_In); i++) device.Arrow(Point(IO_In, i) + ImVec2{DirUnit() * XMargin(), 0}, Orientation);
         }
 
-        const auto d = ImVec2{DirUnit() * XMargin(), 0};
+        const ImVec2 d{DirUnit() * XMargin(), 0};
         for (IO io : IO_All) {
             const bool in = io == IO_In;
             for (u32 i = 0; i < IoCount(io); i++) {
@@ -1090,7 +1093,7 @@ private:
 };
 
 // Convert user interface box into a textual representation
-static string GetUiDescription(Box box) {
+string GetUiDescription(Box box) {
     Tree t1, label, cur, min, max, step, chan;
     if (isBoxButton(box, label)) return "button(" + extractName(label) + ')';
     if (isBoxCheckbox(box, label)) return "checkbox(" + extractName(label) + ')';
@@ -1108,11 +1111,11 @@ static string GetUiDescription(Box box) {
 }
 
 // Generate a 1->0 block node for an input slot.
-static Node *MakeInputSlot(const FaustGraph &context, Tree tree) { return new BlockNode(context, tree, 1, 0, "", FlowGridGraphCol_Slot); }
+Node *MakeInputSlot(const FaustGraph &context, Tree tree) { return new BlockNode(context, tree, 1, 0, "", FlowGridGraphCol_Slot); }
 
 // Collect the leaf numbers `tree` into `v`.
 // Return `true` if `tree` is a number or a parallel tree of numbers.
-static bool isBoxInts(Box box, std::vector<int> &v) {
+bool isBoxInts(Box box, std::vector<int> &v) {
     int i;
     if (isBoxInt(box, &i)) {
         v.push_back(i);
@@ -1132,19 +1135,16 @@ static bool isBoxInts(Box box, std::vector<int> &v) {
 }
 
 // Track trees only made of cut, wires, or slots ("pure routing" trees).
-static std::unordered_map<Tree, bool> IsTreePureRouting{};
-static bool IsPureRouting(Tree t) {
+std::unordered_map<Tree, bool> IsTreePureRouting{};
+bool IsPureRouting(Tree t) {
     if (IsTreePureRouting.contains(t)) return IsTreePureRouting[t];
 
     Tree x, y;
-    if (isBoxCut(t) || isBoxWire(t) || isBoxInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && IsPureRouting(x) && IsPureRouting(y))) {
-        IsTreePureRouting.emplace(t, true);
-        return true;
-    }
-
-    IsTreePureRouting.emplace(t, false);
-    return false;
+    const bool is_pure_routing = isBoxCut(t) || isBoxWire(t) || isBoxInverter(t) || isBoxSlot(t) || (isBoxBinary(t, x, y) && IsPureRouting(x) && IsPureRouting(y));
+    IsTreePureRouting.emplace(t, is_pure_routing);
+    return is_pure_routing;
 }
+} // namespace
 
 // Generate the inside node of a block graph according to its type.
 Node *FaustGraph::Tree2NodeInner(Tree t) const {

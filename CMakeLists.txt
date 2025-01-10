@@ -15,7 +15,7 @@ set(TRACY_ENABLED off CACHE BOOL "Enable Tracy profiling" FORCE)
 
 add_subdirectory(lib)
 
-# Disable lib warnings
+# Ignore lib warnings
 target_compile_options(staticlib PRIVATE -w) # Faust (can't use alias target)
 target_compile_options(SDL3-shared PRIVATE -w)
 file(GLOB_RECURSE LIB_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/lib/*.c ${CMAKE_CURRENT_SOURCE_DIR}/lib/*.cpp)

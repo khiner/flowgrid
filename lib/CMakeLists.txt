@@ -27,8 +27,6 @@ endif()
 
 set(LLVM_BACKEND COMPILER STATIC DYNAMIC CACHE STRING "Include LLVM backend" FORCE)
 
-include_directories(faust/compiler/generator/c)
-include_directories(faust/compiler/generator/cpp)
 add_subdirectory(faust/build EXCLUDE_FROM_ALL)
 
 # Create the `faustlib` target.

@@ -17,7 +17,7 @@ using u32 = unsigned int;
 struct ImFont;
 
 struct Fonts {
-    static constexpr float AtlasScale = 2; // We rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
+    static constexpr float AtlasScale = 2; // Rasterize to a scaled-up texture and scale down the font size globally, for sharper text.
 
     inline static ImFont *Main{nullptr}, *MainBold{nullptr}, *MainItalic{nullptr}, *MainBoldItalic{nullptr};
     inline static ImFont *Monospace{nullptr}, *MonospaceBold{nullptr}, *MonospaceItalic{nullptr}, *MonospaceBoldItalic{nullptr};
@@ -42,7 +42,7 @@ struct Fonts {
     }
 
     // Returns true if the font was changed.
-    // **Only call `PopFont` if `PushFont` returned true.**
+    // **Only call `PopFont` if `PushFont` returns true.**
     static bool Push(FontFamily, FontStyle style = FontStyle_Regular);
     static void Pop();
 };

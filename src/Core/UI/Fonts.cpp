@@ -46,10 +46,10 @@ void Fonts::Tick(float scale, u32 index) {
 }
 
 bool Fonts::Push(FontFamily family, FontStyle style) {
-    const auto *new_font = Get(family, style);
+    auto *new_font = Get(family, style);
     if (ImGui::GetFont() == new_font) return false;
 
-    ImGui::PushFont(Get(family, style));
+    ImGui::PushFont(new_font);
     return true;
 }
 void Fonts::Pop() { ImGui::PopFont(); }
